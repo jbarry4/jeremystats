@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Extraction Room</title>
+<!-- The Extraction Room (2026-11-10): the sixth and last step of The
+     Dentist, a room of its own outside Jarvis, the way the Monolith is.
+     What X-ray split, extracted: backend/extraction.py, served from
+     /api/extraction*. The page's behaviour is js/extraction.js; its harness
+     is _dev/extraction.html. -->
+<style>
+:root {
+  --bg: #f6f5f2; --surface: #ffffff; --surface-2: #faf9f6; --ink: #17181b; --ink-2: #464b53; --ink-3: #70757e;
+  --line: #e3e1db; --line-2: #cfcdc6; --chip: #efede8; --focus: #b07a00;
+  --ds1: #2d6cdf; --ds2: #d9791a; --ds1-soft: rgba(45, 108, 223, .16); --ds2-soft: rgba(217, 121, 26, .16);
+  --sink: #2459c9; --source: #c8402f; --ok: #2e7d4f; --warn: #a8620b; --bad: #b3372f;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace; --r: 8px; --gutter: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+    --ds1: #6fa2ff; --ds2: #f2a356; --ds1-soft: rgba(111, 162, 255, .18); --ds2-soft: rgba(242, 163, 86, .18);
+    --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+  --ds1: #6fa2ff; --ds2: #f2a356; --ds1-soft: rgba(111, 162, 255, .18); --ds2-soft: rgba(242, 163, 86, .18);
+  --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80;
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14.5px/1.5 var(--sans); }
+main { max-width: 1700px; margin: 0 auto; padding: 22px var(--gutter) 60px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 15.5px; margin: 0; overflow-wrap: anywhere; }
+p { margin: 0 0 8px; }
+.lede { color: var(--ink-2); max-width: 95ch; }
+.muted { color: var(--ink-3); }
+.small { font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin: 0 0 14px; min-width: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 14px 0 12px; border-bottom: 1px solid var(--line); }
+.tabs button { font: inherit; font-size: 14.5px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2);
+  padding: 8px 14px; cursor: pointer; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.ctl > .lab { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.seg { display: flex; flex-wrap: wrap; gap: 3px; background: var(--chip); padding: 3px; border-radius: var(--r); max-width: 100%; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); padding: 5px 12px;
+  border-radius: 6px; cursor: pointer; }
+.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn:disabled { opacity: .5; cursor: default; }
+select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--chip);
+  color: var(--ink-2); white-space: nowrap; border: 1px solid transparent; }
+.chip.ko { font-weight: 600; color: var(--ink); border-color: var(--line-2); cursor: pointer; }
+.chip.ko.ctl { font-weight: 500; color: var(--ink-2); cursor: default; }
+.chip.ko.none { color: var(--warn); }
+.chip.yes { color: var(--ok); } .chip.weak { color: var(--warn); } .chip.no, .chip.too_few { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+.rec { display: flex; flex-direction: column; gap: 8px; }
+.rec-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.pics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.pics.one { grid-template-columns: minmax(0, 1fr); }
+.pic { min-width: 0; }
+.pic .cap { font-size: 12px; color: var(--ink-2); display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+canvas { display: block; width: 100%; }
+canvas.csd { height: 190px; border-radius: 6px; background: var(--surface-2); }
+canvas.prof { height: 260px; border-radius: 6px; background: var(--surface-2); }
+.vals { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12.5px; }
+.vals b.c1 { color: var(--ds1); } .vals b.c2 { color: var(--ds2); }
+.vals span { overflow-wrap: anywhere; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+.sw { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+th { color: var(--ink-3); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.err { color: var(--bad); }
+.empty { color: var(--ink-3); padding: 20px 0; }
+/* Which is DS1, by hand; left out of the stats (2026-11-10). */
+.acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn.small { font-size: 12px; padding: 3px 9px; }
+.chip.swapped { color: var(--warn); border-color: var(--warn); }
+.chip.byhand { border-color: currentColor; font-weight: 600; }
+.chip.skipped { color: var(--ink-3); border-color: var(--line-2); }
+.rec.flash { outline: 2px solid var(--focus); outline-offset: 2px; transition: outline-color .4s; }
+/* Does it differ? */
+:root { --g-ctl: #4f8a6a; --g-pten: #8a4fbf; --g-low: #c98a2b; --g-high: #b3372f; }
+:root[data-theme="dark"] { --g-ctl: #7cc39b; --g-pten: #b98ae6; --g-low: #f0b45a; --g-high: #ff8a80; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g-ctl: #7cc39b; --g-pten: #b98ae6; --g-low: #f0b45a; --g-high: #ff8a80; } }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; margin: 10px 0; }
+.stat { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; min-width: 0; }
+.stat.hit { border-color: var(--ok); }
+.stat-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.stat .num, .stat .small { overflow-wrap: anywhere; }
+.chip.verdict { font-weight: 600; }
+.stat.hit .chip.verdict { color: var(--ok); border-color: var(--ok); }
+canvas.stat-cv { height: 190px; border-radius: 6px; background: var(--surface-2); cursor: pointer; }
+.numin { width: 5.5em; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line-2); border-radius: 6px;
+  background: var(--surface); color: var(--ink); }
+/* Sub-tabs, the separation rate and Round II (2026-11-10). */
+.subtabs { display: flex; flex-wrap: wrap; gap: 3px; background: var(--chip); padding: 3px; border-radius: var(--r); margin: 0 0 14px; width: fit-content; max-width: 100%; }
+.subtabs button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-2); padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+.subtabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.stat.lead { border-color: var(--warn); border-style: dashed; }
+.chip.q { font-variant-numeric: tabular-nums; }
+.chip.q.holds { color: var(--ok); border-color: var(--ok); font-weight: 600; }
+.stat.lead .chip.q { color: var(--warn); border-color: var(--warn); }
+.r2-say { font-weight: 600; margin: 10px 0 0; max-width: 110ch; }
+.stat.big { margin: 12px 0; max-width: 820px; }
+canvas.stat-cv.big { height: 280px; }
+#erSepTable td .acts { justify-content: flex-start; }
+/* The sets, and what is waiting to be extracted (2026-11-11). */
+#erSets button { font-weight: 500; }
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; margin: 8px 0; border-radius: 6px;
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.er-note { color: var(--ok); font-weight: 600; margin: 8px 0 0; }
+/* Each card's state, at a glance (2026-11-11): a faint wash over the card and
+   a bar down its left edge -- separable, not separable, too few to call, and
+   gray for left out of the stats. The same wash on the tables' rows. */
+:root {
+  --st-yes: rgba(46, 125, 79, .085); --st-yes-ink: #2e7d4f; --st-no: rgba(179, 55, 47, .075); --st-no-ink: #b3372f;
+  --st-few: rgba(168, 98, 11, .09); --st-few-ink: #a8620b; --st-out: rgba(70, 72, 78, .13); --st-out-ink: #74787f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --st-yes: rgba(111, 211, 156, .09); --st-yes-ink: #6fd39c; --st-no: rgba(255, 138, 128, .085); --st-no-ink: #ff8a80;
+    --st-few: rgba(242, 178, 94, .09); --st-few-ink: #f2b25e; --st-out: rgba(0, 0, 0, .34); --st-out-ink: #8b9099;
+  }
+}
+:root[data-theme="dark"] {
+  --st-yes: rgba(111, 211, 156, .09); --st-yes-ink: #6fd39c; --st-no: rgba(255, 138, 128, .085); --st-no-ink: #ff8a80;
+  --st-few: rgba(242, 178, 94, .09); --st-few-ink: #f2b25e; --st-out: rgba(0, 0, 0, .34); --st-out-ink: #8b9099;
+}
+.st-yes { --wash: var(--st-yes); --wink: var(--st-yes-ink); }
+.st-no { --wash: var(--st-no); --wink: var(--st-no-ink); }
+.st-few { --wash: var(--st-few); --wink: var(--st-few-ink); }
+.st-out { --wash: var(--st-out); --wink: var(--st-out-ink); }
+.rec.st-yes, .rec.st-no, .rec.st-few, .rec.st-out {
+  background-image: linear-gradient(var(--wash), var(--wash));
+  border-color: color-mix(in srgb, var(--wink) 40%, var(--line)); box-shadow: inset 4px 0 0 var(--wink); }
+.state-tag { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--wink); }
+.state-tag .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--wink); }
+.rec.st-out .state-tag .dot { background: none; border: 2px solid var(--wink); }
+.rec.st-few .state-tag .dot { background: none; border: 2px dashed var(--wink); }
+.rec.st-out .pics, .rec.st-out > .pic, .rec.st-out .vals { opacity: .45; filter: grayscale(1); }
+tr.st-yes td, tr.st-no td, tr.st-few td, tr.st-out td { background-image: linear-gradient(var(--wash), var(--wash)); }
+tr.st-yes td:first-child, tr.st-no td:first-child, tr.st-few td:first-child, tr.st-out td:first-child {
+  box-shadow: inset 3px 0 0 var(--wink); }
+tr.st-out td { color: var(--ink-3); }
+.statekey { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.statekey .lab { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.statekey .k { display: inline-flex; align-items: center; gap: 7px; }
+.statekey .sq { width: 26px; height: 16px; border-radius: 4px; background: linear-gradient(var(--wash), var(--wash)), var(--surface);
+  border: 1px solid color-mix(in srgb, var(--wink) 40%, var(--line)); box-shadow: inset 4px 0 0 var(--wink); }
+@media (max-width: 520px) { .grid { grid-template-columns: minmax(0, 1fr); } .pics { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<main id="er">
+  <h1>The Extraction Room</h1>
+  <p class="lede">The sixth and last step of The Dentist. What X-ray split into DS1 and DS2, taken out of Jarvis into a room of its
+    own: every number here was copied when it was extracted, so this room keeps showing what it was given however the sets
+    move on. Extract again for the next version.</p>
+  <div class="tabs" role="tablist" id="erTabs"></div>
+  <div id="erBody"><p class="empty">Opening the room…</p></div>
+</main>
+<script src="js/extraction.js"></script>
+</body>
+</html>

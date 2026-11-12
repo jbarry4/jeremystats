@@ -1,0 +1,116 @@
+{
+  "_at": {
+    "added": "2026-11-09T15:14:37.690586+00:00",
+    "deleted": "2026-11-09T15:14:37.690586+00:00",
+    "id": "2026-11-09T15:14:37.690586+00:00",
+    "kind": "2026-11-09T15:14:37.690586+00:00",
+    "name": "2026-11-09T15:14:37.690586+00:00",
+    "nickname": "2026-11-09T15:14:37.690586+00:00",
+    "schema": "2026-11-09T15:14:37.690586+00:00",
+    "subject": "2026-11-09T15:14:37.690586+00:00",
+    "subject_key": "2026-11-09T15:14:37.690586+00:00",
+    "version": "2026-11-09T15:14:37.690586+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "87d30f8a47e9": [
+        "set",
+        "2026-11-09T15:14:37.690586+00:00"
+      ],
+      "d105fe62e75d": [
+        "set",
+        "2026-11-09T15:14:37.690586+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-09T15:14:37.690586+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-07T13:09:56-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "f7e3cb9cee38",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 Verified DS 10% \u00b7 CTL & PTEN v2",
+  "nickname": "Verified DS 10% \u00b7 CTL & PTEN v2",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 Verified DS 10% \u00b7 CTL & PTEN v2",
+    "workflow_key": "e04b106c660a4608a71d3680819c54a9"
+  },
+  "subject_key": "rootcanal_workflow|e04b106c660a4608a71d3680819c54a9",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.07.2",
+      "at": "2026-11-07T13:09:56-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "6f76c5ec2b88",
+      "id": "d105fe62e75d",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.1,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "CTL & PTEN Baseline v2"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-07T13:09:56-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.07.2",
+      "at": "2026-11-07T13:09:58-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "822c343b1be5",
+      "id": "87d30f8a47e9",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": 0.1,
+        "kept": 4263,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 2
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Extraction Room results</title>
+<!-- The Extraction Room's results, as a site of their own (2026-11-11).
+     Signed in (middleware.js), then the acknowledgement below, then the
+     results (site.js, from data/*.json). Assembled by
+     tools/export_extraction.py; edit review/extraction_site, not the copy. -->
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <span class="brand">The Extraction Room</span>
+    <span class="ribbon" title="Rain and Shahriar are still fine-tuning the analysis. These numbers will change.">Preliminary · not final</span>
+    <span class="grow"></span>
+    <button type="button" class="btn quiet" id="out">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <section id="ack" class="ack" hidden>
+    <form class="ack-card" id="ackForm" autocomplete="off">
+      <div class="eyebrow">Before you look</div>
+      <h1>These results are not final</h1>
+      <p class="lede">They come straight from The Extraction Room while the analysis is still being built, so please confirm
+        each line first.</p>
+      <div class="checks">
+        <label class="check"><input type="checkbox" name="a"><span>I understand this is preliminary data.</span></label>
+        <label class="check"><input type="checkbox" name="b"><span>I understand Rain and Shahriar are still fine-tuning things.</span></label>
+        <label class="check"><input type="checkbox" name="c"><span>I understand this is not a final result.</span></label>
+      </div>
+      <label class="typed" for="ackType">Type <b>NOT FINAL</b> to continue</label>
+      <input id="ackType" type="text" spellcheck="false" autocapitalize="characters" placeholder="NOT FINAL">
+      <button type="submit" class="btn primary go" id="ackGo" disabled>See the results</button>
+      <p class="ack-left" id="ackLeft" role="status"></p>
+    </form>
+  </section>
+
+  <section id="results" hidden></section>
+</main>
+
+<script src="site.js"></script>
+</body>
+</html>

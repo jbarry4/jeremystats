@@ -1,0 +1,98 @@
+{
+  "_at": {
+    "created": "2026-11-04T20:02:08.589076+00:00",
+    "duration_s": "2026-11-04T20:02:08.589076+00:00",
+    "first_seen_by": "2026-11-04T20:02:08.589076+00:00",
+    "fs": "2026-11-04T20:02:08.589076+00:00",
+    "gid": "2026-11-04T20:02:08.589076+00:00",
+    "group": "2026-11-04T20:02:08.589076+00:00",
+    "has_video": "2026-11-04T20:02:08.589076+00:00",
+    "key": "2026-11-04T20:02:08.589076+00:00",
+    "label": "2026-11-04T20:02:08.589076+00:00",
+    "loose_key": "2026-11-04T20:02:08.589076+00:00",
+    "mouse": "2026-11-04T20:02:08.589076+00:00",
+    "n_channels": "2026-11-04T20:02:08.589076+00:00",
+    "project": "2026-11-04T20:02:08.589076+00:00",
+    "project_source": "2026-11-04T20:02:08.589076+00:00",
+    "schema": "2026-11-04T20:02:08.589076+00:00",
+    "session": "2026-11-04T20:02:08.589076+00:00",
+    "start": "2026-11-04T20:02:08.589076+00:00",
+    "updated": "2026-11-04T20:02:08.589076+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s3_may04\\2026-05-04_17-09-53": [
+        "set",
+        "2026-11-04T20:02:08.589076+00:00"
+      ]
+    },
+    "seen": {
+      "barrylab-d8e8": [
+        "set",
+        "2026-11-04T20:02:08.589076+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-04T20:02:08.589076+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-04T15:02:08-05:00",
+    "commit": "266c9dae",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "duration_s": 1917.3546666666666,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s414318551177",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m521_s003_2026-05-04_17-09-53",
+  "label": "KCNT1 m521 s3 2026-05-04",
+  "loose_key": "m521_s003",
+  "mouse": 521,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s3_may04\\2026-05-04_17-09-53"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "barrylab-d8e8": {
+      "at": "2026-11-04T15:02:08-05:00",
+      "by": "Rain Younger",
+      "copies": {
+        "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s3_may04\\2026-05-04_17-09-53": {
+          "at": "2026-11-04T15:02:08-05:00",
+          "duration_s": 1917.3546666666666,
+          "fs": 30000.0,
+          "n_channels": 64
+        }
+      },
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s3_may04\\2026-05-04_17-09-53",
+      "root": "Y:/Jeremy3/KCNT1/Spring'26/KCNT1_521",
+      "scan": "scan_c5ee555d3d"
+    }
+  },
+  "session": 3,
+  "start": "2026-05-04T17:09:53",
+  "updated": {
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-04T15:02:08-05:00",
+    "commit": "266c9dae",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

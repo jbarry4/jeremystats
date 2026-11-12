@@ -1,0 +1,5 @@
+# The launchers in _Jarvis/ sit above the app's own .gitattributes, so their
+# line endings are fixed here: macOS will not run a .command with CRLF, and
+# cmd.exe wants CRLF in a .bat.
+_Jarvis/*.command text eol=lf
+_Jarvis/*.bat     text eol=crlf

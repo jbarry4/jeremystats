@@ -1,0 +1,393 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "group": "ds",
+  "n_group": 2183,
+  "n_other": 0
+ },
+ "gids": [
+  "s016e132432c8",
+  "s0a9e96cf1739",
+  "s37c7c8edfe10",
+  "s43b16cd74bcb",
+  "s79ba9ba163c4",
+  "s8d7f397b9708",
+  "s9eb56573e0b4",
+  "sd42a6992b76c",
+  "sd94396e874c7"
+ ],
+ "grace_default": 0.1,
+ "group": "ds",
+ "identity": "wf_id",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "kind": "envelope",
+ "level": "workflow",
+ "levels": [
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 2183,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3947.841384677525,
+     "lo": -1871.8686870109273
+    },
+    "hf_db": {
+     "hi": 37.494955881083754,
+     "lo": -16.7413669107996
+    },
+    "hw_ms": {
+     "hi": 68.37449170970726,
+     "lo": -32.34375769652499
+    }
+   },
+   "grace": 0.0,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "peeled": 0,
+   "reached": true,
+   "shape": {
+    "M": [
+     [
+      8467256.329628004,
+      25137.11372086279,
+      18136.45966724253
+     ],
+     [
+      25137.11372086279,
+      735.3946774963414,
+      73.04666889694712
+     ],
+     [
+      18136.45966724253,
+      73.04666889694712,
+      2536.041440864001
+     ]
+    ],
+    "axes": [
+     [
+      -0.07572684025014868,
+      25.69989450401599,
+      -0.26866465289210745
+     ],
+     [
+      -0.10861739049796483,
+      0.5220725809289631,
+      49.97097817137735
+     ],
+     [
+      -2909.8550328316555,
+      -8.639302066662134,
+      -6.234629160103747
+     ]
+    ],
+    "center": [
+     1037.986348833299,
+     10.376794485142078,
+     18.015367006591138
+    ],
+    "kind": "ellipsoid",
+    "t": 40.57592860400747
+   },
+   "switch_rate": 0.0,
+   "trim": null,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 21,
+    "ds": 2162,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2955.5918985809076,
+     "lo": -879.6192009143094
+    },
+    "hf_db": {
+     "hi": 28.247766114738038,
+     "lo": -7.494177144453882
+    },
+    "hw_ms": {
+     "hi": 51.20222196038445,
+     "lo": -15.17148794720217
+    }
+   },
+   "grace": 0.01,
+   "outside": 21,
+   "outside_rate": 0.00961978928080623,
+   "peeled": 21,
+   "reached": true,
+   "shape": {
+    "M": [
+     [
+      3677211.044422827,
+      10916.697050475406,
+      7876.410870160035
+     ],
+     [
+      10916.697050475406,
+      319.3716269858237,
+      31.723147046612706
+     ],
+     [
+      7876.410870160035,
+      31.723147046612706,
+      1101.3673417241152
+     ]
+    ],
+    "axes": [
+     [
+      -0.0499042761030208,
+      16.936328346862485,
+      -0.1770510293676724
+     ],
+     [
+      -0.07157927396804888,
+      0.3440478189560372,
+      32.93106491126233
+     ],
+     [
+      -1917.6055477623127,
+      -5.693332961575124,
+      -4.108644358829578
+     ]
+    ],
+    "center": [
+     1037.986348833299,
+     10.376794485142078,
+     18.015367006591138
+    ],
+    "kind": "ellipsoid",
+    "t": 17.62155850629876
+   },
+   "switch_rate": 0.0,
+   "trim": null,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 109,
+    "ds": 2074,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2518.2985785903293,
+     "lo": -442.3258809237311
+    },
+    "hf_db": {
+     "hi": 24.172445975832503,
+     "lo": -3.418857005548345
+    },
+    "hw_ms": {
+     "hi": 43.63424741801824,
+     "lo": -7.603513404835965
+    }
+   },
+   "grace": 0.05,
+   "outside": 109,
+   "outside_rate": 0.04993128721942281,
+   "peeled": 109,
+   "reached": true,
+   "shape": {
+    "M": [
+     [
+      2191324.29756823,
+      6505.4801606180245,
+      4693.71224792492
+     ],
+     [
+      6505.4801606180245,
+      190.32000005258888,
+      18.904463757663766
+     ],
+     [
+      4693.71224792492,
+      18.904463757663766,
+      656.3270335350032
+     ]
+    ],
+    "axes": [
+     [
+      -0.03852403860752087,
+      13.074145505232293,
+      -0.1366760771518065
+     ],
+     [
+      -0.05525624113153928,
+      0.2655906967357769,
+      25.421421070397077
+     ],
+     [
+      -1480.3122282244638,
+      -4.395017740852769,
+      -3.171703634722045
+     ]
+    ],
+    "center": [
+     1037.986348833299,
+     10.376794485142078,
+     18.015367006591138
+    ],
+    "kind": "ellipsoid",
+    "t": 10.501042461089833
+   },
+   "switch_rate": 0.0,
+   "trim": null,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 218,
+    "ds": 1965,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2329.2294217881836,
+     "lo": -253.25672412158565
+    },
+    "hf_db": {
+     "hi": 22.41043108299519,
+     "lo": -1.6568421127110309
+    },
+    "hw_ms": {
+     "hi": 40.362140344770225,
+     "lo": -4.331406331587946
+    }
+   },
+   "grace": 0.1,
+   "outside": 218,
+   "outside_rate": 0.09986257443884562,
+   "peeled": 218,
+   "reached": true,
+   "shape": {
+    "M": [
+     [
+      1667308.6734539734,
+      4949.812087977113,
+      3571.2957458405112
+     ],
+     [
+      4949.812087977113,
+      144.80840976918975,
+      14.383802719263045
+     ],
+     [
+      3571.2957458405112,
+      14.383802719263045,
+      499.3782786279516
+     ]
+    ],
+    "axes": [
+     [
+      -0.03360365265804266,
+      11.404283149917864,
+      -0.11921946891561008
+     ],
+     [
+      -0.04819877669343831,
+      0.23166879291243242,
+      22.174533994904117
+     ],
+     [
+      -1291.2430716180615,
+      -3.8336751526544046,
+      -2.7666057642939768
+     ]
+    ],
+    "center": [
+     1037.986348833299,
+     10.376794485142078,
+     18.015367006591138
+    ],
+    "kind": "ellipsoid",
+    "t": 7.989907835692397
+   },
+   "switch_rate": 0.0,
+   "trim": null,
+   "wrong": 0
+  }
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "n": 2185,
+ "n_complete": 2183,
+ "n_identity": 2185,
+ "n_mice": 9,
+ "n_recordings": 9,
+ "rules": {
+  "0.0": "Solid DS: inside the scoop: an ellipsoid fitted robustly to the DS events, centred at max amplitude 1038 µV, HF power 10.4 dB, half-width 18.0 ms. Outside it is ambiguous (grace none: it reaches the furthest DS event).",
+  "0.01": "Solid DS: inside the scoop: an ellipsoid fitted robustly to the DS events, centred at max amplitude 1038 µV, HF power 10.4 dB, half-width 18.0 ms. Outside it is ambiguous (grace 1%: it leaves out the 1% of the DS events furthest from its centre).",
+  "0.05": "Solid DS: inside the scoop: an ellipsoid fitted robustly to the DS events, centred at max amplitude 1038 µV, HF power 10.4 dB, half-width 18.0 ms. Outside it is ambiguous (grace 5%: it leaves out the 5% of the DS events furthest from its centre).",
+  "0.1": "Solid DS: inside the scoop: an ellipsoid fitted robustly to the DS events, centred at max amplitude 1038 µV, HF power 10.4 dB, half-width 18.0 ms. Outside it is ambiguous (grace 10%: it leaves out the 10% of the DS events furthest from its centre)."
+ },
+ "schema": 1,
+ "shape": "ellipsoid",
+ "source": {
+  "artifact_id": "07cdcb084c86",
+  "kind": "workflow",
+  "nickname": "CTL Baseline v2",
+  "type": "pool",
+  "version": 1
+ },
+ "strict": {
+  "amp_uV": {
+   "hi": 3611.557056898117,
+   "lo": 198.62015065261326
+  },
+  "hf_db": {
+   "hi": 25.358565636871482,
+   "lo": -5.1227495565039325
+  },
+  "hw_ms": {
+   "hi": 63.423733008442106,
+   "lo": 5.982065540213711
+  }
+ },
+ "strict_counts": {
+  "amb": 0,
+  "ds": 2183,
+  "ied": 0,
+  "none": 2
+ },
+ "strict_rate": 0.0,
+ "strict_wrong": 0
+}

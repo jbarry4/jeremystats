@@ -1,0 +1,1242 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rcworkflow: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal's Workflow tab (2026-11-05).
+
+   WHAT WAS ASKED: a Workflow tab -- verified dentate spikes, verified
+   P-spikes, ambiguous; Define border, Apply border, Extract -- with the 3D
+   picture of each stage; workflows built and archived; results to the Bank,
+   rebuilt easily, and every event traced back to its recording and
+   waveforms. And every one of the ten features offered.
+
+   ON FIXTURES. Every /api/rootcanal/workflow* answer is made here, from
+   synthetic events, so the page is checked against known numbers:
+     - the view bar has Workflow, and the tab paints its own part;
+     - a strip per workflow, three stage cards each with a picture;
+     - opening one draws the 3D stage, the three 2D views, the grace sweep,
+       the distances, the flow, every mouse and the lineage;
+     - a dot clicked shows its numbers against the cut-offs, its history,
+       its waveform (from /api/rootcanal/event) and offers Xplorefinder;
+     - out of date says so, and running then takes the newest inputs;
+     - banking is its own step: "Run and bank..." previews, a dialog says
+       what will be written, and only its button banks; "Run without
+       banking" writes nothing to the Bank;
+     - archiving writes the shared preference and archives the bank entry;
+     - the builder previews and saves what it says; the P-spike one lists
+       the hand-sorted sets and checks them;
+     - Ambiguous shows the conflicts and banks only what is ticked, and its
+       two kinds of ambiguous are purple (2026-11-06), not the warning amber;
+     - Pooled PCA (2026-11-06): two pools made one, the 2D PCA with the 3D
+       beside it, the calls in their colours, every dot clickable, and
+       Xplorefinder following each dot clicked;
+     - Colour by mouse or recording (2026-11-06), in the PCA and in every
+       other workflow's 3D, flat views and mouse cards: a colour each, the
+       legend naming each with its count, the same colour in every stage;
+     - pools archived in Pooled (or in an archived folder) leave the
+       builder, Show archived pools brings them back with Put back;
+     - the panels under the pictures follow the stage (2026-11-06): Define
+       the border's own events, Apply the target's, Extract the extracted,
+       each panel saying which and how many;
+     - a version's side branch in the version tree.
+
+   IT WRITES NOTHING. Every workflow, bank, prefs and pool request is
+   answered or refused here; the activity log is quiet. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+/* ---------- the fixtures ---------- */
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const gauss = () => { let s = 0; for (let k = 0; k < 6; k++) s += rnd(); return s - 3; };
+const AXK = ['amp_uV', 'hf_db', 'hw_ms'];
+function box(lo, hi) {
+  const o = {};
+  AXK.forEach((k, a) => { o[k] = { lo: lo[a], hi: hi[a] }; });
+  return o;
+}
+function members(n) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    out.push({ key: 'u:e' + k + ':r' + k, gid: 'g' + k, entry_id: 'e' + k,
+               session_label: 'PTEN m' + (k + 1) + ' s1 2024-01-0' + (k + 1),
+               mouse_key: 'PTEN|m' + (k + 1),
+               event_body: { entry_id: 'e' + k, read: 'r' + k, filt: 'ds' },
+               from_version: 'v' + k });
+  }
+  return out;
+}
+function cols(n, nm, inside, centre) {
+  const c = { gids: [], g: [], m: [], i: [], t: [], amp: [], hf: [], hw: [],
+              mouse: [], cls: [], d_a: [] };
+  for (let k = 0; k < nm; k++) c.gids.push('g' + k);
+  for (let j = 0; j < n; j++) {
+    const m = j % nm;
+    c.g.push(m); c.m.push(m); c.i.push(Math.floor(j / nm));
+    c.t.push(10 + j * 1.5);
+    c.amp.push(Math.round(centre[0] + gauss() * 500));
+    c.hf.push(+(centre[1] + gauss() * 6).toFixed(2));
+    c.hw.push(+(centre[2] + gauss() * 9).toFixed(2));
+    c.mouse.push('PTEN|m' + (m + 1));
+    const v = [c.amp[j], c.hf[j], c.hw[j]];
+    c.cls.push(inside(v));
+    c.d_a.push([0, 0, 0].map(() => +(gauss() * 0.4).toFixed(3)));
+  }
+  return c;
+}
+const BOX_DS = [[400, 2400], [0, 20], [8, 45]];
+const BOX_P = [[700, 3000], [8, 35], [6, 30]];
+const inBox = (b) => (v) => v.every((x, a) => x >= b[a][0] && x <= b[a][1]);
+function border(group, b) {
+  return { kind: 'envelope', group,
+           strict: box(b.map((r) => r[0] - 100 * 0 - (r[1] - r[0]) * 0.08),
+                       b.map((r) => r[1] + (r[1] - r[0]) * 0.08)),
+           levels: [{ grace: 0, edges: box(b.map((r) => r[0] - (r[1] - r[0]) * 0.08),
+                                           b.map((r) => r[1] + (r[1] - r[0]) * 0.08)) },
+                    { grace: 0.05, edges: box(b.map((r) => r[0]), b.map((r) => r[1])) }] };
+}
+function counts(cls) { const o = {}; cls.forEach((c) => { o[c] = (o[c] || 0) + 1; }); return o; }
+function byMouse(c) {
+  const o = {};
+  c.cls.forEach((k, j) => { const m = c.mouse[j]; o[m] = o[m] || { key: m, label: m, n: 0 };
+                            o[m].n += 1; o[m][k] = (o[m][k] || 0) + 1; });
+  return Object.values(o);
+}
+function oneRun(kind) {
+  const mem = members(4);
+  const group = kind === 'pspike' ? 'ied' : 'ds';
+  const B = kind === 'pspike' ? BOX_P : BOX_DS;
+  const isIn = inBox(B);
+  const tgt = cols(240, 4, (v) => (isIn(v) ? 'inside' : 'outside'), [1300, 12, 24]);
+  const src = cols(160, 4, (v) => (isIn(v) ? 'inside' : 'outside'),
+                   kind === 'pspike' ? [1700, 20, 16] : [1200, 9, 27]);
+  const cc = counts(tgt.cls);
+  const sweep = [];
+  for (let k = 0; k <= 20; k++) sweep.push({ grace: k * 0.005,
+    source_outside: k * 0.005 * 0.95, target_inside: Math.round(230 - k * 3),
+    target_measured: 240, box: {} });
+  return { kind, group, grace: 0.05,
+           rule: 'Solid ' + (group === 'ied' ? 'P-spike' : 'DS') + ': inside a harness box.',
+           border: border(group, B),
+           border_ref: { artifact_id: 'b-' + kind, version: 2,
+                         nickname: (group === 'ied' ? 'P-spike' : 'DS') + ' border · h' },
+           target: { artifact_id: 'pT', version: 1, nickname: 'Harness target', n: 240 },
+           measure: { lo_hz: 5, hi_hz: 100, mains_out: true },
+           mismatch: [], members: mem, src_members: mem, sweep,
+           src_cols: src, cols: tgt, counts: cc, n: 240, kept: cc.inside || 0,
+           by_mouse: byMouse(tgt), by_recording: [],
+           bank: { entry_id: 'bank-' + kind, n: cc.inside || 0, recordings: 4,
+                   name: 'Verified ' + kind + ' · harness', version: '3', new: false },
+           at: '2026-11-05T12:00:00+00:00', by: 'Debug_Bot',
+           diff: { n: 3, moves: { 'inside → outside': 2, 'outside → inside': 1 },
+                   examples: [{ gid: 'g0', t: 11.5, was: 'inside', now: 'outside' }] } };
+}
+function ambRun(a, b) {
+  const tgt = JSON.parse(JSON.stringify(a.cols));
+  const iDs = inBox(BOX_DS), iP = inBox(BOX_P);
+  tgt.cls = tgt.amp.map((x, j) => {
+    const v = [tgt.amp[j], tgt.hf[j], tgt.hw[j]];
+    const A = iDs(v), P = iP(v);
+    return A && P ? 'both' : A ? 'ds' : P ? 'pspike' : 'neither';
+  });
+  tgt.d_b = tgt.d_a.map((r) => r.map((x) => -x));
+  const cc = counts(tgt.cls);
+  return { kind: 'ambiguous',
+           borders: { ds: { border: a.border, grace: 0.05, border_ref: a.border_ref,
+                            workflow: { artifact_id: 'wDS', version: 2, nickname: 'Harness DS' } },
+                      pspike: { border: b.border, grace: 0.05, border_ref: b.border_ref,
+                                workflow: { artifact_id: 'wP', version: 2, nickname: 'Harness P' } } },
+           target: a.target, measure: a.measure, members: a.members, mismatch: [],
+           cols: tgt, counts: cc, n: 240, kept: (cc.both || 0) + (cc.neither || 0),
+           by_mouse: byMouse(tgt), by_recording: [], bank: null,
+           at: '2026-11-05T12:05:00+00:00', by: 'Debug_Bot' };
+}
+/* A Pooled PCA (2026-11-06): RUN_DS's events as two pools of two members,
+   each event with its one-pool call, its own pool's call, the verified
+   borders' class and three PC scores; one event unmeasured, so not drawn. */
+function pcaRun(a0, amb) {
+  const a = JSON.parse(JSON.stringify(a0.cols));
+  delete a.d_a;
+  const n = a.t.length;
+  a.src = a.m.map((m) => (m < 2 ? 0 : 1));
+  a.hw[5] = null;            // the unmeasured one: a half-width that never came back
+  a.cls = a.hf.map((h, j) => (j === 5 ? null : h > 12 ? 'ied' : 'ds'));
+  a.own = a.cls.map((c, j) => (c && j % 7 === 0 ? (c === 'ds' ? 'ied' : 'ds') : c));
+  a.ver = a.cls.map((c, j) => (c == null ? null : ['ds', 'pspike', 'both', 'neither'][j % 4]));
+  const X = [a.amp, a.hf, a.hw];
+  const mu = X.map((v) => v.reduce((s, x) => s + (x || 0), 0) / n);
+  const sd = X.map((v, k) => Math.sqrt(v.reduce((s, x) => s + ((x || 0) - mu[k]) ** 2, 0) / n) || 1);
+  const C = [[0.666, 0.686, -0.293], [0.283, 0.131, 0.950], [-0.690, 0.716, 0.107]];
+  a.pc = a.t.map((_, j) => (j === 5 ? null : C.map((c) => +c.reduce((s, w, k) =>
+    s + w * (X[k][j] - mu[k]) / sd[k], 0).toFixed(4))));
+  const cc = counts(a.cls);
+  return { kind: 'pca',
+           pools: [{ artifact_id: 'pP', version: 1, nickname: 'Harness PTEN', n: n / 2, members: 2 },
+                   { artifact_id: 'pQ', version: 1, nickname: 'Harness CTL', n: n / 2, members: 2 }],
+           measure: a0.measure, members: a0.members,
+           pca: { axes: AXK, mean: mu, sd, components: C, explained: [0.475, 0.322, 0.203],
+                  n: n - 1, n_missing: 1 },
+           pool_rule: 'Pooled over 4 recordings from 4 mice (a harness rule).',
+           gmm: { verdict: 'ΔBIC = +12.0: strong support for two groups (harness).',
+                  support: 'strong support for two groups', delta: 12, n: n - 1 },
+           overlap: [], mismatch: [], borders: amb.borders,
+           target: { nickname: 'Harness PTEN + Harness CTL', n },
+           ver_counts: counts(a.ver), own_counts: counts(a.own),
+           cols: a, counts: cc, n, kept: (cc.ds || 0) + (cc.ied || 0),
+           by_mouse: byMouse(a), by_recording: [], bank: null,
+           at: '2026-11-06T12:00:00+00:00', by: 'Debug_Bot' };
+}
+const RUN_DS = oneRun('ds');
+const RUN_P = oneRun('pspike');
+const RUN_A = ambRun(RUN_DS, RUN_P);
+const RUN_PCA = pcaRun(RUN_DS, RUN_A);
+const DEF = {
+  ds: { kind: 'ds', grace: 0.05,
+        source: { type: 'pool', artifact_id: 'pC', version: 1, nickname: 'Harness controls' },
+        target: { artifact_id: 'pT', version: 1, nickname: 'Harness target' } },
+  pspike: { kind: 'pspike', grace: 0.05,
+            source: { type: 'sets', entries: [{ entry_id: 'h1', version: 'a1',
+                                                session_label: 'PTEN m13 s2', n: 11 }] },
+            target: { artifact_id: 'pT', version: 1, nickname: 'Harness target' } },
+  ambiguous: { kind: 'ambiguous',
+               uses: { ds: { artifact_id: 'wDS', version: 2, nickname: 'Harness DS' },
+                       pspike: { artifact_id: 'wP', version: 2, nickname: 'Harness P' } } },
+  pca: { kind: 'pca',
+         pools: [{ artifact_id: 'pP', version: 1, nickname: 'Harness PTEN' },
+                 { artifact_id: 'pQ', version: 1, nickname: 'Harness CTL' }],
+         uses: { ds: { artifact_id: 'wDS', version: 2, nickname: 'Harness DS' },
+                 pspike: { artifact_id: 'wP', version: 2, nickname: 'Harness P' } } },
+};
+function row(id, kind, run, stale) {
+  return { artifact_id: id, nickname: { wDS: 'Harness DS', wP: 'Harness P', wA: 'Harness A',
+                                        wPCA: 'Harness PCA' }[id],
+           name: kind, version: 2, updated: '2026-11-05', kind, definition: DEF[kind],
+           ran: true, counts: run.counts, kept: run.kept, n: run.n, bank: run.bank,
+           border_ref: run.border_ref, grace: 0.05, stale: stale || [], mismatch: [] };
+}
+const FIX = {
+  list: [row('wDS', 'ds', RUN_DS, [{ what: 'target pool', artifact_id: 'pT',
+                                     nickname: 'Harness target', pinned: 1, newest: 2 }]),
+         row('wP', 'pspike', RUN_P), row('wA', 'ambiguous', RUN_A)],
+  one: {
+    wDS: { payload: { definition: DEF.ds, run: RUN_DS },
+           lines: [{ version: 1, here: true, ran: false, definition: DEF.ds },
+                   { version: 2, here: true, ran: true, kept: RUN_DS.kept, grace: 0.05,
+                     counts: RUN_DS.counts, bank: RUN_DS.bank, border_ref: RUN_DS.border_ref,
+                     diff: { n: 3, moves: RUN_DS.diff.moves }, definition: DEF.ds }],
+           stale: [{ what: 'target pool', artifact_id: 'pT', nickname: 'Harness target',
+                     pinned: 1, newest: 2 }] },
+    wP: { payload: { definition: DEF.pspike, run: RUN_P },
+          lines: [{ version: 2, here: true, ran: true, kept: RUN_P.kept, grace: 0.05,
+                    definition: DEF.pspike }], stale: [] },
+    wA: { payload: { definition: DEF.ambiguous, run: RUN_A },
+          lines: [{ version: 2, here: true, ran: true, kept: RUN_A.kept, grace: null,
+                    definition: DEF.ambiguous }], stale: [] },
+    wPCA: { payload: { definition: DEF.pca, run: RUN_PCA },
+            lines: [{ version: 1, here: true, ran: true, kept: RUN_PCA.kept, grace: null,
+                      definition: DEF.pca }], stale: [] },
+  },
+  // Added to the list by the Pooled PCA section, so what comes before it
+  // checks the three it always did.
+  pcaRow: null,
+  sources: {
+    pools: [{ artifact_id: 'pC', nickname: 'PTEN CTL Baseline Full Incisor', version: 1,
+              events: 160, all_ds: true },
+            { artifact_id: 'pT', nickname: 'PTEN ALL PTEN Baseline Full Incisor', version: 1,
+              events: 240, all_ds: false },
+            { artifact_id: 'pQ', nickname: 'CTL Baseline', version: 1, events: 120 },
+            { artifact_id: 'pP', nickname: 'PTEN Baseline', version: 1, events: 120 },
+            { artifact_id: 'pX', nickname: 'Another pool', version: 3, events: 9 }],
+    sets: [{ entry_id: 'h1', session_label: 'PTEN m13 s2', name: 'IED spikes (hand-sorted)',
+             n: 11, aligned: false, hand_sorted: true },
+           { entry_id: 'h2', session_label: 'PTEN m34 s8', name: 'IED spikes (hand-sorted)',
+             n: 7, aligned: true, aligned_ref: 'x', aligned_name: 'v3', hand_sorted: true },
+           { entry_id: 'c1', session_label: 'PTEN m3 s2', name: 'IED spikes (confirmed)',
+             n: 11, aligned: false, hand_sorted: false }],
+  },
+  prepare: { sets: [{ entry_id: 'h1', session_label: 'PTEN m13 s2', n: 11,
+                      clock: { retime: false, why: 'continuous' }, aligned: false, read: false },
+                    { entry_id: 'h2', session_label: 'PTEN m34 s8', n: 7,
+                      clock: { retime: true, why: '7 events up to 121.3 ms early' },
+                      aligned: true, aligned_name: 'v3', read: false }] },
+  event: { ok: true, filter_label: 'DS filter, 5–100 Hz',
+           trace: { t_ms: Array.from({ length: 81 }, (_, k) => -40 + k),
+                    y: Array.from({ length: 81 }, (_, k) => 900 * Math.exp(-((k - 40) ** 2) / 60)),
+                    peak_ms: 0, peak_uV: 900, baseline: 0, amp_uV: 900, hw_ms: 12, half_uV: 450,
+                    left_ms: -6, right_ms: 6, contact: 4 },
+           spectrum: { f: Array.from({ length: 60 }, (_, k) => 10 + k * 20),
+                       event: Array.from({ length: 60 }, (_, k) => 30 - k * 0.3),
+                       baseline: Array.from({ length: 60 }, (_, k) => 26 - k * 0.32),
+                       band: [500, 1000], contact: 4, db: 6.2, db_flag: true },
+           stack: { t_ms: Array.from({ length: 81 }, (_, k) => -40 + k), gain: 4, contact: 4,
+                    nums: [1, 2, 3, 4, 5, 6, 7, 8], bad: [false, false, false, false, false, false, false, false],
+                    rows: Array.from({ length: 8 }, (_, r) => Array.from({ length: 81 },
+                      (_, k) => -(r === 3 ? 1.5 : 0.4) * Math.exp(-((k - 40) ** 2) / 60))) },
+           csd: { rows: Array.from({ length: 8 }, (_, r) => Array.from({ length: 81 },
+                    (_, k) => (r - 4) * Math.exp(-((k - 40) ** 2) / 80))),
+                  nums: [1, 2, 3, 4, 5, 6, 7, 8], clim: [-4, 4] } },
+};
+FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'), 25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal && BARRY.rcWorkflow)'), 10000, 'the modules');
+  const RC = 'BARRY.rootcanal';
+  const WF = 'BARRY.rcWorkflow';
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+  ev('window.__wfFix = ' + JSON.stringify(FIX));
+  ev('(function(){ var W = window; if (W.__wfPrefSet) return;'
+     + ' W.__wfPrefSet = BARRY.prefs.set; W.__wfMem = {}; W.__wfPrefGet = BARRY.prefs.get;'
+     + ' BARRY.prefs.set = function(k, v) { W.__wfMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__wfMem) return W.__wfMem[k];'
+     + '   if (k === "rootcanal_workflow_archive") return {};'
+     /* Nothing archived in Pooled either, whatever this machine's are: the
+        builder leaves archived pools out (2026-11-06). */
+     + '   if (/^rootcanal_(pool_archive|pool_folders|pool_in|single_archive)$/.test(k)) return {};'
+     + '   return W.__wfPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__wfLog = BARRY.activity.log; BARRY.activity.log = function(){};'
+     + ' W.__wfBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
+     + '   W.__wfDlg = { title: o.title, what: o.what, facts: o.facts, ok: o.okText };'
+     + '   await o.onBank({ name: "harness picks", note: "a note" }); return true; };'
+     + ' W.__wfOpen = W.open; W.__wfMoved = 0; W.open = function(u){ W.__wfOpened = u;'
+     + '   var w = { focus: function(){}, closed: false, location: {} };'
+     + '   Object.defineProperty(w.location, "href", { get: function(){ return W.__wfOpened; },'
+     + '     set: function(v){ W.__wfOpened = v; W.__wfMoved += 1; } });'
+     + '   W.__wfWin = w; return w; }; })()');
+  ev('(function(){ var W = window; if (W.__wfFetch) return; W.__wfFetch = W.fetch;'
+     + ' W.__wfSent = [];'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u); var p = s.split("?")[0];'
+     + '  var body = (o && o.body) ? JSON.parse(o.body) : null; var F = W.__wfFix;'
+     + '  var hit = function(k) { W.__wfSent.push([k, body, s]); };'
+     + '  if (p === "/api/rootcanal/workflows") { hit("list"); return json({ ok: true, workflows: F.list }); }'
+     + '  if (p === "/api/rootcanal/workflow/sources") { hit("sources"); return json(Object.assign({ ok: true }, F.sources)); }'
+     + '  if (p === "/api/rootcanal/workflow/prepare") { hit("prepare"); return json(Object.assign({ ok: true }, F.prepare)); }'
+     + '  if (p === "/api/rootcanal/workflow/preview") { hit("preview");'
+     + '    var pk = body && body.kind === "pca" ? "wPCA" : "wDS";'
+     + '    return json({ ok: true, definition: F.one[pk].payload.definition, run: F.one[pk].payload.run }); }'
+     + '  if (p === "/api/rootcanal/workflow/save") { hit("save");'
+     + '    return json({ ok: true, artifact_id: "wDS", version: 3, nickname: body.nickname }); }'
+     + '  var m = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)\\/(run|bank)$/);'
+     + '  if (m) { hit(m[2] + ":" + m[1]); if (m[2] === "bank") return json({ ok: true, entry_id: "bk-picked", n: (body.picks || []).length });'
+     + '    return json({ ok: true, artifact_id: m[1], version: 3, run: F.one[m[1]].payload.run, definition: F.one[m[1]].payload.definition }); }'
+     + '  m = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)$/);'
+     + '  if (m && F.one[m[1]]) { hit("one:" + m[1]); var o1 = F.one[m[1]];'
+     + '    return json({ ok: true, payload: o1.payload, lines: o1.lines, stale: o1.stale, artifact: { version: 2 } }); }'
+     + '  if (p === "/api/rootcanal/event") { hit("event"); return json(F.event); }'
+     + '  if (p === "/api/rootcanal/pool/group") { hit("group"); return json(F.event); }'
+     + '  if (/^\\/api\\/bank\\/[^\\/]+\\/archive$/.test(p)) { hit("archive"); return json({ ok: true }); }'
+     + '  if (/^\\/api\\/rootcanal\\/pool\\/p[CTX]$/.test(p)) { hit("pool"); return json({ ok: false, error: "harness: no pools" }, 400); }'
+     + '  if (o && o.method === "POST" && /^\\/api\\/(rootcanal|bank|braces|session)/.test(p)) {'
+     + '    hit("refused"); return json({ ok: false, error: "harness: no writes" }, 400); }'
+     + '  return W.__wfFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__wfSent)'));
+  const S = () => ev(WF + '._state()');
+  const toasts = () => Array.from(D().querySelectorAll('#toasts .toast')).map((n) => n.textContent);
+  const inked = (cv) => {
+    if (!cv || !cv.width) return 0;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+    return n;
+  };
+  const click = (sel) => { const n = D().querySelector(sel); if (n) n.click(); return !!n; };
+  const rgbOf = (css) => ev('(function(){ var d = document.createElement("i");'
+    + ' d.style.background = ' + JSON.stringify(css) + '; document.body.appendChild(d);'
+    + ' var c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()');
+  // Pixels of a canvas near a colour (any alpha over the ground), by hue:
+  // the channel order of the colour asked for, held by a clear margin.
+  const tally = (cv, test) => {
+    if (!cv || !cv.width) return 0;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && test(d[i], d[i + 1], d[i + 2])) n++;
+    return n;
+  };
+  const purpleInk = (cv) => tally(cv, (r, g, b) => b > g + 50 && r > g + 25 && b > 120);
+  const blueInk = (cv) => tally(cv, (r, g, b) => b > r + 60 && b > 120);
+  const redInk = (cv) => tally(cv, (r, g, b) => r > b + 60 && r > g + 40 && r > 120);
+  const btn = (re, scope) => Array.from((scope || D()).querySelectorAll('button'))
+    .find((b) => re.test(b.textContent.trim()));
+  const txtOf = (n) => (n ? n.textContent : '');
+
+  try {
+    head('THE VIEW BAR HAS WORKFLOW, AND THE TAB PAINTS ITS OWN PART');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    const segs = Array.from(D().querySelectorAll('.rc-viewseg button')).map((b) => b.textContent);
+    ok('Single, Pooled, Workflow and Meta Workflow',
+       JSON.stringify(segs) === '["Single","Pooled","Workflow","Meta Workflow"]', JSON.stringify(segs));
+    btn(/^Workflow$/, D().querySelector('.rc-viewseg')).click();
+    await until(() => D().querySelectorAll('.wf-strip').length === 3, 10000, 'the strips');
+    ok('pressed, it is the view on show', /active/.test(btn(/^Workflow$/,
+       D().querySelector('.rc-viewseg')).className));
+    ok('a strip per workflow, in the order DS, P-spike, Ambiguous',
+       JSON.stringify(Array.from(D().querySelectorAll('.wf-strip .wf-kind')).map((n) => n.textContent))
+       === JSON.stringify(['Verified dentate spikes', 'Verified P-spikes', 'Ambiguous']));
+    ok('three stage cards on each: Define border, Apply border, Extract',
+       Array.from(D().querySelectorAll('.wf-strip')).every((s) =>
+         JSON.stringify(Array.from(s.querySelectorAll('.wf-stage-n')).map((n) => n.textContent))
+         === JSON.stringify(['Define border', 'Apply border', 'Extract'])));
+    await until(() => Array.from(D().querySelectorAll('.wf-thumb')).filter((c) => inked(c) > 200).length === 9,
+                10000, 'the thumbnails');
+    ok('every stage card has its picture drawn',
+       Array.from(D().querySelectorAll('.wf-thumb')).filter((c) => inked(c) > 200).length === 9);
+    const dsStrip = D().querySelector('.wf-strip[data-wf="wDS"]');
+    ok('the out-of-date one says so', /out of date/.test(dsStrip.textContent));
+    ok('banking is a button of its own, said as banking: Run and bank…, and Run without banking',
+       !!btn(/^Run and bank…$/, dsStrip) && !!btn(/^Run without banking$/, dsStrip));
+    ok('what it has banked, said plainly, with a door to the Event Bank',
+       /Banked\s*\d+ events in ‘Verified ds · harness’, v3, from 4 recordings/.test(
+         dsStrip.querySelector('.wf-bankline').textContent)
+       && !!btn(/^Open in the Event Bank$/, dsStrip), dsStrip.querySelector('.wf-bankline').textContent);
+    ok('Ambiguous has no bank button: it is chosen from',
+       !btn(/^Run and bank…$/, D().querySelector('.wf-strip[data-wf="wA"]'))
+       && !!btn(/^Run$|^Run again$/, D().querySelector('.wf-strip[data-wf="wA"]')));
+    ok('the apply card says the counts', /inside \d+ · outside \d+/.test(
+       dsStrip.querySelectorAll('.wf-stage')[1].textContent),
+       dsStrip.querySelectorAll('.wf-stage')[1].textContent);
+    ok('and the extract card says what went to the Bank',
+       new RegExp(RUN_DS.kept + ' of 240 extracted').test(dsStrip.querySelectorAll('.wf-stage')[2].textContent));
+    ok('nothing else in Root Canal was painted over it: no Single chooser, no Pooled table',
+       !D().querySelector('.rc-choose') && !D().querySelector('.rc-pool-members'));
+
+    head('OPENED: EVERY STAGE IN 3D, AND EVERYTHING BESIDE IT');
+    btn(/^Open$/, dsStrip).click();
+    await until(() => D().querySelector('.wf-detail .wf-3d'), 6000, 'the detail');
+    await until(() => inked(D().querySelector('.wf-3d')) > 2000, 6000, 'the 3D');
+    ok('the 3D stage is drawn', inked(D().querySelector('.wf-3d')) > 2000);
+    ok('the three 2D views beside it', D().querySelectorAll('.wf-2d').length === 3
+       && Array.from(D().querySelectorAll('.wf-2d')).every((c) => inked(c) > 500));
+    const stSeg = Array.from(D().querySelectorAll('.wf-stage-seg button')).map((b) => b.textContent);
+    ok('a switch for the three stages', JSON.stringify(stSeg)
+       === '["Define border","Apply border","Extract"]', JSON.stringify(stSeg));
+    ok('its rule in words', /Solid DS: inside a harness box/.test(D().querySelector('.wf-rule').textContent));
+    const lg = D().querySelector('.wf-legend').textContent;
+    ok('the legend names every mark: the dots with their counts, each box, and the frame',
+       new RegExp('inside: verified DS' + RUN_DS.counts.inside + ' · ').test(lg)
+       && /DS border, grace 5%/.test(lg) && /DS border at no grace \(the widest the box gets\)/.test(lg)
+       && /frame: the axes, lowest to highest value on show/.test(lg), lg);
+    const panels = Array.from(D().querySelectorAll('.wf-panel > strong')).map((n) => n.textContent);
+    ok('the grace sweep, the distances, the flow, every mouse and the averages',
+       JSON.stringify(panels) === JSON.stringify(['Grace', 'How far from the border',
+         'Where they went', 'Every mouse', 'Averages']), JSON.stringify(panels));
+    await sleep(300);
+    ok('the grace sweep is drawn', inked(D().querySelector('.wf-sweep')) > 300);
+    ok('the distance histograms are drawn, one per axis',
+       D().querySelectorAll('.wf-dist').length === 3
+       && Array.from(D().querySelectorAll('.wf-dist')).every((c) => inked(c) > 100));
+    ok('the flow from mice to classes is drawn', inked(D().querySelector('.wf-flow')) > 500);
+    ok('a small picture per mouse', D().querySelectorAll('.wf-mouse').length === 4
+       && Array.from(D().querySelectorAll('.wf-mouse-cv')).every((c) => inked(c) > 50));
+    ok('the out-of-date line, saying what is newer',
+       /Out of date: target pool ‘Harness target’ is at 2, this pins 1/.test(D().querySelector('.wf-detail').textContent));
+    ok('the lineage, newest first, with what the run moved',
+       D().querySelectorAll('.wf-line').length === 2
+       && /3 changed since the run before: inside → outside 2, outside → inside 1/.test(D().querySelector('.wf-lines').textContent));
+
+    for (const [id, words] of [['define', 'Define border'], ['extract', 'Extract']]) {
+      btn(new RegExp('^' + words + '$'), D().querySelector('.wf-stage-seg')).click();
+      await until(() => S().stage === id && inked(D().querySelector('.wf-3d')) > 1000, 4000, words);
+      ok(words + ': the 3D redrawn for it', S().stage === id && inked(D().querySelector('.wf-3d')) > 1000);
+    }
+    ok('Extract fades what is not extracted', /Faded\s*not extracted: outside the border/.test(D().querySelector('.wf-legend').textContent));
+    btn(/^Apply border$/, D().querySelector('.wf-stage-seg')).click();
+    await until(() => S().stage === 'apply', 3000, 'apply');
+
+    /* COLOUR BY MOUSE OR RECORDING (2026-11-06): "an option to visualize by
+       mouse/recording ... and have the colors change on the grids". */
+    head('COLOUR BY MOUSE OR RECORDING, ON EVERY GRID');
+    const wfSeg = () => D().querySelector('.wf-detail .wf-wf-colour');
+    const catLg = () => Array.from(D().querySelectorAll('.wf-detail .wf-legend .wf-lg-cat')).map((n) => ({
+      name: n.querySelector('span').textContent, n: Number(n.querySelector('b').textContent.split(' · ')[0].replace(/,/g, '')),
+      rgb: (frame.contentWindow.getComputedStyle(n.querySelector('.wf-lg-dot')).backgroundColor.match(/\d+/g) || []).slice(0, 3).map(Number) }));
+    // Pixels of a canvas in one colour: a dot's own, wherever no other dot is over it.
+    const near = (cv, rgb) => tally(cv, (r, g, b) => Math.abs(r - rgb[0]) + Math.abs(g - rgb[1]) + Math.abs(b - rgb[2]) < 16);
+    ok('the open workflow has Colour by: the call, mouse, recording -- the call unless chosen',
+       !!wfSeg() && JSON.stringify(Array.from(wfSeg().querySelectorAll('button')).map((b) => b.textContent))
+         === '["the call","mouse","recording"]' && S().wfColour === 'call',
+       wfSeg() && wfSeg().textContent);
+    btn(/^mouse$/, wfSeg()).click();
+    await until(() => S().wfColour === 'mouse' && catLg().length === 4
+                && inked(D().querySelector('.wf-3d')) > 2000
+                && Array.from(D().querySelectorAll('.wf-mouse-cv')).every((c) => inked(c) > 50), 5000, 'by mouse');
+    const byM = catLg();
+    const nOf = (col, key, want) => col[key].filter((v) => v === want).length;
+    ok('the legend names each mouse, with how many of its dots are on show',
+       JSON.stringify(byM.map((x) => x.name)) === '["PTEN m1","PTEN m2","PTEN m3","PTEN m4"]'
+       && byM.every((x, k) => x.n === nOf(RUN_DS.cols, 'mouse', 'PTEN|m' + (k + 1))),
+       JSON.stringify(byM.map((x) => [x.name, x.n])));
+    ok('each in a colour of its own', new Set(byM.map((x) => x.rgb.join(','))).size === 4,
+       JSON.stringify(byM.map((x) => x.rgb)));
+    ok('and the classes are still counted, now without a colour',
+       /Classes\s*inside: verified DS\d/.test(D().querySelector('.wf-detail .wf-legend').textContent));
+    const cv3 = D().querySelector('.wf-3d');
+    const flats2 = Array.from(D().querySelectorAll('.wf-2d'));
+    ok('the 3D is drawn in the mice’s colours: every one of them on it',
+       byM.every((x) => near(cv3, x.rgb) > 20), byM.map((x) => near(cv3, x.rgb)).join(','));
+    ok('and so are the three flat views', flats2.length === 3
+       && flats2.every((c) => byM.every((x) => near(c, x.rgb) > 5)),
+       flats2.map((c) => byM.map((x) => near(c, x.rgb)).join('/')).join(' '));
+    const cards = Array.from(D().querySelectorAll('.wf-mouse'));
+    ok('each mouse’s card says its colour, and is drawn in it',
+       cards.length === 4 && cards.every((c, k) => {
+         const dot = c.querySelector('.wf-lg-dot');
+         const rgb = dot && (frame.contentWindow.getComputedStyle(dot).backgroundColor.match(/\d+/g) || []).slice(0, 3).map(Number);
+         return rgb && rgb.join() === byM[k].rgb.join() && near(c.querySelector('.wf-mouse-cv'), rgb) > 10;
+       }), cards.map((c) => c.textContent).join(' | '));
+    btn(/^recording$/, wfSeg()).click();
+    await until(() => S().wfColour === 'recording' && /^Recordings/.test(
+      (D().querySelector('.wf-detail .wf-legend .wf-lg-h') || {}).textContent || ''), 4000, 'by recording');
+    const byR = catLg();
+    ok('by recording: each recording by its own name, with its count',
+       JSON.stringify(byR.map((x) => x.name)) === JSON.stringify(RUN_DS.members.map((m) => m.session_label))
+       && byR.every((x, k) => x.n === nOf(RUN_DS.cols, 'g', k)), JSON.stringify(byR.map((x) => [x.name, x.n])));
+    await until(() => byR.every((x) => near(D().querySelector('.wf-3d'), x.rgb) > 20), 3000, 'the recordings drawn');
+    ok('and the 3D redrawn in their colours', byR.every((x) => near(D().querySelector('.wf-3d'), x.rgb) > 20));
+    btn(/^Extract$/, D().querySelector('.wf-stage-seg')).click();
+    await until(() => S().stage === 'extract' && catLg().length, 4000, 'extract by recording');
+    ok('a recording keeps its colour from stage to stage',
+       JSON.stringify(catLg().map((x) => x.rgb)) === JSON.stringify(byR.map((x) => x.rgb)));
+    btn(/^Apply border$/, D().querySelector('.wf-stage-seg')).click();
+    await until(() => S().stage === 'apply', 3000, 'apply');
+    btn(/^the call$/, wfSeg()).click();
+    await until(() => S().wfColour === 'call' && !D().querySelector('.wf-detail .wf-lg-cat')
+                && blueInk(D().querySelector('.wf-3d')) > 100, 4000, 'the call again');
+    ok('the call again: its blue, its legend, and no mouse’s colour left on the 3D',
+       blueInk(D().querySelector('.wf-3d')) > 100
+       && new RegExp('inside: verified DS' + RUN_DS.counts.inside + ' · ').test(
+         D().querySelector('.wf-detail .wf-legend').textContent)
+       && byM.every((x) => near(D().querySelector('.wf-3d'), x.rgb) < 5),
+       byM.map((x) => near(D().querySelector('.wf-3d'), x.rgb)).join(','));
+
+    /* THE PANELS FOLLOW THE STAGE (2026-11-06: "the stage switch redraws the
+       3D and the 2D views, but the panels below do not change at all"). */
+    head('THE PANELS FOLLOW THE STAGE: DEFINE, APPLY, EXTRACT');
+    const panelOf = (title) => Array.from(D().querySelectorAll('.wf-detail .wf-panel'))
+      .find((n) => n.querySelector('strong').textContent === title) || null;
+    const whatOf = (title) => { const p = panelOf(title);
+      return p ? ((p.querySelector('.wf-panel-what') || {}).textContent || '') : null; };
+    const flowL = () => (D().querySelector('.wf-detail .wf-flow') || {}).__labels || null;
+    const mouseN = () => Array.from(D().querySelectorAll('.wf-detail .wf-mouse .wf-mouse-n'))
+      .map((n) => n.textContent);
+    const distN = () => Array.from(D().querySelectorAll('.wf-detail .wf-dist')).map((c) => c.__n);
+    const sweepL = () => (D().querySelector('.wf-detail .wf-sweep') || {}).__label || '';
+    const avgBtns = () => Array.from(panelOf('Averages').querySelectorAll('button')).map((b) => b.textContent);
+    const SRC = RUN_DS.src_cols, TGT = RUN_DS.cols;
+    const nIn = (col) => col.cls.filter((c) => c === 'inside').length;
+    const ofMouse = (col, k, inside) => col.mouse.filter((m, j) => m === 'PTEN|m' + (k + 1)
+      && (!inside || col.cls[j] === 'inside')).length;
+    const toStage = async (id, words) => {
+      btn(new RegExp('^' + words + '$'), D().querySelector('.wf-stage-seg')).click();
+      await until(() => S().stage === id && D().querySelector('.wf-panels[data-stage="' + id + '"]')
+                  && flowL() && sweepL() && distN().length === 3 && distN().every((n) => n != null),
+                  5000, words);
+    };
+    await toStage('define', 'Define border');
+    const ownW = 'the border’s own ' + SRC.t.length + ' events (Harness controls v1)';
+    ok('Define: every panel says it is showing the border’s own events, with how many',
+       ['How far from the border', 'Where they went', 'Every mouse', 'Averages']
+         .every((t) => whatOf(t) === 'Showing ' + ownW + '.')
+       && whatOf('Grace').indexOf('Showing ' + ownW + ': the strong curve is how many of them '
+                                  + 'the box leaves out') === 0,
+       JSON.stringify(['Grace', 'How far from the border', 'Where they went'].map(whatOf)));
+    ok('Define: how far is the border’s own events', distN().every((n) => n === SRC.t.length),
+       JSON.stringify(distN()));
+    ok('Define: each source mouse to inside or left outside by the grace',
+       JSON.stringify(flowL().right) === JSON.stringify(['inside · ' + nIn(SRC),
+         'left outside by the grace · ' + (SRC.t.length - nIn(SRC))])
+       && JSON.stringify(flowL().left) === JSON.stringify([0, 1, 2, 3].map((k) =>
+         'm' + (k + 1) + ' · ' + ofMouse(SRC, k))), JSON.stringify(flowL()));
+    ok('Define: every mouse, its own: N inside of M',
+       mouseN().length === 4 && mouseN().every((t, k) => t.indexOf(ofMouse(SRC, k, true)
+         + ' inside of ' + ofMouse(SRC, k) + ', its own') === 0), JSON.stringify(mouseN()));
+    ok('Define: the grace sweep says how many of its own it leaves out',
+       new RegExp('of its own left out \\(' + (SRC.t.length - nIn(SRC)) + ' of ' + SRC.t.length
+         + '\\)$').test(sweepL()), sweepL());
+    ok('Define: averages are over the border’s own pool', JSON.stringify(avgBtns())
+       === '["Average its own, inside","Average its own, left outside"]', JSON.stringify(avgBtns()));
+    btn(/^Average its own, inside$/).click();
+    await until(() => sent().some((x) => x[0] === 'group') && S().avg && !S().avg.busy,
+                4000, 'the source average');
+    const gS = sent().filter((x) => x[0] === 'group').pop()[1];
+    ok('asked of the source pool at its pinned version, its own inside events',
+       gS.saved.artifact_id === 'pC' && gS.saved.version === 1 && gS.events.length === nIn(SRC),
+       JSON.stringify(gS.saved) + ' ' + gS.events.length);
+    await toStage('apply', 'Apply border');
+    const tgtW = 'the target’s ' + TGT.t.length + ' events (Harness target v1)';
+    ok('Apply: every panel says it is showing the target’s events',
+       ['How far from the border', 'Where they went', 'Every mouse', 'Averages']
+         .every((t) => whatOf(t) === 'Showing ' + tgtW + '.')
+       && whatOf('Grace') === 'Showing ' + tgtW + ', and the border’s own ' + SRC.t.length
+         + ': both curves.', JSON.stringify(['Grace', 'Where they went'].map(whatOf)));
+    ok('Apply: the average of Define went with its stage', !S().avg);
+    ok('Apply: how far, where they went and every mouse are the target’s',
+       distN().every((n) => n === TGT.t.length)
+       && JSON.stringify(flowL().right) === JSON.stringify(['inside · ' + nIn(TGT),
+         'outside · ' + (TGT.t.length - nIn(TGT))])
+       && mouseN().every((t, k) => t.indexOf(ofMouse(TGT, k, true) + ' inside of '
+         + ofMouse(TGT, k) + ' · ') === 0), JSON.stringify([distN(), flowL().right, mouseN()]));
+    ok('Apply: averages of every class', JSON.stringify(avgBtns())
+       === '["Average inside","Average outside"]', JSON.stringify(avgBtns()));
+    await toStage('extract', 'Extract');
+    const ext = 'the ' + nIn(TGT) + ' extracted, of the target’s ' + TGT.t.length;
+    ok('Extract: every panel says it is showing what was extracted',
+       ['How far from the border', 'Where they went', 'Every mouse', 'Averages']
+         .every((t) => whatOf(t) === 'Showing ' + ext + '.')
+       && whatOf('Grace').indexOf('Showing ' + ext + ': the strong curve is how many the box '
+                                  + 'keeps') === 0, JSON.stringify(['Grace', 'Every mouse'].map(whatOf)));
+    ok('Extract: how far is the extracted only', distN().every((n) => n === nIn(TGT)),
+       JSON.stringify(distN()));
+    ok('Extract: where they went says extracted, and greys the rest',
+       JSON.stringify(flowL().right) === JSON.stringify(['extracted · ' + nIn(TGT),
+         'not extracted · ' + (TGT.t.length - nIn(TGT))]), JSON.stringify(flowL()));
+    ok('Extract: every mouse, N extracted of M',
+       mouseN().every((t, k) => t.indexOf(ofMouse(TGT, k, true) + ' extracted of '
+         + ofMouse(TGT, k) + ' · ') === 0), JSON.stringify(mouseN()));
+    ok('Extract: the grace sweep marks the count kept', new RegExp('^grace 5%: '
+       + RUN_DS.kept + ' extracted$').test(sweepL()), sweepL());
+    ok('Extract: only the extracted can be averaged', JSON.stringify(avgBtns())
+       === '["Average extracted"]', JSON.stringify(avgBtns()));
+    // A P-spike workflow's own events are hand-sorted sets: no pool to average.
+    btn(/^Open/, D().querySelector('.wf-strip[data-wf="wP"]')).click();
+    await until(() => S().openId === 'wP' && D().querySelector('.wf-panels[data-stage]'), 6000, 'the P-spike one');
+    await toStage('define', 'Define border');
+    ok('P-spike Define: the hand-sorted sets, and no saved pool to average from',
+       whatOf('Where they went') === 'Showing the border’s own ' + RUN_P.src_cols.t.length
+         + ' events (1 hand-sorted set).'
+       && /hand-sorted sets, which have no saved pool to average from/.test(panelOf('Averages').textContent)
+       && !avgBtns().length, whatOf('Where they went'));
+    // Ambiguous has no events of its own: its Define says so, plainly.
+    btn(/^Open/, D().querySelector('.wf-strip[data-wf="wA"]')).click();
+    await until(() => S().openId === 'wA' && D().querySelector('.wf-panels[data-stage="define"]')
+                && flowL(), 6000, 'the ambiguous one');
+    ok('Ambiguous Define: the target’s events, and why, by the borders it borrows',
+       /^Showing the target’s 240 events \(Harness target v1\)\. Ambiguous has no events of its own to draw a border from: it borrows the borders of ‘Harness DS’ and ‘Harness P’/
+         .test(whatOf('Where they went')), whatOf('Where they went'));
+    btn(/^Open/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
+    await until(() => S().openId === 'wDS' && D().querySelector('.wf-panels'), 6000, 'DS again');
+    await toStage('apply', 'Apply border');
+
+    head('A DOT, CLICKED: ITS NUMBERS, ITS HISTORY, ITS WAVEFORM');
+    // The canvas on show, once it has been drawn (each stage is a new one).
+    await until(() => { const c = D().querySelector('.wf-3d');
+                        return c && c.__pick && c.__pick.pts.length; }, 4000, 'the dots');
+    const cv = D().querySelector('.wf-3d');
+    const pk = cv.__pick && cv.__pick.pts[0];
+    ok('the 3D knows where its dots are', !!pk);
+    const b = cv.getBoundingClientRect();
+    const PE = frame.contentWindow.PointerEvent || frame.contentWindow.MouseEvent;
+    cv.dispatchEvent(new PE('pointerdown', { clientX: b.left + pk.q[0], clientY: b.top + pk.q[1], bubbles: true, pointerId: 1 }));
+    cv.dispatchEvent(new PE('pointerup', { clientX: b.left + pk.q[0], clientY: b.top + pk.q[1], bubbles: true, pointerId: 1 }));
+    await until(() => D().querySelector('.wf-insp .wf-cut'), 4000, 'the inspector');
+    ok('the picked dot is the one under the pointer', S().picked && S().picked.n === pk.p.n,
+       JSON.stringify(S().picked));
+    const cut = D().querySelector('.wf-cut');
+    ok('its three numbers against the border, each inside or outside, how far',
+       cut && cut.querySelectorAll('tr').length === 4
+       && /box widths (in|out)/.test(cut.textContent), cut && cut.textContent.slice(0, 160));
+    const hist = D().querySelector('.wf-hist').textContent;
+    ok('its history: the recording and time, the set and version, the pool, the border, the workflow',
+       /Recording: PTEN m\d s1/.test(hist) && /Set: bank entry e\d, version v\d/.test(hist)
+       && /Pooled in ‘Harness target’ v1/.test(hist) && /Border ‘DS border · h’ v2/.test(hist)
+       && /Classified by the workflow ‘Harness DS’ v2/.test(hist), hist.slice(0, 300));
+    // Its pictures, at once: Root Canal's own four, drawn by Root Canal.
+    const four = ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd'];
+    await until(() => sent().some((x) => x[0] === 'event')
+                && four.every((id) => inked(D().getElementById(id)) > 300), 6000, 'the four');
+    const evSent = sent().filter((x) => x[0] === 'event').pop();
+    ok('picked, its traces are asked for at once, of the member’s own read, at its event number',
+       evSent && evSent[1].read === 'r' + pk.p.m && evSent[1].i === pk.p.i,
+       evSent && JSON.stringify(evSent[1]));
+    ok('Root Canal’s own four pictures: max-amp contact, spectrum, every contact, CSD',
+       four.every((id) => D().querySelector('.wf-insp #' + id) && inked(D().getElementById(id)) > 300)
+       && JSON.stringify(Array.from(D().querySelectorAll('.wf-insp .rc-ev-t strong')).map((n) => n.textContent))
+          === '["Max-amp contact","Spectrum","Every contact","CSD"]',
+       four.map((id) => id + ':' + inked(D().getElementById(id))).join(' '));
+    ev('window.__wfOpened = null');
+    // The recording's path comes from the registry; a harness has none, so
+    // the press says so instead of opening -- either is the right outcome.
+    btn(/^Open in Xplorefinder$/).click();
+    await until(() => ev('window.__wfOpened') || toasts().some((t) => /not reachable/.test(t)), 6000, 'Xplorefinder');
+    const opened = ev('window.__wfOpened');
+    ok('Open in Xplorefinder goes to that recording at that time (or says it cannot)',
+       (opened && /#xplore$/.test(opened) && /t0=/.test(opened))
+       || toasts().some((t) => /not reachable/.test(t)), opened || toasts().slice(-1)[0]);
+
+    head('AVERAGES OF A CLASS');
+    // Counted: the stage checks above asked for one of their own.
+    const nGroup = sent().filter((x) => x[0] === 'group').length;
+    btn(/^Average inside$/).click();
+    await until(() => sent().filter((x) => x[0] === 'group').length > nGroup, 4000, 'the average');
+    const g = sent().filter((x) => x[0] === 'group').pop()[1];
+    ok('asked of the target pool, every inside event as [member key, event]',
+       g.saved.artifact_id === 'pT' && g.events.length === RUN_DS.counts.inside
+       && g.events.every((x) => /^u:e\d:r\d$/.test(x[0])), JSON.stringify(g).slice(0, 200));
+    await until(() => /Average · inside/.test((D().querySelector('.wf-insp') || {}).textContent || '')
+                && inked(D().getElementById('rcTrace')) > 300, 4000, 'the average drawn');
+    ok('and drawn as Root Canal draws an average, in the same four pictures',
+       /Average · inside/.test(D().querySelector('.wf-insp').textContent)
+       && /Average, max-amp contact/.test(D().querySelector('.wf-insp').textContent)
+       && inked(D().getElementById('rcCsd')) > 300);
+
+    head('RUN AND BANK: PREVIEWED, SAID IN A DIALOG, BANKED ONLY BY ITS BUTTON');
+    const nPv = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Run and bank…$/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
+    await until(() => sent().some((x) => x[0] === 'run:wDS'), 6000, 'the run');
+    ok('what would be banked is worked out first, with nothing saved',
+       sent().filter((x) => x[0] === 'preview').length === nPv + 1);
+    const dlg = JSON.parse(ev('JSON.stringify(window.__wfDlg)'));
+    ok('the dialog says how many, from where, into what: the next version of its entry',
+       new RegExp('and bank ' + RUN_DS.kept + ' verified dentate spikes').test(dlg.title)
+       && /banks the \d+ of 240 events inside it as ONE Event Bank entry/.test(dlg.what)
+       && /NEXT VERSION of ‘Verified ds · harness’/.test(dlg.facts[0])
+       && dlg.ok === 'Run and bank ' + RUN_DS.kept + ' events', JSON.stringify(dlg));
+    const rb = sent().filter((x) => x[0] === 'run:wDS').pop()[1];
+    ok('its button banks, under the name and note given, with the newest inputs (it was out of date)',
+       rb.bank === true && rb.bank_name === 'harness picks' && rb.bank_note === 'a note'
+       && rb.refresh === true, JSON.stringify(rb));
+    await until(() => toasts().some((t) => /‘Harness DS’ v3:/.test(t)), 4000, 'the toast');
+    ok('and says what it banked, and where', toasts().some((t) => new RegExp(RUN_DS.kept
+       + ' of 240 events inside the border\\. Banked as v3 of ‘Verified ds · harness’\\. 3 changed class').test(t)),
+       toasts().slice(-1)[0]);
+    await until(() => S().stage === 'extract' && D().querySelector('.wf-bankcard'), 4000, 'extract');
+    ok('it opens on Extract, where a card says what is banked and offers to bank again',
+       /This run is banked/.test(D().querySelector('.wf-bankcard').textContent)
+       && !!btn(/^Run and bank again…$/, D().querySelector('.wf-bankcard')));
+    const nRun = sent().filter((x) => x[0] === 'run:wDS').length;
+    const nPv2 = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Run without banking$/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
+    await until(() => sent().filter((x) => x[0] === 'run:wDS').length > nRun, 6000, 'the plain run');
+    ok('Run without banking asks to bank nothing, with no dialog',
+       sent().filter((x) => x[0] === 'run:wDS').pop()[1].bank === false
+       && sent().filter((x) => x[0] === 'preview').length === nPv2);
+
+    head('ARCHIVED: THE SHARED PREFERENCE, AND ITS BANK ENTRY WITH IT');
+    await until(() => D().querySelector('.wf-strip[data-wf="wP"]'), 4000, 'the strips again');
+    btn(/^Archive$/, D().querySelector('.wf-strip[data-wf="wP"]')).click();
+    await until(() => sent().some((x) => x[0] === 'archive'), 4000, 'the archive');
+    const mem = ev('JSON.stringify(window.__wfMem)');
+    ok('written to rootcanal_workflow_archive, for everyone', /rootcanal_workflow_archive/.test(mem)
+       && /wP/.test(mem), mem);
+    ok('and its bank entry archived too, not deleted',
+       sent().some((x) => x[0] === 'archive' && /bank-pspike/.test(x[2]) && x[1].archived === true));
+    await until(() => !D().querySelector('.wf-strip[data-wf="wP"]'), 4000, 'it leaves');
+    ok('it leaves the list', !D().querySelector('.wf-strip[data-wf="wP"]'));
+    ok('and Show archived offers it back', !!btn(/^Show archived · 1$/));
+    btn(/^Show archived · 1$/).click();
+    await until(() => D().querySelector('.wf-strip.archived[data-wf="wP"]'), 4000, 'shown');
+    ok('shown archived, with Put back', !!btn(/^Put back$/, D().querySelector('.wf-strip[data-wf="wP"]')));
+    btn(/^Put back$/, D().querySelector('.wf-strip[data-wf="wP"]')).click();
+    await until(() => !/wP/.test(ev('JSON.stringify(window.__wfMem)')), 4000, 'put back');
+    ok('put back', !/"wP"/.test(ev('JSON.stringify(window.__wfMem)')));
+
+    head('AMBIGUOUS: THE CONFLICTS, AND ONLY WHAT IS TICKED IS BANKED');
+    btn(/^Open/, D().querySelector('.wf-strip[data-wf="wA"]')).click();
+    await until(() => D().querySelector('.wf-amb-tab'), 6000, 'the ambiguous table');
+    const cc = RUN_A.counts;
+    ok('the conflicts: DS only, both, P-spike only, and outside both',
+       /DS only\s*\d+/.test(D().querySelector('.wf-venn').textContent)
+       && new RegExp('both\\s*' + (cc.both || 0)).test(D().querySelector('.wf-venn').textContent)
+       && new RegExp('Outside both: ' + (cc.neither || 0)).test(D().querySelector('.wf-venn').textContent),
+       D().querySelector('.wf-venn').textContent);
+    ok('both borders drawn: two solid boxes and their dashed ones',
+       ev(WF + '._boxesOf(' + WF + '._state().data.wA.payload.run, "ambiguous").length') === 4);
+    // PURPLE, NOT BROWN (2026-11-06): both kinds of ambiguous, in the legend,
+    // on the kind chip and in the conflicts.
+    const lgDot = (re) => {
+      const n = Array.from(D().querySelectorAll('.wf-detail .wf-legend .wf-lg'))
+        .find((x) => re.test(x.textContent));
+      const i = n && n.querySelector('.wf-lg-dot');
+      return i ? frame.contentWindow.getComputedStyle(i).backgroundColor : null;
+    };
+    const amb = rgbOf('var(--call-amb)'), amb2 = rgbOf('var(--call-amb-2)'), warn = rgbOf('var(--warn)');
+    ok('ambiguous is purple: inside both the full purple, outside both its paler shade',
+       lgDot(/inside both: ambiguous/) === amb && lgDot(/outside both: ambiguous/) === amb2
+       && amb !== warn && /^rgb\((\d+), (\d+), (\d+)\)$/.test(amb)
+       && (([, r, g, b]) => +b > +g + 60 && +r > +g + 20)(amb.match(/(\d+), (\d+), (\d+)/)),
+       [lgDot(/inside both/), amb, lgDot(/outside both/), amb2, warn].join(' '));
+    ok('the Ambiguous chip and the “both” circle are purple too',
+       frame.contentWindow.getComputedStyle(D().querySelector('.wf-detail .wf-kind-ambiguous')).color === amb
+       && frame.contentWindow.getComputedStyle(D().querySelector('.wf-venn-c.both')).borderTopColor === amb);
+    await until(() => inked(D().querySelector('.wf-3d')) > 1000, 4000, 'the ambiguous 3D');
+    ok('and purple dots are drawn in the 3D', purpleInk(D().querySelector('.wf-3d')) > 40,
+       purpleInk(D().querySelector('.wf-3d')) + ' purple pixels');
+    const rowsA = D().querySelectorAll('.wf-amb-tab tr').length - 1;
+    ok('a row per ambiguous event', rowsA === (cc.both || 0) + (cc.neither || 0),
+       rowsA + ' rows, ' + ((cc.both || 0) + (cc.neither || 0)) + ' ambiguous');
+    const boxes = D().querySelectorAll('.wf-amb-tab input[type=checkbox]');
+    boxes[0].click(); await sleep(150);
+    D().querySelectorAll('.wf-amb-tab input[type=checkbox]')[1].click(); await sleep(150);
+    btn(/^Bank the ticked$/).click();
+    await until(() => sent().some((x) => x[0] === 'bank:wA'), 4000, 'the bank');
+    const bk = sent().filter((x) => x[0] === 'bank:wA').pop()[1];
+    ok('exactly the two ticked are banked, as P-spikes, under the name typed',
+       bk.picks.length === 2 && bk.type === 'ied' && bk.name === 'harness picks', JSON.stringify(bk));
+
+    head('THE BUILDER: PREVIEW, AND SAVE WHAT IT SAYS');
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
+    const kinds = Array.from(D().querySelectorAll('.wf-builder .seg')[0].querySelectorAll('button')).map((n) => n.textContent);
+    ok('the four to choose from', JSON.stringify(kinds)
+       === '["Verified dentate spikes","Verified P-spikes","Ambiguous","Pooled PCA"]',
+       JSON.stringify(kinds));
+    const sels = Array.from(D().querySelectorAll('.wf-builder select'));
+    ok('the controls and the target picked by name, by default: CTL Baseline and PTEN Baseline',
+       sels.length === 2 && sels[0].value === 'pQ' && sels[1].value === 'pP',
+       sels.map((s) => s.value).join(','));
+    btn(/^Save$/, D().querySelector('.wf-builder')).click();
+    await until(() => toasts().some((t) => /Give it a name first/.test(t)), 3000, 'the refusal');
+    ok('it will not save without a name', !sent().some((x) => x[0] === 'save'));
+    btn(/^Preview$/, D().querySelector('.wf-builder')).click();
+    await until(() => sent().some((x) => x[0] === 'preview'), 4000, 'the preview');
+    const pv = sent().filter((x) => x[0] === 'preview').pop()[1];
+    ok('the preview asks for what the builder says: DS, around the controls, to the target, 5%',
+       pv.kind === 'ds' && pv.source.artifact_id === 'pQ' && pv.target.artifact_id === 'pP'
+       && pv.grace === 0.05, JSON.stringify(pv));
+    await until(() => /Preview · nothing saved/.test((D().querySelector('.wf-detail') || {}).textContent || ''), 4000, 'shown');
+    ok('shown as a preview, saying nothing is saved, with its 3D',
+       inked(D().querySelector('.wf-3d')) > 1000);
+    const nm = D().querySelector('.wf-name-in');
+    nm.value = 'Harness new'; nm.dispatchEvent(new (frame.contentWindow.Event)('input', { bubbles: true }));
+    btn(/^Save$/, D().querySelector('.wf-builder')).click();
+    await until(() => sent().some((x) => x[0] === 'save'), 4000, 'the save');
+    ok('saved under its name', sent().filter((x) => x[0] === 'save').pop()[1].nickname === 'Harness new');
+
+    head('THE P-SPIKE BUILDER: THE HAND-SORTED SETS, AND MAKING THEM READY');
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
+    btn(/^Verified P-spikes$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-sets'), 4000, 'the sets');
+    const ticks = Array.from(D().querySelectorAll('.wf-set')).map((n) =>
+      [n.textContent.slice(0, 11), n.querySelector('input').checked]);
+    ok('every hand-sorted import ticked; a confirmed one offered, not ticked',
+       JSON.stringify(ticks) === JSON.stringify([['PTEN m13 s2', true], ['PTEN m34 s8', true],
+                                                ['PTEN m3 s2 ', false]]), JSON.stringify(ticks));
+    btn(/^Check the sets$/).click();
+    await until(() => D().querySelector('.wf-prep'), 4000, 'the check');
+    const prep = D().querySelector('.wf-prep').textContent;
+    ok('each set: its clock, aligned, read here',
+       /needs retiming/.test(prep) && /not yet/.test(prep) && /v3/.test(prep), prep.slice(0, 200));
+    const pq = sent().filter((x) => x[0] === 'prepare').pop()[1];
+    ok('checked against the target, for the ticked sets only',
+       pq.target.artifact_id === 'pP' && JSON.stringify(pq.entries.sort()) === '["h1","h2"]',
+       JSON.stringify(pq));
+    ok('and Prepare all is offered', !!btn(/^Prepare all$/));
+    btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
+
+    head('POOLED PCA: TWO POOLS MADE ONE, THE 2D PCA, THE 3D BESIDE IT');
+    ev('window.__wfFix.list.push(window.__wfFix.pcaRow)');
+    // Each harness recording reachable, so Xplorefinder can be followed.
+    ev('(function(){ var tk = BARRY.views.toolkit; window.__wfRR = tk.registryRows;'
+       + ' window.__wfReach = BARRY.vacc.reachFor;'
+       + ' tk.registryRows = function(){ var o = (window.__wfRR ? window.__wfRR.call(tk) : []) || [];'
+       + '   return o.concat(["g0","g1","g2","g3"].map(function(g){ return { gid: g }; })); };'
+       + ' BARRY.vacc.reachFor = function(r, t){ if (r && /^g\\d$/.test(r.gid))'
+       + '   return { path: "H:/harness/" + r.gid };'
+       + '   return window.__wfReach.apply(BARRY.vacc, arguments); }; })()');
+    btn(/^Refresh$/, D().querySelector('.wf-head')).click();
+    await until(() => D().querySelector('.wf-strip[data-wf="wPCA"]'), 6000, 'the PCA strip');
+    const pS = D().querySelector('.wf-strip[data-wf="wPCA"]');
+    ok('a fourth workflow, Pooled PCA, after the other three',
+       JSON.stringify(Array.from(D().querySelectorAll('.wf-strip .wf-kind')).map((n) => n.textContent))
+       === JSON.stringify(['Verified dentate spikes', 'Verified P-spikes', 'Ambiguous', 'Pooled PCA']));
+    ok('its three stage cards: Pool, PCA, Calls',
+       JSON.stringify(Array.from(pS.querySelectorAll('.wf-stage-n')).map((n) => n.textContent))
+       === '["Pool","PCA","Calls"]');
+    await until(() => Array.from(pS.querySelectorAll('.wf-thumb')).every((c) => inked(c) > 150), 6000, 'its thumbnails');
+    ok('each with its picture', Array.from(pS.querySelectorAll('.wf-thumb')).every((c) => inked(c) > 150),
+       Array.from(pS.querySelectorAll('.wf-thumb')).map(inked).join(','));
+    ok('the cards say the pools, the variance and the calls',
+       /2 pools made one\s*Harness PTEN v1 \+ Harness CTL v1/.test(pS.querySelectorAll('.wf-stage')[0].textContent)
+       && /PC1 48% · PC2 32% of the variance/.test(pS.querySelectorAll('.wf-stage')[1].textContent)
+       && new RegExp('DS ' + RUN_PCA.counts.ds + ' · P-spike ' + RUN_PCA.counts.ied)
+         .test(pS.querySelectorAll('.wf-stage')[2].textContent),
+       Array.from(pS.querySelectorAll('.wf-stage')).map((n) => n.textContent).join(' | '));
+    ok('it banks nothing: a Run, no bank button and no bank line',
+       !!btn(/^Run$|^Run again$/, pS) && !btn(/^Run and bank…$/, pS)
+       && !btn(/^Run without banking$/, pS) && !pS.querySelector('.wf-bankline'));
+
+    btn(/^Open$/, pS).click();
+    await until(() => inked(D().querySelector('.wf-pca')) > 3000
+                && inked(D().querySelector('.wf-3d-side')) > 2000, 8000, 'the PCA and the 3D');
+    const pcaCv = D().querySelector('.wf-pca'), side = D().querySelector('.wf-3d-side');
+    ok('the 2D PCA is drawn, PC1 across and PC2 up, each with its share of the variance',
+       inked(pcaCv) > 3000 && /PC1 · 48% of the variance/.test(ev(WF + '._pcWords(' + WF
+         + '._state().data.wPCA.payload.run, 0)')));
+    // Beside it on a window of a desk's width; the harness's frame is half
+    // a screen, so it is widened for this one look and put back.
+    frame.style.flex = 'none'; frame.style.width = '1400px';
+    await until(() => { const a = D().querySelector('.wf-pca'), b = D().querySelector('.wf-3d-side');
+                        return a && b && b.getBoundingClientRect().left
+                          >= a.getBoundingClientRect().right - 2; }, 4000, 'the wide layout');
+    const rP = D().querySelector('.wf-pca').getBoundingClientRect();
+    const rS = D().querySelector('.wf-3d-side').getBoundingClientRect();
+    await until(() => inked(D().querySelector('.wf-3d-side')) > 2000, 4000, 'the 3D, wide');
+    ok('on a wide window the 3D view is beside it, on its right, and drawn',
+       inked(D().querySelector('.wf-3d-side')) > 2000 && rS.left >= rP.right - 2
+       && Math.abs(rS.top - rP.top) < 60 && rS.width > 300,
+       JSON.stringify([rP.left, rP.right, rP.top, rS.left, rS.top, rS.width]));
+    frame.style.flex = ''; frame.style.width = '';
+    // Drawn again at the narrower size, so every dot is where its click is.
+    const fits = (c) => c && Math.abs(c.width - Math.round(c.clientWidth
+      * (frame.contentWindow.devicePixelRatio || 1))) <= 1;
+    await until(() => fits(D().querySelector('.wf-pca')) && fits(D().querySelector('.wf-3d-side')),
+                4000, 'narrow again');
+    ok('narrowed again, both are drawn again at their new size',
+       fits(D().querySelector('.wf-pca')) && fits(D().querySelector('.wf-3d-side')));
+    const nDrawn = RUN_PCA.cols.pc.filter(Boolean).length;
+    const cvP = D().querySelector('.wf-pca'), cvS = D().querySelector('.wf-3d-side');
+    ok('every dot drawn is a dot that can be clicked: ' + nDrawn + ' in the PCA, '
+       + nDrawn + ' in the 3D', cvP.__pick && cvP.__pick.pts.length === nDrawn
+       && cvS.__pick && cvS.__pick.pts.length === nDrawn,
+       (cvP.__pick || { pts: [] }).pts.length + ' / ' + (cvS.__pick || { pts: [] }).pts.length);
+    ok('the colours are there to see: blue DS and red P-spikes in the PCA',
+       blueInk(cvP) > 150 && redInk(cvP) > 150, 'blue ' + blueInk(cvP) + ', red ' + redInk(cvP));
+    const pLg = D().querySelector('.wf-detail .wf-legend').textContent;
+    ok('the legend counts each call',
+       new RegExp('DS' + RUN_PCA.counts.ds + ' · ').test(pLg)
+       && new RegExp('P-spike' + RUN_PCA.counts.ied + ' · ').test(pLg)
+       && /each call’s centre/.test(pLg) && /where amplitude, HF power and half-width pull/.test(pLg), pLg);
+    ok('its legend dots are the calls’ own blue and red',
+       lgDot(/^DS\d/) === rgbOf('var(--call-ds)') && lgDot(/^P-spike\d/) === rgbOf('var(--call-p)'),
+       lgDot(/^DS\d/) + ' ' + lgDot(/^P-spike\d/));
+    ok('what was pooled and how, in words', /‘Harness PTEN’ v1 \(120 events, 2 recordings\) and ‘Harness CTL’ v1/
+       .test(D().querySelector('.wf-rule').textContent)
+       && /1 event is missing a number and not in it/.test(D().querySelector('.wf-rule').textContent),
+       D().querySelector('.wf-rule').textContent);
+    const pPanels = Array.from(D().querySelectorAll('.wf-panel > strong')).map((n) => n.textContent);
+    ok('beside it: the components, each pool, where they went, every mouse',
+       JSON.stringify(pPanels) === JSON.stringify(['What each component is', 'Each pool',
+         'Where they went', 'Every mouse']), JSON.stringify(pPanels));
+    ok('each component in numbers and words',
+       D().querySelectorAll('.wf-panel')[0].querySelectorAll('tr').length === 4
+       && /PC1\s*48%\s*\+0\.67\s*\+0\.69\s*−?-0\.29\s*higher with more amplitude, more HF power/
+         .test(D().querySelectorAll('.wf-panel')[0].textContent),
+       D().querySelectorAll('.wf-panel')[0].textContent.slice(0, 200));
+
+    head('POOLED PCA: COLOUR BY, AND ONE POOL AT A TIME');
+    btn(/^the verified borders$/, D().querySelector('.wf-pca-colour')).click();
+    await until(() => /ambiguous: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent)
+                && inked(D().querySelector('.wf-pca')) > 3000, 4000, 'verified colours');
+    ok('by the verified borders: DS only, P-spike only, and the two ambiguous in purple',
+       lgDot(/ambiguous: inside both/) === amb && lgDot(/ambiguous: outside both/) === amb2
+       && purpleInk(D().querySelector('.wf-pca')) > 60,
+       lgDot(/ambiguous: inside both/) + ' ' + purpleInk(D().querySelector('.wf-pca')));
+    ok('and the borders’ boxes go on the 3D', ev(WF + '._boxesOf(' + WF
+       + '._state().data.wPCA.payload.run, "pca").length') === 4);
+    btn(/^each pool’s own call$/, D().querySelector('.wf-pca-colour')).click();
+    await until(() => !/ambiguous: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent), 4000, 'own');
+    const own = RUN_PCA.own_counts;
+    ok('by each pool’s own call: its counts', new RegExp('DS' + own.ds + ' · ').test(
+       D().querySelector('.wf-detail .wf-legend').textContent), D().querySelector('.wf-detail .wf-legend').textContent);
+    btn(/^the one pool’s call$/, D().querySelector('.wf-pca-colour')).click();
+    btn(/^Harness CTL$/, D().querySelector('.wf-pca-show')).click();
+    await until(() => { const c = D().querySelector('.wf-pca'); return c && c.__pick
+                        && c.__pick.pts.length && c.__pick.pts.every((x) => x.p.src === 1); }, 4000, 'one pool');
+    const onlyB = D().querySelector('.wf-pca').__pick.pts;
+    ok('one pool on show: only its dots can be clicked, the other faded and said',
+       onlyB.length === RUN_PCA.cols.pc.filter((v, j) => v && RUN_PCA.cols.src[j] === 1).length
+       && /Faded\s*the other pool, not on show/.test(D().querySelector('.wf-detail .wf-legend').textContent));
+    btn(/^every pool$/, D().querySelector('.wf-pca-show')).click();
+    await until(() => (D().querySelector('.wf-pca').__pick || { pts: [] }).pts.length === nDrawn, 4000, 'every pool');
+
+    head('POOLED PCA: COLOUR BY MOUSE, AND BY RECORDING');
+    const pSeg = () => Array.from(D().querySelectorAll('.wf-pca-colour button')).map((b) => b.textContent);
+    ok('Colour by offers mouse and recording beside the calls',
+       JSON.stringify(pSeg()) === JSON.stringify(['the one pool’s call', 'each pool’s own call',
+         'the verified borders', 'mouse', 'recording']), JSON.stringify(pSeg()));
+    btn(/^mouse$/, D().querySelector('.wf-pca-colour')).click();
+    await until(() => catLg().length === 4 && inked(D().querySelector('.wf-pca')) > 3000
+                && inked(D().querySelector('.wf-3d-side')) > 2000, 5000, 'the PCA by mouse');
+    const pM = catLg();
+    const drawnOf = (key, want) => RUN_PCA.cols[key].filter((v, j) => v === want && RUN_PCA.cols.pc[j]).length;
+    ok('the legend lists each mouse with its colour and how many of its dots are drawn',
+       JSON.stringify(pM.map((x) => x.name)) === '["PTEN m1","PTEN m2","PTEN m3","PTEN m4"]'
+       && pM.every((x, k) => x.n === drawnOf('mouse', 'PTEN|m' + (k + 1)))
+       && new Set(pM.map((x) => x.rgb.join())).size === 4
+       && /^Mice/.test(D().querySelector('.wf-detail .wf-legend .wf-lg-h').textContent)
+       && /each mouse’s centre/.test(D().querySelector('.wf-detail .wf-legend').textContent),
+       JSON.stringify(pM.map((x) => [x.name, x.n, x.rgb])));
+    ok('the 2D PCA and the 3D beside it are drawn in the mice’s colours',
+       pM.every((x) => near(D().querySelector('.wf-pca'), x.rgb) > 30
+                       && near(D().querySelector('.wf-3d-side'), x.rgb) > 20),
+       pM.map((x) => near(D().querySelector('.wf-pca'), x.rgb) + '/'
+                     + near(D().querySelector('.wf-3d-side'), x.rgb)).join(' '));
+    const bp = D().querySelector('.wf-bypool-cat');
+    ok('each pool, by its mice, in their colours',
+       !!bp && /Harness PTEN\s*\d+\s*PTEN m1[\d,]+ · \d+%PTEN m2/.test(bp.textContent)
+       && /Harness CTL\s*\d+\s*PTEN m3[\d,]+ · \d+%PTEN m4/.test(bp.textContent),
+       bp && bp.textContent.slice(0, 200));
+    btn(/^recording$/, D().querySelector('.wf-pca-colour')).click();
+    await until(() => /^Recordings/.test((D().querySelector('.wf-detail .wf-legend .wf-lg-h') || {}).textContent || '')
+                && inked(D().querySelector('.wf-pca')) > 3000, 4000, 'the PCA by recording');
+    const pR = catLg();
+    ok('by recording: each by its session label, with its count, in the PCA',
+       JSON.stringify(pR.map((x) => x.name)) === JSON.stringify(RUN_PCA.members.map((m) => m.session_label))
+       && pR.every((x, k) => x.n === drawnOf('g', k))
+       && pR.every((x) => near(D().querySelector('.wf-pca'), x.rgb) > 30),
+       JSON.stringify(pR.map((x) => [x.name, x.n])));
+    btn(/^Harness CTL$/, D().querySelector('.wf-pca-show')).click();
+    await until(() => catLg().length === 2, 4000, 'one pool by recording');
+    ok('one pool on show: only its recordings are counted, each keeping its colour',
+       JSON.stringify(catLg().map((x) => x.rgb)) === JSON.stringify(pR.slice(2).map((x) => x.rgb)),
+       JSON.stringify(catLg().map((x) => x.name)));
+    btn(/^every pool$/, D().querySelector('.wf-pca-show')).click();
+    btn(/^the one pool’s call$/, D().querySelector('.wf-pca-colour')).click();
+    await until(() => !catLg().length && (D().querySelector('.wf-pca').__pick || { pts: [] }).pts.length === nDrawn
+                && blueInk(D().querySelector('.wf-pca')) > 150, 4000, 'the calls again');
+    ok('and back to the calls, blue and red', blueInk(D().querySelector('.wf-pca')) > 150
+       && redInk(D().querySelector('.wf-pca')) > 150);
+
+    head('POOLED PCA: EVERY DOT OPENS IN XPLOREFINDER');
+    const clickAt = (cv, q) => {
+      const r = cv.getBoundingClientRect();
+      cv.dispatchEvent(new (frame.contentWindow.MouseEvent)('click',
+        { clientX: r.left + q[0], clientY: r.top + q[1], bubbles: true }));
+    };
+    const drawnPca = () => { const c = D().querySelector('.wf-pca'); return c && c.__pick ? c : null; };
+    await until(drawnPca, 4000, 'the PCA drawn');
+    let pts = drawnPca().__pick.pts;
+    const first = pts.find((x) => x.p.gid === 'g0');
+    clickAt(drawnPca(), first.q);
+    await until(() => D().querySelector('.wf-insp .wf-hist') && drawnPca(), 4000, 'the inspector');
+    const sameAt = (a, b) => Math.abs(a.q[0] - b.q[0]) < 0.5 && Math.abs(a.q[1] - b.q[1]) < 0.5;
+    const pickedNow = () => drawnPca().__pick.pts.find((x) => x.p.n === S().picked.n);
+    ok('a dot clicked in the PCA is picked: the one under the pointer',
+       S().picked && sameAt(pickedNow(), first), JSON.stringify(S().picked));
+    const pH = D().querySelector('.wf-hist').textContent;
+    ok('its history: its pool and that pool’s call, the one pool’s call, the borders, its PCs',
+       /Pooled in ‘Harness PTEN’ v1, which called it (DS|P-spike)/.test(pH)
+       && /Made one pool with ‘Harness CTL’ and clustered again: called (DS|P-spike)/.test(pH)
+       && /Under the verified borders/.test(pH) && /In the PCA: PC1 -?\d/.test(pH), pH);
+    ok('and its PC scores beside its three numbers',
+       /PC1/.test(D().querySelector('.wf-cut').textContent) && /PC3/.test(D().querySelector('.wf-cut').textContent));
+    const xBtn = btn(/^Open in Xplorefinder$/);
+    ok('Open in Xplorefinder is the button to press (the primary one, not a ghost)',
+       xBtn && /\bbtn\b/.test(xBtn.className) && !/\bghost\b/.test(xBtn.className), xBtn && xBtn.className);
+    ev('window.__wfOpened = null; window.__wfMoved = 0');
+    xBtn.click();
+    await until(() => ev('window.__wfOpened'), 4000, 'the window');
+    const at = (u) => { const q = new URLSearchParams(String(u).split('?')[1].split('#')[0]);
+                        return [q.get('csc'), Number(q.get('t0'))]; };
+    let u = ev('window.__wfOpened');
+    ok('it opens the dot’s own recording at the dot',
+       u && at(u)[0] === 'H:/harness/g0' && Math.abs(at(u)[1] - Math.max(0, first.p.t - 0.25)) < 1e-3, u);
+    // Then every dot clicked moves the window there.
+    const tries = [];
+    for (const g of ['g1', 'g2', 'g3', 'g0', 'g2']) {
+      await until(drawnPca, 4000, 'the PCA drawn');
+      pts = drawnPca().__pick.pts;
+      const cand = pts.filter((x) => x.p.gid === g && !pts.some((y) => y !== x && sameAt(x, y)));
+      const one = cand[Math.floor(cand.length / 2)];
+      const before = ev('window.__wfMoved');
+      clickAt(drawnPca(), one.q);
+      await until(() => ev('window.__wfMoved') > before, 4000, 'the window to follow');
+      u = ev('window.__wfOpened');
+      tries.push([g, one.p.t, u && at(u)[0], u && at(u)[1]]);
+    }
+    ok('while it is open, every dot clicked moves it to that dot’s recording and time',
+       tries.every(([g, t, c, t0]) => c === 'H:/harness/' + g && Math.abs(t0 - Math.max(0, t - 0.25)) < 1e-3),
+       JSON.stringify(tries));
+    // The 3D side picks too, and moves the window the same way.
+    await until(() => (D().querySelector('.wf-3d-side') || {}).__pick, 4000, 'the 3D drawn');
+    const sd3 = D().querySelector('.wf-3d-side');
+    const s1 = sd3.__pick.pts.find((x) => x.p.gid === 'g3');
+    const b3 = sd3.getBoundingClientRect();
+    const before3 = ev('window.__wfMoved');
+    sd3.dispatchEvent(new PE('pointerdown', { clientX: b3.left + s1.q[0], clientY: b3.top + s1.q[1], bubbles: true, pointerId: 2 }));
+    sd3.dispatchEvent(new PE('pointerup', { clientX: b3.left + s1.q[0], clientY: b3.top + s1.q[1], bubbles: true, pointerId: 2 }));
+    await until(() => ev('window.__wfMoved') > before3, 4000, 'the 3D pick');
+    ok('a dot clicked in the 3D is picked and followed too',
+       S().picked && ev('window.__wfOpened').indexOf('H%3A%2Fharness%2Fg') > 0
+       && at(ev('window.__wfOpened'))[0] === 'H:/harness/' + (S().picked && D().querySelector('.wf-3d-side')
+         ? RUN_PCA.cols.gids[RUN_PCA.cols.g[S().picked.n]] : ''), ev('window.__wfOpened'));
+
+    head('POOLED PCA: RUN, AND THE BUILDER');
+    const nPcaRun = sent().filter((x) => x[0] === 'run:wPCA').length;
+    const nPv3 = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Run$|^Run again$/, D().querySelector('.wf-strip[data-wf="wPCA"]')).click();
+    await until(() => sent().filter((x) => x[0] === 'run:wPCA').length > nPcaRun, 6000, 'the run');
+    ok('Run asks to bank nothing, with no dialog and no preview',
+       sent().filter((x) => x[0] === 'run:wPCA').pop()[1].bank === false
+       && sent().filter((x) => x[0] === 'preview').length === nPv3);
+    await until(() => toasts().some((t) => /‘Harness PCA’ v3:/.test(t)), 4000, 'the toast');
+    ok('and says what it made', toasts().some((t) => new RegExp('240 events from 2 pools made one pool — '
+       + RUN_PCA.counts.ds + ' DS, ' + RUN_PCA.counts.ied + ' P-spikes — and its PCA drawn\\. Nothing was banked')
+       .test(t)), toasts().slice(-1)[0]);
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
+    btn(/^Pooled PCA$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-pools'), 4000, 'the pools');
+    const pTicks = Array.from(D().querySelectorAll('.wf-pools .wf-set')).filter((n) =>
+      n.querySelector('input').checked).map((n) => n.textContent.split(' · ')[0]);
+    ok('PTEN Baseline and CTL Baseline ticked by default', JSON.stringify(pTicks.sort())
+       === '["CTL Baseline","PTEN Baseline"]', JSON.stringify(pTicks));
+    btn(/^Preview$/, D().querySelector('.wf-builder')).click();
+    await until(() => sent().filter((x) => x[0] === 'preview').length > nPv3, 4000, 'the preview');
+    const pv2 = sent().filter((x) => x[0] === 'preview').pop()[1];
+    ok('the preview asks for the two pools as one, coloured also by the verified borders',
+       pv2.kind === 'pca' && JSON.stringify(pv2.pools.map((p) => p.artifact_id).sort()) === '["pP","pQ"]'
+       && pv2.uses && pv2.uses.ds.artifact_id === 'wDS' && pv2.uses.pspike.artifact_id === 'wP',
+       JSON.stringify(pv2));
+    await until(() => /Preview · nothing saved/.test((D().querySelector('.wf-detail') || {}).textContent || '')
+                && inked(D().querySelector('.wf-pca')) > 3000, 4000, 'the PCA preview');
+    ok('and the preview is the PCA, with the 3D beside it', inked(D().querySelector('.wf-pca')) > 3000
+       && inked(D().querySelector('.wf-3d-side')) > 2000);
+    btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
+
+    /* ARCHIVED IN POOLED, OUT OF THE BUILDER (2026-11-06). One pool
+       archived, one in a folder that is; both held in the page. */
+    head('ARCHIVED POOLS LEAVE THE BUILDER');
+    ev('window.__wfMem.rootcanal_pool_archive = { pX: { at: "2026-11-06T00:00:00Z", by: "Debug_Bot" } };'
+       + ' window.__wfMem.rootcanal_pool_folders = { fz: { name: "Harness shelf", archived: true,'
+       + '   archived_at: "2026-11-06T00:00:00Z" } };'
+       + ' window.__wfMem.rootcanal_pool_in = { pC: "fz" }');
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder select'), 6000, 'the builder');
+    const optsOf = () => Array.from(D().querySelectorAll('.wf-builder select')[0].options)
+      .map((o) => [o.value, o.textContent]);
+    ok('an archived pool, and one in an archived folder, are not offered',
+       !optsOf().some(([v]) => v === 'pX' || v === 'pC') && optsOf().some(([v]) => v === 'pQ'),
+       JSON.stringify(optsOf()));
+    ok('Show archived pools · 2 offers them', !!btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')));
+    btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')).click();
+    await until(() => optsOf().some(([v]) => v === 'pX'), 4000, 'shown');
+    ok('shown, each says why it was out of sight',
+       optsOf().some(([v, t]) => v === 'pX' && / · archived$/.test(t))
+       && optsOf().some(([v, t]) => v === 'pC' && / · in an archived folder$/.test(t)),
+       JSON.stringify(optsOf()));
+    btn(/^Pooled PCA$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-pools .wf-set[data-pool="pX"]'), 4000, 'the pools');
+    const lx = D().querySelector('.wf-pools .wf-set[data-pool="pX"]');
+    ok('in the PCA’s pools too, faded, with Put back', lx.classList.contains('archived')
+       && !!lx.querySelector('.wf-pool-unarchive')
+       && !D().querySelector('.wf-pools .wf-set[data-pool="pC"] .wf-pool-unarchive'));
+    lx.querySelector('.wf-pool-unarchive').click();
+    await until(() => !('pX' in (JSON.parse(ev('JSON.stringify(window.__wfMem.rootcanal_pool_archive)')) || {})),
+                4000, 'put back');
+    ok('Put back takes it out of the shared preference, held here',
+       JSON.stringify(JSON.parse(ev('JSON.stringify(window.__wfMem.rootcanal_pool_archive)'))) === '{}'
+       && !D().querySelector('.wf-pools .wf-set.archived[data-pool="pX"]'));
+    btn(/^Hide archived pools · 1$/, D().querySelector('.wf-builder')).click();
+    await until(() => !D().querySelector('.wf-pools .wf-set[data-pool="pC"]'), 4000, 'hidden');
+    ok('hidden again, the one in the archived folder is out of sight',
+       !D().querySelector('.wf-pools .wf-set[data-pool="pC"]')
+       && !!D().querySelector('.wf-pools .wf-set[data-pool="pX"]'));
+    btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
+    ev('delete window.__wfMem.rootcanal_pool_archive; delete window.__wfMem.rootcanal_pool_folders;'
+       + ' delete window.__wfMem.rootcanal_pool_in');
+
+    head('THE SIDE BRANCH IN A VERSION TREE');
+    const vt = ev('(function(){ var n = BARRY.ui.versionTree({ versions: [{ v: 1, at: "2026-11-05",'
+      + ' went_into: [{ entry_id: "x1", name: "Verified dentate spikes · H", n: 120,'
+      + ' workflow: "H", workflow_version: 2 }] }, { v: 2 }], readonly: true });'
+      + ' var b = n.querySelector(".vtree-branch"); return b ? b.textContent : null; })()');
+    ok('a version says where its events went, off its row',
+       vt === '↳ 120 events went into the Root Canal entry ‘Verified dentate spikes · H’ (workflow ‘H’ v2)', vt);
+    head('BORDER SHAPES AND FOLDERS (2026-11-11)');
+    // A scoop and a snap reach the drawing with their shapes; a box does not.
+    const shapes = JSON.parse(ev('(function(){ var lv = function(g, sh) { return { grace: g,'
+      + ' edges: { amp_uV: { lo: 100, hi: 900 }, hf_db: { lo: 1, hi: 9 }, hw_ms: { lo: 5, hi: 30 } }, shape: sh }; };'
+      + ' var ell = { kind: "ellipsoid", center: [500, 5, 17], M: [[40000, 0, 0], [0, 4, 0], [0, 0, 36]],'
+      + '   axes: [[200, 0, 0], [0, 2, 0], [0, 0, 6]], t: 1 };'
+      + ' var hull = { kind: "hull", center: [500, 5, 17], scale: [1, 1, 1], eq: [],'
+      + '   vertices: [[100, 1, 5], [900, 1, 5], [500, 9, 5], [500, 5, 30]], faces: [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]] };'
+      + ' var run = function(shape, sh) { return { kind: "ds", grace: 0.05, shape: shape,'
+      + '   border: { shape: shape, levels: [lv(0, sh), lv(0.05, sh)], strict: {} }, cols: {} }; };'
+      + ' var out = {}; [["box", null], ["ellipsoid", ell], ["hull", hull]].forEach(function(x) {'
+      + '   var b = BARRY.rcWorkflow._boxesOf(run(x[0], x[1]), "ds");'
+      + '   out[x[0]] = b.map(function(z) { return [z.label, z.shape ? z.shape.kind : null, z.dashed]; }); });'
+      + ' return JSON.stringify(out); })()'));
+    ok('a box draws as a box; a scoop and a snap reach the drawing as their shapes, at the grace and at none',
+       JSON.stringify(shapes) === JSON.stringify({
+         box: [['DS border, grace 5%', null, false], ['DS border at no grace', null, true]],
+         ellipsoid: [['DS scoop, grace 5%', 'ellipsoid', false], ['DS scoop at no grace', 'ellipsoid', true]],
+         hull: [['DS snap, grace 5%', 'hull', false], ['DS snap at no grace', 'hull', true]] }), JSON.stringify(shapes));
+    // The list in folders: two filed Snap > 5%, one left unfiled.
+    ev('(function(){ var F = window.__wfFix; F.list[0].folder = ["Snap", "5%"]; F.list[0].shape = "hull";'
+       + ' F.list[1].folder = ["Snap", "5%"]; F.list[1].shape = "hull"; F.list[2].folder = []; })()');
+    ev(WF + '.reset()');
+    btn(/^Single$/, D().querySelector('.rc-viewseg')).click();
+    await sleep(300);
+    btn(/^Workflow$/, D().querySelector('.rc-viewseg')).click();
+    await until(() => D().querySelectorAll('.wf-folder').length === 2, 10000, 'the folders');
+    const fold = () => Array.from(D().querySelectorAll('.wf-folder')).map((f) => f.dataset.folder);
+    ok('the list in folders, folders inside folders: Snap, then 5% in it', fold().join('|') === 'Snap|Snap/5%', fold().join('|'));
+    const inner = D().querySelector('.wf-folder[data-folder="Snap/5%"]');
+    const top = Array.from(D().querySelector('.wf-list').children).map((n) => n.classList.contains('wf-folder')
+      ? 'folder' : n.dataset.wf);
+    ok('the filed workflows are in their folder; folders first, then the unfiled one',
+       inner && inner.querySelectorAll('.wf-strip').length === 2 && top[0] === 'folder' && top.includes('wA')
+       && top.indexOf('wA') > 0, top.join(','));
+    ok('each says its shape', inner && Array.from(inner.querySelectorAll('.wf-strip-head')).every((h) => /Snap/.test(h.textContent)));
+    ok('a folder says how many it holds', /2 workflows/.test(txtOf(D().querySelector('.wf-folder[data-folder="Snap"] > summary'))));
+    ok('every strip can be moved to another folder', D().querySelectorAll('.wf-strip').length > 0
+       && D().querySelectorAll('.wf-strip .wf-move').length === D().querySelectorAll('.wf-strip').length,
+       D().querySelectorAll('.wf-strip .wf-move').length + ' of ' + D().querySelectorAll('.wf-strip').length);
+    ok('nothing was written: every write was answered here',
+       !sent().some((x) => x[0] === 'refused'), JSON.stringify(sent().filter((x) => x[0] === 'refused')));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       THREW L' + ((String((err && err.stack) || '').split('\n').slice(1).join(' ').match(/:(\d+):\d+/) || [])[1]) + ': ' + (err && err.message ? err.message : String(err)), 'bad');
+    say('       ' + String((err && err.stack) || '').split('\n').slice(0, 4).join(' | '), 'dim');
+  } finally {
+    try {
+      ev(WF + '.reset()');
+      ev('(function(){ var W = window; if (W.__wfFetch) { W.fetch = W.__wfFetch; delete W.__wfFetch; }'
+         + ' if (W.__wfLog) { BARRY.activity.log = W.__wfLog; delete W.__wfLog; }'
+         + ' if (W.__wfBd) { BARRY.ui.bankDialog = W.__wfBd; delete W.__wfBd; }'
+         + ' if (W.__wfOpen) { W.open = W.__wfOpen; delete W.__wfOpen; }'
+         + ' if ("__wfRR" in W) { BARRY.views.toolkit.registryRows = W.__wfRR; delete W.__wfRR; }'
+         + ' if (W.__wfReach) { BARRY.vacc.reachFor = W.__wfReach; delete W.__wfReach; }'
+         + ' if (W.__wfPrefSet) { BARRY.prefs.set = W.__wfPrefSet; BARRY.prefs.get = W.__wfPrefGet;'
+         + ' delete W.__wfPrefSet; delete W.__wfPrefGet; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(300);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rcworkflow: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

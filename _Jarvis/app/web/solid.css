@@ -1,0 +1,235 @@
+/* ==========================================================================
+   solid.css -- the press, the busy control, the reconnecting banner and the
+   feed dock (js/solid.js, js/feeddock.js).
+
+   Linked after app.css and written only in its tokens, so all twelve themes
+   and VACC Mode colour it without a rule of their own. Every movement here
+   has a reduced-motion stop at the end, and Jarvis Light (which turns the
+   reduced-motion rules on) gets the same stops for free; the two spinning
+   things are also named in a `data-lite` rule, as app.css does for `.spin`.
+   ========================================================================== */
+
+/* ---------- the press ----------
+   app.css squishes `.btn:active`, `.mini:active` and `.pill:active`; this is
+   the same look on a class that solid.js holds for at least 110 ms, so a
+   click quicker than a frame is still drawn. Everything else that is a
+   button gets a tint instead of a transform: a transform on an arbitrary
+   control can undo the translate that is centring it. */
+html .btn.is-pressed:not(:disabled) {
+  transform: translateY(0) scale(.97); box-shadow: var(--elev-btn);
+}
+html .mini.is-pressed:not(:disabled),
+html .pill.is-pressed:not(:disabled) { transform: scale(.95); }
+html .nav-item.is-pressed,
+html .chip-btn.is-pressed:not(:disabled),
+html [role="button"].is-pressed,
+html button.is-pressed:not(.btn):not(.mini):not(.pill):not(:disabled) {
+  box-shadow: inset 0 0 0 999px var(--accent-soft);
+}
+
+/* ---------- the busy control ---------- */
+.is-busy { cursor: progress; }
+
+.solid-spin, .solid-bubble, .solid-offline { box-sizing: border-box; }
+.solid-spin[hidden], .solid-bubble[hidden], .solid-bubble [hidden],
+.solid-offline [hidden] { display: none !important; }
+
+/* A badge on the control's top-right corner, outside its box, so the
+   control keeps its words and its width. Below a dialog unless the control
+   is in one (`.hi`). Never takes a click. */
+.solid-spin {
+  position: fixed; left: 0; top: 0; z-index: 65;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  background: var(--bg-2);
+  box-shadow: 0 0 0 2px var(--bg-2);
+  pointer-events: none;
+  animation: spin .7s linear infinite, solidIn var(--dur-2) var(--ease-out) both;
+}
+.solid-spin.hi, .solid-bubble.hi { z-index: 95; }
+@keyframes solidIn { from { opacity: 0; } }
+
+/* What the server says it is doing, beside the control after 3 s. Only its
+   buttons take clicks, so it cannot stand between a harness's (or a
+   person's) pointer and the page under it. The words wrap; nothing is cut. */
+.solid-bubble {
+  position: fixed; left: 0; top: 0; z-index: 66;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2); color: var(--text-2);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-115); line-height: 1.45;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: solidIn var(--dur-3) var(--ease-out) both;
+}
+.solid-bubble .sb-say { margin: 0; }
+.solid-bubble .sb-acts {
+  display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-top: var(--sp-6);
+  pointer-events: auto;
+}
+
+/* ---------- reconnecting ----------
+   Fixed at the top, over everything, without moving anything: amber, not
+   red, because a server that has gone away is a wait, not a failure. */
+.solid-offline {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 96;
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-12, 12px);
+  max-width: calc(100vw - 32px);
+  padding: 7px 10px 7px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2); color: var(--text-2);
+  border: 1px solid var(--warn);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-12); line-height: 1.4;
+  animation: solidDrop var(--dur-3) var(--ease-out) both;
+}
+.solid-offline strong { color: var(--text); font-weight: 600; }
+.solid-offline .so-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--warn);
+  animation: solidPulse 1.6s ease-in-out infinite;
+}
+.solid-offline.back { border-color: var(--ok); }
+.solid-offline.back .so-dot { background: var(--ok); animation: none; }
+@keyframes solidDrop { from { opacity: 0; transform: translate(-50%, -6px); } }
+@keyframes solidPulse { 50% { opacity: .35; } }
+
+/* The stale-server banner's Restart now and what it is doing. */
+.solid-restart { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.solid-restart-say { color: var(--text-2); }
+.solid-restart-say:empty { display: none; }
+
+/* ---------- the feed dock ----------
+   Until the server answers /api/feed the dock is the old Output dock: none
+   of this shows without `data-feed="on"`. */
+#logDock .fd-tabs, #logDock .fd-latest, #logDock .fd-body { display: none; }
+#logDock[data-feed="on"] #logTitle { display: none; }
+#logDock[data-feed="on"]:not(.collapsed) .fd-tabs { display: flex; }
+#logDock[data-feed="on"].collapsed .fd-latest { display: flex; }
+#logDock[data-feed="on"]:not([data-tab="output"]) .fd-body { display: flex; }
+#logDock[data-feed="on"]:not([data-tab="output"]) #logBody,
+#logDock[data-feed="on"]:not([data-tab="output"]) #jobPill:not(.running),
+#logDock[data-feed="on"]:not([data-tab="output"]) #jobSelect,
+#logDock[data-feed="on"]:not([data-tab="output"]) #jobCancel { display: none; }
+/* Folded, the strip is the newest line and nothing else -- except a run in
+   progress, whose pill stays in sight. */
+#logDock[data-feed="on"].collapsed #jobSelect,
+#logDock[data-feed="on"].collapsed #jobCancel,
+#logDock[data-feed="on"].collapsed #logCopy,
+#logDock[data-feed="on"].collapsed #logClear,
+#logDock[data-feed="on"].collapsed #jobPill:not(.running) { display: none; }
+#logDock[data-feed="on"].collapsed .log-spacer { display: none; }
+
+.fd-tabs {
+  gap: 2px; padding: 2px; border-radius: var(--radius-control);
+  background: var(--bg-3);
+}
+.fd-tab {
+  padding: 3px 10px; border: 0; border-radius: var(--r-5);
+  background: transparent; color: var(--text-2);
+  font: inherit; font-size: var(--fs-115); cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out);
+}
+.fd-tab:hover { color: var(--text); }
+.fd-tab.on { background: var(--bg); color: var(--text); box-shadow: var(--elev-1); }
+.fd-tab[data-tab="vacc"] { display: none; }
+:root[data-vacc="on"] .fd-tab[data-tab="vacc"] { display: inline-block; }
+:root[data-vacc="on"] .fd-tab[data-tab="vacc"].on { color: var(--accent); }
+
+/* The folded strip: two lines of small text fit its 38 px; a longer line
+   steps down a size (`.tight`, set by feeddock.js after measuring). */
+.fd-latest {
+  flex: 1; min-width: 0; align-self: stretch;
+  align-items: center; gap: var(--sp-8);
+  font-size: var(--fs-115); line-height: 1.25; color: var(--text-2);
+  cursor: pointer; overflow: hidden;
+}
+.fd-latest.tight { font-size: var(--fs-10, 10px); line-height: 1.15; }
+.fd-latest .fd-text { min-width: 0; overflow-wrap: anywhere; }
+.fd-latest.quiet { color: var(--text-3); }
+.fd-latest .fd-bar { flex: none; width: 90px; }
+.fd-latest .fd-meta { flex: none; }
+
+.fd-body { flex: 1; min-height: 0; flex-direction: column; }
+.fd-list {
+  display: none; flex: 1; min-height: 0; overflow-y: auto;
+  padding: 6px 14px 12px;
+  font-size: var(--fs-115); line-height: 1.5;
+}
+#logDock[data-tab="activity"] .fd-list[data-lane="jarvis"],
+#logDock[data-tab="vacc"] .fd-list[data-lane="vacc"] { display: block; }
+.fd-empty { margin: 8px 0; color: var(--text-3); }
+
+.fd-line {
+  display: grid; grid-template-columns: auto 14px 1fr auto;
+  align-items: baseline; gap: 0 var(--sp-8);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fd-t { font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3); }
+.fd-mark { text-align: center; font-weight: 700; color: var(--text-3); }
+.fd-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fd-text { color: var(--text-2); overflow-wrap: anywhere; }
+.fd-meta {
+  font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3);
+  white-space: nowrap;
+}
+.fd-bar {
+  display: none; height: 4px; border-radius: var(--r-pill);
+  background: var(--bg-3); overflow: hidden;
+}
+.fd-bar > i {
+  display: block; height: 100%; width: 0; border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-3) var(--ease-out);
+}
+.has-bar > .fd-main > .fd-bar, .fd-latest.has-bar > .fd-bar { display: block; }
+.fd-line.done .fd-bar > i, .fd-latest.done .fd-bar > i { background: var(--ok); }
+
+/* Levels: the mark carries the colour; an error's words do too. */
+.lv-ok .fd-mark { color: var(--ok); }
+.lv-warn .fd-mark { color: var(--warn); }
+.lv-err .fd-mark, .lv-err .fd-text { color: var(--err); }
+.lv-err .fd-bar > i { background: var(--err); }
+.fd-line.live .fd-text { color: var(--text); }
+
+/* Still going: a dot that breathes, in place of the tick it will become. */
+.fd-line.live .fd-mark::before, .fd-latest.live .fd-mark::before {
+  content: ''; display: inline-block; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent);
+  animation: solidPulse 1.4s ease-in-out infinite;
+}
+.fd-latest .fd-mark { flex: none; width: 14px; }
+
+.fd-div {
+  display: flex; align-items: center; gap: var(--sp-8);
+  margin: 8px 0 4px; color: var(--warn);
+  font-size: var(--fs-105); font-weight: 600;
+}
+.fd-div::before, .fd-div::after {
+  content: ''; flex: 1; height: 1px; background: var(--warn-soft);
+}
+
+/* ---------- no motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html .btn.is-pressed:not(:disabled),
+  html .mini.is-pressed:not(:disabled),
+  html .pill.is-pressed:not(:disabled) {
+    transform: none; box-shadow: inset 0 0 0 999px var(--accent-soft);
+  }
+  .solid-spin { animation: none; }
+  .solid-bubble, .solid-offline { animation: none; }
+  .solid-offline .so-dot { animation: none; }
+  .fd-line.live .fd-mark::before, .fd-latest.live .fd-mark::before { animation: none; }
+  .fd-bar > i, .fd-tab { transition: none; }
+}
+:root[data-lite="on"] .solid-spin,
+:root[data-lite="on"] .solid-offline .so-dot,
+:root[data-lite="on"] .fd-line.live .fd-mark::before,
+:root[data-lite="on"] .fd-latest.live .fd-mark::before { animation: none; }

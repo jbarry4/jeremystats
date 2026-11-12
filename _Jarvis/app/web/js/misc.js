@@ -1,0 +1,1156 @@
+/* ==========================================================================
+   misc.js -- the catch-all: loose scripts that fit no pipeline, plus the
+   workbench utilities that keep the repo tidy.
+   ========================================================================== */
+'use strict';
+
+BARRY.views.misc = (function () {
+
+  function miscItems() {
+    const cat = BARRY.state.catalog;
+    if (!cat) return { loose: [], archived: [], notebooks: [] };
+    const loose = cat.items.filter((i) => i.section === 'Misc' && !i.archived);
+    const archived = cat.items.filter((i) => i.archived);
+    const notebooks = cat.items.filter((i) => i.lang === 'notebook');
+    return { loose, archived, notebooks };
+  }
+
+  function rowList(items, emptyText) {
+    if (!items.length) {
+      return el('div', { class: 'tree-empty', text: emptyText });
+    }
+    const box = el('div', { class: 'list-rows' });
+    for (const it of items.slice(0, 300)) {
+      box.appendChild(el('div', {
+        class: 'list-row',
+        title: it.rel,
+        onclick: () => {
+          setView('explorer');
+          BARRY.views.explorer.select(it.rel);
+        },
+      }, [
+        el('span', { class: 'lang-dot ' + it.lang }),
+        el('span', { class: 'nm', text: it.name }),
+        el('span', { class: 'pth', text: it.dir }),
+      ]));
+    }
+    if (items.length > 300) {
+      box.appendChild(el('div', {
+        class: 'tree-empty',
+        text: '…and ' + (items.length - 300) + ' more — use Explorer search.',
+      }));
+    }
+    return box;
+  }
+
+  function render() {
+    const host = $('#miscBody');
+    host.innerHTML = '';
+    const { loose, archived, notebooks } = miscItems();
+
+    /* ---- Pipeline and Explorer ----
+       Moved out of the bar on 2026-11-03 so Sessions, Xplorefinder and
+       ToolKit could lead it. Their views are untouched (and #pipeline /
+       #explorer still go straight there); this is the way in by hand. */
+    host.appendChild(el('div', { class: 'section-label', text: 'Moved here' }));
+    const moved = el('div', { class: 'misc-moved' });
+    const door = (view, title, words, icon) => el('div', {
+      class: 'card', role: 'button', tabindex: '0',
+      onclick: () => setView(view, { nav: true }),
+      onkeydown: (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setView(view, { nav: true }); }
+      },
+    }, [
+      el('h3', { html: icon + '<span>' + escapeHtml(title) + '</span>' }),
+      el('p', { text: words }),
+      el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn sm', text: 'Open ' + title }),
+      ]),
+    ]);
+    moved.appendChild(door('pipeline', 'P-spike Pipeline',
+      'Point it at a recording folder and walk the P-spike stages in order, '
+      + 'for one session or a cohort.',
+      '<svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>'));
+    moved.appendChild(door('explorer', 'Explorer',
+      'Every script in the repo by project area: read it, change its '
+      + 'settings and run it.',
+      '<svg viewBox="0 0 20 20"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h4l1.5 2h7.5A1.5 1.5 0 0 1 18 7.5v8A1.5 1.5 0 0 1 16.5 17h-13A1.5 1.5 0 0 1 2 15.5z"/></svg>'));
+    host.appendChild(moved);
+
+    /* ---- colony ---- */
+    host.appendChild(el('div', { class: 'section-label', text: 'Colony' }));
+    host.appendChild(vosCard());
+    host.appendChild(smCard());
+    host.appendChild(chickenCard());
+
+    /* ---- utilities ---- */
+    host.appendChild(el('div', { class: 'section-label', text: 'Workbench' }));
+    const cards = el('div', { class: 'card-grid' });
+
+    cards.appendChild(el('div', { class: 'card' }, [
+      el('h3', { text: 'Re-index the repo' }),
+      el('p', { text: 'Rescan every folder for new or renamed scripts. Run this after you add files.' }),
+      el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'btn sm', text: 'Re-index',
+          onclick: async (e) => {
+            e.target.disabled = true;
+            try {
+              const cat = await api('/api/catalog?refresh=1');
+              BARRY.state.catalog = cat;
+              render();
+              if (BARRY.views.explorer.onShow) BARRY.views.explorer.onShow();
+              toast('Indexed ' + cat.items.length + ' scripts', 'ok');
+            } catch (err) { toast(err.message, 'err'); }
+            e.target.disabled = false;
+          },
+        }),
+      ]),
+    ]));
+
+    cards.appendChild(el('div', { class: 'card' }, [
+      el('h3', { text: 'Clean temp run files' }),
+      el('p', {
+        text: 'Running a Python script with edited settings writes a short-lived copy ' +
+              'beside the original. A crash can leave one behind — this sweeps them up.',
+      }),
+      el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'btn ghost sm', text: 'Sweep now',
+          onclick: async () => {
+            try {
+              const res = await apiPost('/api/cleanup');
+              toast(res.removed ? 'Removed ' + res.removed + ' temp file(s)'
+                                : 'Nothing to clean', 'ok');
+            } catch (err) { toast(err.message, 'err'); }
+          },
+        }),
+      ]),
+    ]));
+
+    cards.appendChild(el('div', { class: 'card' }, [
+      el('h3', { text: 'Housekeeping' }),
+      el('p', {
+        text: 'Find __pycache__ folders, stray .pyc files, zero-byte exports '
+            + 'and the largest files in the repo \u2014 then clear the '
+            + 'clutter, with nothing else touched.',
+      }),
+      el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Scan\u2026',
+                       onclick: housekeeping }),
+      ]),
+    ]));
+
+    const cat = BARRY.state.catalog || {};
+    cards.appendChild(el('div', { class: 'card' }, [
+      el('h3', { text: 'Environment' }),
+      el('p', {
+        html: 'Python: <code>' + escapeHtml(shortPath(cat.python || '?')) + '</code><br>' +
+              'MATLAB: <code>' + escapeHtml(cat.matlab ? shortPath(cat.matlab) : 'not found') + '</code><br>' +
+              'Repo: <code>' + escapeHtml(shortPath(cat.repo || '?')) + '</code>',
+      }),
+      el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'btn ghost sm', text: 'Open repo folder',
+          onclick: () => apiPost('/api/reveal', { path: cat.repo }).catch(() => {}),
+        }),
+      ]),
+    ]));
+
+    host.appendChild(cards);
+
+    /* ---- repo search ---- */
+    host.appendChild(el('div', { class: 'section-label',
+                                 text: 'Search the repo' }));
+    host.appendChild(grepBlock());
+
+    /* ---- scratch runner ---- */
+    host.appendChild(el('div', { class: 'section-label',
+                                 text: 'Scratch runner' }));
+    host.appendChild(scratchBlock());
+
+    /* ---- output gallery ---- */
+    host.appendChild(el('div', { class: 'section-label', text: 'Output' }));
+    const outHost = el('div', { id: 'outHost' }, [
+      el('div', { class: 'tree-empty', text: 'Loading…' }),
+    ]);
+    host.appendChild(outHost);
+    loadOutputs(outHost);
+
+    /* ---- loose scripts ---- */
+    host.appendChild(el('div', {
+      class: 'section-label',
+      text: 'Loose scripts — ' + loose.length + ' that belong to no project area',
+    }));
+    host.appendChild(rowList(loose, 'Nothing loose — every script sits in a project folder.'));
+
+    /* ---- notebooks ---- */
+    host.appendChild(el('div', {
+      class: 'section-label',
+      text: 'Notebooks — ' + notebooks.length + ' (indexed for reference)',
+    }));
+    host.appendChild(rowList(notebooks, 'No notebooks in the repo.'));
+
+    /* ---- archives ----
+       At the bottom, behind the one toggle every list uses
+       (ui.archivedTail, 2026-10-20): counted, kept, not in the way. */
+    const tail = BARRY.ui.archivedTail({
+      key: 'misc-scripts', items: archived, noun: ['script', 'scripts'],
+      render: (xs) => rowList(xs, ''),
+      onToggle: () => render(),
+    });
+    if (tail) host.appendChild(tail);
+  }
+
+
+  /* ======================================================================
+     Chicken Scratch (BETA) -- every source's word on each PTEN and KCNT1
+     mouse, disagreements left showing (web/chickenscratch.html, its own
+     window; backend/chickenscratch.py). Marks and notes made there feed
+     the next pass.
+     ====================================================================== */
+  function chickenCard() {
+    const card = el('div', { class: 'card vos-card' });
+    card.appendChild(el('h3', { html: '<span>Chicken Scratch</span> <span class="stat-chip warn">BETA</span>' }));
+    card.appendChild(el('p', { text: 'Everything the lab ever wrote about each PTEN and KCNT1 mouse '
+      + '(sheets, docs, PDFs, notebook photos, recording folders, SoftMouse, VOS) on one page per '
+      + 'mouse, with the places the sources disagree left showing. Mark what is right or wrong and '
+      + 'leave notes: they shape the next pass.' }));
+    card.appendChild(el('div', { class: 'card-actions' }, [
+      el('button', { class: 'btn sm', text: 'Open Chicken Scratch',
+                     onclick: () => window.open(location.origin + '/chickenscratch.html',
+                                                'barry-chickenscratch', 'width=1280,height=900') }),
+    ]));
+    return card;
+  }
+
+  /* ======================================================================
+     VOS log in -- the census, straight from VOS into the Lab Operations
+     Schedule (backend/vos.py). Sign in once through myUVM + Duo; Sync does
+     what used to be filter, Select All, Print, Save as PDF, parse, paste and
+     Lab Tools > Sync VOS Census. If anybody would be newly RETIRED it stops
+     and waits here for Apply, because a half-read colony looks exactly like
+     a colony that died.
+
+     The card repaints only itself, in place, while a run is going: Misc
+     itself is not redrawn every poll.
+     ====================================================================== */
+  const vos = { st: null, card: null, timer: null, url: '', hist: null, histOpen: false };
+
+  function vosCard() {
+    const card = el('div', { class: 'card vos-card' });
+    vos.card = card;
+    if (vos.st) vosPaint();
+    else card.appendChild(el('p', { class: 'hint', text: 'Asking VOS whether Jarvis is still signed in…' }));
+    const stale = !vos.st || !vos.st.checked || (Date.now() / 1000 - vos.st.checked > 600);
+    vosLoad(stale);
+    return card;
+  }
+
+  async function vosLoad(check) {
+    const was = vos.st && vos.st.run && vos.st.run.running;
+    try {
+      vos.st = await api('/api/vos/status' + (check ? '?check=1' : ''), { priority: 'background' });
+    } catch (e) {
+      vos.st = vos.st || { error: e.message };
+    }
+    // A run just ended: it may have added a sync to History.
+    if (was && !(vos.st.run && vos.st.run.running)) vos.hist = null;
+    vosPaint();
+    if (vos.histOpen && !vos.hist) vosHistLoad();
+    clearTimeout(vos.timer);
+    if (vos.st && vos.st.run && vos.st.run.running) {
+      vos.timer = setTimeout(() => {
+        if (vos.card && vos.card.isConnected) vosLoad(false);
+      }, 1500);
+    }
+  }
+
+  async function vosDo(route, body) {
+    try {
+      vos.st = await apiPost('/api/vos/' + route, body || {});
+    } catch (e) { toast(e.message, 'err', 6000); }
+    if (route === 'discard') vos.hist = null;
+    vosLoad(false);
+  }
+
+  async function vosHistLoad() {
+    try {
+      vos.hist = (await api('/api/vos/history', { priority: 'background' })).syncs || [];
+    } catch (e) {
+      vos.hist = { error: e.message };
+    }
+    vosPaint();
+  }
+
+  /* Every census the sheet has been given: the hand-pasted ones out of "VOS
+     Imports" and every Jarvis sync since, each with what changed since the
+     one before (who arrived in the census, who left it, who changed cage).
+     A Jarvis sync also says what it did to the sheet and what it flagged. */
+  function vosHistory() {
+    const d = el('details', { class: 'vos-details vos-history', open: vos.histOpen ? 'open' : null });
+    const h = vos.hist;
+    d.appendChild(el('summary', { text: 'History' + (Array.isArray(h) ? ' (' + h.length + ' censuses)' : '') }));
+    d.addEventListener('toggle', () => {
+      vos.histOpen = d.open;
+      if (d.open && !vos.hist) vosHistLoad();
+    });
+    if (!h) {
+      if (vos.histOpen) d.appendChild(el('p', { class: 'hint', text: 'Reading the record…' }));
+      return d;
+    }
+    if (h.error) {
+      d.appendChild(el('p', { class: 'hint', text: 'Could not read the record: ' + h.error }));
+      return d;
+    }
+    const day = (r) => new Date(r.date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      + (r.time ? ' ' + r.time : '');
+    d.appendChild(el('ul', { class: 'vos-hist' }, h.map((r) => {
+      const f = r.diff;
+      const bits = [r.mice + ' mice'];
+      if (f) bits.push(f.arrived.length + ' arrived', f.left.length + ' left', f.moved.length + ' changed cage');
+      if ((r.issues || []).length) bits.push(r.issues.length + ' issue' + (r.issues.length === 1 ? '' : 's'));
+      const who = r.source === 'Jarvis'
+        ? 'Jarvis' + (r.by ? ', ' + r.by : '') + (r.machine ? ' on ' + r.machine : '')
+        : 'pasted into VOS Imports';
+      const item = el('details', { class: 'vos-details' }, [
+        el('summary', {}, [
+          el('strong', { text: day(r) }),
+          el('span', { text: ' · ' + who + (r.outcome === 'discarded' ? ' · discarded' : '') + ' · ' + bits.join(', ') }),
+        ]),
+      ]);
+      // ids: a run of bare mouse IDs, which wraps instead of one per line.
+      const list = (label, rows, ids) => {
+        if (!rows.length) return;
+        item.appendChild(el('details', { class: 'vos-details' }, [
+          el('summary', { text: label + ' (' + rows.length + ')' }),
+          el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+        ]));
+      };
+      if (f) {
+        list('In the census, not in the one before', f.arrived, true);
+        list('In the one before, not in this', f.left, true);
+        list('Changed cage', f.moved.map((m) => m.id + ': ' + (m.from || '(blank)') + ' → ' + (m.to || '(blank)')));
+      } else {
+        item.appendChild(el('p', { class: 'hint', text: 'The first census on record.' }));
+      }
+      if (r.result) {
+        item.appendChild(vosResult(r, r.outcome === 'discarded'
+          ? 'What it would have done to ' + (r.sheet || 'the sheet') + ':'
+          : 'What it did to ' + (r.sheet || 'the sheet') + ':'));
+      }
+      return el('li', {}, [item]);
+    })));
+    return d;
+  }
+
+  function vosWhen(t) {
+    if (!t) return '';
+    const d = new Date(t * 1000);
+    const today = new Date().toDateString() === d.toDateString();
+    return today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                 : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function vosResult(s, title) {
+    const r = s.result || {};
+    const retire = r.newlyRetired || [];
+    const changes = r.changes || [];
+    const box = el('div', { class: 'vos-result' }, [
+      el('div', { class: 'vos-line', text: title }),
+      el('div', { class: 'chip-row' }, [
+        el('span', { class: 'stat-chip', text: s.cages + ' cages, ' + s.rows + ' card rows' }),
+        el('span', { class: 'stat-chip', text: (r.active || 0) + ' mice matched' }),
+        el('span', { class: 'stat-chip' + (changes.length ? ' warn' : ''),
+                     text: changes.length + ' change' + (changes.length === 1 ? '' : 's') }),
+        el('span', { class: 'stat-chip' + ((r.added || []).length ? ' warn' : ''),
+                     text: (r.added || []).length + ' added' }),
+        el('span', { class: 'stat-chip' + (retire.length ? ' warn' : ' good'),
+                     text: retire.length + ' newly retired' }),
+      ]),
+    ]);
+    const list = (label, rows, open, ids) => {
+      if (!rows.length) return;
+      box.appendChild(el('details', { class: 'vos-details', open: open ? 'open' : null }, [
+        el('summary', { text: label }),
+        el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+      ]));
+    };
+    // Open while it is the reason the run is waiting: it is what to check.
+    list('Newly retired (' + retire.length + ')',
+         retire.map((m) => m.id + (m.cage ? ' (was ' + m.cage + ')' : '')), !s.applied);
+    list('Changes (' + changes.length + ')',
+         changes.map((c) => c.id + ' ' + c.field + ': ' + (c.from || '(blank)') + ' → ' + (c.to || '(blank)')));
+    list('Added (' + (r.added || []).length + ')', r.added || [], false, true);
+    list('Left as they are (' + (r.held || []).length + ')', r.held || [], false, true);
+    /* Problems found along the way, in the words the lab uses: "Cage card
+       naming issue: ...", "Spreadsheet issue: ...". Open by default -- these
+       are the things somebody has to go and fix, in VOS or in the sheet. */
+    const issues = s.issues || [];
+    if (issues.length) {
+      box.appendChild(el('details', { class: 'vos-details vos-issues', open: 'open' }, [
+        el('summary', { text: 'Issues to fix (' + issues.length + ')' }),
+        el('ul', {}, issues.map((i) => el('li', {}, [
+          el('strong', { text: i.category + ': ' }),
+          el('span', { text: i.text }),
+        ]))),
+      ]));
+    }
+    list('Skipped (' + (s.skipped || []).length + ' cages)',
+         (s.skipped || []).map((k) => k.cage + ' (' + (k.strain || 'no strain') + ', '
+           + k.mice + ' mouse' + (k.mice === 1 ? '' : 'e') + '): ' + k.why));
+    if (s.pdf) {
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Show the PDF',
+                       onclick: () => apiPost('/api/reveal', { path: s.pdf }).catch(() => {}) }),
+      ]));
+    }
+    return box;
+  }
+
+  function vosPaint() {
+    const card = vos.card;
+    if (!card) return;
+    const st = vos.st || {};
+    const run = st.run || {};
+    card.innerHTML = '';
+    card.appendChild(el('h3', { text: 'VOS log in' }));
+
+    let words;
+    if (st.error) words = st.error;
+    else if (!st.has_session) words = 'Not signed in yet. Sign in opens Chrome on the myUVM page; approve Duo there once.';
+    else if (st.signed_in === false) words = 'VOS signed Jarvis out' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sign in again to sync.';
+    else words = 'Signed in to VOS' + (st.signed_in_at ? ' since ' + vosWhen(st.signed_in_at) : '') + '. Jarvis keeps the session alive while it runs.';
+    card.appendChild(el('p', { text: words }));
+
+    if (!st.sheet_connected) {
+      const input = el('input', {
+        type: 'text', value: vos.url || '',
+        placeholder: 'https://script.google.com/macros/s/…/exec',
+        oninput: (e) => { vos.url = e.target.value; },
+      });
+      card.appendChild(el('div', { class: 'field' }, [
+        el('label', { text: 'Sheet web app URL' }),
+        input,
+        el('span', { class: 'hint',
+          text: 'In the Lab Operations Schedule: Extensions > Apps Script, paste the new VOS_Import.gs, '
+              + 'then Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone) and copy the /exec link here.' }),
+      ]));
+    }
+
+    const actions = el('div', { class: 'card-actions' });
+    if (!st.sheet_connected) {
+      actions.appendChild(el('button', { class: 'btn sm', text: 'Connect sheet',
+        onclick: () => vosDo('config', { webapp_url: vos.url }) }));
+    }
+    actions.appendChild(el('button', {
+      class: 'btn ' + (st.has_session && st.signed_in !== false ? 'ghost ' : '') + 'sm',
+      text: 'Sign in', disabled: run.running ? 'disabled' : null,
+      onclick: () => vosDo('login'),
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn sm', text: 'Sync VOS',
+      disabled: (run.running || !st.sheet_connected || !st.has_session) ? 'disabled' : null,
+      title: st.sheet_connected ? 'Read the active ' + (st.protocol || '') + ' cages and update the sheet'
+                                : 'Connect the sheet first',
+      onclick: () => vosDo('sync'),
+    }));
+    card.appendChild(actions);
+
+    if (run.running) {
+      card.appendChild(loader(run.what === 'login' ? 'Signing in' : 'Syncing', run.step || 'starting'));
+    }
+
+    if (st.hold) {
+      const box = vosResult(st.hold, 'Waiting for you: this census would mark mice RETIRED. '
+        + 'Check the list, then Apply to write it, or Discard.');
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn sm', text: 'Apply',
+                       disabled: run.running ? 'disabled' : null,
+                       onclick: () => vosDo('apply') }),
+        el('button', { class: 'btn ghost sm', text: 'Discard',
+                       onclick: () => vosDo('discard') }),
+      ]));
+      card.appendChild(box);
+    } else if (st.last_sync && !run.running) {
+      card.appendChild(vosResult(st.last_sync, 'Last sync ' + vosWhen(st.last_sync.at)
+        + ' to ' + (st.last_sync.sheet || 'the sheet') + '.'));
+    }
+
+    const err = st.last_error;
+    if (err && !run.running && (!st.last_sync || err.at > st.last_sync.at)) {
+      card.appendChild(el('div', { class: 'stat-chip warn vos-err',
+        text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
+    }
+    card.appendChild(vosHistory());
+  }
+
+  /* ======================================================================
+     SoftMouse log in -- genotypes and Role, straight from SoftMouse.NET into
+     the same sheet (backend/softmouse.py), through the same web app as VOS.
+     Sync does what used to be Mouse List, export, wait, download, paste and
+     Lab Tools > Sync SoftMouse to KCNT1. It stops and waits here for Apply
+     only when a genotype the sheet already had would be replaced or erased:
+     a fill is news, an overwrite might be a slip in SoftMouse.
+     ====================================================================== */
+  const sm = { st: null, card: null, timer: null, hist: null, histOpen: false, pin: '' };
+
+  function smCard() {
+    const card = el('div', { class: 'card vos-card' });
+    sm.card = card;
+    if (sm.st) smPaint();
+    else card.appendChild(el('p', { class: 'hint', text: 'Asking SoftMouse whether Jarvis is still signed in…' }));
+    const stale = !sm.st || !sm.st.checked || (Date.now() / 1000 - sm.st.checked > 600);
+    smLoad(stale);
+    return card;
+  }
+
+  async function smLoad(check) {
+    const was = sm.st && sm.st.run && sm.st.run.running;
+    try {
+      sm.st = await api('/api/softmouse/status' + (check ? '?check=1' : ''), { priority: 'background' });
+    } catch (e) {
+      sm.st = sm.st || { error: e.message };
+    }
+    if (was && !(sm.st.run && sm.st.run.running)) sm.hist = null;
+    smPaint();
+    if (sm.histOpen && !sm.hist) smHistLoad();
+    clearTimeout(sm.timer);
+    if (sm.st && sm.st.run && sm.st.run.running) {
+      sm.timer = setTimeout(() => {
+        if (sm.card && sm.card.isConnected) smLoad(false);
+      }, 1500);
+    }
+  }
+
+  async function smDo(route, body) {
+    try {
+      sm.st = await apiPost('/api/softmouse/' + route, body || {});
+      if (route === 'unlock') sm.pin = '';
+    } catch (e) { toast(e.message, 'err', 6000); }
+    if (route === 'discard') sm.hist = null;
+    smLoad(false);
+  }
+
+  async function smHistLoad() {
+    try {
+      sm.hist = (await api('/api/softmouse/history', { priority: 'background' })).syncs || [];
+    } catch (e) {
+      sm.hist = { error: e.message };
+    }
+    smPaint();
+  }
+
+  // ids: a run of bare mouse IDs, which wraps instead of one per line.
+  function smList(box, label, rows, open, ids) {
+    if (!rows.length) return;
+    box.appendChild(el('details', { class: 'vos-details', open: open ? 'open' : null }, [
+      el('summary', { text: label + ' (' + rows.length + ')' }),
+      el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+    ]));
+  }
+
+  function smResult(s, title) {
+    const r = s.result || {};
+    const changes = r.changes || [];
+    const over = s.overwrites || [];
+    const box = el('div', { class: 'vos-result' }, [
+      el('div', { class: 'vos-line', text: title }),
+      el('div', { class: 'chip-row' }, [
+        el('span', { class: 'stat-chip', text: s.mice + ' live mice in SoftMouse' }),
+        el('span', { class: 'stat-chip', text: (r.matched || 0) + ' matched in the sheet' }),
+        el('span', { class: 'stat-chip' + (changes.length ? ' warn' : ''),
+                     text: changes.length + ' change' + (changes.length === 1 ? '' : 's') }),
+        el('span', { class: 'stat-chip' + (over.length ? ' warn' : ' good'),
+                     text: over.length + ' known genotype' + (over.length === 1 ? '' : 's') + ' replaced' }),
+      ]),
+    ]);
+    const word = (c) => c.id + ' ' + c.field + ': ' + (c.from || '(blank)') + ' → ' + (c.to || '(blank)');
+    // Open while it is the reason the run is waiting: it is what to check.
+    smList(box, 'Genotypes the sheet had, replaced', over.map(word), !s.applied);
+    smList(box, 'All changes', changes.map(word));
+    smList(box, 'Left as Mating in the sheet', r.matingKept || [], false, true);
+    const issues = s.issues || [];
+    if (issues.length) {
+      box.appendChild(el('details', { class: 'vos-details vos-issues', open: 'open' }, [
+        el('summary', { text: 'Issues to fix (' + issues.length + ')' }),
+        el('ul', {}, issues.map((i) => el('li', {}, [
+          el('strong', { text: i.category + ': ' }),
+          el('span', { text: i.text }),
+        ]))),
+      ]));
+    }
+    if (s.csv) {
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Show the list',
+                       onclick: () => apiPost('/api/reveal', { path: s.csv }).catch(() => {}) }),
+      ]));
+    }
+    return box;
+  }
+
+  function smHistory() {
+    const d = el('details', { class: 'vos-details vos-history', open: sm.histOpen ? 'open' : null });
+    const h = sm.hist;
+    d.appendChild(el('summary', { text: 'History' + (Array.isArray(h) ? ' (' + h.length + ' lists)' : '') }));
+    d.addEventListener('toggle', () => {
+      sm.histOpen = d.open;
+      if (d.open && !sm.hist) smHistLoad();
+    });
+    if (!h) {
+      if (sm.histOpen) d.appendChild(el('p', { class: 'hint', text: 'Reading the record…' }));
+      return d;
+    }
+    if (h.error) {
+      d.appendChild(el('p', { class: 'hint', text: 'Could not read the record: ' + h.error }));
+      return d;
+    }
+    const day = (r) => new Date(r.date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      + (r.time ? ' ' + r.time : '');
+    d.appendChild(el('ul', { class: 'vos-hist' }, h.map((r) => {
+      const f = r.diff;
+      const bits = [r.mice + ' live mice'];
+      if (f) bits.push(f.arrived.length + ' new', f.left.length + ' gone', f.changed.length + ' changed');
+      if ((r.issues || []).length) bits.push(r.issues.length + ' issue' + (r.issues.length === 1 ? '' : 's'));
+      const who = r.source === 'Jarvis'
+        ? 'Jarvis' + (r.by ? ', ' + r.by : '') + (r.machine ? ' on ' + r.machine : '')
+        : 'pasted into SoftMouse Imports';
+      const item = el('details', { class: 'vos-details' }, [
+        el('summary', {}, [
+          el('strong', { text: day(r) }),
+          el('span', { text: ' · ' + who + (r.outcome === 'discarded' ? ' · discarded' : '') + ' · ' + bits.join(', ') }),
+        ]),
+      ]);
+      if (f) {
+        smList(item, 'New to the list', f.arrived, false, true);
+        smList(item, 'Gone from it (ended or moved away)', f.left, false, true);
+        smList(item, 'State or genotype changed', f.changed.map((c) => c.id + ': ' + c.from + ' → ' + c.to));
+      } else {
+        item.appendChild(el('p', { class: 'hint', text: 'The first list on record.' }));
+      }
+      if (r.result) {
+        item.appendChild(smResult(r, r.outcome === 'discarded'
+          ? 'What it would have done to ' + (r.sheet || 'the sheet') + ':'
+          : 'What it did to ' + (r.sheet || 'the sheet') + ':'));
+      }
+      return el('li', {}, [item]);
+    })));
+    return d;
+  }
+
+  function smPaint() {
+    const card = sm.card;
+    if (!card) return;
+    const st = sm.st || {};
+    const run = st.run || {};
+    card.innerHTML = '';
+    card.appendChild(el('h3', { text: 'SoftMouse log in' }));
+
+    // auto.here: the lab's sign-in is kept on this machine, so a lapsed
+    // session signs itself back in when Sync is pressed.
+    const auto = (st.auto || {}).here;
+    let words;
+    if (st.error) words = st.error;
+    else if (auto && st.signed_in === false) words = 'SoftMouse let the session go' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sync signs back in by itself.';
+    else if (auto && !st.has_session) words = 'Not signed in yet. Sync signs in by itself with the lab’s saved sign-in.';
+    else if (!st.has_session) words = 'Not signed in yet. Sign in opens Chrome on SoftMouse.NET; type the lab login there once.';
+    else if (st.signed_in === false) words = 'SoftMouse signed Jarvis out' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sign in again to sync.';
+    else words = 'Signed in to SoftMouse' + (st.signed_in_at ? ' since ' + vosWhen(st.signed_in_at) : '') + '. Jarvis keeps the session alive while it runs.';
+    card.appendChild(el('p', { text: words }));
+    if (!st.sheet_connected) {
+      card.appendChild(el('p', { class: 'hint', text: 'The sheet is connected under VOS log in; the same web app serves both.' }));
+    }
+
+    if (!auto && !st.error) {
+      const unlock = () => { if (sm.pin.trim()) smDo('unlock', { pin: sm.pin.trim() }); };
+      card.appendChild(el('div', { class: 'field' }, [
+        el('label', { text: 'Lab sign-in PIN' }),
+        el('input', {
+          type: 'password', inputmode: 'numeric', autocomplete: 'off', value: sm.pin,
+          placeholder: 'Hint: ' + ((st.auto || {}).hint || ''),
+          oninput: (e) => { sm.pin = e.target.value; },
+          onkeydown: (e) => { if (e.key === 'Enter') unlock(); },
+        }),
+        el('span', { class: 'hint',
+          text: 'Once per machine: the PIN unlocks the lab’s SoftMouse sign-in from the cloud sync, '
+              + 'and from then on Jarvis signs itself in. Hint: ' + ((st.auto || {}).hint || '') + '.' }),
+      ]));
+      card.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Unlock auto sign-in',
+                       disabled: run.running ? 'disabled' : null, onclick: unlock }),
+      ]));
+    }
+
+    const actions = el('div', { class: 'card-actions' });
+    actions.appendChild(el('button', {
+      class: 'btn ' + (auto || (st.has_session && st.signed_in !== false) ? 'ghost ' : '') + 'sm',
+      text: 'Sign in', disabled: run.running ? 'disabled' : null,
+      onclick: () => smDo('login'),
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn sm', text: 'Sync SoftMouse',
+      disabled: (run.running || !st.sheet_connected || !(st.has_session || auto)) ? 'disabled' : null,
+      title: st.sheet_connected ? 'Read the live mice and update Role, YH, SST and PV'
+                                : 'Connect the sheet under VOS log in first',
+      onclick: () => smDo('sync'),
+    }));
+    if (auto) {
+      actions.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Forget sign-in here',
+        title: 'Remove the lab’s saved SoftMouse sign-in from this machine (the PIN brings it back)',
+        disabled: run.running ? 'disabled' : null,
+        onclick: () => smDo('forget'),
+      }));
+    }
+    card.appendChild(actions);
+
+    if (run.running) {
+      card.appendChild(loader(run.what === 'login' ? 'Signing in' : 'Syncing', run.step || 'starting'));
+    }
+
+    if (st.hold) {
+      const box = smResult(st.hold, 'Waiting for you: SoftMouse would replace genotypes the sheet already had. '
+        + 'Check the list, then Apply to write it, or Discard.');
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn sm', text: 'Apply',
+                       disabled: run.running ? 'disabled' : null,
+                       onclick: () => smDo('apply') }),
+        el('button', { class: 'btn ghost sm', text: 'Discard',
+                       onclick: () => smDo('discard') }),
+      ]));
+      card.appendChild(box);
+    } else if (st.last_sync && !run.running) {
+      card.appendChild(smResult(st.last_sync, 'Last sync ' + vosWhen(st.last_sync.at)
+        + ' to ' + (st.last_sync.sheet || 'the sheet') + '.'));
+    }
+
+    const err = st.last_error;
+    if (err && !run.running && (!st.last_sync || err.at > st.last_sync.at)) {
+      card.appendChild(el('div', { class: 'stat-chip warn vos-err',
+        text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
+    }
+    card.appendChild(smHistory());
+  }
+
+  /* ======================================================================
+     Feature 1 -- Repo search
+     420 scripts, a lot of them near-duplicates of each other. "Where else do
+     we compute the CSD?" is a question with a real answer, and grepping from
+     a terminal loses the link back into the Explorer.
+     ====================================================================== */
+  let grepState = { pattern: '', regex: false, case: false, hits: null,
+                    busy: false, info: '' };
+
+  function grepBlock() {
+    const box = el('div');
+    const input = el('input', {
+      type: 'search', value: grepState.pattern,
+      placeholder: 'text or /regex/ to find in every .py, .m, .ipynb\u2026',
+      onkeydown: (e) => { if (e.key === 'Enter') runGrep(input.value); },
+    });
+
+    box.appendChild(el('div', { class: 'grep-form' }, [
+      el('div', { class: 'search-wrap inline' }, [
+        BARRY.ui.magnifier(),
+        input,
+      ]),
+      el('label', { class: 'toggle sm' + (grepState.regex ? ' on' : '') }, [
+        el('input', { type: 'checkbox', checked: grepState.regex ? 'checked' : null,
+                      onchange: (e) => { grepState.regex = e.target.checked; } }),
+        el('span', { text: 'regex' }),
+      ]),
+      el('label', { class: 'toggle sm' + (grepState.case ? ' on' : '') }, [
+        el('input', { type: 'checkbox', checked: grepState.case ? 'checked' : null,
+                      onchange: (e) => { grepState.case = e.target.checked; } }),
+        el('span', { text: 'match case' }),
+      ]),
+      el('button', { class: 'btn sm', text: 'Search',
+                     disabled: grepState.busy ? 'disabled' : null,
+                     onclick: () => runGrep(input.value) }),
+      grepState.info
+        ? el('span', { class: 'hint', text: grepState.info })
+        : null,
+    ]));
+
+    if (grepState.busy) {
+      box.appendChild(loader('Searching', 'reading every script in the repo'));
+      return box;
+    }
+    if (!grepState.hits) return box;
+    if (!grepState.hits.length) {
+      box.appendChild(el('div', { class: 'tree-empty', text: 'No matches.' }));
+      return box;
+    }
+
+    const list = el('div', { class: 'grep-hits' });
+    for (const h of grepState.hits) {
+      list.appendChild(el('div', {
+        class: 'grep-hit', title: h.rel + ':' + h.line,
+        onclick: () => {
+          setView('explorer');
+          BARRY.views.explorer.select(h.rel);
+        },
+      }, [
+        el('span', { class: 'f', text: h.rel }),
+        el('span', { class: 'ln', text: String(h.line) }),
+        el('span', { class: 'tx', text: h.text.trim() }),
+      ]));
+    }
+    box.appendChild(list);
+    return box;
+  }
+
+  async function runGrep(pattern) {
+    grepState.pattern = (pattern || '').trim();
+    if (!grepState.pattern) { toast('Type something to search for.', 'err'); return; }
+    grepState.busy = true;
+    grepState.hits = null;
+    grepState.info = '';
+    render();
+    try {
+      const res = await apiPost('/api/repo/grep', {
+        pattern: grepState.pattern, regex: grepState.regex,
+        case: grepState.case, limit: 400,
+      });
+      grepState.hits = res.hits || [];
+      grepState.info = res.hits.length + ' hit(s) in ' + res.files
+                     + ' file(s), ' + res.seconds + 's'
+                     + (res.truncated ? ' (stopped early)' : '');
+    } catch (e) {
+      grepState.hits = [];
+      grepState.info = e.message;
+    }
+    grepState.busy = false;
+    render();
+  }
+
+  /* ======================================================================
+     Feature 2 -- Scratch runner
+     The "just check one thing" script. Runs as a normal job so its output
+     lands in the log dock and its run is recorded like any other, with the
+     repo and Jarvis's own readers already importable.
+     ====================================================================== */
+  const SCRATCH_SEED = [
+    '# nlx and csc are Jarvis\'s own readers -- no MEX, no MATLAB needed.',
+    'from backend import nlx',
+    '',
+    'folder = r"D:\\PTEN\\PTEN"',
+    'print("files:", len(glob.glob(os.path.join(folder, "**", "*.ncs"),',
+    '                             recursive=True)))',
+  ].join('\n');
+
+  let scratchState = { code: null, snippets: [], loaded: false };
+
+  function scratchBlock() {
+    const box = el('div', { class: 'scratch-wrap' });
+    if (scratchState.code === null) {
+      scratchState.code = BARRY.prefs.get('scratch_draft', SCRATCH_SEED);
+    }
+    if (!scratchState.loaded) loadSnippets();
+
+    const area = el('textarea', {
+      class: 'scratch-code', spellcheck: 'false',
+      value: scratchState.code,
+      oninput: (e) => {
+        scratchState.code = e.target.value;
+        // The draft survives a reload; nothing is more annoying than losing
+        // the throwaway script you were halfway through.
+        BARRY.prefs.set('scratch_draft', e.target.value);
+      },
+      onkeydown: (e) => {
+        // A textarea would otherwise move focus out of the editor.
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const t = e.target;
+          const at = t.selectionStart;
+          t.value = t.value.slice(0, at) + '    ' + t.value.slice(t.selectionEnd);
+          t.selectionStart = t.selectionEnd = at + 4;
+          scratchState.code = t.value;
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          runScratch();
+        }
+      },
+    });
+    box.appendChild(area);
+
+    box.appendChild(el('div', { class: 'scratch-row' }, [
+      el('button', { class: 'btn sm', text: 'Run  (ctrl+enter)',
+                     onclick: runScratch }),
+      el('button', { class: 'btn ghost sm', text: 'Save as\u2026',
+                     onclick: saveSnippet }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Reset',
+        onclick: () => {
+          scratchState.code = SCRATCH_SEED;
+          BARRY.prefs.set('scratch_draft', SCRATCH_SEED);
+          render();
+        },
+      }),
+      el('span', { class: 'hint',
+        text: 'The repo and Jarvis\'s backend are on sys.path; os, sys, glob, '
+            + 'json, math and numpy as np are already imported.' }),
+    ]));
+
+    if (scratchState.snippets.length) {
+      box.appendChild(el('div', { class: 'coll-row' },
+        scratchState.snippets.map((sn) => el('span', {
+          class: 'coll-chip', title: sn.at,
+          onclick: () => {
+            scratchState.code = sn.code;
+            BARRY.prefs.set('scratch_draft', sn.code);
+            render();
+          },
+        }, [
+          el('span', { text: sn.name }),
+          el('span', {
+            class: 'x', text: '\u00d7', title: 'Forget this snippet',
+            onclick: async (e) => {
+              e.stopPropagation();
+              try {
+                const res = await apiPost('/api/scratch/saved', { delete: sn.id });
+                scratchState.snippets = res.snippets || [];
+                render();
+              } catch (err) { toast(err.message, 'err'); }
+            },
+          }),
+        ]))));
+    }
+    return box;
+  }
+
+  async function loadSnippets() {
+    scratchState.loaded = true;
+    try {
+      const res = await api('/api/scratch/saved');
+      scratchState.snippets = res.snippets || [];
+      if (scratchState.snippets.length) render();
+    } catch (e) { /* nothing saved yet is the normal case */ }
+  }
+
+  async function saveSnippet() {
+    const name = await askPath('Name this snippet', 'e.g. count ncs files');
+    if (!name) return;
+    try {
+      const res = await apiPost('/api/scratch/saved',
+                                { name, code: scratchState.code });
+      scratchState.snippets = res.snippets || [];
+      render();
+      toast('Saved "' + name + '"', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  async function runScratch() {
+    if (!String(scratchState.code || '').trim()) {
+      toast('Nothing to run.', 'err');
+      return;
+    }
+    try {
+      const res = await apiPost('/api/scratch/run', { code: scratchState.code });
+      LOG.attach(res.job.id, 'Scratch');
+      toast('Running \u2014 output is in the dock below.', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  /* ======================================================================
+     Feature 3 -- Housekeeping
+     A repo with a hundred __pycache__ folders in it makes for a noisy git
+     status and a slow scan. Deletion is deliberately narrow: only names that
+     are unambiguously build clutter, only inside the repo, and only after
+     the list has been shown.
+     ====================================================================== */
+  async function housekeeping() {
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [el('h3', { text: 'Housekeeping' })]),
+      el('div', { class: 'mb' }, [loader('Scanning the repo', 'this takes a moment')]),
+    ]));
+    let d;
+    try {
+      d = await api('/api/housekeeping?big=25');
+    } catch (e) {
+      closeModal();
+      toast(e.message, 'err');
+      return;
+    }
+
+    const chosen = new Set((d.junk || []).map((j) => j.path));
+    const emptyChosen = new Set();
+
+    const listBox = (rows, picked, label) => {
+      if (!rows.length) {
+        return el('div', { class: 'hint', text: 'Nothing ' + label + '.' });
+      }
+      return el('div', { class: 'hk-list' }, rows.map((r) => el('div', {
+        class: 'hk-row',
+      }, [
+        el('input', {
+          type: 'checkbox', checked: picked.has(r.path) ? 'checked' : null,
+          onchange: (e) => {
+            if (e.target.checked) picked.add(r.path); else picked.delete(r.path);
+          },
+        }),
+        el('span', { class: 'p', text: r.rel, title: r.path }),
+        el('span', { class: 'b', text: fmtBytes(r.bytes) }),
+      ])));
+    };
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Housekeeping' }),
+        el('span', { class: 'sub',
+          text: fmtBytes(d.free_bytes) + ' free on this drive' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('div', { class: 'hk-stats' }, [
+          el('span', { class: 'stat-chip' + (d.junk_bytes ? ' warn' : ' good'),
+            text: d.junk_count + ' clutter item(s), ' + fmtBytes(d.junk_bytes) }),
+          el('span', { class: 'stat-chip',
+            text: 'Output ' + fmtBytes(d.outputs_bytes) }),
+          el('span', { class: 'stat-chip',
+            text: 'GUI_logs ' + fmtBytes(d.logs_bytes) }),
+          el('span', { class: 'stat-chip',
+            text: d.big.length + ' file(s) over 25 MB' }),
+        ]),
+
+        el('div', { class: 'section-label',
+          text: 'Build clutter \u2014 safe to remove, regenerated on demand' }),
+        listBox(d.junk || [], chosen, 'to clean'),
+
+        (d.empty || []).length ? el('div', { class: 'section-label',
+          text: 'Zero-byte files in Output \u2014 exports that died mid-write' }) : null,
+        (d.empty || []).length ? listBox(d.empty, emptyChosen, 'empty') : null,
+
+        el('div', { class: 'section-label', text: 'Largest files' }),
+        el('div', { class: 'hk-list' }, (d.big || []).map((r) => el('div', {
+          class: 'hk-row',
+        }, [
+          el('span', {}),
+          el('span', { class: 'p', text: r.rel, title: r.path }),
+          el('span', { class: 'b', text: fmtBytes(r.bytes) }),
+        ]))),
+      ]),
+      el('div', { class: 'mf' }, [
+        el('span', { class: 'hint',
+          text: 'Only __pycache__, .pyc/.pyo, .DS_Store, Thumbs.db and '
+              + 'zero-byte Output files can be removed here.' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Close', onclick: closeModal }),
+        el('button', {
+          class: 'btn danger', text: 'Clean selected',
+          onclick: async () => {
+            const paths = Array.from(chosen).concat(Array.from(emptyChosen));
+            if (!paths.length) { toast('Nothing ticked.', 'err'); return; }
+            const ok = await BARRY.confirm(
+              'Remove ' + paths.length + ' item(s)?',
+              'They are deleted from disk. Python regenerates __pycache__ on '
+              + 'its own, so this only costs a slightly slower first import.',
+              'Clean them', true);
+            if (!ok) return;
+            try {
+              const res = await apiPost('/api/housekeeping/clean', { paths });
+              toast('Removed ' + res.removed.length + ' item(s), freed '
+                    + fmtBytes(res.freed), 'ok', 6000);
+              for (const f of (res.failed || [])) toast(f.error, 'err', 6000);
+              closeModal();
+            } catch (e) { toast(e.message, 'err'); }
+          },
+        }),
+      ]),
+    ]));
+  }
+
+  async function loadOutputs(host) {
+    let data;
+    try { data = await api('/api/outputs'); }
+    catch (e) {
+      host.innerHTML = '';
+      host.appendChild(el('div', { class: 'stat-chip warn', text: e.message }));
+      return;
+    }
+
+    host.innerHTML = '';
+    const bar = el('div', { class: 'chip-row', style: 'margin-bottom:10px' }, [
+      el('span', { class: 'stat-chip', text: data.files.length + ' file(s)' }),
+      el('code', { style: 'font-size:10.5px;color:var(--text-3)', text: data.dir }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Open folder',
+        onclick: () => apiPost('/api/reveal', { path: data.dir }).catch(() => {}),
+      }),
+      data.github ? el('button', {
+        class: 'btn ghost sm', text: 'View on GitHub',
+        title: data.github,
+        onclick: () => window.open(data.github, '_blank'),
+      }) : null,
+      el('button', { class: 'btn ghost sm', text: 'Refresh',
+                     onclick: () => loadOutputs(host) }),
+    ]);
+    host.appendChild(bar);
+
+    if (!data.files.length) {
+      host.appendChild(el('div', { class: 'tree-empty',
+        text: 'Nothing exported yet. Figures saved from the figure builder land here.' }));
+      return;
+    }
+
+    const grid = el('div', { class: 'out-grid' });
+    for (const f of data.files) {
+      const isImg = ['.png', '.jpg', '.jpeg', '.svg', '.gif'].includes(f.ext);
+      const url = '/api/outputs/file?rel=' + encodeURIComponent(f.rel);
+      grid.appendChild(el('div', { class: 'out-card' }, [
+        el('div', { class: 'thumb' }, [
+          isImg ? el('img', { src: url + '&thumb=1', alt: f.name, loading: 'lazy' })
+                : el('span', { class: 'noimg',
+                    text: (f.ext || '?').replace('.', '').toUpperCase() }),
+        ]),
+        el('div', { class: 'meta' }, [
+          el('div', { class: 'nm', text: f.name }),
+          el('div', { class: 'sub', text: fmtBytes(f.bytes) + '  ·  '
+            + new Date(f.mtime * 1000).toLocaleString() }),
+        ]),
+        el('div', { class: 'acts' }, [
+          el('button', { class: 'mini', text: 'Open',
+                         onclick: () => window.open(url, '_blank') }),
+          el('button', { class: 'mini', text: 'Reveal',
+                         onclick: () => apiPost('/api/reveal', { path: f.path }).catch(() => {}) }),
+          data.github ? el('button', {
+            class: 'mini', text: 'GitHub',
+            title: data.github + '/' + f.rel,
+            onclick: () => window.open(data.github + '/' + f.rel, '_blank'),
+          }) : null,
+        ]),
+      ]));
+    }
+    host.appendChild(grid);
+  }
+
+  /* Whole, never cut short (the house rule): the row wraps instead. */
+  function shortPath(p) {
+    return p;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  return {
+    init: () => {},
+    onShow: render,
+    /* Entry points for the command palette. */
+    focusGrep: () => {
+      render();
+      const box = $('#miscBody .grep-form input');
+      if (box) { box.focus(); box.scrollIntoView({ block: 'center' }); }
+    },
+    focusScratch: () => {
+      render();
+      const box = $('#miscBody .scratch-code');
+      if (box) { box.focus(); box.scrollIntoView({ block: 'center' }); }
+    },
+    housekeeping,
+  };
+})();

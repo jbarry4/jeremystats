@@ -1,0 +1,67 @@
+{
+ "id": "20261109-102332-eca9",
+ "shard": "barrylab-d8e8",
+ "machine": "Strawbarry",
+ "who": "Rain Younger",
+ "at": "2026-11-09T10:23:32-05:00",
+ "build": "2026.11.06.4",
+ "ask": "When selecting Panning from Toolkit, \"Reading Panning's sets\" shows up for a long time. Loading in the sets for Panning seems to take a really long time. This should be much faster to load",
+ "context": {
+  "view": "toolkit",
+  "error": null,
+  "recent": [
+   {
+    "at": "2026-11-07T18:06:57+00:00",
+    "where": "dspca/fit",
+    "message": "Between 2 and 5 classes, not 9."
+   },
+   {
+    "at": "2026-11-07T18:06:57+00:00",
+    "where": "dspca/fit",
+    "message": "CSC6-22 crosses more than one of this probe's columns, and a CSD across columns subtracts contacts that are not neighbours. Choose a box inside one of: W1 back centre (CSC1-32); W3 back left (CSC2-29); W4 back right (CSC3-30)."
+   },
+   {
+    "at": "2026-11-07T18:05:39+00:00",
+    "where": "dspca/fit",
+    "message": "Between 2 and 5 classes, not 9."
+   },
+   {
+    "at": "2026-11-07T18:05:39+00:00",
+    "where": "dspca/fit",
+    "message": "CSC6-22 crosses more than one of this probe's columns, and a CSD across columns subtracts contacts that are not neighbours. Choose a box inside one of: W1 back centre (CSC1-32); W3 back left (CSC2-29); W4 back right (CSC3-30)."
+   },
+   {
+    "at": "2026-11-07T17:59:04+00:00",
+    "where": "rootcanal/pool-fit",
+    "message": "The border hb-1 is not on this machine."
+   },
+   {
+    "at": "2026-11-07T17:56:54+00:00",
+    "where": "rootcanal/pool-fit",
+    "message": "The border hb-1 is not on this machine."
+   },
+   {
+    "at": "2026-11-07T17:56:35+00:00",
+    "where": "rootcanal/pool-fit",
+    "message": "The border hb-other is not on this machine."
+   },
+   {
+    "at": "2026-11-06T22:17:47+00:00",
+    "where": "rootcanal/pool-fit",
+    "message": "The border hb-1 is not on this machine."
+   }
+  ]
+ },
+ "status": "failed",
+ "report": null,
+ "patch": "",
+ "files": [],
+ "lines": 0,
+ "held_because": [],
+ "applied": null,
+ "undone": null,
+ "mother": null,
+ "images": [],
+ "updated": "2026-11-09T10:23:32-05:00",
+ "error": "[WinError 2] The system cannot find the file specified"
+}

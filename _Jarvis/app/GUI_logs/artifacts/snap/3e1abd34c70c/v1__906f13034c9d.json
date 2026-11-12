@@ -1,0 +1,28 @@
+{
+ "definition": {
+  "folder": [
+   "Scoop",
+   "10%"
+  ],
+  "kind": "ambiguous",
+  "target": {
+   "artifact_id": "105b40acbbb0",
+   "nickname": "PTEN Baseline v2",
+   "version": 1
+  },
+  "uses": {
+   "ds": {
+    "artifact_id": "6d6737df45ff",
+    "nickname": "Scoop 10% · Verified DS",
+    "version": 2
+   },
+   "pspike": {
+    "artifact_id": "5d52cf9cd610",
+    "nickname": "Scoop 10% · Verified P-spike",
+    "version": 2
+   }
+  }
+ },
+ "run": null,
+ "schema": 1
+}
