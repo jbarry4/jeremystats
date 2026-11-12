@@ -1,0 +1,116 @@
+{
+  "_at": {
+    "added": "2026-11-12T19:01:41.179829+00:00",
+    "deleted": "2026-11-12T19:01:41.179829+00:00",
+    "id": "2026-11-12T19:01:41.179829+00:00",
+    "kind": "2026-11-12T19:01:41.179829+00:00",
+    "name": "2026-11-12T19:01:41.179829+00:00",
+    "nickname": "2026-11-12T19:01:41.179829+00:00",
+    "schema": "2026-11-12T19:01:41.179829+00:00",
+    "subject": "2026-11-12T19:01:41.179829+00:00",
+    "subject_key": "2026-11-12T19:01:41.179829+00:00",
+    "version": "2026-11-12T19:01:41.179829+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "6a568774c408": [
+        "set",
+        "2026-11-12T19:01:41.179829+00:00"
+      ],
+      "fa0bf9941692": [
+        "set",
+        "2026-11-12T19:01:41.179829+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:01:41.179829+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T12:08:38-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "6028e667c3d4",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 Ambiguous Dataset (Optimized Parameters/Snap)",
+  "nickname": "Ambiguous Dataset (Optimized Parameters/Snap)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 Ambiguous Dataset (Optimized Parameters/Snap)",
+    "workflow_key": "b541491e6d7e42f2b441082c3e69c402"
+  },
+  "subject_key": "rootcanal_workflow|b541491e6d7e42f2b441082c3e69c402",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T12:08:38-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "b3e9f427f7b8",
+      "id": "fa0bf9941692",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": null
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-12T12:08:38-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T12:08:53-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "2e3648815368",
+      "id": "6a568774c408",
+      "inputs": [
+        {
+          "artifact_id": "178daabb125c",
+          "kind": "rootcanal_workflow",
+          "version": 3
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2185,
+        "grace": null,
+        "kept": 112,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": null
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 2
+    }
+  ]
+}
