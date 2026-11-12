@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-11-05T21:28:40.613459+00:00",
+    "added": "2026-11-05T21:18:39.344406+00:00",
     "by_label": "2026-11-05T21:28:40.613459+00:00",
     "curation_label": "2026-11-05T21:28:40.613459+00:00",
     "duration_s": "2026-11-05T21:28:40.613459+00:00",
@@ -29,21 +29,29 @@
   },
   "_keys": {
     "versions": {
+      "0c8a13468542": [
+        "set",
+        "2026-11-05T21:18:39.344406+00:00"
+      ],
+      "4ac6b40326d9": [
+        "set",
+        "2026-11-09T15:34:55.156768+00:00"
+      ],
       "77db3207993f": [
         "set",
-        "2026-11-05T21:28:40.613459+00:00"
+        "2026-11-05T21:33:28.643134+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T21:28:40.613459+00:00",
+    "at": "2026-11-09T15:34:55.156768+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-05T16:28:40-05:00",
+    "at": "2026-11-05T16:18:39-05:00",
     "by": "Shahriar Tafti",
-    "machine": "BarryLab"
+    "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
     "Dentate Spike": 1857
@@ -9451,7 +9459,7 @@
   "version": 0,
   "versions": [
     {
-      "at": "2026-11-05T16:28:40-05:00",
+      "at": "2026-11-05T16:18:39-05:00",
       "by": "Shahriar Tafti",
       "by_label": {
         "Dentate Spike": 1857
@@ -9460,10 +9468,10 @@
       "from_id": null,
       "from_v": null,
       "gained": 0,
-      "id": "77db3207993f",
+      "id": "0c8a13468542",
       "imported": true,
       "lost": 0,
-      "machine": "BarryLab",
+      "machine": "DESKTOP-4H65AI7",
       "moves": {},
       "n": 1857,
       "note": "Imported from Root Canal workflow. 1857 candidates, none decided yet.",
@@ -16897,6 +16905,34 @@
           "spike"
         ]
       ],
+      "v": 0
+    },
+    {
+      "at": "2026-11-05T16:28:40-05:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Dentate Spike": 1857
+      },
+      "id": "77db3207993f",
+      "imported": true,
+      "machine": "BarryLab",
+      "n": 1857,
+      "note": "Imported from Root Canal workflow. 1857 candidates, none decided yet.",
+      "snap_elsewhere": true,
+      "v": 0
+    },
+    {
+      "at": "2026-11-09T10:32:29-05:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Dentate Spike": 1857
+      },
+      "id": "4ac6b40326d9",
+      "imported": true,
+      "machine": "LCOM549913",
+      "n": 1857,
+      "note": "Imported from Root Canal workflow. 1857 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]
