@@ -1,0 +1,71 @@
+{
+  "_at": {
+    "added": "2026-11-11T19:50:18.163828+00:00",
+    "deleted": "2026-11-11T19:50:18.163828+00:00",
+    "id": "2026-11-11T19:50:18.163828+00:00",
+    "kind": "2026-11-11T19:50:18.163828+00:00",
+    "name": "2026-11-11T19:50:18.163828+00:00",
+    "nickname": "2026-11-11T19:50:18.163828+00:00",
+    "schema": "2026-11-11T19:50:18.163828+00:00",
+    "subject": "2026-11-11T19:50:18.163828+00:00",
+    "subject_key": "2026-11-11T19:50:18.163828+00:00",
+    "version": "2026-11-11T19:50:18.163828+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "4a092fec7de2": [
+        "set",
+        "2026-11-11T19:50:18.163828+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-11T19:50:18.163828+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T14:50:18-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "d354491b0eee",
+  "kind": "rootcanal_meta",
+  "name": "Fewest ambiguous \u00b7 10% grace",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "grace": 0.1,
+    "meta_key": "2ba64f7dec44|0620fe30",
+    "name": "Fewest ambiguous \u00b7 10% grace"
+  },
+  "subject_key": "rootcanal_meta|2ba64f7dec44|0620fe30",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.11.3",
+      "at": "2026-11-11T14:50:18-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "0b428bfe8b98",
+      "id": "4a092fec7de2",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "best": null,
+        "grace": 0.1,
+        "purple": null,
+        "purple_today": null,
+        "ran": false
+      },
+      "note": null,
+      "params": {
+        "grace": 0.1
+      },
+      "params_hash": "efd37c278424",
+      "v": 1
+    }
+  ]
+}

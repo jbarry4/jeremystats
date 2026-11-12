@@ -1,0 +1,183 @@
+{
+  "_at": {
+    "added": "2026-11-11T16:18:56.970723+00:00",
+    "deleted": "2026-11-11T16:28:48.602256+00:00",
+    "id": "2026-11-11T16:18:56.970723+00:00",
+    "kind": "2026-11-11T16:18:56.970723+00:00",
+    "name": "2026-11-11T16:18:56.970723+00:00",
+    "nickname": "2026-11-11T16:28:48.602256+00:00",
+    "schema": "2026-11-11T16:18:56.970723+00:00",
+    "subject": "2026-11-11T16:18:56.970723+00:00",
+    "subject_key": "2026-11-11T16:18:56.970723+00:00",
+    "version": "2026-11-11T16:18:56.970723+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "6b89b14a134e:9e8f526e533a>980b57eab496:2": [
+        "set",
+        "2026-11-11T16:28:48.602256+00:00"
+      ]
+    },
+    "versions": {
+      "9e8f526e533a": [
+        "set",
+        "2026-11-11T16:18:56.970723+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-11T16:28:48.602256+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T11:18:56-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-11T16:28:48+00:00",
+      "by_id": "980b57eab496",
+      "by_version": 2,
+      "digest": "6363ec62cf18",
+      "id": "6b89b14a134e:9e8f526e533a>980b57eab496:2",
+      "version": 1,
+      "version_id": "9e8f526e533a"
+    }
+  ],
+  "deleted": null,
+  "id": "6b89b14a134e",
+  "kind": "xray_single",
+  "name": "X-ray \u00b7 PTEN m5 s2 2023-11-16 \u00b7 Verified DS 10%",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "entry_id": "b60578899091",
+    "folder": "xm-f7e3cb9cee38-v2",
+    "folder_name": "Verified DS 10%",
+    "gid": "sc74c98b2495d",
+    "group": "PTEN",
+    "mouse_key": "PTEN|m5",
+    "session_label": "PTEN m5 s2 2023-11-16",
+    "source": {
+      "artifact_id": "f7e3cb9cee38",
+      "grace": 0.1,
+      "nickname": "Verified DS 10% \u00b7 CTL & PTEN v2",
+      "version": 2
+    }
+  },
+  "subject_key": "xray_single|xm-f7e3cb9cee38-v2|sc74c98b2495d",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.10.1",
+      "at": "2026-11-11T11:18:56-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "6363ec62cf18",
+      "id": "9e8f526e533a",
+      "inputs": [
+        {
+          "read": "75398bb10d0c",
+          "stamps_hash": "3c946ac30acc",
+          "version": 2,
+          "workflow": "f7e3cb9cee38"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "box": {
+          "asked": {
+            "sel_hi": 64,
+            "sel_lo": 16,
+            "t_hi_ms": 0.0,
+            "t_lo_ms": 0.0
+          },
+          "auto": false,
+          "n_contacts": 49,
+          "n_samples": 1,
+          "sel_hi": 64,
+          "sel_lo": 16,
+          "t_hi_ms": 0.0,
+          "t_lo_ms": 0.0
+        },
+        "counts": {
+          "1": 145,
+          "2": 535
+        },
+        "events": 680,
+        "method": "delta",
+        "separation": {
+          "dbic": 433.08,
+          "min_share": 0.2132,
+          "n": 680,
+          "verdict": "yes",
+          "words": "DS1 sink 1.0\u00d7 DS2"
+        },
+        "sinks": [
+          {
+            "cls": 1,
+            "csc": 32,
+            "sem": 0.0244,
+            "unit": "\u00b5A/mm\u00b2 (CSD, 5\u2013100 Hz)",
+            "value": -0.5228
+          },
+          {
+            "cls": 2,
+            "csc": 58,
+            "sem": 0.006177,
+            "unit": "\u00b5A/mm\u00b2 (CSD, 5\u2013100 Hz)",
+            "value": -0.5068
+          }
+        ]
+      },
+      "note": null,
+      "params": {
+        "box": {
+          "asked": {
+            "sel_hi": 64,
+            "sel_lo": 16,
+            "t_hi_ms": 0.0,
+            "t_lo_ms": 0.0
+          },
+          "auto": false,
+          "n_contacts": 49,
+          "n_samples": 1,
+          "sel_hi": 64,
+          "sel_lo": 16,
+          "t_hi_ms": 0.0,
+          "t_lo_ms": 0.0
+        },
+        "cond": 0.3,
+        "csd_bad_x": 4.0,
+        "csd_span": 16,
+        "dead": 0.15,
+        "delta_cut": null,
+        "f_order": 3,
+        "f_sigma": 1.0,
+        "features": "minmax",
+        "flip": false,
+        "gap_weight": 1.0,
+        "h_power": 1,
+        "manual_bad": {},
+        "method": "delta",
+        "min_sep": 5,
+        "nclasses": 2,
+        "no_vaknin": false,
+        "notch": true,
+        "read": "75398bb10d0c",
+        "rule": "tort",
+        "screen": false,
+        "seed": 0,
+        "sel_hi": 64,
+        "sel_lo": 16,
+        "stamps_hash": "3c946ac30acc",
+        "t_hi_ms": 0.0,
+        "t_lo_ms": 0.0
+      },
+      "params_hash": "4acc51afa75b",
+      "v": 1
+    }
+  ]
+}

@@ -6,6 +6,10 @@
         "set",
         "2026-11-05T18:10:49.426425+00:00"
       ],
+      "Angelina Woychosky": [
+        "set",
+        "2026-11-09T21:15:42.331339+00:00"
+      ],
       "Avery (AI)": [
         "set",
         "2026-10-23T13:41:57.178508+00:00"
@@ -141,7 +145,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-06T17:18:00.342156+00:00",
+    "at": "2026-11-09T21:15:42.331339+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -312,6 +316,16 @@
       "id": "Maddie Massad",
       "initials": "MM",
       "name": "Maddie Massad",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-09T21:15:42.330771+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-11-09T21:15:42.330794+00:00",
+      "email": "awoychos@uvm.edu",
+      "id": "Angelina Woychosky",
+      "initials": "AW",
+      "name": "Angelina Woychosky",
       "role": "Undergraduate Student"
     }
   ]

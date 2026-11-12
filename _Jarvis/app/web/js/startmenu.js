@@ -64,6 +64,7 @@ BARRY.startMenu = (function () {
     ['toolkit', 'ToolKit', 'The bundles and every tool'],
     ['settings', 'Settings', 'Theme, density, motion and Jarvis Light'],
     ['notes', 'Patch notes', 'What changed, and when'],
+    ['inside', 'Inside Jarvis', 'Everything the lab has put in, counted live'],
     ['setup', 'Set up this computer', 'You, your VACC account, your recordings'],
   ];
 
@@ -75,6 +76,8 @@ BARRY.startMenu = (function () {
         setTimeout(() => showThemePicker(), 420);
       } else if (id === 'notes' && BARRY.notes && BARRY.notes.open) {
         setTimeout(() => BARRY.notes.open(), 420);
+      } else if (id === 'inside' && BARRY.inside) {
+        setTimeout(() => BARRY.inside.open(), 420);
       } else if (id === 'setup' && BARRY.welcome) {
         // The welcome a new computer gets (welcome.js), again on purpose.
         setTimeout(() => BARRY.welcome.open(), 420);

@@ -15,6 +15,426 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.11.4 - Root Canal: the Meta Workflow
+
+Needs a restart and a reload.
+
+- **A fourth view in Root Canal, Meta Workflow:** it finds the measurement
+  settings that leave the fewest events ambiguous (purple, inside both the DS
+  box and the P-spike box of an Ambiguous Dataset workflow) at a grace, and
+  gives one answer: the best settings beside today's, and how many purple
+  they leave. Two instances, at 5% and 10% grace, both on "Ambiguous
+  Dataset".
+- **What it turns:**
+  - the amplitude filter band: no filter, DS, LFP, or any corners up to
+    400 Hz (no cut-offs on raw amplitude);
+  - the amplitude peak window;
+  - the half-width search;
+  - both edges of the HF power band, anywhere up to 2000 Hz.
+  The HF windows are what the reads took off the disk, so they stay.
+- **How it searches, narrowing down:** each setting alone on a coarse grid,
+  then the best few of each together, then each setting finer around the
+  best, round after round until nothing leaves fewer purple. Every number is
+  Root Canal's own measure on the reads on this machine, and every box is
+  the Workflow tab's. Today's settings are scored first and give the dataset's
+  own count (1,334 at 5%).
+- **One guard:** a setting that measures fewer than 95% as many events as
+  today's (target, CTL pool or hand-sorted sets) does not count, since losing
+  events is the cheapest way to fewer purple.
+- How it got there, the next best settings and the checks are folded under
+  the answer. Each run is a version; nothing is banked or changed.
+- **While it searches, the card shows where it is.** Every step of the plan
+  is listed and ticked as it finishes. The running step is described in
+  words, with a bar, what it is measuring ("measuring LFP filter, 1–100 Hz ·
+  peak ±25 ms · half-width search ±100 ms"), how many of how many, about how
+  long is left in the step, and the best purple so far against today's.
+- **It picks up where it left off.** Every measurement is written to disk the
+  moment it is made (GUI_logs/.cache/rcmeta). A run that Jarvis lost to a
+  restart or a crash says where it stopped and offers **Resume**: the
+  search replays off the disk in seconds and measures only what it never
+  reached. Checked by killing a real run twice: on resume, 171 HF bands and
+  3 filters came back from disk in about 2 s and it went on from the next
+  filter.
+- **Run all** puts every instance in line. They run one after another
+  (each uses every core it can) and share the measurements, so the second
+  is quicker. A waiting one says whose turn it is.
+
+## 2026.11.11.3 - The Extraction Room: "against %KO" asks about the dose
+
+Needs a restart and a reload.
+
+- **"Against %KO" now asks whether it changes with the dose, among the PTEN
+  mice alone** (Spearman, n 9), with a dashed line through them. Before, it
+  put the controls at 0% KO, which mostly tests PTEN against controls:
+  every control sits at one end, so any PTEN difference read as a trend.
+  That number is still shown beside it, said for what it is. A measure
+  lower in PTEN with no trend within PTEN now says "lower in PTEN, no dose
+  trend" instead of "goes with %KO". Round II ranks the %KO view by the
+  dose, and its q is the dose's.
+- **Three groups ask the trend in order first:** whether it falls or rises
+  CTL → Low KO → High KO (Jonckheere-Terpstra), then ANOVA or
+  Kruskal-Wallis as before.
+- **The separation rate against %KO** is the dose too: logistic regression
+  among PTEN alone, the all-mice one beside it.
+- **The stats tabs say who is left out** ("Left out of these stats: ..."),
+  since leaving recordings out changes every number on them.
+
+## 2026.11.11.2 - The Extraction Room: a set per X-ray Many folder
+
+Needs a restart and a reload.
+
+- **Each X-ray Many folder extracted is a set of its own** ("Verified DS
+  5%", "Verified DS 10%"), picked at the top of the room, each with its own
+  versions. Before, the 10% extraction was simply v2 of one line, behind
+  the 5% one in a dropdown.
+- **A folder run in X-ray Many but not in the room yet says so**, with an
+  Extract press, in the room and in the ToolKit's step. A set whose folder
+  has newer X-ray results than its extraction says how many, with "Extract
+  them".
+- **The room notices a new extraction made elsewhere.** Extracting from the
+  ToolKit opens it in an open room at once, and the room asks again
+  whenever its tab is looked at. (The 10% set was extracted from the
+  ToolKit while the room's tab sat on the 5% one, which never reloaded.)
+- **Calls are kept per set.** Separable / not separable and DS1 / DS2
+  swaps belong to the set they were made in, since X-ray's split differs
+  from folder to folder (m2: 61 / 48 at 5%, 30 / 73 at 10%). Calls made
+  before this belong to the set that was on show when they were made: the
+  seven of the morning of 11-11 to 5%, the one at 11:32 to 10%.
+
+## 2026.11.11.1 - The Extraction Room: each card's state at a glance, and the usual tests
+
+Needs a restart and a reload.
+
+- **Each recording's card says where it stands**, in a tag on top and a
+  faint wash over the card: green for separable, red for not separable,
+  amber for too few events to call (not in the separation rate), and gray
+  for left out of the stats, its pictures greyed. A call made by hand says
+  "your call". A key above the cards counts each; the Separation rate and
+  The numbers tables wash their rows the same way.
+- **The usual tests, by default.** One test per question, the way most
+  papers and Prism do it for small groups, picked by whether the residuals
+  look normal (Shapiro-Wilk): two groups by Welch's t-test, or Mann-Whitney
+  if not; three by one-way ANOVA with Tukey's pairs, or Kruskal-Wallis with
+  Dunn's pairs (Holm). A separation rate by Boschloo's exact test, which is
+  never less powerful than Fisher's; three groups by the Cochran-Armitage
+  trend. Each panel names the test it used and why.
+- **Nothing is corrected across measures in the usual tests.** Round II
+  calls a measure under 0.05 a difference, with its q (the false discovery
+  rate across all of them) beside it, and says when none holds across all.
+- **The strict tests are a press away** ("Tests: strict"): both tests must
+  agree, Fisher's exact test, and Round II's false discovery rate as the
+  bar, as before.
+- Leaving a recording out of the stats now asks Round II again too.
+
+## 2026.11.10.1 - The Extraction Room, the sixth and last step of The Dentist
+
+Needs a restart and a reload.
+
+- **The Extraction Room** is The Dentist's sixth and last step. It opens in
+  a tab of its own, like the Monolith, with what X-ray split into DS1 and
+  DS2 taken out of Jarvis: every number is copied into the room when it is
+  extracted, so it keeps showing what it was given. Extracting again is the
+  room's next version; the ones before stay.
+- **Its first tab, Dentate Spike**, has a card per recording, controls
+  first, then PTEN by %KO:
+  - each class's mean CSD down the whole shank, -50 to +50 ms around the
+    stamp, with the box X-ray ran with drawn on it;
+  - the depth profiles of DS1 and DS2 at the box's time, mean and SEM;
+  - a switch, **mean sink / mean source**. Mean sink puts each class's
+    strongest sink in colour and says it with its SEM, and keeps the
+    **delta** -- how far apart the class's two largest sinks are, in
+    contacts and um, as X-ray's delta method measures it. Mean source does
+    the same for its strongest source.
+  - each recording's **%KO as a chip**: from the lab's sheet (JB % hits),
+    0% for a control. Click a PTEN mouse's chip to correct it, for everybody.
+  - its separation and its counts, and a table of all the numbers, with a
+    CSV.
+- **The Dentate Spike room holds v1:** the 18 recordings run in X-ray Many's
+  "Verified DS 5%" folder, extracted 2026-11-10.
+- In the ToolKit, The Extraction Room's step says what the room holds,
+  extracts a folder into it, and opens it.
+- **Call a recording separable or not by hand**, over X-ray's two-vs-one
+  test, when the math got it wrong: "Call it separable" / "Call it not
+  separable" on each card, "Back to X-ray's call" to undo. Shared, said on
+  the card ("separable · by hand") and in the table, and counted at once.
+- **Separable, compared:** how many separate in each group, CTL vs PTEN by
+  Fisher's exact test, CTL / Low KO / High KO by the exact Freeman-Halton
+  test and each pair by Fisher (Holm), and the %KO of the separable against
+  the rest. "Weak" counts as not separable; too few events is not counted.
+  The other measures can be taken from the separable recordings only.
+- **Swap DS1 and DS2 by hand**, per recording, when X-ray's naming rule
+  got them the wrong way round. The swap is shared, is said on the card,
+  and is used everywhere the room shows or counts them; the extracted
+  numbers and X-ray's bundle are not changed.
+- **One scale for every recording**: the depth profiles share one x axis
+  and the CSDs one colour scale, so they compare by eye. "Each its own" is
+  a switch away.
+- **Does it differ?** Every measure (each class's sink strength, the DS2 /
+  DS1 sink ratio, each class's delta and source, the share that are DS1),
+  one number per recording, compared PTEN vs CTL (Welch's t, Mann-Whitney,
+  Hedges' g), CTL / Low KO / High KO (ANOVA, Kruskal-Wallis, each pair
+  Holm-adjusted; Low KO is under 10%, adjustable), and against %KO
+  (Spearman). A dot per mouse, mean and SEM; a dot clicked brings its card
+  into view. Worked out again after every swap and %KO correction. A
+  recording can be left out of the stats for one look.
+- **Sub-tabs.** The Dentate Spike tab is now five: Recordings (the cards),
+  Round I (does it differ?), Separation rate, Round II and The numbers.
+  The comparison (PTEN vs CTL, three groups, against %KO) is shared by the
+  three stats tabs. A dot clicked on any chart opens Recordings at its card.
+- **Separation rate**, a test of its own: each group's rate with a Wilson
+  95% interval; CTL vs PTEN by Fisher's exact test; CTL / Low KO / High KO
+  by the exact Freeman-Halton test, a Cochran-Armitage test for a trend in
+  that order, and each pair by Fisher (Holm); against %KO, a logistic
+  regression (the odds of separating per 10% KO). With a table of every
+  recording, X-ray's call (its delta BIC and its smaller class's share) and
+  the call that counts, each changeable where it stands.
+- **Round II**, a wide, plain look: eleven simple measures per recording
+  (events, verified DS, P-spikes and each class per minute; the share that
+  are P-spikes; DS amplitude, half-width and 500-1000 Hz power; the power
+  of every event; and the share that look like control DS, judged for a
+  control by a border drawn from the other controls only). Ranked by p,
+  each with its q, the false discovery rate held across the eleven
+  (Benjamini-Hochberg). q under 0.05 is said as a finding; p under 0.05
+  with a larger q as a lead. Worked out again after every swap, call and
+  %KO correction.
+- Charts of a count or a size no longer run their axis below zero.
+
+## 2026.11.09.4 - The week's printout, emailed to the lab every Friday
+
+Needs a restart and a reload, on the computer that sends (Bluebarry).
+
+- **Every Friday at 3:00 PM, Bluebarry prints the last 7 days and emails it**
+  to the lab list from the lab's Google account (barrylabuvm@gmail.com).
+  It is the same printout as Inside Jarvis's printer, with Hater of AI's
+  note, as a formatted email with a plain-text copy. A Friday the computer
+  is off sends when it is next on.
+- **Sent by "Jarvis Mailer",** a small Apps Script of its own in the lab
+  account (`mailer/`), kept apart from the Lab Operations sheet's script so
+  the VOS and SoftMouse syncs are never at risk. It holds only the hash of
+  its secret and of each address it may send to: a leaked secret still
+  cannot mail anyone else, and no address is in the repository.
+- **Who it goes to and where the mailer is** live on the sending computer
+  only (`%LOCALAPPDATA%\Jarvis\weekly\mail.json`), with a separate test list.
+- **On the printer** in Inside Jarvis, that computer says who it emails and
+  when, and a printout that was emailed says so.
+- **Email… on every printout** (on the computer that sends): "Send a test"
+  goes to the test list at once; "Send to the lab" names everyone it will go
+  to and sends only on Send it.
+- **The email is laid out for a two-minute read:** the headline and summary,
+  four numbers at a glance, the week in sections, the lab sheet's procedures
+  as a table, every version of the week, then the full numbers. It holds
+  together on a phone and in Outlook (tables and inline styles only), and
+  the inbox preview is the headline.
+- When Hater of AI could not write the note, the printout says why in plain
+  words ("he had reached the lab account's usage limit") instead of the
+  engine's own message.
+- `python tools/weekly_email.py --test` prints the week and sends it to the
+  test list; `--check` asks whether the mailer may send; `--id` sends a
+  printout already made. `tools/weekly_email.ps1 -Register [-Day] [-At]`
+  sets the day and time. What happened is in
+  `%LOCALAPPDATA%\Jarvis\weekly\email.log`.
+
+## 2026.11.09.3 - A one-time optimisation update on computers already set up
+
+Needs a restart and a reload.
+
+- **The first opening after this update tunes the computer up, once.** A
+  computer set up before 2026.11.07.3 has none of the kept answers that a
+  new computer's first opening builds. So the first time Jarvis opens on
+  it after this update, a single screen, "Jarvis has been updated", builds
+  them, saying each step as it goes:
+  - every recording folder is checked and the answers kept
+  - the recordings list, what the VACC can reach and the sync summary are
+    built and written down
+  - the analysis libraries are loaded
+  - every list the views open on goes into this browser's kept copy
+
+  It does not sync, look for recordings or ask anything, and nothing
+  already there changes. It then opens Jarvis by itself. "Carry on in the
+  background" opens Jarvis at once while the work finishes on the server.
+- **A new computer never sees it.** Its welcome's Getting ready step runs
+  the same job, and the job finishing is what records the optimisation as
+  done, from either screen. A later update that needs it run again raises
+  `OPTIMIZE_VERSION` in `backend/firstrun.py`.
+- **The + on a Sessions card no longer sits on the sync chip.** The button
+  is pinned to the card's top-right corner, and the chip is pushed to the
+  same corner, so they overlapped by about 15 px. The top row now leaves
+  room for the button on cards that have it. `web/_dev/sesscardpick.html`
+  measures every card that has both, and fails without the fix.
+
+## 2026.11.09.2 - Inside Jarvis, and a printout of the week for the PI
+
+Needs a restart and a reload.
+
+- **A fourth tab in the showcase, Inside Jarvis.** It is also on the start
+  menu, in Ctrl+K ("Inside Jarvis"), and at `?inside=1`. Everything the lab
+  has put into Jarvis, counted live from its own records, drawn five ways:
+  - **The Sunflower:** every banked event, one dot each, oldest at the
+    centre, on the golden angle a sunflower uses. Blue is a dentate spike,
+    red a P-spike, the two mixed where both detectors found it. Point at a
+    ring for the bank entry it came from.
+  - **Powers of Ten:** one real recording, from a single sample on every
+    channel out to every recording there is. Below a minute the trace is
+    simulated and says so; every circle after that is a real recording,
+    animal and project, sized by its samples. Play, a slider, the stops
+    (one sample, a millisecond, a dentate spike ... everything), or scroll.
+  - **The Gyrus:** every version as a granule cell along a dentate gyrus.
+    Its dendrites are its own patch note's outline; its axons run to the
+    tools it changed. The last seven days are lit.
+  - **The Connectome:** every server module and interface script as a
+    neuron, every call between them as an axon, with spikes running along
+    them. Point at one for what it does.
+  - **The River:** every candidate in every curation set, from the kind of
+    set, through who made the last call (a person, a model, nobody yet), to
+    the call.
+- **It keeps up.** Each part has a signature; only a part that changed is
+  counted again (in the background) and sent again, and the page asks once
+  a minute while it is open. What arrived since you last looked shows as
+  "+N since you last looked", and grows in.
+- **Last 7 days' work, the printer.** One press gathers the week: commits and
+  the lines they changed by part of the app, every version in the patch
+  notes, what was banked and called and by whom, the recordings that
+  arrived, and the Lab Operations sheet's dated procedures and the colony.
+  Hater of AI reads it (he may open the code; he cannot change anything)
+  and writes a short, calm note for the PI. If he cannot be asked (not
+  unlocked here, or the lab account is at its limit), Jarvis writes it from
+  the numbers and says why. Copy, Save to Results (Results/Weekly), and
+  every printout is kept in GUI_logs/weekly for the whole lab, under
+  Earlier printouts.
+- New: `backend/inside.py`, `backend/weekly.py`, `web/js/inside.js`,
+  `web/inside.css`, and the harness `_dev/inside.html` (47 checks; the
+  printer's routes are answered in the page, so it never prints for real).
+
+## 2026.11.09.1 - X-ray Many: a grid of average CSDs, and every result kept
+
+Needs a restart and a reload.
+
+- **X-ray's Many is new.** It holds folders of recordings; the first two
+  are "Verified DS 5%" and "Verified DS 10%", each the 18 v2 PTEN and CTL
+  recordings, with only the events inside that Root Canal workflow's DS
+  border. A folder's settings (method, which is DS1, the notch, two sinks
+  at least) are set once for every recording in it.
+- **A tile per recording**, its average CSD. Drag on it for a depth x time
+  box, or click once for one time sample. Boxes are shared, so a colleague
+  sees them. Read all, Run one, or Run all. Every tile also has automatic
+  box, centre (the time window onto the stamp, as wide) and 1 sample (one
+  instant at its middle), each keeping the depth. Each tile's picture is
+  kept on disk once drawn, so the grid opens drawn rather than "drawing…".
+- **Each result says whether DS1 and DS2 separate**: "separable" when two
+  groups fit clearly better than one (delta BIC 10 or more) and the smaller
+  holds at least 10% of the events; "weak", "not separable" or "too few"
+  otherwise, with the numbers. And how strong each class's sink is, in its
+  unit.
+- **Every result is a versioned X-ray bundle**, like Root Canal's saved
+  singles: running again with the same answer confirms it; a different
+  answer is the next version. The recording's set in the Event Bank shows
+  where its events went. Each is marked ready for Novocaine, the room it
+  goes to next -- nothing goes there until it is asked for.
+- **X-ray Single:** "Previously processed" lists every bundle, call and read
+  on file, each one a click away; a bundle opens in the workbench and can be
+  saved as its next version. The set is picked with the version button, as
+  in Root Canal, and the choices are switches rather than radio buttons.
+- **Fixed:** a press on the delta cut rail stopped every later box drag.
+- X-ray's reads now know which events they read, so two different event
+  lists of one recording no longer share a read. Reads of a bank set keep
+  the names they had.
+
+## 2026.11.07.3 - Setup once, then a first opening that gets everything ready
+
+Needs a restart and a reload. On a new computer, run Setup again.
+
+- **Setup no longer has to be run twice.** Where Python's own folder cannot
+  be written (the Microsoft Store's Python, a Mac's, one installed for all
+  users), pip installs into a per-user folder that, on a new computer, did
+  not exist when Setup started, so Python could not see what pip had just
+  installed. Setup said "Still missing after install", skipped the
+  accounts (which is why it never asked for the VACC password), and the
+  second run worked. It now adds that folder to the path straight after
+  installing, and if the packages are still not visible it carries on in a
+  fresh Python by itself.
+- **No Python at all is handled in the same window.** "Setup Windows.bat"
+  looks for a Python that really runs (not the Store's stand-in), installs
+  Python 3.12 with winget if there is none (or opens the Store and waits),
+  and finds it without the window being reopened. It also no longer misses
+  a Python reached as `python` rather than `py`. "Setup Mac.command"
+  installs Apple's command line tools when Python is missing and carries on
+  once they are in. Setup ends by offering to open Jarvis.
+- **Signed in during Setup means signed in.** The welcome checks the
+  connection, says so, and moves on. It no longer shows a form or waits
+  for "Confirm connection".
+- **The first opening after Setup finishes the job by itself**, with every
+  step said in the welcome's console as it happens:
+  - **From the lab:** the shared database, pulled and pushed once, table
+    by table. This runs before recordings are looked for, so one the lab
+    already has is matched, never added twice.
+  - **Recordings:** the VACC and netfiles are walked and everything new is
+    added with no question asked. The few that need a person stay listed
+    in Sessions › VACC.
+  - **Getting ready:**
+    - every recording folder is checked once and the answers kept
+    - the recordings list, what the VACC can reach and the sync summary
+      are built and written down
+    - the analysis libraries are loaded
+    - every list the views open on is fetched into this browser's kept
+      copy
+  It runs once. A computer set up before this does not get it.
+- **Restarts keep "will this folder open".** The answer for every folder
+  was kept in memory only, so each restart walked every folder again
+  before the first recordings list. Now it is kept in GUI_logs/.cache and
+  only a folder that has changed is asked again. Measured here: the first
+  registry build after a start went from 3.0 s to 0.7 s.
+- **"Everything VACC knows" no longer goes missing.** Sessions only
+  decided whether to show the tab when it opened, which on a fresh start
+  was before the VACC status had arrived. It now follows the status.
+
+## 2026.11.07.2 - DS-PCA opens on a set it can read
+
+Needs a reload.
+
+- **DS-PCA no longer opens on a set it cannot read.** With nothing picked,
+  it took the newest dentate spike set in the bank, readable or not. On
+  11-07 that was a harness's seed with no recording attached, so the panel
+  opened on "This set is not attached to a recording" and filed it as a
+  real fault. It now opens on the newest set that can be read here,
+  preferring one with spikes left, the same rule the recording picker
+  already used. With none it opens on nothing.
+
+## 2026.11.07.1 - Pooled PCA, the v2 PTEN data, and Root Canal's pools tidied
+
+Needs a restart and a reload.
+
+- **A fourth workflow, Pooled PCA.** It makes two or more saved pools one
+  pool (clustered again, as Pooled would) and shows its PCA: PC1 across,
+  PC2 up, with the 3D view beside it. The dots can be coloured by the one
+  pool's call, each pool's own call, the verified borders, the mouse, or the
+  recording. Every dot can be clicked, and once Xplorefinder is open it
+  follows each dot you click. Nothing is banked.
+- **Ambiguous is purple**, not the warning amber: inside both borders the
+  full purple, outside both its paler shade.
+- **The grace now applies to small groups.** On 39 hand-sorted P-spikes the
+  5% grace left none out: one even trim crosses six ends at once. The rest
+  of the grace is now taken one outlying event at a time, so it leaves
+  floor(5% of n) out. Events missing a number are "partial", not "left out
+  by the grace".
+- **The panels follow the stage.** Grace, How far, Where they went, Every
+  mouse and Averages now change with Define border / Apply border / Extract,
+  and each says which events it shows. Every workflow can colour by the
+  call, the mouse or the recording.
+- **The v2 PTEN data**, in the folder "PTEN Panning Complete v2 (Version Bug
+  Fixed)": CTL Baseline v2, PTEN Baseline v2 and CTL & PTEN Baseline v2,
+  made from each recording's latest Panning output (its panned pooled set).
+  The four workflows were run on it. Pools can now be made of Panning sets.
+- **Archive** for saved pools, singles and folders, with Show archived and
+  Put back. Everything in Root Canal but the v2 folder and its workflows was
+  archived; nothing was deleted. Archiving or filing now changes only the
+  one item on the server, so it never undoes a colleague's change from
+  another machine.
+- **The pool table:** proper tick boxes; a git-style version history in
+  place of the drop-down, each version with its events; versions with no
+  single yet offered, flagged, and read when pooled. A recording with a DS
+  set and a Panning set is two labelled rows that go into a pool once.
+  Ticks no longer flip back.
+
 ## 2026.11.06.4 - Tab 14, Joe Prompt: Joe's final round of Aim 2 follow-ups
 
 Needs a restart and a reload.

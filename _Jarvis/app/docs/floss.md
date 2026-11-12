@@ -82,6 +82,28 @@ and its plain `words`), the `patch`, `files`, `lines`, `held_because`, and
 | `nothing` | Floss made no change (see `needs`) |
 | `failed`, `stopped` | as said; `error` says why |
 
+## The weekly printout
+
+Inside Jarvis's printer ("Last 7 days' work", `backend/weekly.py`) asks the
+same engine, with the same key and config home, for something else: a calm
+progress note for the PI. That run is read-only (`--tools Read,Glob,Grep`,
+no Edit, no Bash), runs in the live app folder because it changes nothing,
+and is given the week as its brief: the commits, every patch note of the
+week, what was banked and called, and the Lab Operations sheet's dated
+procedures. It answers with one json block (headline, summary, progress,
+bench, data, next, watch). It shares the lab account's limits with the bug
+fixer; when he cannot be asked, Jarvis writes the note from the numbers and
+the printout says so. Its transcript stays on the machine
+(`%LOCALAPPDATA%\Jarvis\floss\weekly\<id>.jsonl`); the printout itself is
+`GUI_logs/weekly/<id>@<shard>.json`.
+
+The same printout is emailed to the lab every Friday at 3:00 PM by the
+scheduled task "Jarvis weekly email" on Bluebarry (`tools/weekly_email.ps1`,
+`tools/weekly_email.py`), sent from barrylabuvm@gmail.com through Jarvis
+Mailer (`_Jarvis/app/mailer/`, a standalone Apps Script; the secret and the
+recipient lists are in `%LOCALAPPDATA%\Jarvis\weekly\mail.json` on that
+computer only).
+
 ## For the mother AI
 
 1. `python tools/floss_inbox.py --remote` lists open tickets (no `mother`

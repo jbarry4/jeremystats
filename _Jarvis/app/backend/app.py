@@ -558,6 +558,11 @@ def api_catalog():
         "system": sysdesc,
         "logs_dir": LOGS_DIR,
         "ffmpeg": sysinfo.find_ffmpeg(),
+        # The first opening after Setup: the welcome's getting-ready stage
+        # (firstrun.py). Here so the boot knows without another request.
+        "firstrun": firstrunmod.wanted(firstrunmod.read(LOGS_DIR)),
+        # Or the optimisation update, for a computer set up before it.
+        "optimize": firstrunmod.optimize_wanted(firstrunmod.read(LOGS_DIR)),
     })
 
 
@@ -1560,6 +1565,230 @@ def warm_start(window_s=warmcache.WINDOW_S):
         ("vacc_knows", _vacc_knows_body),
         ("registry", _registry_body),
     ])
+
+
+# ==========================================================================
+# The first opening after Setup: getting this computer ready
+# ==========================================================================
+# backend/firstrun.py says what this is for. Two jobs, run on a thread so a
+# reload of the page loses nothing, each saying every step into the live
+# feed (`/api/vacc/feed`, tasks named "ready:...") where the welcome's
+# console prints it:
+#
+#   sync    the lab's shared database, pulled and pushed once, table by
+#           table. Before the recordings are looked for, so a recording the
+#           lab already has is matched to its record, never minted again
+#           (a set made twice doubles).
+#   cache   every answer the first views would otherwise work out cold --
+#           the recordings, what the cluster can reach, the sync roll-up,
+#           whether each folder opens -- computed now and written down, so
+#           this opening and the next both start warm. Then the analysis
+#           libraries.
+from . import firstrun as firstrunmod  # noqa: E402
+
+_FIRSTRUN = {"running": None, "done": {}, "error": None}
+_FIRSTRUN_LOCK = threading.Lock()
+
+
+def _fr_say(task, text, kind=""):
+    livefeedmod.say(text, kind, task)
+
+
+def _fr_sync():
+    T = "ready:sync"
+    livefeedmod.task(T, restart=True, label="Bringing this copy up to date "
+                     "with the lab", state="run")
+    cfg = {}
+    try:
+        cfg = CLOUD.cloud.reload() or {}
+    except Exception:                                    # noqa: BLE001
+        cfg = {}
+    if not (CLOUD.cloud.configured and cfg.get("enabled")):
+        _fr_say(T, "there is no shared-database key on this computer, so "
+                "it works from the lab's records that came with Jarvis -- "
+                "run Setup again to add the key", "warn")
+        livefeedmod.task(T, state="done")
+        return {"skipped": True}
+    _fr_say(T, "asking the lab's shared database (%s) what has changed since "
+            "this copy of Jarvis was made" % (cfg.get("project") or "Supabase"))
+    stop = threading.Event()
+
+    def watch():
+        # What the sync is on, said whenever it moves to another table.
+        last = None
+        while not stop.wait(0.3):
+            st = dict(_sync_step)
+            here = (st.get("phase"), st.get("table"))
+            if here != last and st.get("table"):
+                last = here
+                words = {"pulling": "brought down", "pushing": "sent up"}.get(
+                    st.get("phase"), st.get("phase") or "")
+                _fr_say(T, "%s: %s%s" % (st.get("table"), words,
+                                         (" %d" % st["n"]) if st.get("n") else ""),
+                        "dim")
+            livefeedmod.task(T, done=st.get("done") or 0,
+                             of=st.get("of") or None)
+
+    w = threading.Thread(target=watch, daemon=True, name="firstrun-sync-watch")
+    w.start()
+    try:
+        res = cloud_sync_once(pull=True, push=True, files=False)
+        if not res.get("ok") and "already running" in str(res.get("error")):
+            # The background loop got there first. Wait for it: its pull is
+            # this pull.
+            _fr_say(T, "the background sync is already running; waiting "
+                    "for it rather than asking twice", "dim")
+            for _ in range(1200):
+                if not _cloud_lock.locked():
+                    break
+                time.sleep(0.5)
+            res = dict(_cloud_last)
+    finally:
+        stop.set()
+    if res.get("ok"):
+        _fr_say(T, "up to date with the lab: %d row(s) brought down, %d sent "
+                "up" % (res.get("pulled") or 0, res.get("pushed") or 0), "ok")
+        livefeedmod.task(T, state="done")
+    else:
+        _fr_say(T, "the sync stopped: %s. Jarvis carries on with what it has "
+                "and the background sync tries again"
+                % (res.get("error") or "no reason given"), "warn")
+        livefeedmod.task(T, state="fail")
+    return {"pulled": res.get("pulled"), "pushed": res.get("pushed"),
+            "ok": bool(res.get("ok")), "error": res.get("error")}
+
+
+def _fr_cache():
+    out = {}
+
+    def timed(task, label, fn):
+        livefeedmod.task(task, restart=True, label=label, state="run")
+        t0 = time.time()
+        try:
+            got = fn()
+            livefeedmod.task(task, state="done")
+            return got, time.time() - t0
+        except Exception as exc:                         # noqa: BLE001
+            _fr_say(task, "could not: %s -- it is worked out when a view "
+                    "first wants it instead" % exc, "warn")
+            livefeedmod.task(task, state="fail")
+            return None, time.time() - t0
+
+    T = "ready:folders"
+    recs = REG.all() or []
+    paths = [p for r in recs for p in (r.get("paths") or [])]
+    _fr_say(T, "%d recordings in the catalogue, %d folders between them"
+            % (len(recs), len(set(paths))))
+    _fr_say(T, "asking every folder whether it is reachable from here and "
+            "whether it will open -- sixteen at a time; the answers are kept "
+            "on disk, so only a folder that changes is asked again")
+    _got, s = timed(T, "Checking every recording folder",
+                    lambda: sessreg.warm_opens(paths))
+    here = sum(1 for p in set(paths) if sessreg.is_here(p))
+    _fr_say(T, "%d of %d folders reachable from this computer (%.1f s)"
+            % (here, len(set(paths)), s), "ok")
+    out["folders"] = {"of": len(set(paths)), "here": here}
+
+    T = "ready:registry"
+    body, s = timed(T, "Building the recordings list",
+                    lambda: WARM.serve("registry", _registry_body,
+                                       fresh=True)[0])
+    if body is not None:
+        _fr_say(T, "the recordings list every tool picks from: %s "
+                "recordings, written down for next time (%.1f s)"
+                % (body.get("total", "?"), s), "ok")
+
+    T = "ready:knows"
+    if (vaccmod.load_config(LOGS_DIR) or {}).get("configured"):
+        body, s = timed(T, "What the VACC can reach",
+                        lambda: WARM.serve("vacc_knows", _vacc_knows_body,
+                                           fresh=True)[0])
+        if body is not None:
+            _fr_say(T, "%d recordings the cluster can read, marked VACC "
+                    "loaded in every tool (%.1f s)"
+                    % (len(body.get("knows") or {}), s), "ok")
+    else:
+        _fr_say(T, "not signed in to the VACC here, so there is no cluster "
+                "catalogue to build", "dim")
+
+    T = "ready:status"
+    body, s = timed(T, "The sync summary",
+                    lambda: WARM.serve("sync_status", _sync_status_body,
+                                       fresh=True)[0])
+    if body is not None:
+        _fr_say(T, "what has and has not reached the lab, summed up (%.1f s)"
+                % s, "ok")
+
+    T = "ready:engines"
+    livefeedmod.task(T, restart=True, label="Loading the analysis libraries",
+                     state="run")
+    for it in warmupmod.engines():
+        if it.get("missing"):
+            _fr_say(T, "%s is not installed; the tools that need it will "
+                    "say so" % it["name"], "dim")
+        elif it.get("already"):
+            _fr_say(T, "%s already loaded" % it["name"], "dim")
+        else:
+            _fr_say(T, "%s loaded (%d ms)" % (it["name"], it.get("ms") or 0),
+                    "ok" if it.get("ok") else "warn")
+    livefeedmod.task(T, state="done")
+    return out
+
+
+def _fr_run(stage):
+    try:
+        got = _fr_sync() if stage == "sync" else _fr_cache()
+        if stage == "cache":
+            # Finished here, whether from a new computer's welcome or the
+            # optimisation update: either way it is not asked for again.
+            firstrunmod.mark_optimized(LOGS_DIR)
+        _FIRSTRUN["done"][stage] = dict(got or {}, at=time.time())
+    except Exception as exc:                             # noqa: BLE001
+        _FIRSTRUN["error"] = str(exc)
+        livefeedmod.say("getting ready stopped: %s" % exc, "warn",
+                        "ready:" + stage)
+        STORE.record_error("firstrun/" + stage, exc)
+    finally:
+        _FIRSTRUN["running"] = None
+
+
+@app.route("/api/firstrun", methods=["GET", "POST"])
+def api_firstrun():
+    """What Setup did here and whether the getting-ready stage has run.
+    POST {ready: true} when the welcome has finished it."""
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        if body.get("ready"):
+            firstrunmod.mark_ready(LOGS_DIR)
+    rec = firstrunmod.read(LOGS_DIR)
+    return jsonify({"ok": True, "setup_at": rec.get("setup_at"),
+                    "ready_at": rec.get("ready_at"),
+                    "accounts": rec.get("accounts") or {},
+                    "wanted": firstrunmod.wanted(rec),
+                    "optimize": firstrunmod.optimize_wanted(rec),
+                    "optimized_at": rec.get("optimized_at"),
+                    "job": {"running": _FIRSTRUN["running"],
+                            "done": dict(_FIRSTRUN["done"]),
+                            "error": _FIRSTRUN["error"]}})
+
+
+@app.route("/api/firstrun/prepare", methods=["POST"])
+def api_firstrun_prepare():
+    """Start one of the two jobs ("sync" or "cache"). One at a time; asking
+    while one runs answers where it is rather than starting another."""
+    body = request.get_json(silent=True) or {}
+    stage = body.get("stage")
+    if stage not in ("sync", "cache"):
+        return jsonify({"ok": False, "error": "Say which: sync or cache."}), 400
+    with _FIRSTRUN_LOCK:
+        if not _FIRSTRUN["running"]:
+            _FIRSTRUN["running"] = stage
+            _FIRSTRUN["error"] = None
+            _FIRSTRUN["done"].pop(stage, None)
+            threading.Thread(target=_fr_run, args=(stage,), daemon=True,
+                             name="firstrun-" + stage).start()
+    return jsonify({"ok": True, "running": _FIRSTRUN["running"],
+                    "done": dict(_FIRSTRUN["done"])})
 
 
 @app.route("/api/sync/reindex", methods=["POST"])
@@ -8516,6 +8745,79 @@ def api_dspca_candidates():
     return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
+def _dspca_version_name(rec, ref):
+    """A banked version's name from the ref a read was filed with, or the
+    ref itself when the entry no longer has it. None is "as it stood"."""
+    if ref is None or not rec:
+        return None
+    for ver, name in versionsmod.label_rows(rec.get("versions") or []):
+        if str(BANK.version_key(ver)) == str(ref) or str(name) == str(ref):
+            return name
+    return str(ref)
+
+
+@app.route("/api/dspca/results")
+def api_dspca_results():
+    """What X-ray has done that is not a bundle, for Single's "Previously
+    processed" (2026-11-07): the calls banked through Commit, and the reads
+    on file. Read-only -- it lists the DSPCA vault and computes nothing.
+
+    `here` is whether the read's arrays are on this machine: the record
+    syncs, the .npz under .cache does not.
+    """
+    gid = request.args.get("gid") or None
+    calls, reads = [], []
+    for rec in DSPCA.all():
+        g = rec.get("gid")
+        if not g or (gid and g != gid):
+            continue
+        made = rec.get("created") or {}
+        ent = BANK.get(rec.get("entry_id")) if rec.get("entry_id") else None
+        params = rec.get("params") or {}
+        row = {
+            "gid": g, "entry_id": rec.get("entry_id"),
+            "entry_name": rec.get("entry_name") or (ent or {}).get("name"),
+            "session_label": (rec.get("session_label")
+                              or (ent or {}).get("session_label")),
+            "from_version": rec.get("from_version"),
+            "from_name": _dspca_version_name(ent, rec.get("from_version")),
+            "at": made.get("at"), "by": made.get("user"),
+            "stamps_hash": rec.get("stamps_hash") or params.get("stamps_hash"),
+        }
+        if rec.get("kind") == "classification":
+            # The read it was fitted on is named by the read settings, which
+            # the record keeps whole; params_hash skips the absent ones, as
+            # the read's own hash did.
+            try:
+                rh = rec.get("read_hash") or toolresults.params_hash(
+                    params, dspca.Params.READ_KEYS)
+            except Exception:                            # noqa: BLE001
+                rh = None
+            row.update({
+                "kind": "classification", "read": rh,
+                "here": bool(rh) and DSPCA.has_cached(g, rh, ".npz"),
+                "version": rec.get("version"), "counts": rec.get("counts"),
+                "method": rec.get("method"),
+                "method_name": rec.get("method_name"),
+                "box": rec.get("box"), "n": rec.get("n"),
+                "params": params,
+            })
+            calls.append(row)
+        elif rec.get("read_hash"):
+            rh = rec["read_hash"]
+            row.update({
+                "kind": "read", "read": rh,
+                "here": DSPCA.has_cached(g, rh, ".npz"),
+                "n": rec.get("n_events"), "n_asked": rec.get("n_asked"),
+                "probe": rec.get("probe"),
+            })
+            reads.append(row)
+    for rows in (calls, reads):
+        rows.sort(key=lambda r: r.get("at") or "", reverse=True)
+    return jsonify({"ok": True, "classified": calls, "reads": reads,
+                    "n": len(calls) + len(reads)})
+
+
 @app.route("/api/dspca/plan", methods=["POST"])
 def api_dspca_plan():
     """What a run would read, before it reads it.
@@ -8708,8 +9010,11 @@ def api_dspca_read():
         job.check()
         got = dspca.read(sess, use, stamps, p, bad, job=job)
         _dspca_save(gid, ph, got)
+        # Filed under the read's own hash (2026-11-07). Under the answer's,
+        # a read and a Commit at the same settings shared one record and
+        # whichever came second overwrote the other.
         DSPCA.put({
-            "gid": gid, "params_hash": DSPCA.hash_of(p.as_dict()),
+            "gid": gid, "params_hash": ph,
             "read_hash": ph, "entry_id": rec["id"],
             "from_version": src_v,
             "params": p.as_dict(),
@@ -8794,7 +9099,11 @@ def api_dspca_fit():
         gap_weight=body.get("gap_weight"),
         # The hand-placed threshold, and the contacts taken out by hand.
         delta_cut=body.get("delta_cut"),
-        manual_bad=body.get("manual_bad"))
+        manual_bad=body.get("manual_bad"),
+        # Which stamps were read, off the read (2026-11-07), so the HF
+        # pass `power` looks up is of the same stamps. None, and so
+        # nothing changed, for every bank set's read.
+        stamps_hash=got.get("stamps_hash"))
         res = dspca.fit(got, p, layers=_dspca_layers(gid))
     except dspca.DsPcaError as exc:
         return fail("dspca/fit", exc, 400, {"gid": gid})
@@ -9132,8 +9441,9 @@ def api_dspca_batch():
                 job.member(eid, of=len(stamps))
                 got = dspca.read(sess, chans, stamps, p, bad)
                 _dspca_save(gid, ph, got)
+                # The read's own hash, as /api/dspca/read (2026-11-07).
                 DSPCA.put({
-                    "gid": gid, "params_hash": DSPCA.hash_of(p.as_dict()),
+                    "gid": gid, "params_hash": ph,
                     "read_hash": ph, "entry_id": eid,
                     "from_version": body.get("from_version"),
                     "params": p.as_dict(),
@@ -9212,12 +9522,45 @@ def api_dspca_raster():
         return jsonify({"ok": False,
                         "error": "Say which recording and which read to draw "
                                  "(gid and read)."}), 400
+    # THE SHANK PICTURE, KEPT (2026-11-09). It is a fit on the server -- 3
+    # to 15 s on a few hundred events -- and X-ray Many asks for eighteen
+    # at once, so most tiles sat on "drawing…" for minutes, every time the
+    # page opened. The same question of the same read is the same picture:
+    # it is kept on disk beside the read and answered from there.
+    pic = None
+    if what == "shank" and body.get("index") is None:
+        keep = {k: body.get(k) for k in sorted(body) if k not in ("gid", "read")}
+        pk = hashlib.sha1(json.dumps([what, keep], sort_keys=True,
+                                     default=str).encode()).hexdigest()[:16]
+        pic = DSPCA.cached_path(gid, ph, ".pic_%s.json" % pk)
+        try:
+            if os.path.exists(pic):
+                with open(pic, "rb") as fh:
+                    return Response(fh.read(), mimetype="application/json")
+        except OSError:
+            pass
     try:
         got = _dspca_load(gid, ph)
     except Exception as exc:                             # noqa: BLE001
         return fail("dspca/raster", exc, 400, {"gid": gid, "read": ph})
 
     try:
+        if pic:
+            out = dspca.pictures(
+                got, what, index=None, cmap=body.get("cmap") or "jet",
+                gain=body.get("gain"),
+                fit_params=_dspca_fit_params(body, got),
+                encode=lambda m, cm, cl: analysis._encode_image(m, cm, cl),
+                clim_of=analysis._robust_clim, layers=_dspca_layers(gid))
+            if out.get("ok", True):
+                try:
+                    raw = json.dumps(out, default=str).encode("utf-8")
+                    with open(pic + ".tmp", "wb") as fh:
+                        fh.write(raw)
+                    os.replace(pic + ".tmp", pic)
+                except OSError:
+                    pass
+            return jsonify(out)
         return jsonify(dspca.pictures(
             got, what,
             index=body.get("index"),
@@ -9731,7 +10074,1012 @@ def _dspca_fit_params(body, got):
         gap_weight=body.get("gap_weight"),
         # The hand-placed threshold, and the contacts taken out by hand.
         delta_cut=body.get("delta_cut"),
-        manual_bad=body.get("manual_bad"))
+        manual_bad=body.get("manual_bad"),
+        # Which stamps the read was of, off the read itself (2026-11-07):
+        # None for a bank set's, so nothing a bank read names moves.
+        stamps_hash=got.get("stamps_hash"))
+
+
+# ==========================================================================
+# X-ray Many (2026-11-07) -- folders of recordings, one bundle each
+# ==========================================================================
+# The logic is in backend/xraymany.py; these read and write. A folder is a
+# Root Canal workflow run, its members that run's recordings, each read at
+# the events the run kept inside the border -- a read named by those stamps,
+# so the 5% and 10% folders never share one. Run fits a recording with its
+# box and keeps the answer as an `xray_single` bundle (artifacts.py).
+from . import xraymany as xraymanymod                       # noqa: E402
+
+
+def _xm_source(src):
+    """(workflow record, run version, run) for a folder's source. A version
+    left out is the newest that ran."""
+    aid = (src or {}).get("artifact_id")
+    wf = ARTIFACTS.get(aid) if aid else None
+    if not wf or wf.get("kind") != "rootcanal_workflow":
+        raise ValueError("There is no Root Canal workflow %s on this machine."
+                         % (aid or "(none named)"))
+    nick = wf.get("nickname") or wf.get("name") or aid
+    v = (src or {}).get("version")
+    if v is None:
+        v, run = _wf_last_run(aid)
+        if not run:
+            raise ValueError("‘%s’ has never run, so it kept no events to "
+                             "read." % nick)
+        return wf, int(v), run
+    pay = ARTIFACTS.payload(aid, int(v))
+    if pay is None:
+        raise ValueError("‘%s’ v%s was saved on another machine and has not "
+                         "reached this one yet." % (nick, v))
+    run = pay.get("run")
+    if not run:
+        raise ValueError("‘%s’ v%s holds no run." % (nick, v))
+    return wf, int(v), run
+
+
+def _xm_folders():
+    """{fid: folder} from the shared prefs. On the first visit, when there
+    are none, the two the user asked for are made -- merged per id on the
+    server, so a colleague's folders are never overwritten."""
+    got = (STORE.get_prefs() or {}).get(xraymanymod.FOLDERS_KEY)
+    if isinstance(got, dict) and got:
+        return got
+    prov = STORE.provenance()
+    made = {}
+    for d in xraymanymod.DEFAULT_FOLDERS:
+        try:
+            wf, v, run = _xm_source(d["source"])
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("dspca/many-defaults",
+                               "The X-ray Many folder ‘%s’ could not be made: "
+                               "%s" % (d["name"], exc), None,
+                               {"source": d["source"]})
+            continue
+        made[d["id"]] = xraymanymod.folder_record(d["name"], wf, v, run, prov)
+    if made:
+        STORE.set_prefs({}, merge={xraymanymod.FOLDERS_KEY: made})
+    return made
+
+
+def _xm_folder(fid):
+    """(folder, workflow, run version, members), or a ValueError."""
+    f = _xm_folders().get(fid or "")
+    if not isinstance(f, dict) or f.get("gone"):
+        raise ValueError("There is no X-ray Many folder %s." % fid)
+    wf, v, run = _xm_source(f.get("source"))
+    return f, wf, v, xraymanymod.members_of(wf["id"], v, run)
+
+
+def _xm_reads():
+    """(gid, stamps_hash) -> the vault's read records of those stamps. One
+    pass over the vault, never a lookup per recording."""
+    out = {}
+    for rec in DSPCA.all():
+        sh = (rec.get("stamps_hash")
+              or (rec.get("params") or {}).get("stamps_hash"))
+        if (not sh or not rec.get("read_hash")
+                or rec.get("kind") == "classification"):
+            continue
+        out.setdefault((rec.get("gid"), sh), []).append(rec)
+    return out
+
+
+def _xm_read_of(reads, gid, sh):
+    """(read hash, here, record): the newest read of these stamps that is
+    on this machine, else the newest anywhere (the record syncs, the .npz
+    under .cache does not), else (None, False, None)."""
+    recs = sorted(reads.get((gid, sh)) or [],
+                  key=lambda r: (r.get("created") or {}).get("at") or "",
+                  reverse=True)
+    for r in recs:
+        if DSPCA.has_cached(gid, r["read_hash"], ".npz"):
+            return r["read_hash"], True, r
+    if recs:
+        return recs[0]["read_hash"], False, recs[0]
+    return None, False, None
+
+
+def _xm_groups(gids):
+    """gid -> CTL / PTEN / ..., from the mouse book's `group` (where the
+    lab records it), then the session workbook, then the registry's cohort
+    or project. Not the pools' mouse types: the Verified DS pools type all
+    eighteen mice "PTEN", the project, and nine of them are CTL."""
+    reg = _rootcanal_reg_index()
+    try:
+        mice = MICE.index()
+    except Exception:                                    # noqa: BLE001
+        mice = {}
+    out = {}
+    for g in gids:
+        row = reg.get(g) or {}
+        proj, mouse = row.get("project"), row.get("mouse")
+        attrs = (((mice.get(str(proj)) or {}).get(str(mouse)) or {})
+                 .get("attrs") or {})
+        grp = str(attrs.get("group") or "").strip()
+        if not grp:
+            try:
+                facts = sessionrefmod.facts_for(APP_DIR, proj, mouse,
+                                                row.get("session")) or {}
+            except Exception:                            # noqa: BLE001
+                facts = {}
+            grp = str(facts.get("group") or "").strip()
+        out[g] = grp or row.get("cohort") or proj or None
+    return out
+
+
+def _xm_bundles():
+    """subject key -> the live X-ray bundle's summary record."""
+    return {r.get("subject_key"): r
+            for r in ARTIFACTS.list(kind=xraymanymod.KIND)}
+
+
+@app.route("/api/dspca/many")
+def api_dspca_many():
+    """Every X-ray Many folder with its recordings and what has been done
+    with each: read here or not, the box drawn on it, its newest bundle.
+
+    Reads only, except on the very first visit, when the two folders the
+    user asked for are made (a server-side merge into the shared prefs)."""
+    try:
+        folders = _xm_folders()
+        prefs = STORE.get_prefs() or {}
+        boxes = prefs.get(xraymanymod.BOXES_KEY) or {}
+        params = prefs.get(xraymanymod.PARAMS_KEY) or {}
+        reads = _xm_reads()
+        bundles = _xm_bundles()
+        rows, gids = [], set()
+        for fid, f in folders.items():
+            if not isinstance(f, dict) or f.get("gone"):
+                continue
+            try:
+                wf, v, run = _xm_source(f.get("source"))
+                mem, err = xraymanymod.members_of(wf["id"], v, run), None
+            except Exception as exc:                     # noqa: BLE001
+                mem, err = [], str(exc)
+            rows.append((fid, f, mem, err))
+            gids.update(m["gid"] for m in mem)
+        groups = _xm_groups(sorted(gids))
+        out = []
+        for fid, f, mem, err in rows:
+            members = []
+            for m in mem:
+                gid = m["gid"]
+                rh, here, _rec = _xm_read_of(reads, gid, m["stamps_hash"])
+                b = bundles.get(xraymanymod.bundle_key(fid, gid))
+                members.append({
+                    "gid": gid, "entry_id": m["entry_id"],
+                    "session_label": m["session_label"],
+                    "mouse_key": m["mouse_key"], "group": groups.get(gid),
+                    "n": m["n"], "stamps_hash": m["stamps_hash"],
+                    "read": rh, "read_here": bool(here),
+                    "box": boxes.get(xraymanymod.box_key(fid, gid)) or None,
+                    "bundle": xraymanymod.bundle_row(b) if b else None})
+            members.sort(key=lambda r: (str(r.get("group") or "~"),
+                                        natsortmod.key(r.get("session_label")
+                                                       or r["gid"])))
+            out.append({"id": fid, "name": f.get("name"),
+                        "at": f.get("at"), "by": f.get("by"),
+                        "source": f.get("source") or {},
+                        "archived": bool(f.get("archived")),
+                        "archived_at": f.get("archived_at"),
+                        "params": xraymanymod.clean_params(params.get(fid)),
+                        "members": members, "error": err})
+        out.sort(key=lambda r: (str(r.get("at") or ""),
+                                natsortmod.key(r.get("name") or r["id"])))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/many", exc, 500)
+    return jsonify({"ok": True, "folders": out})
+
+
+@app.route("/api/dspca/many/folder", methods=["POST"])
+def api_dspca_many_folder():
+    """A folder from a Root Canal workflow that has run: {name, source:
+    {artifact_id, version?}}. A server-side merge of one id."""
+    body = request.get_json(force=True) or {}
+    src = body.get("source") or {}
+    try:
+        wf, v, run = _xm_source({"artifact_id": src.get("artifact_id"),
+                                 "version": src.get("version")})
+        mem = xraymanymod.members_of(wf["id"], v, run)
+        if not any(m["n"] for m in mem):
+            raise ValueError("‘%s’ v%d kept no events inside its border, so "
+                             "there is nothing to read."
+                             % (wf.get("nickname") or wf["id"], v))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/many/folder", exc, 400, {"source": src})
+    fid = xraymanymod.new_folder_id()
+    rec = xraymanymod.folder_record(body.get("name"), wf, v, run,
+                                    STORE.provenance())
+    STORE.set_prefs({}, merge={xraymanymod.FOLDERS_KEY: {fid: rec}})
+    STORE.record_activity([{"action": "dspca.many.folder",
+                            "detail": {"id": fid, "workflow": wf["id"],
+                                       "version": v, "n": len(mem)}}])
+    return jsonify({"ok": True, "id": fid, "n": len(mem)})
+
+
+@app.route("/api/dspca/many/read", methods=["POST"])
+def api_dspca_many_read():
+    """Read every recording of a folder that is not read here yet, one at
+    a time, in ONE job: {folder, gids?, force?}. Each at the events its
+    workflow run kept, through `dspca.read`, with the recording, bad
+    channels and probe found as /api/dspca/read finds them. A member row
+    per recording (`job.member(gid, ...)`), carrying `read` when done.
+
+    `job` is null when everything asked for is read here already."""
+    body = request.get_json(force=True) or {}
+    fid = body.get("folder")
+    want = body.get("gids")
+    force = bool(body.get("force"))
+    try:
+        f, wf, v, mem = _xm_folder(fid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/many/read", exc, 400, {"folder": fid})
+    if want:
+        by = {m["gid"]: m for m in mem}
+        mem = [by[g] for g in want if g in by]
+    reads = _xm_reads()
+    todo, cached, skipped = [], [], []
+    for m in mem:
+        if not m["n"]:
+            skipped.append({"gid": m["gid"],
+                            "why": "no events inside the border"})
+            continue
+        if not m.get("entry_id"):
+            skipped.append({"gid": m["gid"],
+                            "why": "no bank entry to find the recording by"})
+            continue
+        rh, here, _rec = _xm_read_of(reads, m["gid"], m["stamps_hash"])
+        if here and not force:
+            cached.append({"gid": m["gid"], "read": rh})
+            continue
+        todo.append(m)
+    if not todo:
+        return jsonify({"ok": True, "job": None, "cached": cached,
+                        "skipped": skipped})
+    src = f.get("source") or {}
+
+    def work(job):
+        job.members_init([{"id": m["gid"],
+                           "label": m["session_label"] or m["gid"]}
+                          for m in todo])
+        job.begin("ds pca sets", of=len(todo), unit="recordings")
+        out = {"read": [], "cached": [], "failed": []}
+        for k, m in enumerate(todo):
+            gid = m["gid"]
+            job.check()
+            job.tick("ds pca sets", k)
+            job.member(gid, status="running", step="opening the recording")
+            try:
+                rec = _dspca_entry(m["entry_id"])
+                if rec.get("gid") and rec.get("gid") != gid:
+                    raise ValueError("Its bank entry %s is of another "
+                                     "recording (%s)." % (rec["id"],
+                                                          rec.get("gid")))
+                sess, _row = _braces_session(rec)
+                p = _dspca_params({}, sess)
+                p.stamps_hash = m["stamps_hash"]
+                ph = _dspca_read_hash(p)
+                if DSPCA.has_cached(gid, ph, ".npz") and not force:
+                    job.member(gid, status="done", cached=True, read=ph,
+                               step=None)
+                    out["cached"].append({"gid": gid, "read": ph})
+                    continue
+                chans = _braces_channels(sess)
+                bad = {int(c["number"]): "marked bad on this recording"
+                       for c in chans if c.get("bad")}
+                bad.update(bracesmod.screen(sess, chans, p.spec(), m["ts"]))
+                job.member(gid, step="reading", of=len(m["ts"]))
+                # `job=None`, as the batch does: the read would rescale
+                # the bar counting recordings. `stop` so Stop still lands.
+                got = dspca.read(sess, chans, [{"t": t} for t in m["ts"]],
+                                 p, bad, stop=job.check)
+                _dspca_save(gid, ph, got)
+                # Filed under the READ's own hash, never an answer's: the
+                # read record and a classification of the same settings
+                # used to share a name and overwrite each other.
+                DSPCA.put({
+                    "gid": gid, "params_hash": ph, "read_hash": ph,
+                    "kind": "read", "entry_id": rec["id"],
+                    "entry_name": rec.get("name"),
+                    "session_label": m["session_label"],
+                    "from_version": None,
+                    "stamps_hash": m["stamps_hash"],
+                    "stamps_from": {"workflow": wf["id"], "version": v,
+                                    "nickname": src.get("nickname"),
+                                    "folder": fid},
+                    "params": p.as_dict(),
+                    "n_events": len(got["rows"]), "n_asked": len(m["ts"]),
+                    "missed": got["missed"],
+                    "screened": {str(a): b
+                                 for a, b in (got["bad"] or {}).items()},
+                    "mains_uv": got["mains_uv"],
+                    "wideband_uv": got["wideband_uv"],
+                    "spacing_um": got["spacing_um"], "probe": got["probe"],
+                })
+                job.member(gid, status="done", step=None, read=ph,
+                           done=len(got["rows"]), of=len(m["ts"]))
+                out["read"].append({"gid": gid, "read": ph,
+                                    "n": len(got["rows"])})
+            except cfcmod.Canceled:
+                job.member(gid, status="stopped", step=None)
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                # One recording that cannot be read does not end the queue.
+                job.member(gid, status="error", step=None,
+                           error=str(exc)[:300])
+                out["failed"].append({"gid": gid, "why": str(exc)[:300]})
+        out["skipped"] = skipped
+        return out
+
+    job = cfcmod.start({}, [("ds pca sets", len(todo))], work,
+                       max(0.001, float(len(todo))))
+    STORE.record_activity([{"action": "dspca.many.read",
+                            "detail": {"folder": fid, "n": len(todo),
+                                       "force": force}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(todo),
+                    "n_events": sum(m["n"] for m in todo),
+                    "cached": cached, "skipped": skipped})
+
+
+@app.route("/api/dspca/many/run", methods=["POST"])
+def api_dspca_many_run():
+    """Fit each recording with its box, test it and keep it as a bundle:
+    {folder, gids, params, boxes: {gid: box or null}, dry_run?, note?}.
+
+    In turn and synchronously; each fit is milliseconds off its read. A
+    null box is the automatic one; a gid missing from `boxes` takes the box
+    drawn on it in the shared prefs. Every number is worked out here from
+    the read -- nothing is taken from the browser but the question.
+    `dry_run` does everything but save."""
+    body = request.get_json(force=True) or {}
+    fid = body.get("folder")
+    gids = [g for g in (body.get("gids") or []) if g]
+    dry = bool(body.get("dry_run"))
+    try:
+        f, wf, v, mem = _xm_folder(fid)
+        params = xraymanymod.clean_params(body.get("params"))
+        dspca.Params(**params)               # a bad rule or count, said now
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/many/run", exc, 400, {"folder": fid})
+    if not gids:
+        return jsonify({"ok": False, "error": "Say which recordings to run "
+                                              "(gids)."}), 400
+    by = {m["gid"]: m for m in mem}
+    boxes = body.get("boxes") or {}
+    drawn = (STORE.get_prefs() or {}).get(xraymanymod.BOXES_KEY) or {}
+    reads = _xm_reads()
+    groups = _xm_groups(gids)
+    src = dict(f.get("source") or {})
+    results = []
+    for gid in gids:
+        m = by.get(gid)
+        if not m:
+            results.append({"gid": gid, "ok": False,
+                            "error": "not in this folder"})
+            continue
+        rh, here, rrec = _xm_read_of(reads, gid, m["stamps_hash"])
+        if not rh:
+            results.append({"gid": gid, "ok": False, "error": "not read yet"})
+            continue
+        if not here:
+            results.append({"gid": gid, "ok": False,
+                            "error": "not read yet on this computer (it was "
+                                     "read on another)"})
+            continue
+        asked = xraymanymod.clean_box(
+            boxes.get(gid) if gid in boxes
+            else drawn.get(xraymanymod.box_key(fid, gid)))
+        try:
+            got = _dspca_load(gid, rh)
+            p = _dspca_fit_params(dict(params, **(asked or {})), got)
+            res = dspca.fit(got, p, layers=_dspca_layers(gid))
+            sep = xraymanymod.separation(res)
+            sk = xraymanymod.sinks(res, p, (rrec.get("params") or {})
+                                   .get("band"))
+            sep["words"] = xraymanymod.sink_words(sk)
+            sh = got.get("stamps_hash") or m["stamps_hash"]
+            payload = xraymanymod.bundle_payload(res, got, p, asked, rh, sh,
+                                                 sep, sk)
+            row = {"gid": gid, "ok": True, "counts": payload["counts"],
+                   "separation": sep, "sinks": sk, "box": payload["box"],
+                   "n": payload["n"], "bundle": None}
+            if dry:
+                row["dry_run"] = True
+                row["payload_bytes"] = len(json.dumps(payload))
+                results.append(row)
+                continue
+            subject = {"folder": fid, "folder_name": f.get("name"),
+                       "gid": gid, "entry_id": m["entry_id"],
+                       "session_label": m["session_label"],
+                       "mouse_key": m["mouse_key"],
+                       "group": groups.get(gid),
+                       "source": {k: src.get(k) for k in
+                                  ("artifact_id", "version", "nickname",
+                                   "grace")}}
+            have = ARTIFACTS.find(xraymanymod.KIND, subject)
+            before = (have or {}).get("version")
+            saved = ARTIFACTS.put(
+                xraymanymod.KIND, subject, payload,
+                params=dict(payload["params"], box=payload["box"],
+                            read=rh, stamps_hash=sh),
+                inputs=[{"workflow": wf["id"], "version": v,
+                         "stamps_hash": sh, "read": rh}],
+                note=body.get("note"))
+            row["bundle"] = {"artifact_id": saved["id"],
+                             "version": saved.get("version"),
+                             "confirmed": bool(have)
+                             and saved.get("version") == before}
+            results.append(row)
+        except dspca.DsPcaError as exc:
+            results.append({"gid": gid, "ok": False, "error": str(exc)})
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("dspca/many/run", str(exc),
+                               traceback.format_exc(limit=8),
+                               {"folder": fid, "gid": gid})
+            results.append({"gid": gid, "ok": False, "error": str(exc)})
+    if not dry:
+        STORE.record_activity([{"action": "dspca.many.run",
+                                "detail": {"folder": fid, "n": len(gids),
+                                           "saved": sum(1 for r in results
+                                                        if r.get("bundle"))}}])
+    return jsonify({"ok": True, "results": results, "dry_run": dry})
+
+
+@app.route("/api/dspca/bundles")
+def api_dspca_bundles():
+    """Every X-ray bundle, newest first, with its summary: ?gid= and
+    ?folder= narrow it. Single's "previously processed". No payloads."""
+    gid = request.args.get("gid") or None
+    folder = request.args.get("folder") or None
+    try:
+        rows = []
+        for r in ARTIFACTS.list(kind=xraymanymod.KIND, gid=gid):
+            if folder and (r.get("subject") or {}).get("folder") != folder:
+                continue
+            row = xraymanymod.bundle_listing(r)
+            row["read_here"] = bool(row.get("read") and row.get("gid")) and \
+                DSPCA.has_cached(row["gid"], row["read"], ".npz")
+            rows.append(row)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/bundles", exc, 500)
+    rows.sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+    return jsonify({"ok": True, "bundles": rows, "n": len(rows)})
+
+
+@app.route("/api/dspca/bundle/<artifact_id>")
+def api_dspca_bundle(artifact_id):
+    """One X-ray bundle version's payload: ?version= (the current one when
+    left out). Opens with no read; `read_here` says whether it can refit."""
+    ver = request.args.get("version") or None
+    try:
+        rec, row = ARTIFACTS.payload_version(artifact_id, ver)
+        if not rec or rec.get("kind") != xraymanymod.KIND:
+            return jsonify({"ok": False, "error": "There is no X-ray bundle "
+                                                  "%s." % artifact_id}), 404
+        pay = ARTIFACTS.payload(artifact_id, ver)
+    except artifactsmod.ArtifactError as exc:
+        return fail("dspca/bundle", exc, 400, {"artifact_id": artifact_id})
+    if pay is None:
+        return jsonify({"ok": False, "error": "v%s of this bundle was saved on "
+                        "another machine and has not reached this one yet."
+                        % row.get("v")}), 404
+    sub = rec.get("subject") or {}
+    return jsonify({"ok": True, "payload": pay,
+                    "artifact": ARTIFACTS.summary(artifact_id),
+                    "version": row.get("v"), "gid": sub.get("gid"),
+                    "folder": sub.get("folder"),
+                    "read_here": bool(pay.get("read") and sub.get("gid"))
+                    and DSPCA.has_cached(sub["gid"], pay["read"], ".npz")})
+
+
+# ==========================================================================
+# The Extraction Room (2026-11-10) -- the sixth and last step of The Dentist
+# ==========================================================================
+# X-ray Many's bundles, taken out of Jarvis into a room of their own, viewed
+# on web/extraction.html. The arithmetic is backend/extraction.py; here is
+# the loading (each bundle's payload and read) and the saving (one artifact
+# per room, a version per extraction). See its docstring for what is kept.
+from . import extraction as extractionmod                    # noqa: E402
+
+
+def _er_ko():
+    """Each PTEN mouse's %KO, a shared preference seeded from the lab's sheet
+    on the first visit (a server-side merge: only the mice not set)."""
+    have = (STORE.get_prefs() or {}).get(extractionmod.KO_KEY) or {}
+    missing = {k: v for k, v in extractionmod.KO_SHEET.items() if k not in have}
+    if missing:
+        STORE.set_prefs({}, merge={extractionmod.KO_KEY: missing})
+        have = dict(have, **missing)
+    return have
+
+
+def _er_rooms():
+    """{room: its artifact record or None}."""
+    by = {((r.get("subject") or {}).get("room")): r
+          for r in ARTIFACTS.list(kind=extractionmod.KIND)}
+    return {room: by.get(room) for room, _n in extractionmod.ROOMS}
+
+
+@app.route("/api/extraction")
+def api_extraction():
+    """The rooms, what each holds now, the X-ray Many folders that can be
+    extracted (with how many bundles each has), and the %KO sheet."""
+    try:
+        ko = _er_ko()
+        rooms = []
+        for room, name in extractionmod.ROOMS:
+            r = _er_rooms().get(room)
+            cur = (r or {}).get("current") or {}
+            rooms.append({"room": room, "name": name,
+                          "artifact_id": (r or {}).get("id"),
+                          "version": (r or {}).get("version"),
+                          "at": cur.get("at"), "by": cur.get("by"),
+                          "summary": cur.get("n_summary") or {},
+                          "versions": [{"v": v.get("v"), "at": v.get("at"),
+                                        "by": v.get("by"),
+                                        "n": (v.get("n_summary") or {})
+                                        .get("recordings"),
+                                        "folder": (v.get("n_summary") or {})
+                                        .get("folder"),
+                                        "folder_id": (v.get("params") or {})
+                                        .get("folder"),
+                                        "here": v.get("here", True)}
+                                       for v in (r or {}).get("versions") or []]})
+        bundles = _xm_bundles()
+        # EACH FOLDER, AND WHAT OF IT IS IN THE ROOM (2026-11-11: "I ran
+        # the 10% DS stuff, but it's not showing up in the Extraction Room"):
+        # the room's newest version taken from it, and how many of its X-ray
+        # results are not in that version -- newer bundles, or never taken.
+        dsr = _er_rooms().get("dentate_spike") or {}
+        folders = []
+        for fid, f in _xm_folders().items():
+            if not isinstance(f, dict) or f.get("gone"):
+                continue
+            mine = [r for k, r in bundles.items()
+                    if str(k or "").startswith("xray_single|%s|" % fid)]
+            took = [v for v in dsr.get("versions") or []
+                    if (v.get("params") or {}).get("folder") == fid]
+            last = max(took, key=lambda v: v.get("v") or 0) if took else None
+            have = {(i.get("artifact_id") or i.get("id"), i.get("version"))
+                    for i in ((last or {}).get("inputs") or [])
+                    if isinstance(i, dict)}
+            folders.append({"id": fid, "name": f.get("name"),
+                            "archived": bool(f.get("archived")),
+                            "bundles": len(mine),
+                            "in_room": ({"v": last.get("v"), "at": last.get("at"),
+                                         "by": last.get("by")} if last else None),
+                            "new": sum(1 for r in mine
+                                       if (r.get("id"), r.get("version")) not in have)})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction", exc, 500)
+    return jsonify({"ok": True, "rooms": rooms, "folders": folders, "ko": ko})
+
+
+@app.route("/api/extraction/extract", methods=["POST"])
+def api_extraction_extract():
+    """Take one X-ray Many folder's bundles -- the newest version of each --
+    into a room: {room, folder}. Each recording is refitted from its read
+    with the bundle's own settings and box, to get its class-mean CSDs; one
+    whose read is not on this machine, or whose refit disagrees with its
+    bundle, is left out and said. Saves the room's next version."""
+    body = request.get_json(force=True) or {}
+    room = body.get("room") or "dentate_spike"
+    fid = body.get("folder")
+    if room not in dict(extractionmod.ROOMS):
+        return jsonify({"ok": False, "error": "There is no room %r." % room}), 400
+    try:
+        f, wf, v, mem = _xm_folder(fid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/extract", exc, 400, {"folder": fid})
+    ko = _er_ko()
+    bundles = _xm_bundles()
+    recs, left, inputs = [], [], []
+    for m in mem:
+        b = bundles.get("xray_single|%s|%s" % (fid, m["gid"]))
+        if not b:
+            left.append({"gid": m["gid"], "session_label": m["session_label"],
+                         "why": "not run in X-ray Many yet"})
+            continue
+        try:
+            pay = ARTIFACTS.payload(b["id"], None)
+            if pay is None:
+                raise ValueError("its bundle was made on another computer and "
+                                 "has not reached this one yet")
+            rh = pay.get("read")
+            if not (rh and DSPCA.has_cached(m["gid"], rh, ".npz")):
+                raise ValueError("its read is not on this computer")
+            got = _dspca_load(m["gid"], rh)
+            p = _dspca_fit_params(dict(pay.get("params") or {}), got)
+            res = dspca.fit(got, p, layers=_dspca_layers(m["gid"]))
+            sub = dict(b.get("subject") or {}, gid=m["gid"],
+                       session_label=m["session_label"],
+                       mouse_key=m["mouse_key"],
+                       group=(b.get("subject") or {}).get("group"))
+            one = extractionmod.extract_one(pay, sub, res, got, ko)
+            one["bundle"] = {"artifact_id": b["id"], "version": b.get("version")}
+            recs.append(one)
+            inputs.append({"artifact_id": b["id"], "version": b.get("version")})
+        except Exception as exc:                         # noqa: BLE001
+            left.append({"gid": m["gid"], "session_label": m["session_label"],
+                         "why": str(exc)})
+    if not recs:
+        return jsonify({"ok": False, "error": "Nothing to extract from ‘%s’: %s"
+                        % (f.get("name"), "; ".join(
+                            "%s (%s)" % (x["session_label"], x["why"])
+                            for x in left[:6]) or "it has no bundles"),
+                        "left": left}), 400
+    recs.sort(key=lambda r: (0 if str(r.get("group")).upper() == "CTL" else 1,
+                             r.get("ko_pct") if r.get("ko_pct") is not None
+                             else 999, natsortmod.key(r.get("session_label") or "")))
+    payload = {"schema": extractionmod.SCHEMA, "room": room,
+               "room_name": extractionmod.room_name(room),
+               "source": {"folder": fid, "folder_name": f.get("name"),
+                          "workflow": {"artifact_id": wf["id"], "version": v,
+                                       "nickname": wf.get("nickname")}},
+               "ko_from": "JB % hits, the lab's sheet (2026-11-10); "
+                          "controls are 0",
+               "recordings": recs, "left_out": left}
+    subject = {"room": room, "room_name": extractionmod.room_name(room),
+               "gids": sorted({r["gid"] for r in recs})}
+    try:
+        saved = ARTIFACTS.put(extractionmod.KIND, subject, payload,
+                              params={"folder": fid}, inputs=inputs,
+                              note=body.get("note"))
+        for ref in inputs:
+            try:
+                ARTIFACTS.cite(ref["artifact_id"], ref["version"], saved["id"],
+                               saved.get("version"))
+            except Exception:                            # noqa: BLE001
+                pass
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/extract", exc, 500, {"folder": fid})
+    STORE.record_activity([{"action": "extraction.extract",
+                            "detail": {"room": room, "folder": fid,
+                                       "artifact": saved.get("id"),
+                                       "version": saved.get("version"),
+                                       "n": len(recs), "left": len(left)}}])
+    return jsonify({"ok": True, "artifact_id": saved["id"],
+                    "version": saved.get("version"), "n": len(recs),
+                    "left": left})
+
+
+def _er_pay_folder(pay):
+    """The X-ray Many folder an extraction was taken from: its set."""
+    return ((pay or {}).get("source") or {}).get("folder")
+
+
+@app.route("/api/extraction/<artifact_id>")
+def api_extraction_one(artifact_id):
+    """A room's version: ?version= (the newest when left out)."""
+    ver = request.args.get("version") or None
+    try:
+        rec, row = ARTIFACTS.payload_version(artifact_id, ver)
+        if not rec or rec.get("kind") != extractionmod.KIND:
+            return jsonify({"ok": False, "error": "There is no Extraction Room "
+                                                  "%s." % artifact_id}), 404
+        pay = ARTIFACTS.payload(artifact_id, ver)
+    except artifactsmod.ArtifactError as exc:
+        return fail("extraction/one", exc, 400, {"artifact_id": artifact_id})
+    if pay is None:
+        return jsonify({"ok": False, "error": "v%s was extracted on another "
+                        "computer and has not reached this one yet."
+                        % row.get("v")}), 404
+    # The %KO as it stands now, beside what was extracted with: a corrected
+    # sheet shows at once, and says so, without extracting again.
+    ko = _er_ko()
+    for r in pay.get("recordings") or []:
+        now, said = extractionmod.ko_of(r.get("mouse_key"), r.get("group"), ko)
+        r["ko_now"] = now
+        r["ko_now_said"] = said
+    return jsonify({"ok": True, "payload": pay, "version": row.get("v"),
+                    "flips": _er_flips(pay.get("room"), _er_pay_folder(pay)),
+                    "seps": _er_seps(pay.get("room"), _er_pay_folder(pay)),
+                    "artifact": ARTIFACTS.summary(artifact_id)})
+
+
+def _er_set_times(room):
+    """[(when, folder id)] of the room's versions, oldest first."""
+    out = []
+    for v in (_er_rooms().get(room) or {}).get("versions") or []:
+        try:
+            out.append((datetime.datetime.fromisoformat(v.get("at")),
+                        (v.get("params") or {}).get("folder")))
+        except (TypeError, ValueError):
+            continue
+    return sorted(out, key=lambda x: x[0])
+
+
+def _er_old_set(times, at):
+    """A call made before calls were kept per folder (2026-11-11) belongs to
+    the folder that was on show then: the newest extraction before it."""
+    pick = times[0][1] if times else None
+    try:
+        t = datetime.datetime.fromisoformat(at)
+    except (TypeError, ValueError):
+        return pick
+    for when, fid in times:
+        if when <= t:
+            pick = fid
+    return pick
+
+
+def _er_calls(pref, room, folder, keep):
+    """{gid: call} for one set: keys `room|folder|gid`, and the older
+    `room|gid` ones that belong to this folder. A set's own call wins.
+
+    CALLS ARE KEPT PER SET (2026-11-11): X-ray's split differs from folder
+    to folder -- m2 is 61/48 at 5% and 30/73 at 10% -- so a call made
+    looking at one set's CSDs is not a call on another's."""
+    room = room or "dentate_spike"
+    got = (STORE.get_prefs() or {}).get(pref) or {}
+    own, old, times = {}, {}, None
+    for k, v in got.items():
+        parts = str(k).split("|")
+        if parts[0] != room or not isinstance(v, dict) or not keep(v):
+            continue
+        if len(parts) == 3 and parts[1] == folder:
+            own[parts[2]] = v
+        elif len(parts) == 2:
+            if times is None:
+                times = _er_set_times(room)
+            if _er_old_set(times, v.get("at")) == folder:
+                old[parts[1]] = v
+    return dict(old, **own)
+
+
+def _er_set_call(pref, room, folder, gid, val):
+    """Write one set's call; an older call this one replaces is cleared, so
+    "back to X-ray's call" is back for good."""
+    patch = {extractionmod.call_key(room, folder, gid): val}
+    prior = ((STORE.get_prefs() or {}).get(pref) or {}).get(
+        extractionmod.flip_key(room, gid))
+    if isinstance(prior, dict) and _er_old_set(_er_set_times(room),
+                                               prior.get("at")) == folder:
+        patch[extractionmod.flip_key(room, gid)] = None
+    STORE.set_prefs({}, merge={pref: patch})
+
+
+def _er_folder(room, folder=None):
+    """The set a call is for: the one given, else the room's newest."""
+    if folder:
+        return folder
+    times = _er_set_times(room or "dentate_spike")
+    return times[-1][1] if times else None
+
+
+def _er_seps(room, folder):
+    """{gid: {verdict, at, by}}: the recordings a person has called
+    separable ('yes') or not ('no') in this room's set, over X-ray's call."""
+    return _er_calls(extractionmod.SEP_KEY, room, folder,
+                     lambda v: v.get("verdict") in ("yes", "no"))
+
+
+@app.route("/api/extraction/sep", methods=["POST"])
+def api_extraction_sep():
+    """Call a recording separable or not, over X-ray's call, or give the
+    call back to X-ray: {room, gid, verdict: 'yes' | 'no' | null}. Shared;
+    the bundle keeps its own test and its numbers."""
+    body = request.get_json(force=True) or {}
+    room = body.get("room") or "dentate_spike"
+    gid = str(body.get("gid") or "").strip()
+    verdict = body.get("verdict")
+    if not gid:
+        return jsonify({"ok": False, "error": "Say which recording (gid)."}), 400
+    if verdict not in ("yes", "no", None):
+        return jsonify({"ok": False, "error": "A call is yes, no or null."}), 400
+    folder = _er_folder(room, body.get("folder"))
+    who = (STORE.provenance() or {}).get("user")
+    val = ({"verdict": verdict, "by": who,
+            "at": datetime.datetime.now(datetime.timezone.utc)
+            .isoformat(timespec="seconds")} if verdict else None)
+    _er_set_call(extractionmod.SEP_KEY, room, folder, gid, val)
+    STORE.record_activity([{"action": "extraction.sep",
+                            "detail": {"room": room, "folder": folder,
+                                       "gid": gid, "verdict": verdict}}])
+    return jsonify({"ok": True, "seps": _er_seps(room, folder)})
+
+
+def _er_flips(room, folder):
+    """{gid: {flip, at, by}}: the recordings whose DS1 and DS2 a person has
+    swapped, in this room's set. Shared, so a swap is made once for
+    everybody."""
+    return _er_calls(extractionmod.FLIP_KEY, room, folder, lambda v: v.get("flip"))
+
+
+@app.route("/api/extraction/flip", methods=["POST"])
+def api_extraction_flip():
+    """Swap a recording's DS1 and DS2, or put them back: {room, gid, flip}.
+    The extracted numbers are not touched -- the room shows and counts the
+    swap; X-ray's bundle keeps its own call."""
+    body = request.get_json(force=True) or {}
+    room = body.get("room") or "dentate_spike"
+    gid = str(body.get("gid") or "").strip()
+    if not gid:
+        return jsonify({"ok": False, "error": "Say which recording (gid)."}), 400
+    folder = _er_folder(room, body.get("folder"))
+    who = (STORE.provenance() or {}).get("user")
+    val = ({"flip": True, "by": who,
+            "at": datetime.datetime.now(datetime.timezone.utc)
+            .isoformat(timespec="seconds")} if body.get("flip") else None)
+    _er_set_call(extractionmod.FLIP_KEY, room, folder, gid, val)
+    STORE.record_activity([{"action": "extraction.flip",
+                            "detail": {"room": room, "folder": folder,
+                                       "gid": gid, "flip": bool(val)}}])
+    return jsonify({"ok": True, "flips": _er_flips(room, folder)})
+
+
+def _er_round2_rows(pay, flips, ko_now):
+    """Round II's measures, one row per extracted recording, from what the
+    room was extracted from: the Root Canal workflow's run (every event's
+    class against the DS border, and its three numbers), its target pool
+    (each event's one-pool call), and each recording's length from the
+    registry. A control's "looks like control DS" is judged by a border
+    drawn from the OTHER controls -- leave one mouse out -- so it is not
+    graded against a box its own events drew."""
+    import numpy as np
+    src = (pay.get("source") or {}).get("workflow") or {}
+    wpay = ARTIFACTS.payload(src.get("artifact_id"), src.get("version"))
+    if not wpay or not wpay.get("run"):
+        raise ValueError("The workflow this room was extracted from (‘%s’ v%s) "
+                         "is not on this machine." % (src.get("nickname"),
+                                                      src.get("version")))
+    run = wpay["run"]
+    col, scol = run.get("cols") or {}, run.get("src_cols") or {}
+    grace = run.get("grace") or 0.05
+    tref = run.get("target") or {}
+    ppay = ARTIFACTS.payload(tref.get("artifact_id"), tref.get("version")) or {}
+    mem = ppay.get("members") or []
+    calls = {}
+    for e in ppay.get("events") or []:
+        m = mem[e["m"]] if isinstance(e.get("m"), int) and e["m"] < len(mem) else {}
+        d = calls.setdefault(m.get("gid"), {"ds": 0, "ied": 0, "n": 0, "hf": []})
+        d["n"] += 1
+        if e.get("cls_pool") in ("ds", "ied"):
+            d[e["cls_pool"]] += 1
+        if e.get("hf_db") is not None:
+            d["hf"].append(float(e["hf_db"]))
+
+    def evs(c):
+        gids = c.get("gids") or []
+        out = []
+        for j, gi in enumerate(c.get("g") or []):
+            out.append({"gid": gids[gi] if 0 <= gi < len(gids) else None,
+                        "cls": (c.get("cls") or [None] * (j + 1))[j],
+                        "amp_uV": c["amp"][j], "hf_db": c["hf"][j],
+                        "hw_ms": c["hw"][j]})
+        return out
+    tgt, srcev = evs(col), evs(scol)
+    by_t = {}
+    for e in tgt:
+        by_t.setdefault(e["gid"], []).append(e)
+    reg = {r.get("gid"): r for r in REG.all()}
+    rows = []
+    for r in pay.get("recordings") or []:
+        g = r["gid"]
+        mine = by_t.get(g) or []
+        dur = (reg.get(g) or {}).get("duration_s")
+        mins = float(dur) / 60.0 if dur else None
+        ins = [e for e in mine if e["cls"] == "inside"]
+        ctl = str(r.get("group") or "").upper() == "CTL"
+        # Looks like control DS: for a control, a border from the others.
+        like = None
+        if mine:
+            if ctl:
+                others = [e for e in srcev if e["gid"] != g]
+                try:
+                    b = rcworkflow.define(others, "ds", grace)
+                    got = rcworkflow.inside_of(mine, b, grace)
+                    known = [v for v in got if v is not None]
+                    like = (sum(1 for v in known if v) / len(known)) if known else None
+                except Exception:                        # noqa: BLE001
+                    like = None
+            else:
+                known = [e for e in mine if e["cls"] in ("inside", "outside")]
+                like = (sum(1 for e in known if e["cls"] == "inside") / len(known)
+                        if known else None)
+        c = calls.get(g) or {}
+        flipped = bool(flips.get(g))
+        cnt = r.get("counts") or {}
+        n1, n2 = int(cnt.get("1") or 0), int(cnt.get("2") or 0)
+        if flipped:
+            n1, n2 = n2, n1
+
+        def mean_of(key, es):
+            v = [e[key] for e in es if e[key] is not None]
+            return float(np.mean(v)) if v else None
+        rows.append({"gid": g, "label": r.get("session_label"),
+                     "group": r.get("group"), "ko": ko_now.get(g),
+                     "m": {"events_min": (c.get("n") / mins) if mins and c.get("n") else None,
+                           "ds_min": (len(ins) / mins) if mins else None,
+                           "pspike_min": (c.get("ied", 0) / mins) if mins and c else None,
+                           "pspike_share": (c["ied"] / float(c["ds"] + c["ied"]))
+                           if c and (c.get("ds", 0) + c.get("ied", 0)) else None,
+                           "ds_like": like,
+                           "ds_amp": mean_of("amp_uV", ins),
+                           "ds_hf": mean_of("hf_db", ins),
+                           "ds_hw": mean_of("hw_ms", ins),
+                           "all_hf": float(np.mean(c["hf"])) if c.get("hf") else None,
+                           "ds1_min": (n1 / mins) if mins else None,
+                           "ds2_min": (n2 / mins) if mins else None}})
+    return rows
+
+
+@app.route("/api/extraction/round2", methods=["POST"])
+def api_extraction_round2():
+    """Round II: {artifact_id, version?, split?, skip?}. See
+    `_er_round2_rows` and extraction.round2."""
+    body = request.get_json(force=True) or {}
+    aid = body.get("artifact_id")
+    try:
+        pay = ARTIFACTS.payload(aid, body.get("version") or None) if aid else None
+        if not pay:
+            raise ValueError("There is no extraction %s here." % aid)
+        split = float(body.get("split") if body.get("split") is not None
+                      else extractionmod.KO_SPLIT)
+        ko = _er_ko()
+        recs = pay.get("recordings") or []
+        ko_now = {r["gid"]: extractionmod.ko_of(r.get("mouse_key"),
+                                                r.get("group"), ko)[0]
+                  for r in recs}
+        flips = {g: True for g in _er_flips(pay.get("room"), _er_pay_folder(pay))}
+        skip = set(body.get("skip") or [])
+        rows = [x for x in _er_round2_rows(pay, flips, ko_now)
+                if x["gid"] not in skip]
+        out = extractionmod.round2(rows, split)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/round2", exc, 400, {"artifact_id": aid})
+    return jsonify(dict(out, ok=True))
+
+
+@app.route("/api/extraction/stats", methods=["POST"])
+def api_extraction_stats():
+    """Does it differ? {artifact_id, version?, split?, min_n?, skip?}: every
+    metric per recording, with the labels as they are now (swaps applied)
+    and the %KO as it is now, compared CTL vs PTEN and CTL / Low KO / High
+    KO, and against %KO itself. One number per recording."""
+    body = request.get_json(force=True) or {}
+    aid = body.get("artifact_id")
+    try:
+        pay = ARTIFACTS.payload(aid, body.get("version") or None) if aid else None
+        if not pay:
+            raise ValueError("There is no extraction %s here." % aid)
+        split = float(body.get("split") if body.get("split") is not None
+                      else extractionmod.KO_SPLIT)
+        min_n = int(body.get("min_n") if body.get("min_n") is not None
+                    else extractionmod.MIN_N)
+        ko = _er_ko()
+        recs = pay.get("recordings") or []
+        ko_now = {r["gid"]: extractionmod.ko_of(r.get("mouse_key"),
+                                                r.get("group"), ko)[0]
+                  for r in recs}
+        flips = {g: True for g in _er_flips(pay.get("room"), _er_pay_folder(pay))}
+        seps = {g: v["verdict"] for g, v in
+                _er_seps(pay.get("room"), _er_pay_folder(pay)).items()}
+        out = extractionmod.stats(recs, flips, ko_now, split, min_n,
+                                  set(body.get("skip") or []), seps,
+                                  bool(body.get("only_sep")))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/stats", exc, 400, {"artifact_id": aid})
+    return jsonify(dict(out, ok=True))
+
+
+@app.route("/api/extraction/ko", methods=["POST"])
+def api_extraction_ko():
+    """Correct one mouse's %KO: {mouse_key, pct} (null clears it). Shared."""
+    body = request.get_json(force=True) or {}
+    mk = str(body.get("mouse_key") or "").strip()
+    if not mk:
+        return jsonify({"ok": False, "error": "Say which mouse (mouse_key)."}), 400
+    pct = body.get("pct")
+    if pct is not None:
+        try:
+            pct = float(pct)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "%KO is a number."}), 400
+        if not 0 <= pct <= 100:
+            return jsonify({"ok": False, "error": "%KO is 0 to 100."}), 400
+    STORE.set_prefs({}, merge={extractionmod.KO_KEY: {mk: pct}})
+    return jsonify({"ok": True, "ko": _er_ko()})
 
 
 # ==========================================================================
@@ -11551,12 +12899,17 @@ def _rootcanal_pool_candidates():
             # About an earlier version of the set than the one it holds now.
             "older": bool(newest) and str(r.get("ds_version")) != str(newest),
             "at": who_.get("at"),
+            # Who banked it, for the pool picker's version tree.
+            "by": who_.get("user"),
             "key": "b:%s:%s" % (gid, ph),
             "entry_id": r.get("entry_id"),
             "session_label": r.get("session_label")
             or ent.get("session_label"),
             "gid": gid, "project": proj, "mouse": ent.get("mouse"),
             "mouse_key": mk, "mouse_type": mt,
+            # Which set it is about, "ds" or Panning's "pooled" (2026-11-06):
+            # one recording can have both, as two rows with one label.
+            "set_type": ent.get("type") or None,
             "n": r.get("n"), "banked": True,
             "version": r.get("ds_version"), "params_hash": ph,
             "read": rh,
@@ -11569,13 +12922,19 @@ def _rootcanal_pool_candidates():
             reads.setdefault(r["entry_id"], {})[r.get("params_hash")] = {
                 "n": r.get("n_events"),
                 "from_version": r.get("from_version"),
-                "at": (r.get("updated") or r.get("created") or {}).get("at")}
+                "at": (r.get("updated") or r.get("created") or {}).get("at"),
+                "by": (r.get("updated") or r.get("created") or {}).get("user")}
+    sets = {}           # entry -> its bank record, for every version below
     for rec in BANK.all():
-        if (rec.get("type") or "") != "ds" or not rec.get("aligned"):
+        # Panning's pooled sets too (2026-11-06: "the latest Panning output"):
+        # Root Canal reads them as it reads a DS set.
+        if (rec.get("type") or "") not in ("ds", "pooled") \
+                or not rec.get("aligned"):
             continue
         if not rec.get("specified") or not _n_good(rec):
             continue
         gid = rec.get("gid")
+        sets[rec["id"]] = rec
         have = dict(reads.get(rec["id"]) or {})
         live = None
         try:
@@ -11605,6 +12964,7 @@ def _rootcanal_pool_candidates():
                 "session_label": rec.get("session_label") or rec.get("name"),
                 "gid": gid, "project": proj, "mouse": rec.get("mouse"),
                 "mouse_key": mk, "mouse_type": mt,
+                "set_type": rec.get("type") or None,
                 "from_version": fv, "live": rh == live,
                 "from_name": fname,
                 # A read of an earlier version of the set's stamps: an unnamed
@@ -11612,7 +12972,7 @@ def _rootcanal_pool_candidates():
                 # version was live.
                 "older": rh != live and (fname is None
                                          or str(fname) != str(newest)),
-                "at": rd.get("at"),
+                "at": rd.get("at"), "by": rd.get("by"),
                 "n": rd.get("n"), "banked": False, "version": None,
                 "params_hash": None, "read": rh, "here": True,
                 # Not fitted yet: an unbanked single's counts depend on the
@@ -11655,12 +13015,20 @@ def _rootcanal_pool_candidates():
             or ent.get("session_label"),
             "gid": gid, "project": proj, "mouse": ent.get("mouse"),
             "mouse_key": mk, "mouse_type": mt,
+            "set_type": ent.get("type") or None,
             "n": ns.get("events"), "banked": False,
             "params_hash": None, "read": rh,
             "here": bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz")),
             "measure": cur.get("measure"), "k": cur.get("k"),
             "counts": {"ds": ns.get("ds"), "ied": ns.get("ied")},
         })
+    _rootcanal_every_version(out, sets, reads)
+    # The versions nobody has read, added just above, are about their
+    # entry's set too.
+    for c in out:
+        if "set_type" not in c:
+            c["set_type"] = ((sets.get(c.get("entry_id")) or {}).get("type")
+                             or None)
     _rootcanal_describe(out, reg)
     # Natural order (2026-10-20): m2, m6, m21 -- not m2, m21, m6.
     out.sort(key=lambda c: (natsortmod.keys(c.get("project"),
@@ -11668,6 +13036,142 @@ def _rootcanal_pool_candidates():
                                             c.get("session_label")),
                             not c["banked"]))
     return out
+
+
+# (entry, version key, snapshot length, good labels) -> (read hash, stamps).
+# A version's snapshot never changes once it is written, so the read its
+# stamps would make is worked out once, not on every pool request.
+_RC_VER_READ = {}
+_RC_VER_READ_MAX = 4096
+
+
+def _rootcanal_version_read(rec, ver, goods):
+    """(read hash, number of stamps) a read of this version of the set
+    would have -- the name `_rootcanal_prepare` gives it, from the set and
+    its stamps alone -- or None when its stamps are not on this machine or
+    nothing in it is a spike."""
+    snap = ver.get("snap")
+    if not snap:
+        return None
+    ref = BANK.version_key(ver)
+    ck = (rec.get("id"), ref, len(snap), goods)
+    if ck in _RC_VER_READ:
+        return _RC_VER_READ[ck]
+    got = None
+    try:
+        stamps, _n = _dspca_stamps(rec, ref)
+        if stamps:
+            got = (rootcanal.Params(
+                entry_id=rec["id"],
+                stamps_hash=rootcanal.stamps_hash(stamps)).read_hash(),
+                len(stamps))
+    except Exception:                                    # noqa: BLE001
+        got = None
+    if len(_RC_VER_READ) >= _RC_VER_READ_MAX:
+        _RC_VER_READ.pop(next(iter(_RC_VER_READ)))
+    _RC_VER_READ[ck] = got
+    return got
+
+
+_RC_VER_FACTS = ("tag", "aligned", "aligned_tool", "retimed", "imported",
+                 "note", "at", "by", "n", "v")
+
+
+def _rootcanal_every_version(out, sets, reads):
+    """EVERY VERSION OF A LISTED RECORDING'S SET (2026-11-06: "allow pool
+    recordings ... when the single version doesn't exist ... but indicate
+    it so and let it exist"). Mutates `out`.
+
+    First, each answer is PLACED on its set's history, for the pool's
+    version picker, which draws the set's versions as a tree with every
+    answer on its node: `set_name`, the version it is about -- a banked
+    result at the version it was banked as, a read or a saved single at the
+    version whose stamps it read (found by the read's own name, which is
+    the set and its stamps, so an old read that never said which version it
+    was is placed too) -- with `set_newest` and that version's facts
+    (`set_ver`).
+
+    Then a recording the list already offers is offered at every OTHER
+    version of its set whose stamps this machine holds: one nobody has read
+    and no saved single is about, marked `unread`, under the key its read
+    WILL have ("u:<entry>:<read>"). It pools by being read first -- the fit
+    refuses it by name and the panel reads it here, or on the VACC, at
+    Single's settings, and pools again, when the same key is an ordinary
+    read cached here. Only recordings already listed: a set nobody has read
+    is not made a row of its own, where "Select all" would start forty
+    reads.
+    """
+    by_entry = {}
+    for c in out:
+        if c.get("entry_id"):
+            by_entry.setdefault(c["entry_id"], []).append(c)
+    for eid, cs in by_entry.items():
+        rec = sets.get(eid)
+        if rec is None:
+            continue
+        rows = versionsmod.label_rows(list(rec.get("versions") or []))
+        newest = _rootcanal_version_name(rec, None)
+        goods = tuple(sorted(str(g) for g in _dspca_good_ids(rec)))
+        facts, by_read = {}, {}
+        for ver, name in rows:
+            facts[name] = {k: ver.get(k) for k in _RC_VER_FACTS
+                           if ver.get(k) is not None}
+            got = _rootcanal_version_read(rec, ver, goods)
+            if got:
+                # The newest name a list of stamps goes by: a later version
+                # with the same stamps (a note changed) is the same read.
+                by_read[got[0]] = (name, BANK.version_key(ver), got[1])
+
+        def place(name, _facts=facts, _newest=newest):
+            return {"set_name": name, "set_newest": _newest,
+                    "set_ver": _facts.get(name) if name is not None
+                    else None}
+
+        def name_of(rh, _by=by_read):
+            return (_by.get(rh) or (None,))[0] if rh else None
+
+        seen = set()
+        for c in cs:
+            rh = c.get("read")
+            if c.get("kind") == "single":
+                for x in c.get("versions") or []:
+                    inp = ((x.get("inputs") or [{}])[0]) or {}
+                    nm = name_of(inp.get("read"))
+                    if nm is None and inp.get("from_version") is not None:
+                        nm = _rootcanal_version_name(rec, inp["from_version"])
+                    x.update(place(nm))
+                    if inp.get("read"):
+                        seen.add(inp["read"])
+                cur = next((x for x in c.get("versions") or []
+                            if x.get("v") == c.get("version")), None)
+                c.update(place((cur or {}).get("set_name")))
+            elif c.get("banked"):
+                # Its node is the version it was banked AS; the stamps it
+                # read are another version, which stays on offer as a read.
+                c.update(place(c.get("version") or c.get("from_name")
+                               or name_of(rh)))
+            else:
+                c.update(place(c.get("from_name") or name_of(rh)))
+                if rh:
+                    seen.add(rh)
+        base = cs[0]
+        for rh, (name, ref, n) in by_read.items():
+            if rh in seen:
+                continue
+            f = facts.get(name) or {}
+            out.append(dict(
+                {k: base.get(k) for k in ("session_label", "gid", "project",
+                                          "mouse", "mouse_key",
+                                          "mouse_type")},
+                key="u:%s:%s" % (eid, rh), entry_id=eid,
+                unread=True,
+                # Read on another machine and not brought here.
+                read_elsewhere=rh in (reads.get(eid) or {}),
+                from_version=ref, from_name=name, live=False,
+                older=bool(newest) and str(name) != str(newest),
+                at=f.get("at"), by=f.get("by"),
+                n=n, banked=False, version=None, params_hash=None,
+                read=rh, here=False, counts={}, **place(name)))
 
 
 def _rootcanal_version_name(rec, ref):
@@ -12160,6 +13664,8 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
     # Members that would have to be measured again, and whose reads are on
     # another machine: all of them in one refusal, not the first alone.
     stuck = []
+    # Versions of a set nobody has read yet (2026-11-06), named together.
+    unread = []
     for w in want:
         key = (w or {}).get("key")
         # A saved single's version: its own numbers, any machine.
@@ -12197,6 +13703,15 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                    " The saved pool this was opened from is not on this "
                    "machine yet, so its numbers cannot stand in for it.")))
         gid, rh = c["gid"], c.get("read")
+        # A VERSION NOBODY HAS READ YET (2026-11-06): offered so a recording
+        # can be pooled at any version of its set, and read before it is --
+        # here or on the VACC, at Single's settings. Named in one refusal,
+        # which the panel answers by reading them and pooling again.
+        if c.get("unread") and not (rh and ROOTCANAL.has_cached(gid, rh,
+                                                                 ".npz")):
+            unread.append((c.get("session_label") or key,
+                           c.get("from_name"), key))
+            continue
         rebanded = None
         remeasured = []
         recalled = False
@@ -12267,6 +13782,30 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             # this machine (a banked member read elsewhere).
             event_body=(dict(p.fit_params(), entry_id=c["entry_id"], read=rh)
                         if here else None)))
+    if unread:
+        one_ = len(unread) == 1
+        also = len(stuck)
+        raise _away(
+            [k for _l, _n, k in unread] + [k for _l, _w, _x, k in stuck],
+            rootcanalpool.PoolError(
+                "%s %s not been read yet: %s. A version with no read has no "
+                "numbers to pool, so %s read first -- here if the recording "
+                "is on this computer, otherwise on the VACC -- at Single's "
+                "settings, and the pool is fitted again when %s.%s Or pick "
+                "a version that has been read, or take %s out."
+                % ("This version of a set" if one_
+                   else "%d versions of sets" % len(unread),
+                   "has" if one_ else "have",
+                   "; ".join("%s, v%s" % (lab, nm) if nm else lab
+                             for lab, nm, _k in unread),
+                   "it is" if one_ else "they are",
+                   "it lands" if one_ else "they land",
+                   (" %d other member%s %s read on another machine and "
+                    "measured another way, and %s read here too."
+                    % (also, "" if also == 1 else "s",
+                       "was" if also == 1 else "were",
+                       "is" if also == 1 else "are")) if also else "",
+                   "it" if one_ else "them")))
     if stuck:
         where = sorted({w_ for _l, w_, _x, _k in stuck if w_})
         # Grouped by what was asked: one change, said once, with every
@@ -12360,8 +13899,10 @@ def _rootcanal_target(key, cands, kept):
                 pay.get("session_label") or key, pay.get("from_version"))
     c = cands.get(key)
     if c:
+        # A version nobody has read yet knows which version it is.
         return (c.get("entry_id"), c.get("read"),
-                c.get("session_label") or key, None)
+                c.get("session_label") or key,
+                c.get("from_version") if c.get("unread") else None)
     s = kept.get(key)
     if s:
         m = s["member"]
@@ -14695,6 +16236,39 @@ def _wf_set_events(entries, measure):
     return out, members
 
 
+def _wf_uses(uses):
+    """The verified DS and P-spike workflows whose borders another workflow
+    borrows, each pinned to the run it names (or its newest run)."""
+    out = {}
+    for k in ("ds", "pspike"):
+        ref = (uses or {}).get(k) or {}
+        rec = ARTIFACTS.get(ref.get("artifact_id"))
+        if not rec or rec.get("kind") != "rootcanal_workflow":
+            raise rcworkflow.WorkflowError(
+                "Pick the %s workflow whose border this uses."
+                % rcworkflow.WORDS_LC[k])
+        want_v = ref.get("version")
+        if want_v:
+            pay = ARTIFACTS.payload(rec["id"], want_v) or {}
+        else:
+            want_v, _r = _wf_last_run(rec["id"])
+            pay = (ARTIFACTS.payload(rec["id"], want_v) or {}) if want_v \
+                else {}
+        if not pay.get("run"):
+            raise rcworkflow.WorkflowError(
+                "‘%s’ has not been run yet, so it has no border to lend. "
+                "Run it first (Run and bank, or Run without banking)."
+                % (rec.get("nickname") or rec.get("name")))
+        if (pay.get("definition") or {}).get("kind") != k:
+            raise rcworkflow.WorkflowError(
+                "‘%s’ is not a %s workflow."
+                % (rec.get("nickname"), rcworkflow.WORDS_LC[k]))
+        out[k] = {"artifact_id": rec["id"],
+                  "version": int(want_v),
+                  "nickname": rec.get("nickname") or rec.get("name")}
+    return out
+
+
 def _wf_definition(body):
     """A workflow's definition, checked, with every input pinned to the
     version it names (or the newest, when it names none)."""
@@ -14704,8 +16278,44 @@ def _wf_definition(body):
             "A workflow is one of %s; not %r."
             % (", ".join(rcworkflow.KINDS), kind))
     out = {"kind": kind}
+    # ITS FOLDER (2026-11-11: "create a folder structure for the
+    # Workflows"): a path, outermost first -- ["Snap", "10%"]. A move made on
+    # the page is a shared preference over it (rootcanal_workflow_in).
+    folder = [str(x).strip() for x in (body.get("folder") or [])
+              if str(x).strip()]
+    if folder:
+        out["folder"] = folder[:4]
+    if kind == "pca":
+        # POOLED PCA (2026-11-06): the pools it makes one, each pinned; and,
+        # when both are named, the two verified workflows whose borders can
+        # colour its dots.
+        pools, seen = [], set()
+        for ref in body.get("pools") or []:
+            prec, pv, _pp = _wf_pool(ref, "pool")
+            if prec["id"] in seen:
+                continue
+            seen.add(prec["id"])
+            pools.append({"artifact_id": prec["id"], "version": pv,
+                          "nickname": prec.get("nickname") or prec.get("name")})
+        if not pools:
+            raise rcworkflow.WorkflowError(
+                "Pick the pools to make one pool of: PTEN Baseline and CTL "
+                "Baseline, say.")
+        out["pools"] = pools
+        u = body.get("uses") or {}
+        if all((u.get(k) or {}).get("artifact_id") for k in ("ds", "pspike")):
+            out["uses"] = _wf_uses(u)
+        return out
     if kind != "ambiguous":
         out["grace"] = _rootcanal_border_grace(body.get("grace", 0.05))
+        # ITS SHAPE (2026-11-11): the box, the scoop (an ellipsoid) or the
+        # snap (the convex hull); see rcborder.SHAPES.
+        shape = str(body.get("shape") or "box")
+        if shape not in rcborder.SHAPES:
+            raise rcworkflow.WorkflowError(
+                "A border is a box, a scoop (ellipsoid) or a snap (hull); "
+                "not %r." % shape)
+        out["shape"] = shape
         trec, tv, _tp = _wf_pool(body.get("target"), "target")
         out["target"] = {"artifact_id": trec["id"], "version": tv,
                          "nickname": trec.get("nickname") or trec.get("name")}
@@ -14737,34 +16347,7 @@ def _wf_definition(body):
                     "around.")
             out["source"] = {"type": "sets", "entries": ents}
     else:
-        uses = {}
-        for k in ("ds", "pspike"):
-            ref = (body.get("uses") or {}).get(k) or {}
-            rec = ARTIFACTS.get(ref.get("artifact_id"))
-            if not rec or rec.get("kind") != "rootcanal_workflow":
-                raise rcworkflow.WorkflowError(
-                    "Pick the %s workflow whose border this uses."
-                    % rcworkflow.WORDS_LC[k])
-            want_v = ref.get("version")
-            if want_v:
-                pay = ARTIFACTS.payload(rec["id"], want_v) or {}
-            else:
-                want_v, _r = _wf_last_run(rec["id"])
-                pay = (ARTIFACTS.payload(rec["id"], want_v) or {}) if want_v \
-                    else {}
-            if not pay.get("run"):
-                raise rcworkflow.WorkflowError(
-                    "‘%s’ has not been run yet, so it has no border to lend. "
-                    "Run it first (Run and bank, or Run without banking)."
-                    % (rec.get("nickname") or rec.get("name")))
-            if (pay.get("definition") or {}).get("kind") != k:
-                raise rcworkflow.WorkflowError(
-                    "‘%s’ is not a %s workflow."
-                    % (rec.get("nickname"), rcworkflow.WORDS_LC[k]))
-            uses[k] = {"artifact_id": rec["id"],
-                       "version": int(want_v),
-                       "nickname": rec.get("nickname") or rec.get("name")}
-        out["uses"] = uses
+        out["uses"] = _wf_uses(body.get("uses") or {})
         t = body.get("target") or None
         if t:
             trec, tv, _tp = _wf_pool(t, "target")
@@ -14785,11 +16368,115 @@ def _wf_run_of(ref):
     return run
 
 
+def _wf_compute_pca(defn):
+    """POOLED PCA (2026-11-06): the pools made one pool -- every member's
+    events as its pool measured them, clustered together the way Pooled
+    clusters a pool -- and a PCA of the three numbers. Each event keeps its
+    call in the one pool, its call in its own pool, which pool it came
+    from, and, with both verified workflows named, where their borders put
+    it. Nothing is read, saved or banked."""
+    pools, members, own, src, seen = [], [], [], [], {}
+    measure, overlap, mouse_types, complete = None, [], {}, []
+    for pi, ref in enumerate(defn["pools"]):
+        prec, pv, ppay = _wf_pool(ref, "pool")
+        prm = ppay.get("params") or {}
+        meas = prm.get("measure") or {}
+        if measure is None:
+            measure = meas
+        elif _wf_measure_body(meas) != _wf_measure_body(measure):
+            diff = sorted(k for k in RC_MEASURE_KEYS
+                          if meas.get(k) != measure.get(k))
+            raise rcworkflow.WorkflowError(
+                "‘%s’ was measured differently from ‘%s’ (%s differ), so "
+                "their numbers are not one measurement and cannot be one "
+                "pool." % (ref.get("nickname"), defn["pools"][0].get(
+                    "nickname"), ", ".join(diff)))
+        mouse_types.update(ppay.get("mouse_types") or {})
+        complete.append(bool(prm.get("complete_only")))
+        by_m = {}
+        for e in ppay.get("events") or []:
+            by_m.setdefault(e.get("m"), []).append(e)
+        n_ev = n_mem = 0
+        for mi, m in enumerate(ppay.get("members") or []):
+            # By the recording, not the member's key (2026-11-06): one
+            # recording in two pools under different answers (b:/u:/s:) has
+            # two keys, so it was pooled twice and never said.
+            rk = m.get("gid") or m.get("entry_id") or m.get("key")
+            if rk in seen:
+                # In two of the pools: pooled once, from the first, and
+                # said. (Twice in one pool: pooled once too, not "overlap".)
+                lab = m.get("session_label") or m.get("key")
+                if seen[rk] != pi and lab not in overlap:
+                    overlap.append(lab)
+                continue
+            seen[rk] = pi
+            n_mem += 1
+            rows = []
+            for e in by_m.get(mi, []):
+                rows.append({"amp_uV": e.get("amp_uV"), "hw_ms": e.get("hw_ms"),
+                             "hf_db": e.get("hf_db"), "i": e.get("i"),
+                             "t": e.get("t"), "cls": e.get("cls_single"),
+                             "name": e.get("name_single"),
+                             "wide": bool(e.get("wide"))})
+                own.append(e.get("cls_pool"))
+                src.append(pi)
+            n_ev += len(rows)
+            members.append(dict(m, rows=rows,
+                                band=prm.get("band") or rootcanal.BAND,
+                                filter=meas.get("filter_label")))
+        pools.append(dict(ref, n=n_ev, members=n_mem))
+    res = rootcanalpool.fit_pool(members, mouse_types, None,
+                                 complete_only=all(complete), k=2)
+    if len(res["events"]) != len(own):
+        # Complete-only dropped some: line the rest up again by member/event.
+        keep = {(e["m"], e["i"]) for e in res["events"]}
+        pairs, j = [], 0
+        for mi, m in enumerate(members):
+            for r in m["rows"]:
+                if (mi, r["i"]) in keep:
+                    pairs.append((own[j], src[j]))
+                j += 1
+        own, src = [p[0] for p in pairs], [p[1] for p in pairs]
+    pay = {"members": res["members"], "events": res["events"]}
+    tgt = rcworkflow.pool_events(pay)
+    cls = [e.get("cls_pool") for e in res["events"]]
+    summ, scores = rcworkflow.pca(tgt)
+    cols = rcworkflow.columns(tgt, cls)
+    cols.update(pc=scores, src=src, own=own)
+    run = {"kind": "pca", "pools": pools, "measure": measure,
+           "members": _wf_members(pay), "pca": summ,
+           "pool_rule": res.get("rule"),
+           "gmm": {k: (res.get("gmm") or {}).get(k)
+                   for k in ("verdict", "delta", "support", "n")},
+           "overlap": overlap, "complete_only": all(complete),
+           "target": {"nickname": " + ".join(p["nickname"] for p in pools),
+                      "n": len(tgt)},
+           "mismatch": []}
+    if defn.get("uses"):
+        a = _wf_run_of(defn["uses"]["ds"])
+        b = _wf_run_of(defn["uses"]["pspike"])
+        cols["ver"] = rcworkflow.classes_two(tgt, a["border"], a["grace"],
+                                             b["border"], b["grace"])
+        run["borders"] = {
+            "ds": {"border": a["border"], "grace": a["grace"],
+                   "border_ref": a.get("border_ref"),
+                   "workflow": defn["uses"]["ds"]},
+            "pspike": {"border": b["border"], "grace": b["grace"],
+                       "border_ref": b.get("border_ref"),
+                       "workflow": defn["uses"]["pspike"]}}
+        run["ver_counts"] = rcworkflow.counts(cols["ver"])
+    run["own_counts"] = rcworkflow.counts(own)
+    run["cols"] = cols
+    return run
+
+
 def _wf_compute(defn):
     """Define, apply and say what would be extracted. Nothing is saved."""
     kind = defn["kind"]
     run = {"kind": kind}
-    if kind == "ambiguous":
+    if kind == "pca":
+        run = _wf_compute_pca(defn)
+    elif kind == "ambiguous":
         a, b = _wf_run_of(defn["uses"]["ds"]), _wf_run_of(defn["uses"]["pspike"])
         tref = defn.get("target") or a["target"]
         _trec, _tv, tpay = _wf_pool(tref, "target")
@@ -14830,7 +16517,8 @@ def _wf_compute(defn):
         else:
             src_events, src_members = _wf_set_events(src["entries"], measure)
             smeas = measure
-        border = rcworkflow.define(src_events, group, g)
+        shape = defn.get("shape") or "box"
+        border = rcworkflow.define(src_events, group, g, shape)
         diff = rootcanal.margin_mismatch(
             {"measure": smeas}, rootcanal.Params(**_wf_measure_body(measure)))
         border.update(measure=smeas, level="workflow",
@@ -14847,8 +16535,17 @@ def _wf_compute(defn):
         tgt = rcworkflow.pool_events(tpay)
         cls = rcworkflow.classes_one(tgt, border, g)
         scls = rcworkflow.classes_one(src_events, border, g)
+        # Its own events missing a number are 'partial' (2026-11-06), not
+        # outside: grace_sweep's share counts complete events only, so the
+        # Grace label read "2.7% of its own left out (3 of 39)" and the
+        # legend called them left out by the grace. The target's stay as
+        # they were.
+        for j, e in enumerate(src_events):
+            if any(rcworkflow._f(e.get(k)) is None
+                   for k in ("amp_uV", "hf_db", "hw_ms")):
+                scls[j] = "partial"
         run.update(
-            border=border, grace=g, group=group,
+            border=border, grace=g, group=group, shape=shape,
             rule=rcborder.rule_words(border, g),
             box=rcworkflow.box_of(border, g),
             target=dict(defn["target"], n=len(tgt)),
@@ -14857,7 +16554,7 @@ def _wf_compute(defn):
                        + "; ".join(diff).replace("the margin", "the source")
                        .replace("its ", "the source's "))] if diff else [],
             members=_wf_members(tpay), src_members=src_members,
-            sweep=rcworkflow.grace_sweep(src_events, tgt, group),
+            sweep=rcworkflow.grace_sweep(src_events, tgt, group, shape=shape),
             src_cols=rcworkflow.columns(
                 src_events, scls, rcworkflow.distances(src_events, border, g)),
             cols=rcworkflow.columns(
@@ -14987,6 +16684,8 @@ def _wf_current(defn):
                           "newest": rec.get("version")})
     if defn.get("target"):
         check(defn["target"], "target pool")
+    for p in defn.get("pools") or []:
+        check(p, "pool")
     src = defn.get("source") or {}
     if src.get("type") == "pool":
         check(src, "source pool")
@@ -15063,6 +16762,8 @@ def _wf_row(r):
             "bank_current": current if bank else None,
             "border_ref": run.get("border_ref"),
             "grace": run.get("grace") or defn.get("grace"),
+            "shape": run.get("shape") or defn.get("shape"),
+            "folder": defn.get("folder") or [],
             "stale": stale, "mismatch": run.get("mismatch") or [],
             "sync": r.get("sync")}
 
@@ -15261,6 +16962,9 @@ def api_rootcanal_workflow_run(artifact_id):
             if fresh.get("uses"):
                 fresh["uses"] = {k: {"artifact_id": v["artifact_id"]}
                                  for k, v in fresh["uses"].items()}
+            if fresh.get("pools"):
+                fresh["pools"] = [{"artifact_id": p["artifact_id"]}
+                                  for p in fresh["pools"]]
             defn = _wf_definition(fresh)
         elif body.get("refresh_sets") and (defn.get("source") or {}).get(
                 "type") == "sets":
@@ -15281,7 +16985,10 @@ def api_rootcanal_workflow_run(artifact_id):
                 last_run = p["run"]
                 break
         nxt = int(rec.get("version") or 0) + 1
-        if defn["kind"] != "ambiguous":
+        if defn["kind"] == "pca":
+            # A picture to look at (2026-11-06): nothing is banked.
+            run["bank"] = None
+        elif defn["kind"] != "ambiguous":
             run["border_ref"] = _wf_border_save(
                 rec, run, (last_run or {}).get("border_ref"))
             # BANKED ONLY WHEN ASKED (2026-11-05: "not sure what to hit to
@@ -15311,8 +17018,8 @@ def api_rootcanal_workflow_run(artifact_id):
         run["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
         run["by"] = (STORE.provenance() or {}).get("user")
         inputs = []
-        for k in ("target", "source"):
-            ref = defn.get(k) or {}
+        for ref in [defn.get(k) or {} for k in ("target", "source")] + list(
+                defn.get("pools") or []):
             if ref.get("artifact_id"):
                 inputs.append({"artifact_id": ref["artifact_id"],
                                "version": ref["version"],
@@ -15448,6 +17155,410 @@ def api_rootcanal_workflow_bank(artifact_id):
         return fail("rootcanal/workflow-bank", exc, 400,
                     {"artifact_id": artifact_id})
     return jsonify({"ok": True, "entry_id": made["id"], "n": len(events)})
+
+
+# --------------------------------------------------------------------------
+# THE META WORKFLOW (2026-11-11): the measurement settings that leave the
+# fewest events ambiguous -- inside both the DS box and the P-spike box of an
+# Ambiguous Dataset workflow -- at a grace. backend/rcmeta.py does the
+# search; here are its inputs (every read behind that workflow), its runs and
+# its routes. "This entire workflow should just be a single output of the
+# best parameters. Two instances, one for 5% and one at 10% grace."
+# --------------------------------------------------------------------------
+from . import rcmeta                                          # noqa: E402
+
+# WHERE EACH RUN IS, kept on disk as well as here (2026-11-11: "show
+# progress with descriptive descriptions ... and if it crashes out it can
+# pick up where it left off"). The measurements themselves are kept by
+# rcmeta.Engine under _META_DIR/<fingerprint>; this is the page's view of a
+# run -- its step, its words, how far -- so after a restart a run that was
+# going says where it stopped, and Resume replays it off the disk.
+_META_DIR = os.path.join(LOGS_DIR, ".cache", "rcmeta")
+_META_STATE = os.path.join(_META_DIR, "runs.json")
+_META_LOCK = threading.Lock()
+_META_QUEUE = []         # artifact ids waiting, in order
+_META_THREAD = {"t": None}
+_META_SAVED = {"at": 0.0}
+
+
+def _meta_state_load():
+    """The runs as the last process left them. One that was running or
+    waiting when it stopped is interrupted: nothing here is driving it."""
+    try:
+        with open(_META_STATE, "r", encoding="utf-8") as f:
+            got = json.load(f) or {}
+    except Exception:                                    # noqa: BLE001
+        return {}
+    for st in got.values():
+        if isinstance(st, dict) and st.get("status") in ("running", "queued"):
+            st["was"] = st.get("status")
+            st["status"] = "interrupted"
+            st["ended"] = st.get("at")
+    return got
+
+
+_META_RUNS = _meta_state_load()
+
+
+def _meta_persist(force=False):
+    """Write the runs down: on every change of state, and at most once a
+    second while one is running."""
+    now = time.time()
+    if not force and now - _META_SAVED["at"] < 1.0:
+        return
+    _META_SAVED["at"] = now
+    try:
+        os.makedirs(_META_DIR, exist_ok=True)
+        tmp = _META_STATE + ".part"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(_META_RUNS, f, default=str)
+        os.replace(tmp, _META_STATE)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal.meta.state", exc, None, {})
+
+
+def _meta_say(aid):
+    """rcmeta's progress, into the run's state: a new step closes the one
+    before; the rest are words and counts for the page."""
+    def say(**k):
+        st = _META_RUNS.get(aid)
+        if st is None:
+            return
+        now = time.time()
+        step = k.get("step")
+        if step and step != st.get("step"):
+            if st.get("step") and st["step"] not in st.setdefault("done_steps", []):
+                st["done_steps"].append(st["step"])
+            st.update(step=step, step_started=now, done=None, of=None, item=None)
+        for x in ("words", "done", "of", "item", "best", "best_words", "today"):
+            if x in k:
+                st[x] = k[x]
+        st["at"] = now
+        _meta_persist()
+    return say
+
+
+def _meta_pool_specs(pay, role, tag, stuck):
+    """A pool's events as rcmeta reads: one per member, its events in the
+    pool's order, from the read the member is pinned to."""
+    import numpy as np
+    evs = rcworkflow.pool_events(pay)
+    members = (pay or {}).get("members") or []
+    by_m = {}
+    for j, e in enumerate(evs):
+        by_m.setdefault(e.get("m"), []).append(j)
+    specs = []
+    for mi, js in by_m.items():
+        m = members[mi] if isinstance(mi, int) and 0 <= mi < len(members) else {}
+        gid, rh = m.get("gid"), (m.get("pin") or {}).get("read")
+        if not _rootcanal_have(gid, rh):
+            stuck.append("%s (its read is not on this machine)"
+                         % (m.get("session_label") or gid))
+            continue
+        specs.append({"id": "%s:%s" % (tag, mi), "role": role, "pos": js,
+                      "label": m.get("session_label"),
+                      "path": _rootcanal_npz(gid, rh),
+                      "times": [evs[j]["t"] for j in js]})
+    stored = np.array([[np.nan if e.get(k) is None else float(e[k])
+                        for k in ("amp_uV", "hf_db", "hw_ms")] for e in evs],
+                      dtype=float).reshape(-1, 3)
+    return specs, stored
+
+
+def _meta_inputs(amb_ref):
+    """Everything an Ambiguous Dataset workflow reads, as rcmeta reads: the
+    DS border's source pool ("ctl"), the P-spike border's hand-sorted sets
+    ("p") and the target pool ("tgt"); the settings they were measured with
+    (today's); and the purple count the workflow itself found."""
+    rec = ARTIFACTS.get((amb_ref or {}).get("artifact_id"))
+    if not rec or rec.get("kind") != "rootcanal_workflow":
+        raise rcmeta.MetaError("Pick the Ambiguous Dataset workflow to improve.")
+    av = (amb_ref or {}).get("version") or _wf_last_run(rec["id"])[0]
+    apay = ARTIFACTS.payload(rec["id"], av) or {}
+    d = apay.get("definition") or {}
+    if d.get("kind") != "ambiguous" or not apay.get("run"):
+        raise rcmeta.MetaError("‘%s’ is not an Ambiguous Dataset workflow that "
+                               "has run." % (rec.get("nickname") or rec.get("name")))
+    uses = d.get("uses") or {}
+    dsp = ARTIFACTS.payload(uses["ds"]["artifact_id"], uses["ds"]["version"]) or {}
+    psp = ARTIFACTS.payload(uses["pspike"]["artifact_id"],
+                            uses["pspike"]["version"]) or {}
+    dsd, psd = dsp.get("definition") or {}, psp.get("definition") or {}
+    tref = d.get("target") or (dsp.get("run") or {}).get("target")
+    _trec, _tv, tpay = _wf_pool(tref, "target")
+    _srec, _sv, spay = _wf_pool(dsd.get("source"), "DS border's source")
+    measure = (tpay.get("params") or {}).get("measure") or {}
+    smeas = (spay.get("params") or {}).get("measure") or {}
+    stuck = []
+    s_ctl, st_ctl = _meta_pool_specs(spay, "ctl", "ctl", stuck)
+    s_tgt, st_tgt = _meta_pool_specs(tpay, "tgt", "tgt", stuck)
+    # The hand-sorted sets, measured the way the target was: as the P-spike
+    # workflow measures them (_wf_set_events), each set's own read.
+    s_p, n_p = [], 0
+    for it in ((psd.get("source") or {}).get("entries") or []):
+        eid = it.get("entry_id")
+        body = dict(_wf_measure_body(measure), entry_id=eid,
+                    from_version=it.get("version"), k=1)
+        try:
+            _r, p, got, _rh, _st = _rootcanal_setup(body)
+            res = rootcanal.fit(got, p)
+            times = [e.get("t") for e in res.get("events") or []]
+            sub = rootcanal.subset(got, times)
+            if sub is None:
+                raise rcmeta.MetaError("its read does not hold its events")
+        except Exception as exc:                         # noqa: BLE001
+            stuck.append("%s (%s)" % (it.get("session_label") or eid, exc))
+            continue
+        s_p.append({"id": "p:%s" % eid, "role": "p",
+                    "pos": list(range(n_p, n_p + len(times))),
+                    "label": it.get("session_label"), "got": sub,
+                    "times": times})
+        n_p += len(times)
+    if stuck:
+        raise rcmeta.MetaError("%d of the reads could not be used here: %s."
+                               % (len(stuck), "; ".join(stuck)))
+    base = _wf_measure_body(measure)
+    today = (rcmeta.filt_key(measure), float(measure.get("win_ms")),
+             float(measure.get("cross_ms")),
+             (float(measure.get("band_lo")), float(measure.get("band_hi"))))
+    from collections import Counter
+    cls = Counter(((apay.get("run") or {}).get("cols") or {}).get("cls") or [])
+    return {
+        "specs": s_ctl + s_p + s_tgt, "base": base, "today": today,
+        "stored": {"ctl": st_ctl, "tgt": st_tgt},
+        "measure": measure,
+        "mismatch": ([] if _wf_measure_body(smeas) == base else
+                     ["the CTL pool was measured differently from the target "
+                      "(%s against %s); both are measured the target's way "
+                      "here" % (smeas.get("filter_label"),
+                                measure.get("filter_label"))]),
+        "dataset": {"artifact_id": rec["id"], "version": int(av),
+                    "nickname": rec.get("nickname") or rec.get("name"),
+                    "purple": cls.get("both"),
+                    "grace": (dsp.get("run") or {}).get("grace"),
+                    "counts": {k: cls.get(k) for k in ("both", "ds", "pspike",
+                                                       "neither")}},
+        "pools": {"ctl": {"artifact_id": spay and _srec["id"], "version": _sv,
+                          "nickname": _srec.get("nickname"), "n": len(st_ctl)},
+                  "tgt": {"artifact_id": _trec["id"], "version": _tv,
+                          "nickname": _trec.get("nickname"), "n": len(st_tgt)},
+                  "p": {"sets": len(s_p), "n": n_p}},
+    }
+
+
+def _meta_check(E, inp):
+    """Today's settings, measured again here, against the numbers the pools
+    hold: the search is only worth its answer if it starts where they are."""
+    import numpy as np
+    F = E.features(inp["today"])
+    out = {}
+    for r in ("ctl", "tgt"):
+        A, B = F[r], inp["stored"][r]
+        both = np.isfinite(A) & np.isfinite(B)
+        diff = np.abs(A - B)[both]
+        out[r] = {"same_measured": int(np.sum(np.isfinite(A).all(1)
+                                               == np.isfinite(B).all(1))),
+                  "n": int(A.shape[0]),
+                  "worst": float(diff.max()) if diff.size else 0.0}
+    return out
+
+
+def _meta_run(aids, say=None):
+    """Run meta workflows -- one, or several on the same Ambiguous Dataset,
+    which then share every measurement (only the grace differs) -- and save
+    each answer as its next version. Minutes; called from a thread (the
+    route) or a script. Returns [(saved, result)]."""
+    if isinstance(aids, str):
+        aids = [aids]
+    say = say or (lambda **k: None)
+    recs, defns = [], []
+    for aid in aids:
+        rec = ARTIFACTS.get(aid)
+        if not rec or rec.get("kind") != "rootcanal_meta":
+            raise rcmeta.MetaError("There is no meta workflow %s." % aid)
+        recs.append(rec)
+        defns.append((ARTIFACTS.payload(aid, None) or {}).get("definition") or {})
+    if len({(d.get("ambiguous") or {}).get("artifact_id") for d in defns}) > 1:
+        raise rcmeta.MetaError("Meta workflows run together have to improve "
+                               "the same Ambiguous Dataset.")
+    t0 = time.time()
+    say(step="reads", words="Opening the reads behind ‘%s’ and measuring the "
+        "hand-sorted P-spikes" % ((defns[0].get("ambiguous") or {}).get("nickname")
+                                  or "the Ambiguous Dataset"))
+    inp = _meta_inputs(defns[0].get("ambiguous"))
+    fp = rcmeta.fingerprint(inp["specs"], inp["base"])
+    E = rcmeta.Engine(inp["specs"], inp["base"], say=say,
+                      cache_dir=os.path.join(_META_DIR, fp))
+    out = []
+    try:
+        E.amphw([inp["today"][:3]])
+        E.hf([inp["today"][3]])
+        check = _meta_check(E, inp)
+        for rec, defn in zip(recs, defns):
+            res = rcmeta.search(E, defn["grace"], inp["today"], say=say)
+            say(step="save", words="Saving the answer as the next version of ‘%s’"
+                % (rec.get("nickname") or rec.get("name")))
+            result = dict(res, check=check, dataset=inp["dataset"],
+                          pools=inp["pools"], mismatch=inp["mismatch"],
+                          measure=inp["measure"], passes=E.passes,
+                          kept=E.kept, fingerprint=fp,
+                          seconds_total=round(time.time() - t0, 1),
+                          at=datetime.datetime.now().astimezone().isoformat(
+                              timespec="seconds"),
+                          by=(STORE.provenance() or {}).get("user"))
+            saved = ARTIFACTS.put(
+                "rootcanal_meta", rec["subject"],
+                {"schema": "rootcanal_meta/1", "definition": defn,
+                 "result": result},
+                params={"grace": defn.get("grace")},
+                inputs=[{"artifact_id": inp["dataset"]["artifact_id"],
+                         "version": inp["dataset"]["version"]}])
+            STORE.record_activity([{"action": "rootcanal.meta.run",
+                                    "detail": {"artifact": rec["id"],
+                                               "version": saved.get("version"),
+                                               "purple": (result["best"]["score"]
+                                                          or {}).get("purple"),
+                                               "today": (result["today"]["score"]
+                                                         or {}).get("purple")}}])
+            out.append((saved, result))
+    finally:
+        E.close()
+    return out
+
+
+def _meta_row(r):
+    cur = (r.get("current") or {})
+    pay = ARTIFACTS.payload(r["id"], None) or {}
+    res = pay.get("result") or {}
+    return {"artifact_id": r["id"], "name": r.get("nickname") or r.get("name"),
+            "version": r.get("version"), "at": cur.get("at"), "by": cur.get("by"),
+            "definition": pay.get("definition") or {},
+            "result": ({k: res.get(k) for k in ("best", "today", "trail",
+                                                 "near", "dataset", "pools",
+                                                 "check", "mismatch",
+                                                 "evaluated", "eligible",
+                                                 "guard", "seconds_total",
+                                                 "passes", "kept", "at", "by",
+                                                 "grace")} if res else None),
+            "run": _META_RUNS.get(r["id"])}
+
+
+@app.route("/api/rootcanal/meta")
+def api_rootcanal_meta():
+    """Every meta workflow, its newest answer and whether one is running;
+    and the Ambiguous Dataset workflows a new one can improve."""
+    try:
+        rows = [_meta_row(r) for r in ARTIFACTS.list(kind="rootcanal_meta")
+                if not r.get("deleted")]
+        rows.sort(key=lambda x: ((x["definition"] or {}).get("grace") or 0,
+                                 x["name"] or ""))
+        amb = []
+        for r in ARTIFACTS.list(kind="rootcanal_workflow"):
+            p = ARTIFACTS.payload(r["id"], None) or {}
+            if (p.get("definition") or {}).get("kind") == "ambiguous":
+                amb.append({"artifact_id": r["id"],
+                            "nickname": r.get("nickname") or r.get("name"),
+                            "version": r.get("version")})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/meta", exc, 500)
+    return jsonify({"ok": True, "metas": rows, "ambiguous": amb,
+                    "plan": [list(x) for x in rcmeta.PLAN],
+                    "queue": list(_META_QUEUE),
+                    "now": time.time(),
+                    "knobs": {"win": rcmeta.COARSE_WIN,
+                              "cross": rcmeta.COARSE_CROSS,
+                              "edges": rcmeta.COARSE_EDGES,
+                              "guard": rcmeta.GUARD}})
+
+
+@app.route("/api/rootcanal/meta", methods=["POST"])
+def api_rootcanal_meta_new():
+    """A new meta workflow: {name, grace, ambiguous: {artifact_id}}."""
+    body = request.get_json(force=True) or {}
+    try:
+        g = _rootcanal_border_grace(body.get("grace", 0.05))
+        aref = body.get("ambiguous") or {}
+        arec = ARTIFACTS.get(aref.get("artifact_id"))
+        if not arec:
+            raise rcmeta.MetaError("Pick the Ambiguous Dataset workflow to "
+                                   "improve.")
+        name = (str(body.get("name") or "").strip()
+                or "Fewest ambiguous · %s grace" % rcborder.grace_words(g))
+        key = "%s|%s" % (arec["id"], uuid.uuid4().hex[:8])
+        defn = {"grace": g, "name": name,
+                "ambiguous": {"artifact_id": arec["id"],
+                              "nickname": arec.get("nickname") or arec.get("name")}}
+        saved = ARTIFACTS.put("rootcanal_meta",
+                              {"meta_key": key, "name": name, "grace": g},
+                              {"schema": "rootcanal_meta/1", "definition": defn,
+                               "result": None}, params={"grace": g})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/meta-new", exc, 400)
+    return jsonify({"ok": True, "artifact_id": saved["id"]})
+
+
+def _meta_loop():
+    """Runs the queue, one meta workflow at a time (each uses every core it
+    can), until it is empty."""
+    while True:
+        with _META_LOCK:
+            if not _META_QUEUE:
+                _META_THREAD["t"] = None
+                return
+            aid = _META_QUEUE.pop(0)
+            st = _META_RUNS[aid]
+            st.update(status="running", started=time.time(), at=time.time(),
+                      step=None, done_steps=[], done=None, of=None, item=None,
+                      error=None)
+        _meta_persist(force=True)
+        try:
+            saved, res = _meta_run([aid], say=_meta_say(aid))[0]
+            st.update(status="done", version=saved.get("version"),
+                      purple=(res["best"]["score"] or {}).get("purple"),
+                      kept=res.get("kept"), passes=res.get("passes"),
+                      ended=time.time(), step=None)
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal.meta.run", exc, None,
+                               {"artifact": aid})
+            st.update(status="failed", error=str(exc), ended=time.time())
+        _meta_persist(force=True)
+
+
+@app.route("/api/rootcanal/meta/<artifact_id>/run", methods=["POST"])
+def api_rootcanal_meta_run(artifact_id):
+    """Run a meta workflow's search, in the background: minutes, on every
+    core but two. One runs at a time; the rest wait in line. One that was
+    interrupted or failed picks up where it left off: every measurement it
+    made is on disk, so its search replays off the disk and goes on."""
+    rec = ARTIFACTS.get(artifact_id)
+    if not rec or rec.get("kind") != "rootcanal_meta":
+        return jsonify({"ok": False, "error": "There is no meta workflow %s."
+                        % artifact_id}), 404
+    with _META_LOCK:
+        st = _META_RUNS.get(artifact_id) or {}
+        if st.get("status") in ("running", "queued"):
+            return jsonify({"ok": True, "run": st})
+        _META_RUNS[artifact_id] = {
+            "status": "queued", "at": time.time(), "queued_at": time.time(),
+            "resumed": st.get("status") in ("interrupted", "failed"),
+            "name": rec.get("nickname") or rec.get("name")}
+        _META_QUEUE.append(artifact_id)
+        if _META_THREAD["t"] is None:
+            t = threading.Thread(target=_meta_loop, daemon=True,
+                                 name="barry-rcmeta")
+            _META_THREAD["t"] = t
+            t.start()
+    _meta_persist(force=True)
+    return jsonify({"ok": True, "run": _META_RUNS[artifact_id]})
+
+
+@app.route("/api/rootcanal/meta/<artifact_id>")
+def api_rootcanal_meta_one(artifact_id):
+    rec = ARTIFACTS.get(artifact_id)
+    if not rec or rec.get("kind") != "rootcanal_meta":
+        return jsonify({"ok": False, "error": "There is no meta workflow %s."
+                        % artifact_id}), 404
+    return jsonify(dict(_meta_row(rec), ok=True))
 
 
 def _rootcanal_border_load(ref):
@@ -24350,7 +26461,15 @@ def api_prefs():
         return jsonify({"ok": True, "prefs": STORE.get_prefs()})
     body = request.get_json(force=True) or {}
     try:
-        prefs = STORE.set_prefs(body.get("patch") or body)
+        if isinstance(body.get("merge"), dict):
+            # {patch?, merge: {key: {id: value or null}}} (2026-11-06): one
+            # id of a map changed, merged into the map as the server holds
+            # it, not the page's copy from boot (store.set_prefs). Checked
+            # first, so a merge-only body is never taken as a bare patch.
+            prefs = STORE.set_prefs(body.get("patch") or {},
+                                    merge=body["merge"])
+        else:
+            prefs = STORE.set_prefs(body.get("patch") or body)
     except Exception as exc:
         return fail("prefs", exc, 400)
     return jsonify({"ok": True, "prefs": prefs})
@@ -27245,6 +29364,8 @@ BANK = eventbank.EventBank(LOGS_DIR, STORE)
 # a proposal is not a version until somebody says so.
 BRACES = brsetmod.BracesSets(LOGS_DIR, STORE)
 REG = sessreg.Registry(STORE)
+# "Will this folder open", kept between starts (sessreg.keep_opens).
+sessreg.keep_opens(os.path.join(LOGS_DIR, ".cache", "opens.json"))
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
 GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
@@ -27264,6 +29385,11 @@ vosmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
 from . import softmouse as softmousemod                       # noqa: E402
 softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                              _vacc_device()))
+# Chicken Scratch (BETA, Misc): every source's word on each PTEN/KCNT1 mouse,
+# disagreements kept. Facts are built by tools/chickenscratch/; chickenscratch.py.
+from . import chickenscratch as chickenscratchmod             # noqa: E402
+chickenscratchmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
+                                                  _vacc_device()))
 # Floss, the bug fixer anyone can ask (the rail's Floss chip): Claude Code on
 # the lab's account, in a private copy of the code. floss.py, docs/floss.md.
 from . import floss as flossmod                               # noqa: E402
@@ -27271,6 +29397,17 @@ flossmod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user"),
                  machine=_vacc_device, shard=shardsmod_id,
                  build=lambda: NOTES.read().get("version"),
                  errors=lambda: _list_errors(12)[0])
+# Inside Jarvis (the showcase's fourth tab): the live census behind its
+# pictures, and the "Last 7 days' work" printout for the PI. inside.py,
+# weekly.py, web/js/inside.js.
+from . import inside as insidemod                             # noqa: E402
+from . import weekly as weeklymod                             # noqa: E402
+insidemod.install(app, fail, reg=lambda: REG, bank=lambda: BANK, curate=lambda: CURATE,
+                  ai_labels=lambda: curation.AI_LABELS)
+weeklymod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user"),
+                  machine=_vacc_device, shard=shardsmod_id, reg=lambda: REG,
+                  bank=lambda: BANK, curate=lambda: CURATE, is_test=peoplemod.is_test_name,
+                  save=lambda blob, name: save_output(blob, name, subdir="Weekly"))
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
@@ -27336,6 +29473,9 @@ NOTES = notesmod.Notes(APP_DIR, REPO_ROOT)
 from . import artifacts as artifactsmod                     # noqa: E402
 
 ARTIFACTS = artifactsmod.Artifacts(LOGS_DIR, STORE)
+# X-ray bundles as side branches on their recording's set (2026-11-07):
+# "N events went into the X-ray bundle ‘…’ vK", worked out on read.
+BANK.add_link_source(lambda: xraymanymod.bank_links(ARTIFACTS))
 
 
 @app.route("/api/artifacts")

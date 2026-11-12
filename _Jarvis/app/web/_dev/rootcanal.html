@@ -114,7 +114,7 @@ const ENTRY = '46fd29a77cc7';
                                 pointer('pointerup', id, x, y); };
 
   /* ================================================================== */
-  head('THE DENTIST HAS FIVE STEPS, AND THIS IS THE FOURTH');
+  head('THE DENTIST HAS SIX STEPS, AND THIS IS THE FOURTH');
 
   /* SINGLE, said rather than assumed. The Single | Pooled choice is
      remembered per viewer, and the pooled harness runs in the same browser
@@ -130,20 +130,21 @@ const ENTRY = '46fd29a77cc7';
       (b.querySelector('.tk-bundle-hd') || {}).textContent || ''));
   ok('the ToolKit offers The Dentist', !!dentist);
   const stepEls = Array.from((dentist || D()).querySelectorAll('.tk-step'));
-  eq('with five steps, in the order they are done',
+  // Six since The Extraction Room went in after X-ray (2026-11-10).
+  eq('with six steps, in the order they are done',
      stepEls.map((b) => (b.querySelector('.tk-step-n') || {}).textContent),
-     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray', 'The Extraction Room']);
   // No printed numbers since 2026-10-21: the order is kept on `data-n`.
-  eq('in order one to five',
+  eq('in order one to six',
      stepEls.map((b) => ((b.querySelector('.tk-step-i') || {}).dataset || {}).n)
-       .join(''), '12345');
+       .join(''), '123456');
   eq('and says what this one does',
      ((stepEls[3] || {}).querySelector
        ? (stepEls[3].querySelector('.tk-step-s') || {}).textContent : null),
      'take the P-spikes out');
   eq('the header counts them',
      ((dentist || D()).querySelector('.tk-bundle-c') || {}).textContent,
-     '5 tools');
+     '6 tools');
   ok('Root Canal is not in the flat tool list as well',
      !Array.from(D().querySelectorAll('.tk-tool strong'))
        .some((s) => /Root Canal/.test(s.textContent)));

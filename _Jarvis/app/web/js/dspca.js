@@ -157,6 +157,20 @@ BARRY.dspca = (function () {
      Kept beside `q` rather than inside it because none of it is part of the
      question the workbench is asking. */
   const bulk = { on: false, plan: null, pick: {}, job: null, poll: null };
+  /* Everything X-ray has already done, for "Previously processed"
+     (2026-11-07: "have everything that was previously processed be
+     visible"): the bundles X-ray Many saved, the calls banked through
+     Commit, and the reads on file. `at` is when it was last asked for,
+     so opening the tool again refreshes it without a request per paint. */
+  const done = { bundles: null, classified: null, reads: null, error: null,
+                 loading: false, at: 0, open: true, scope: 'all' };
+  /* The X-ray bundle the workbench was opened from, or null. While it is
+     set the read is the bundle's -- made from a Root Canal workflow's
+     stamps, not from a banked version -- so there is no plan, the chooser
+     is the bundle's card, and saving makes the bundle's next version
+     rather than a version of the bank entry. */
+  let bundle = null;
+  let savingBundle = false;
 
   const $ = (s) => document.querySelector(s);
   const host = () => document.getElementById('tkResult');
@@ -169,6 +183,7 @@ BARRY.dspca = (function () {
   async function paint() {
     render();
     if (!regions) loadRegions();
+    if (!done.loading && Date.now() - done.at > 20000) loadDone();
     if (!cands) await loadCandidates();
   }
 
@@ -282,8 +297,22 @@ BARRY.dspca = (function () {
       toast('Could not read the event bank: ' + e.message, 'err', 8000);
       cands = [];
     }
-    if (!q.entry && cands.length) pickSet(cands[0].id);
+    /* The newest set that can be READ, not the newest. On 2026-11-07 the
+       panel opened on a harness's seed -- banked a moment before with no
+       registry id -- and filed the plan's refusal as a real fault, with
+       nobody having picked anything. */
+    // Not over a bundle somebody has just opened.
+    const first = !q.entry && !bundle && firstReadable(cands);
+    if (first) pickSet(first.id);
     else render();
+  }
+
+  /* The set to open on when nobody has said: readable with spikes left,
+     else readable at all. The recording picker asks the same question. */
+  function firstReadable(list) {
+    return (list || []).find((c) => c.readable !== false
+                                    && (c.n_good || 0) > 0)
+        || (list || []).find((c) => c.readable !== false);
   }
 
   function setOf(id) {
@@ -299,7 +328,11 @@ BARRY.dspca = (function () {
     return vs.length ? vs[vs.length - 1] : null;
   }
 
-  function pickSet(id) {
+  /* `version`, when given, is the one somebody picked on that set's row
+     (its version button), and it is kept rather than defaulted. */
+  function pickSet(id, version) {
+    // A banked set is the other way in; whatever bundle was open is left.
+    bundle = null;
     q.entry = id;
     const s = setOf(id);
     q.gid = s ? s.gid : null;
@@ -321,6 +354,7 @@ BARRY.dspca = (function () {
     const rc = rootcanalDefault(s && s.versions);
     if (rc) q.from_version = rc.ref != null ? rc.ref : rc.name;
     q.from_auto = true;
+    if (version !== undefined) { q.from_version = version; q.from_auto = false; }
     q.read = null;
     fit = null;
     picked = null;
@@ -653,17 +687,42 @@ BARRY.dspca = (function () {
     if (!box) return;
     box.innerHTML = '';
     box.appendChild(intro());
-    if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
-    if (!cands.length) { box.appendChild(nothing()); return; }
+    // An opened bundle needs nothing from the bank's list to be shown.
+    if (!cands && !bundle) {
+      box.appendChild(loading('Reading the event bank'));
+      return;
+    }
+    if (cands && !cands.length && !bundle) {
+      box.appendChild(nothing());
+      return;
+    }
     box.appendChild(modeSwitch());
     if (bulk.on) {
-      box.appendChild(bulkCard());
+      /* Many is X-ray Many now (2026-11-07): folders of a Root Canal
+         workflow's kept recordings, a box per recording, run and banked
+         as bundles (js/dspcamany.js). Its root node is kept across
+         renders, so this re-appends it rather than rebuilding it. The
+         read-only batch is what shows if that file did not load. */
+      if (BARRY.dspcaMany && typeof BARRY.dspcaMany.mount === 'function') {
+        const fresh = bulk.enter;
+        bulk.enter = false;
+        BARRY.dspcaMany.mount(box, {
+          fresh,
+          toSingle: () => { if (bulk.on) { bulk.on = false; render(); } },
+        });
+      } else {
+        box.appendChild(bulkCard());
+      }
       return;
     }
     box.appendChild(chooser());
-    if (job) { box.appendChild(progress()); return; }
-    if (!q.read) { box.appendChild(readCard()); return; }
+    // The chooser returns early with its own list when nothing is banked.
+    const listed = !!box.querySelector('.dp-done');
+    const tail = () => { if (!listed) box.appendChild(doneCard()); };
+    if (job) { box.appendChild(progress()); tail(); return; }
+    if (!q.read) { box.appendChild(readCard()); tail(); return; }
     box.appendChild(workbench());
+    tail();
     requestAnimationFrame(() => { drawAll(); });
   }
 
@@ -1011,14 +1070,22 @@ BARRY.dspca = (function () {
         count: bulk.on ? 'many' : 'one',
         onChange: (w, c) => {
           bulk.on = c === 'many';
+          // Coming into Many asks it to look again: Single may have
+          // saved a bundle while it was away (2026-11-07).
+          bulk.enter = bulk.on;
           render();
-          if (bulk.on && !bulk.plan) loadBulk();
+          const many = BARRY.dspcaMany && BARRY.dspcaMany.mount;
+          if (bulk.on && !many && !bulk.plan) loadBulk();
         },
       }),
       el('span', { class: 'hint', text: bulk.on
-        ? 'Reads them one after another and stops there. Nothing is '
-          + 'classified and nothing is banked \u2014 every set still has to '
-          + 'be read through and called by somebody.'
+        ? (BARRY.dspcaMany
+          ? 'A folder of recordings a Root Canal workflow kept. Draw a box '
+            + 'on each one\u2019s average CSD, then run it; each answer is saved '
+            + 'as a version of that recording\u2019s X-ray bundle.'
+          : 'Reads them one after another and stops there. Nothing is '
+            + 'classified and nothing is banked \u2014 every set still has to '
+            + 'be read through and called by somebody.')
         : 'Pick a recording, check what it would read, then read it.' }),
       /* A batch left running while you look at one of its results. It is
          still going, and a panel that stopped mentioning it would read as
@@ -1037,7 +1104,9 @@ BARRY.dspca = (function () {
 
      The same three controls every other tool in the bundle uses, in the
      same order: a recording you type the name of, the banked entries on
-     it as a radio list, and the versions of the chosen one as another.
+     it one row each, and on each row the version button Root Canal Many
+     uses (2026-11-07, "the advanced version select, not the radio
+     button"). Under them, everything X-ray has already done.
 
      It was two dropdowns. A <select> of every curated set in the lab is a
      list you scroll rather than one you search, and it put the recording
@@ -1046,6 +1115,9 @@ BARRY.dspca = (function () {
      from it. Braces answered this already; this is its answer rather than
      a second one. */
   function chooser() {
+    // Opened from a bundle: the read is the bundle's, so the bundle is
+    // what is described here, not a banked set and its versions.
+    if (bundle) return bundleCard();
     const box = el('div', { class: 'card dp-choose' });
 
     // One row per recording, named from the registry where it knows the
@@ -1091,10 +1163,7 @@ BARRY.dspca = (function () {
         /* The first one that can actually be READ, not just the first.
            Auto-picking an unreadable set is how the panel opened on a
            refusal without anybody having chosen anything. */
-        const mineHere = (cands || []).filter((c) => c.gid === r.gid);
-        const first = mineHere.find((c) => c.readable !== false
-                                           && (c.n_good || 0) > 0)
-                   || mineHere.find((c) => c.readable !== false);
+        const first = firstReadable((cands || []).filter((c) => c.gid === r.gid));
         plan = null;
         if (first) { pickSet(first.id); return; }
         q.entry = null; q.from_version = null; q.read = null; fit = null;
@@ -1109,12 +1178,18 @@ BARRY.dspca = (function () {
         + 'nothing to classify. Incisor finds the candidates, Checkup goes '
         + 'through them, Braces times them and Root Canal takes the P-spikes '
         + 'out; this is step five.' }));
+      box.appendChild(doneCard());
       return box;
     }
 
     box.appendChild(el('div', { class: 'section-label',
                                 text: 'Which banked entry' }));
-    const list = el('div', { class: 'bm-list' });
+    /* One row per entry, the row itself the choice (role=radio, so it is
+       still one-of-many to a keyboard and a reader), and its version
+       button beside it. Picking a version on another set's row picks
+       that set at that version. */
+    const list = el('div', { class: 'bm-list dp-entries', role: 'radiogroup',
+                             'aria-label': 'Which banked entry' });
     for (const c of mine) {
       /* A set with no spikes left in it is SHOWN and cannot be picked.
          Shown, because "every candidate was rejected" is a real answer,
@@ -1142,72 +1217,42 @@ BARRY.dspca = (function () {
                   + 'recording could not be found') + '.')
         : '';
       const pickable = good && can;
-      list.appendChild(el('label', {
-        class: 'bm-row' + (c.id === q.entry ? ' on' : '')
+      const on = c.id === q.entry;
+      const note = !can ? (c.why_not || '')
+        : !c.newest_aligned_name ? 'not through Braces' : '';
+      const row = el('div', {
+        class: 'bm-row dp-entry' + (on ? ' on' : '')
                + (pickable ? '' : ' off'),
-        title: why,
+        role: 'radio', 'aria-checked': on ? 'true' : 'false',
+        'aria-disabled': pickable ? null : 'true',
+        tabindex: pickable && !on ? '0' : null,
+        'data-entry': c.id,
+        title: why || null,
+        // Inline: app.css is not this file's, and the radio that used to
+        // say "this one" is gone, so the row has to.
+        style: ROW_STYLE + (on ? ROW_ON : ''),
+        // The version button is a choice of its own, not a press on the row.
+        onclick: (e) => {
+          if (!pickable || on || (e.target.closest && e.target.closest('.vbtn'))) return;
+          pickSet(c.id);
+        },
+        onkeydown: (e) => {
+          if (e.target !== row || !pickable || on) return;
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickSet(c.id); }
+        },
       }, [
-        el('input', {
-          type: 'radio', name: 'dpEntry',
-          disabled: pickable ? null : 'disabled',
-          checked: c.id === q.entry ? 'checked' : null,
-          onchange: () => pickSet(c.id),
-        }),
         el('span', { class: 'mk-name', text: c.name || c.id }),
         el('span', { class: 'flagchip', text: good
           ? good + ' spike' + (good === 1 ? '' : 's') + ' of ' + c.n
           : c.n + ' stamps, none of them spikes' }),
         !can ? el('span', { class: 'flagchip warn',
                             text: 'cannot be read here' }) : null,
-        el('span', { class: 'person-what', text: !can
-          ? (c.why_not || '')
-          : c.newest_aligned_name ? BARRY.ui.versionLabel(c.newest_aligned_name) + '  aligned'
-          : c.newest_usable_name ? BARRY.ui.versionLabel(c.newest_usable_name)
-          : 'not through Braces' }),
-      ].filter(Boolean)));
+        pickable ? entryVersion(c, on) : null,
+        note ? el('span', { class: 'person-what', text: note }) : null,
+      ]);
+      list.appendChild(row);
     }
     box.appendChild(list);
-
-    /* And which version of it to read the stamps from.
-
-       Radios rather than a second dropdown: a version is a decision with
-       somebody's name on it, and the count and whether it has been
-       aligned are the whole of how anybody chooses between two. A version
-       whose snapshot never reached this machine is shown and disabled
-       with the reason on the row -- it has a name, a count and no times,
-       and leaving it out would read as it not existing. */
-    const vers = ((plan && plan.ok && plan.versions) || []);
-    if (vers.length) {
-      box.appendChild(el('div', { class: 'section-label',
-                                  text: 'Read the stamps from' }));
-      /* The version tree (constitution §6e), the one control every tool
-         chooses a version with: the lineage, newest on top, with "as they
-         are now" above it as the choice that is not a version. It was a
-         list of radios, oldest first, with no lineage. */
-      const stampsNow = (plan.stamps || {}).of;
-      box.appendChild(el('div', { class: 'dp-vers' }, [BARRY.ui.versionTree({
-        versions: vers,
-        idOf: (v) => (v.ref != null ? v.ref : v.name),
-        value: q.from_version,
-        unit: 'stamps',
-        lead: {
-          name: 'as they are now',
-          text: (stampsNow != null ? stampsNow + ' stamps  ·  ' : '')
-                + 'not a banked version',
-          title: 'The stamps as this set currently stands, rather than a '
-               + 'banked version of it.',
-        },
-        disabled: (v) => (v.usable ? null : (v.why_not || 'not readable here')),
-        state: (v) => (v.tag === 'rootcanal' ? ['P-spikes out (Root Canal)'] : []),
-        onpick: (v) => {
-          q.from_version = v ? v.ref : null;
-          q.from_auto = false;
-          q.read = null;
-          fit = null;
-          refreshPlan();
-        },
-      })]));
-    }
 
     const cur = setOf();
     const tail = [
@@ -1228,7 +1273,693 @@ BARRY.dspca = (function () {
         : planLine(),
     ].filter(Boolean);
     for (const t of tail) box.appendChild(t);
+    // What was done before goes below the Read button, not above it
+    // (render(), 2026-11-09).
     return box;
+  }
+
+  /* Rows wrap rather than run off the side (nothing is ever cut short),
+     and the chosen one is marked. Inline because app.css is not this
+     file's to change. */
+  const ROW_STYLE = 'flex-wrap:wrap;row-gap:4px;';
+  const ROW_ON = 'background:var(--accent-soft);'
+               + 'box-shadow:inset 0 0 0 1px var(--accent-line);';
+
+  /* WHICH VERSION, per entry: Root Canal Many's button (rootcanal.js
+     `bulkVersion`), the whole lineage in a pop-up, with "as they are
+     now" as the choice that is not a version. The chosen set's list is
+     the plan's -- the authority a commit made a moment ago reaches first
+     -- and the others' are the candidates'. A version whose snapshot
+     never reached this machine is shown and closed, with why. */
+  function entryVersion(c, on) {
+    const fromPlan = on && plan && plan.ok && (plan.versions || []).length;
+    const vs = fromPlan ? plan.versions : (c.versions || []);
+    if (!vs.length) return null;
+    const idOf = (v) => (v.ref != null ? v.ref : v.name);
+    // What `pickSet` would open it on, for a set that is not open.
+    const rc = rootcanalDefault(c.versions);
+    const dflt = rc ? idOf(rc)
+      : (c.newest_aligned_name || c.newest_usable_name || null);
+    const stampsNow = fromPlan ? (plan.stamps || {}).of : null;
+    return BARRY.ui.versionButton({
+      versions: vs, idOf,
+      value: on ? q.from_version : dflt,
+      unit: 'stamps',
+      lead: {
+        name: 'as they are now',
+        text: (stampsNow != null ? stampsNow + ' stamps  ·  ' : '')
+              + 'not a banked version',
+        title: 'The stamps as this set currently stands, rather than a '
+             + 'banked version of it.',
+      },
+      disabled: (v) => (v.usable === false
+        ? (v.why_not || 'not readable here') : null),
+      state: (v) => [
+        v.aligned ? 'aligned' : null,
+        v.tag === 'rootcanal' ? 'P-spikes out (Root Canal)' : null,
+      ].filter(Boolean),
+      heading: 'Which version of ' + (c.name || c.id) + ' to read',
+      sub: 'The stamps are read from the version chosen here. "As they are '
+         + 'now" is the set as it stands, not a banked version.',
+      onpick: (v) => {
+        const ref = v ? idOf(v) : null;
+        if (!on) { pickSet(c.id, ref); return; }
+        if (String(ref) === String(q.from_version)) return;
+        q.from_version = ref;
+        q.from_auto = false;
+        q.read = null;
+        fit = null;
+        refreshPlan();
+      },
+    });
+  }
+
+  /* ---------- previously processed ----------
+
+     Everything X-ray has already done (2026-11-07: "have everything that
+     was previously processed be visible"): the bundles X-ray Many saved,
+     the calls banked through Commit, and the reads on file. Each opens in
+     this workbench. Listed by two read-only routes; nothing here is
+     computed in the browser. */
+  async function loadDone() {
+    if (done.loading) return;
+    done.loading = true;
+    const miss = (e) => ({ ok: false, error: e.message });
+    const [b, r] = await Promise.all([
+      api('/api/dspca/bundles').catch(miss),
+      api('/api/dspca/results').catch(miss),
+    ]);
+    done.loading = false;
+    done.at = Date.now();
+    done.bundles = b && b.ok !== false ? bundleRows(b) : [];
+    done.classified = (r && r.ok && r.classified) || [];
+    done.reads = (r && r.ok && r.reads) || [];
+    done.error = [
+      b && b.ok === false
+        ? 'The X-ray bundles could not be listed: ' + b.error : null,
+      r && r.ok === false
+        ? 'The banked calls and reads could not be listed: ' + r.error : null,
+    ].filter(Boolean).join(' ') || null;
+    // In place: the list arriving is no reason to rebuild the workbench.
+    swap('.dp-done', doneCard());
+  }
+
+  /* One row per bundle, whichever way the route spells it: its own summary
+     row, or an artifact record with `current` and `versions`. */
+  function bundleRows(got) {
+    const list = got.bundles || got.artifacts || got.rows || [];
+    return list.map((r) => {
+      const cur = r.current || {};
+      const sum = r.summary || cur.n_summary || {};
+      const s = r.subject || {};
+      return {
+        artifact_id: r.artifact_id || r.id,
+        version: r.version != null ? r.version : cur.v,
+        at: r.at || cur.at, by: r.by || cur.by,
+        gid: r.gid || s.gid,
+        folder: r.folder || s.folder,
+        folder_name: r.folder_name || s.folder_name || r.folder || s.folder,
+        session_label: r.session_label || s.session_label || r.gid || s.gid,
+        group: r.group || s.group,
+        counts: r.counts || sum.counts || null,
+        separation: r.separation || sum.separation || null,
+        sinks: r.sinks || sum.sinks || [],
+        versions: Array.isArray(r.versions) ? r.versions.map(verRow) : [],
+      };
+    }).filter((r) => r.artifact_id);
+  }
+
+  // An artifact version, as the version tree reads one.
+  const verRow = (v) => ({
+    v: v.v, id: v.id, at: v.at, by: v.by, note: v.note,
+    nickname: v.nickname,
+    n: (v.n_summary || {}).events != null ? v.n_summary.events : v.n,
+    here: v.here !== false,
+  });
+
+  const clsName = (c) => (/^\d+$/.test(String(c)) ? 'DS' + c
+                                                   : String(c).toUpperCase());
+
+  function countsWords(c) {
+    if (!c || typeof c !== 'object') return '';
+    return Object.keys(c).sort()
+      .map((k) => clsName(k) + ' ' + c[k]).join(' · ');
+  }
+
+  // Three significant figures: the server rounds, this only prints.
+  function sig(x) {
+    const v = Number(x);
+    if (!isFinite(v)) return '—';
+    return Math.abs(v) >= 100 ? v.toFixed(0) : v.toPrecision(3);
+  }
+
+  /* The sinks as the bundle states them, in the unit it states. */
+  function sinkWords(sinks) {
+    return (sinks || []).filter((s) => s && s.value != null
+                                       && isFinite(s.value))
+      .map((s) => clsName(s.cls) + ' sink ' + sig(s.value)
+        + (s.sem != null && isFinite(s.sem) ? ' ± ' + sig(s.sem) : '')
+        + (s.unit ? ' ' + s.unit : '')
+        + (s.csc != null ? ' at CSC' + s.csc : ''))
+      .join('; ');
+  }
+
+  const SEP_WORDS = { yes: 'separable', weak: 'weak', no: 'not separable',
+                      too_few: 'too few', 'too few': 'too few' };
+
+  /* Whether two kinds could be told apart, with the numbers that say so. */
+  function sepChip(s) {
+    if (!s || !s.verdict) return null;
+    const v = String(s.verdict);
+    const bits = [SEP_WORDS[v] || v];
+    if (s.dbic != null && isFinite(s.dbic)) {
+      bits.push('ΔBIC ' + Number(s.dbic).toFixed(1));
+    }
+    if (s.min_share != null && isFinite(s.min_share)) {
+      bits.push(Math.round(100 * s.min_share) + '% in the smaller');
+    }
+    if (s.n != null) bits.push(s.n + ' events');
+    return el('span', {
+      class: 'flagchip dp-sep' + (v === 'yes' ? ' ok'
+                                  : v === 'weak' ? ' warn' : ''),
+      text: bits.join(' · '),
+      title: 'Two kinds against one, as Gaussian mixtures (BIC). '
+           + 'Separable: ΔBIC at least 10 and the smaller kind at '
+           + 'least 10% of the events. Weak: ΔBIC at least 2 and at '
+           + 'least 10%. Under 20 events is too few to say.',
+    });
+  }
+
+  function whoWhen(at, by) {
+    const t = BARRY.ui.when ? BARRY.ui.when(at) : '';
+    return [by ? 'by ' + by : null, t || null].filter(Boolean).join(', ');
+  }
+
+  function boxWords(b) {
+    if (!b) return '';
+    const lo = b.sel_lo != null ? b.sel_lo : b.lo;
+    const hi = b.sel_hi != null ? b.sel_hi : b.hi;
+    const depth = lo != null && hi != null ? 'CSC' + lo + '–' + hi
+                                           : 'automatic depth';
+    if (b.t_lo_ms == null) return depth;
+    return depth + ', ' + (b.t_lo_ms === b.t_hi_ms
+      ? 'one sample at ' + fmtMs(b.t_lo_ms)
+      : fmtMs(b.t_lo_ms) + ' to ' + fmtMs(b.t_hi_ms));
+  }
+
+  function doneCard() {
+    const mineOnly = done.scope === 'this' && q.gid;
+    const keep = (r) => !mineOnly || r.gid === q.gid;
+    const bs = (done.bundles || []).filter(keep);
+    const cs = (done.classified || []).filter(keep);
+    const rs = (done.reads || []).filter(keep);
+    const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+    const sum = !done.at ? 'looking'
+      : [n(bs.length, 'bundle', 'bundles'),
+         n(cs.length, 'call banked', 'calls banked'),
+         n(rs.length, 'read', 'reads')].join('  ·  ');
+    const det = el('details', {
+      class: 'dp-done', open: done.open ? 'open' : null,
+      ontoggle: (e) => { done.open = e.target.open; },
+    }, [
+      el('summary', { style: 'cursor:pointer;display:flex;flex-wrap:wrap;'
+                             + 'gap:8px;align-items:baseline' }, [
+        el('span', { class: 'section-label', text: 'Previously processed' }),
+        el('span', { class: 'hint', text: sum }),
+      ]),
+    ]);
+    det.appendChild(el('div', { class: 'dp-row', style: 'flex-wrap:wrap' }, [
+      BARRY.ui.seg([['this', 'this recording'], ['all', 'everything']],
+                   done.scope, (v) => {
+                     done.scope = v;
+                     swap('.dp-done', doneCard());
+                   }),
+      el('button', { class: 'btn ghost sm', text: 'look again',
+                     disabled: done.loading || null,
+                     onclick: () => { loadDone(); } }),
+    ]));
+    if (done.error) {
+      det.appendChild(el('p', { class: 'hint dp-warn', text: done.error }));
+    }
+    if (!done.at) {
+      det.appendChild(loader('Listing what X-ray has done'));
+      return det;
+    }
+    const group = (title, rows, make, none) => {
+      det.appendChild(el('div', { class: 'hint', style: 'margin-top:6px',
+                                  text: title }));
+      det.appendChild(rows.length
+        ? el('div', { class: 'bm-list dp-done-list',
+                      style: 'max-height:320px' }, rows.map(make))
+        : el('p', { class: 'hint', text: none }));
+    };
+    group('X-ray bundles', bs, doneBundleRow,
+          'None yet. X-ray Many saves one per recording it runs.');
+    group('Calls banked from here', cs, doneCallRow,
+          'None yet. Banking DS1/DS2 below files one.');
+    group('Reads on file', rs, doneReadRow, 'None.');
+    return det;
+  }
+
+  function doneBundleRow(r) {
+    const isOn = !!(bundle && bundle.artifact_id === r.artifact_id);
+    let want = isOn ? bundle.version : r.version;
+    const vb = r.versions.length
+      ? BARRY.ui.versionButton({
+          versions: r.versions, idOf: (v) => v.v, value: want,
+          producer: false, unit: 'events',
+          heading: 'Which version of the X-ray bundle for '
+                   + r.session_label,
+          sub: 'Every run that changed the answer is a version. Open '
+             + 'opens the one chosen here.',
+          disabled: (v) => (v.here === false
+            ? 'Made on another computer; its payload has not reached '
+              + 'this one.' : null),
+          onpick: (v) => { if (v) want = v.v; },
+        })
+      : el('span', { class: 'flagchip', text: 'v' + r.version });
+    return el('div', { class: 'bm-row dp-done-row dp-done-bundle',
+                       'data-artifact': r.artifact_id,
+                       style: ROW_STYLE + (isOn ? ROW_ON : '') }, [
+      el('span', { class: 'mk-name', text: r.session_label + ' · '
+                                           + (r.folder_name || 'X-ray Many') }),
+      r.group ? el('span', { class: 'flagchip', text: r.group }) : null,
+      vb,
+      r.counts ? el('span', { class: 'flagchip',
+                              text: countsWords(r.counts) }) : null,
+      sepChip(r.separation),
+      el('span', { class: 'person-what',
+                   text: [sinkWords(r.sinks), whoWhen(r.at, r.by)]
+                     .filter(Boolean).join('  ·  ') }),
+      el('button', { class: 'btn sm', text: 'Open',
+                     onclick: () => openBundle(r.artifact_id, want) }),
+    ]);
+  }
+
+  function doneCallRow(r) {
+    const there = !!setOf(r.entry_id);
+    const isOn = !bundle && q.entry === r.entry_id && q.read === r.read;
+    return el('div', { class: 'bm-row dp-done-row dp-done-call',
+                       style: ROW_STYLE + (isOn ? ROW_ON : '') }, [
+      el('span', { class: 'mk-name', text: (r.session_label || r.gid)
+        + (r.entry_name ? ' · ' + r.entry_name : '') }),
+      r.version != null ? el('span', { class: 'flagchip', text: 'banked as '
+        + BARRY.ui.versionLabel(r.version) }) : null,
+      r.counts ? el('span', { class: 'flagchip',
+                              text: countsWords(r.counts) }) : null,
+      r.method_name || r.method
+        ? el('span', { class: 'flagchip', text: r.method_name || r.method })
+        : null,
+      r.here === false ? el('span', { class: 'flagchip warn',
+        text: 'its read is not on this computer' }) : null,
+      el('span', { class: 'person-what', text: [
+        'read from ' + (r.from_name ? BARRY.ui.versionLabel(r.from_name)
+                                    : 'the set as it stood'),
+        boxWords(r.box), whoWhen(r.at, r.by)].filter(Boolean)
+        .join('  ·  ') }),
+      el('button', {
+        class: 'btn sm', text: 'Open', disabled: there ? null : 'disabled',
+        title: there ? 'Its set, at the version it was read from, with its '
+                       + 'settings and its box.'
+                     : 'Its set is no longer offered here: not curated, or '
+                       + 'nothing left in it.',
+        onclick: () => openSaved(r, true),
+      }),
+    ]);
+  }
+
+  function doneReadRow(r) {
+    // Made by X-ray Many from a workflow's stamps: no banked version to
+    // plan from, so it opens on its own.
+    const loose = !!r.stamps_hash;
+    const there = loose || !!setOf(r.entry_id);
+    const isOn = q.read === r.read && q.gid === r.gid;
+    return el('div', { class: 'bm-row dp-done-row dp-done-read',
+                       style: ROW_STYLE + (isOn ? ROW_ON : '') }, [
+      el('span', { class: 'mk-name', text: (r.session_label || r.gid)
+        + (r.entry_name ? ' · ' + r.entry_name : '') }),
+      el('span', { class: 'flagchip', text: r.n != null
+        ? r.n + ' event' + (r.n === 1 ? '' : 's') : 'events not counted' }),
+      loose ? el('span', { class: 'flagchip',
+                           text: 'from a Root Canal workflow' }) : null,
+      r.here === false ? el('span', { class: 'flagchip warn',
+        text: 'not on this computer' }) : null,
+      el('span', { class: 'person-what', text: [
+        loose ? null : 'from ' + (r.from_name
+          ? BARRY.ui.versionLabel(r.from_name) : 'the set as it stood'),
+        whoWhen(r.at, r.by)].filter(Boolean).join('  ·  ') }),
+      el('button', {
+        class: 'btn sm', text: 'Open', disabled: there ? null : 'disabled',
+        title: there ? '' : 'Its set is no longer offered here.',
+        onclick: () => (loose ? openLoose(r) : openSaved(r, false)),
+      }),
+    ]);
+  }
+
+  /* ---------- opening what was done before ---------- */
+
+  // The settings a saved answer carries that the workbench asks with.
+  const PARAM_KEYS = ['method', 'rule', 'features', 'notch', 'screen',
+                      'flip', 'min_sep', 'gap_weight', 'nclasses',
+                      'manual_bad', 'delta_cut', 'refine'];
+
+  function applyParams(pr) {
+    if (!pr) return;
+    for (const k of PARAM_KEYS) if (pr[k] !== undefined) q[k] = pr[k];
+    if (!Array.isArray(q.manual_bad)) q.manual_bad = [];
+  }
+
+  /* Either spelling of a box: {sel_lo, sel_hi} (prefs, a run) or {lo, hi}
+     (a fit). None is the server's own choice, as on a first fit. */
+  function applyBox(b) {
+    const lo = b ? (b.sel_lo !== undefined ? b.sel_lo : b.lo) : null;
+    const hi = b ? (b.sel_hi !== undefined ? b.sel_hi : b.hi) : null;
+    q.sel_lo = lo == null ? null : lo;
+    q.sel_hi = hi == null ? null : hi;
+    q.t_lo_ms = b && b.t_lo_ms != null ? b.t_lo_ms : 0;
+    q.t_hi_ms = b && b.t_hi_ms != null ? b.t_hi_ms : 0;
+  }
+
+  // A read running for another set would land its hash on this one.
+  function readRunning() {
+    if (!job) return false;
+    toast('A read is running. Let it finish, or stop it, first.', 'warn',
+          6000);
+    return true;
+  }
+
+  /* A banked call or a read: its set at the version it was read from, and
+     for a call its settings and box too. The plan then finds the read
+     cached and fits. */
+  function openSaved(r, withSettings) {
+    if (readRunning()) return;
+    if (!setOf(r.entry_id)) {
+      toast('That set is no longer offered here.', 'warn', 6000);
+      return;
+    }
+    bundle = null;
+    if (withSettings) { applyParams(r.params); applyBox(r.box); }
+    q.entry = r.entry_id;
+    q.gid = r.gid;
+    q.from_version = r.from_version == null ? null : r.from_version;
+    q.from_auto = false;
+    q.read = null;
+    fit = null; picked = null; pics = {}; dirty = false;
+    plan = null;
+    bulk.on = false;
+    render();
+    refreshPlan();
+  }
+
+  /* Into the workbench on a read that is not a banked set's: a bundle's,
+     or one X-ray Many made. No plan; the chooser is the bundle's card. */
+  function enter(b) {
+    bundle = b;
+    bulk.on = false;
+    ++planGen;              // a plan still in flight is the old set's
+    plan = null;
+    q.entry = null; q.from_version = null; q.from_auto = false;
+    q.gid = (b.subject || {}).gid || null;
+    q.read = (b.payload || {}).read || null;
+    applyParams((b.payload || {}).params);
+    applyBox((b.payload || {}).box);
+    fit = null; picked = null; pics = {}; dirty = false;
+    render();
+    loadGuides();
+    if (q.read) refit();
+  }
+
+  /* Open an X-ray bundle (one recording of one Many folder) at a version,
+     the newest when none is said: its gid, read, settings and box into
+     `q`, then a fit. X-ray Many's "Open in Single" calls this. */
+  async function openBundle(artifactId, version) {
+    if (!artifactId || readRunning()) return false;
+    const has = version != null && version !== '';
+    let got;
+    try {
+      got = await api('/api/dspca/bundle/' + encodeURIComponent(artifactId)
+                      + (has ? '?version=' + encodeURIComponent(version)
+                             : ''));
+    } catch (e) {
+      toast('Could not open the X-ray bundle: ' + e.message, 'err', 9000);
+      return false;
+    }
+    if (!got || got.ok === false || !got.payload) {
+      toast('Could not open the X-ray bundle: ' + ((got && got.error)
+            || 'nothing came back') + '.', 'err', 9000);
+      return false;
+    }
+    const a = got.artifact || {};
+    const cur = a.current || {};
+    enter({
+      artifact_id: artifactId,
+      version: has ? version : (got.version != null ? got.version : cur.v),
+      newest: cur.v,
+      subject: a.subject || {},
+      versions: (a.versions || []).map(verRow),
+      payload: got.payload,
+    });
+    return true;
+  }
+
+  function openLoose(r) {
+    if (readRunning()) return;
+    enter({
+      artifact_id: null, version: null, newest: null, versions: [],
+      subject: { gid: r.gid, session_label: r.session_label,
+                 entry_id: r.entry_id },
+      payload: { read: r.read, stamps_hash: r.stamps_hash },
+    });
+  }
+
+  /* Back to the bank's sets, on this recording's where it has one. */
+  function leaveBundle() {
+    const gid = bundle && (bundle.subject || {}).gid;
+    bundle = null;
+    q.entry = null; q.read = null;
+    fit = null; picked = null; pics = {}; dirty = false;
+    const first = firstReadable((cands || []).filter((c) => c.gid === gid))
+               || firstReadable(cands);
+    if (first) pickSet(first.id);
+    else render();
+  }
+
+  /* The chooser, for a bundle: what it is, where its stamps came from,
+     what was saved in the version on show, and its versions. */
+  function bundleCard() {
+    const b = bundle;
+    const s = b.subject || {};
+    const p = b.payload || {};
+    const src = s.source || {};
+    const box = el('div', { class: 'card dp-choose dp-bundle' });
+    box.appendChild(label(b.artifact_id ? 'X-ray bundle'
+                                        : 'A read X-ray Many made'));
+    const vbtn = b.artifact_id && b.versions.length
+      ? BARRY.ui.versionButton({
+          versions: b.versions, idOf: (v) => v.v, value: b.version,
+          producer: false, unit: 'events',
+          heading: 'Which version of the X-ray bundle for '
+                   + (s.session_label || s.gid),
+          sub: 'Every run that changed the answer is a version. Picking '
+             + 'one opens it here, with its settings and its box.',
+          disabled: (v) => (v.here === false
+            ? 'Made on another computer; its payload has not reached '
+              + 'this one.' : null),
+          onpick: (v) => {
+            if (v && String(v.v) !== String(b.version)) {
+              openBundle(b.artifact_id, v.v);
+            }
+          },
+        })
+      : (b.version != null ? el('span', { class: 'flagchip',
+                                          text: 'v' + b.version }) : null);
+    box.appendChild(el('div', { class: 'dp-row',
+                                style: 'flex-wrap:wrap;gap:8px' }, [
+      el('strong', { text: (s.session_label || s.gid || '')
+                           + (s.folder_name ? ' · ' + s.folder_name
+                                            : '') }),
+      s.group ? el('span', { class: 'flagchip', text: s.group }) : null,
+      vbtn,
+      el('button', { class: 'btn ghost sm', text: 'Back to the banked sets',
+                     onclick: leaveBundle }),
+    ]));
+    const nEv = ((p.cols || {}).t || []).length;
+    const facts = [
+      src.artifact_id
+        ? 'the events Root Canal workflow ‘' + (src.nickname
+            || src.artifact_id) + '’' + (src.version != null
+            ? ' v' + src.version : '') + ' kept inside'
+        : (b.artifact_id ? null
+           : 'read from a Root Canal workflow’s stamps; nothing is '
+             + 'saved from it here'),
+      nEv ? nEv + ' events' : null,
+      b.artifact_id && b.newest != null
+        && String(b.newest) !== String(b.version)
+        ? 'an older version; the newest is v' + b.newest : null,
+    ].filter(Boolean);
+    if (facts.length) {
+      box.appendChild(el('p', { class: 'hint', text: facts.join('  ·  ') }));
+    }
+    if (b.artifact_id && (p.counts || p.separation)) {
+      box.appendChild(el('div', { class: 'dp-row',
+                                  style: 'flex-wrap:wrap;gap:6px' }, [
+        el('span', { class: 'hint', text: 'Saved in v' + b.version + ':' }),
+        p.counts ? el('span', { class: 'flagchip',
+                                text: countsWords(p.counts) }) : null,
+        sepChip(p.separation),
+        p.separation && p.separation.words
+          ? el('span', { class: 'hint', text: p.separation.words }) : null,
+      ]));
+    }
+    const sw = sinkWords(p.sinks);
+    if (sw) box.appendChild(el('p', { class: 'hint', text: 'Sinks: ' + sw }));
+    // The read is cache and stays where it was made.
+    if (fit && !fit.ok && s.folder && s.gid) {
+      box.appendChild(el('div', { class: 'dp-row' }, [
+        el('button', { class: 'btn sm', text: 'Read it on this computer',
+                       disabled: busy || null, onclick: readBundleHere }),
+        el('span', { class: 'hint', text: 'X-ray Many’s read of this '
+          + 'recording, from the same stamps.' }),
+      ]));
+    }
+    box.appendChild(doneCard());
+    return box;
+  }
+
+  async function readBundleHere() {
+    const b = bundle;
+    if (!b || busy || job) return;
+    const s = b.subject || {};
+    busy = true;
+    let got;
+    try {
+      got = await apiPost('/api/dspca/many/read',
+                          { folder: s.folder, gids: [s.gid] });
+    } catch (e) {
+      busy = false;
+      toast('The read did not start: ' + e.message, 'err', 9000);
+      return;
+    }
+    if (bundle !== b) { busy = false; return; }
+    if (!got.job) {
+      // Nothing was missing after all; fit what is there.
+      busy = false;
+      refit();
+      return;
+    }
+    job = got.job;
+    render();
+    watch((b.payload || {}).read);
+  }
+
+  /* SAVE AS THE NEXT VERSION OF THIS BUNDLE, through X-ray Many's run with
+     this one recording: the server fits again from these settings and the
+     box on screen and keeps the result, so nothing on the bundle is a
+     number the browser made. The same answer again confirms a version
+     rather than copying it (ARTIFACTS.put). The Event Bank set is not
+     touched. */
+  const SAVE_KEYS = ['method', 'rule', 'features', 'notch', 'min_sep',
+                     'gap_weight', 'nclasses', 'screen', 'flip',
+                     'manual_bad', 'delta_cut'];
+
+  function bundleSave() {
+    const b = bundle;
+    const can = !!(b && b.artifact_id && (b.subject || {}).folder);
+    const why = !can
+      ? 'This read has no bundle to add a version to. Run it from its '
+        + 'folder in X-ray Many to make one.'
+      : dirty ? 'The box has moved since the answer on screen. Recompute '
+                + 'first, so what is saved is what you see.'
+      : fitting ? 'Still working out the answer.'
+      : !(fit && fit.ok) ? 'There is no answer on screen to save.'
+      : null;
+    return el('div', { class: 'dp-bundle-save' }, [
+      el('button', {
+        class: 'btn dp-commit',
+        disabled: why || savingBundle ? 'disabled' : null,
+        text: savingBundle ? 'Saving…'
+                           : 'Save as the next version of this bundle',
+        title: why || 'Fits this recording again on the server with these '
+             + 'settings and this box, and keeps it as the bundle’s '
+             + 'next version.',
+        onclick: saveBundle,
+      }),
+      el('p', { class: 'hint', text: why || 'A version of the X-ray '
+        + 'bundle. The Event Bank set is not relabelled.' }),
+    ]);
+  }
+
+  async function saveBundle() {
+    const b = bundle;
+    if (!b || !b.artifact_id || savingBundle || dirty || fitting
+        || !fit || !fit.ok) return;
+    const s = b.subject || {};
+    const gid = s.gid;
+    const fb = fit.box || {};
+    // The box the answer on screen was fitted with, not the form's.
+    const box = { sel_lo: fb.lo, sel_hi: fb.hi,
+                  t_lo_ms: fb.t_lo_ms, t_hi_ms: fb.t_hi_ms };
+    const params = {};
+    for (const k of SAVE_KEYS) params[k] = q[k];
+    savingBundle = true;
+    swap('.dp-bundle-save', bundleSave());
+    let got;
+    try {
+      got = await apiPost('/api/dspca/many/run', {
+        folder: s.folder, gids: [gid], params, boxes: { [gid]: box },
+      });
+    } catch (e) {
+      savingBundle = false;
+      swap('.dp-bundle-save', bundleSave());
+      toast('Not saved: ' + e.message, 'err', 10000);
+      return;
+    }
+    savingBundle = false;
+    const r = (got.results || []).find((x) => x.gid === gid);
+    if (!r || !r.ok) {
+      swap('.dp-bundle-save', bundleSave());
+      toast('Not saved: ' + ((r && r.error)
+            || 'the run came back with nothing for this recording') + '.',
+            'err', 10000);
+      return;
+    }
+    const nv = r.bundle && r.bundle.version;
+    const had = b.versions.some((v) => String(v.v) === String(nv));
+    toast(had ? 'The same answer as v' + nv + ', so v' + nv
+                + ' is confirmed rather than copied.'
+              : 'Saved as v' + nv + ' of this bundle.', 'ok', 7000);
+    /* The box goes to Many's shared boxes too, so its tile and its next
+       Run all ask what was just saved rather than an older box. */
+    try {
+      if (s.folder && BARRY.prefs && BARRY.prefs.mergeKey) {
+        BARRY.prefs.mergeKey('dspca_many_boxes', s.folder + '|' + gid,
+          Object.assign({}, box, {
+            at: new Date().toISOString(),
+            by: (BARRY.profile && BARRY.profile.who
+                 && BARRY.profile.who()) || '',
+          }));
+      }
+    } catch (e) { /* the bundle is saved; the shared box is a courtesy */ }
+    let a = null;
+    try {
+      a = (await api('/api/artifacts/' + encodeURIComponent(
+        (r.bundle && r.bundle.artifact_id) || b.artifact_id))).artifact;
+    } catch (e) { /* the versions refresh on the next open */ }
+    if (bundle !== b) return;
+    b.artifact_id = (r.bundle && r.bundle.artifact_id) || b.artifact_id;
+    b.version = nv;
+    b.newest = nv;
+    if (a) {
+      b.versions = (a.versions || []).map(verRow);
+      b.subject = a.subject || b.subject;
+    }
+    b.payload = Object.assign({}, b.payload, {
+      counts: r.counts, separation: r.separation, sinks: r.sinks,
+      box: r.box || box, params: Object.assign({}, b.payload.params, params),
+    });
+    swap('.dp-bundle', bundleCard());
+    swap('.dp-bundle-save', bundleSave());
+    loadDone();
   }
 
   function planLine() {
@@ -1745,7 +2476,9 @@ BARRY.dspca = (function () {
     ];
     return el('div', { class: 'dp-strip' }, [
       el('span', { class: 'dp-strip-n',
-                   text: (plan && plan.ok ? plan.entry.session_label : '') }),
+                   text: (plan && plan.ok ? plan.entry.session_label
+                          : bundle ? ((bundle.subject || {}).session_label
+                                      || '') : '') }),
     ].concat(
       bits.map((t) => el('span', { class: 'dp-strip-b', text: t })),
       [el('div', { style: 'flex:1' })],
@@ -1793,16 +2526,8 @@ BARRY.dspca = (function () {
        other two are computed beside whichever is chosen, so switching is
        free and the comparison is always one click away. */
     out.push(label('How to split them'));
-    out.push(el('div', { class: 'dp-rules' }, METHODS.map(([id, nm, why]) =>
-      el('label', {
-        class: 'dp-rule' + (q.method === id ? ' on' : ''), title: why,
-      }, [
-        el('input', { type: 'radio', name: 'dpMethod',
-                      checked: q.method === id || null,
-                      onchange: () => { q.method = id; refit(); } }),
-        el('strong', { text: nm }),
-        q.method === id ? el('span', { class: 'dp-why', text: why }) : null,
-      ].filter(Boolean)))));
+    out.push(segPick(METHODS, () => q.method,
+                     (v) => { q.method = v; refit(); }, 'dp-seg-method'));
     out.push(methodAgree());
 
     /* The two numbers the gap is made of. Both matter and both have a
@@ -1871,8 +2596,11 @@ BARRY.dspca = (function () {
         el('button', {
           class: 'btn ghost sm',
           text: hasPower() ? 'measure again' : 'measure it…',
-          disabled: hfBusy || null,
-          title: 'Reads the recording again at 5 kHz, which is minutes, '
+          // The 5 kHz pass reads a banked set's stamps; a bundle has none.
+          disabled: hfBusy || bundle ? 'disabled' : null,
+          title: bundle ? 'Measured from a banked set. Open this recording '
+                          + 'through its banked set to measure it.'
+               : 'Reads the recording again at 5 kHz, which is minutes, '
                + 'and keeps the answer. X-ray’s own read is 1 kHz '
                + 'and this band is above its Nyquist, so there is '
                + 'nothing in it to measure.',
@@ -1925,16 +2653,8 @@ BARRY.dspca = (function () {
          stop separating once the magnitudes go, they were separating on
          magnitude. */
       out.push(label('What the PCA sees'));
-      out.push(el('div', { class: 'dp-rules' }, FEATURES.map(([id, nm, why]) =>
-        el('label', {
-          class: 'dp-rule' + (q.features === id ? ' on' : ''), title: why,
-        }, [
-          el('input', { type: 'radio', name: 'dpFeat',
-                        checked: q.features === id || null,
-                        onchange: () => { q.features = id; refit(); } }),
-          el('strong', { text: nm }),
-          q.features === id ? el('span', { class: 'dp-why', text: why }) : null,
-        ].filter(Boolean)))));
+      out.push(segPick(FEATURES, () => q.features,
+                       (v) => { q.features = v; refit(); }, 'dp-seg-feat'));
 
     }
     // The box reads off the strip above the columns; here are only the two
@@ -2061,19 +2781,10 @@ BARRY.dspca = (function () {
          mid-analysis. */
     ]));
     out.push(label('Which one is DS1'));
-    out.push(el('div', { class: 'dp-rules' }, RULES.map(([id, name, why]) =>
-      el('label', {
-        class: 'dp-rule' + (q.rule === id ? ' on' : ''), title: why,
-      }, [
-        el('input', { type: 'radio', name: 'dpRule',
-                      checked: q.rule === id || null,
-                      onchange: () => { q.rule = id; refit(); } }),
-        el('strong', { text: name }),
-        // Only the rule in force explains itself. The other three carry the
-        // same sentence as a tooltip, which is where the explanation of a
-        // thing you have not chosen belongs.
-        q.rule === id ? el('span', { class: 'dp-why', text: why }) : null,
-      ].filter(Boolean)))));
+    // Only the rule in force explains itself, under the control; the other
+    // three carry their sentence as a tooltip.
+    out.push(segPick(RULES, () => q.rule,
+                     (v) => { q.rule = v; refit(); }, 'dp-seg-rule'));
     if (q.rule === 'anatomy' && fit && fit.ok
         && !Object.keys(fit.layers || {}).length) {
       out.push(el('p', { class: 'hint dp-warn', text:
@@ -2094,6 +2805,12 @@ BARRY.dspca = (function () {
     out.push(guideList());
 
     out.push(el('div', { class: 'dp-spacer' }));
+    /* Opened from a bundle, the answer is saved as the bundle's next
+       version; there is no bank entry under it to version. */
+    if (bundle) {
+      out.push(bundleSave());
+      return out.filter(Boolean);
+    }
     out.push(el('button', {
       class: 'btn dp-commit', disabled: !(fit && fit.ok) || null,
       text: 'Bank DS1/DS2 as a new version…',
@@ -2174,6 +2891,32 @@ BARRY.dspca = (function () {
      opens the group", and ignored. */
   function label(text) {
     return el('div', { class: 'section-label', text });
+  }
+
+  /* A choice of a few, as the house's segmented control rather than radios
+     (2026-11-07). `items` is [[value, name, why], ...]: the chosen one's
+     why is the line under it, the others' are their tooltips. Marked at
+     once, in place -- the fit that follows re-renders, and a control that
+     took a second to show it had been pressed would read as not pressed.
+     Wraps on a narrow column rather than running off it. */
+  function segPick(items, now, onPick, extra) {
+    const why = el('p', { class: 'hint dp-segwhy' });
+    let seg = null;
+    const mark = (v) => {
+      seg.querySelectorAll(':scope > button').forEach((b2, i) => {
+        b2.classList.toggle('active', !!items[i] && items[i][0] === v);
+      });
+      const it = items.find((x) => x[0] === v);
+      why.textContent = it ? it[2] : '';
+    };
+    seg = BARRY.ui.seg(items, null, (v) => {
+      if (v === now()) return;
+      mark(v);
+      onPick(v);
+    }, { extra: 'dp-seg ' + extra });
+    seg.style.flexWrap = 'wrap';
+    mark(now());
+    return el('div', { class: 'dp-segrow' }, [seg, why]);
   }
 
   /* ---------- committing ----------
@@ -2297,6 +3040,8 @@ BARRY.dspca = (function () {
     // The set's counts have changed, so the chooser is stale.
     cands = null;
     loadCandidates();
+    // And "Previously processed" has a call in it it did not have.
+    loadDone();
   }
 
   /* The app's own modal, in the shape every other dialog uses: `mh`/`mb`/`mf`
@@ -4196,7 +4941,10 @@ BARRY.dspca = (function () {
      almost impossible to pick up. */
   function onDown(e) {
     const id = e.target && e.target.id;
-    if (!DEPTH[id] || e.button !== 0) return;
+    /* The scatter has no depth axis, so it is never in DEPTH -- and asking
+       only DEPTH turned every press on the cut's rail away here, before
+       the rail below could see it (2026-11-07). */
+    if ((!DEPTH[id] && id !== 'dpScatter') || e.button !== 0) return;
     const cv = document.getElementById(id);
     if (!cv) return;
     const r = cv.getBoundingClientRect();
@@ -4228,6 +4976,8 @@ BARRY.dspca = (function () {
       // the dot. Nothing to start a drag for.
       return;
     }
+    // The scatter under a PCA method: no rail, no depth, nothing to drag.
+    if (!DEPTH[id]) return;
 
     const hit = guideAt(id, y);
     if (hit) {
@@ -4244,7 +4994,7 @@ BARRY.dspca = (function () {
     if (!g) return;
     if (x < g.x0 || x > g.x0 + g.pw || y < g.y0 || y > g.y0 + g.ph) return;
     dragging = { x, y, live: null };
-    cv.setPointerCapture(e.pointerId);
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
     e.preventDefault();
   }
 
@@ -4260,6 +5010,22 @@ BARRY.dspca = (function () {
       // five ways, and a drag that moved it on one of them would say
       // otherwise.
       drawAll();
+      return;
+    }
+    /* The cut follows the pointer along its rail. This was the first of
+       two `if (cutDrag)` blocks in `onUp`, where it returned before the
+       second could commit -- so the cut never landed, `cutDrag` was never
+       cleared, and every later release, the box's included, stopped at
+       it (2026-11-07). */
+    if (cutDrag) {
+      const cv2 = document.getElementById('dpScatter');
+      const G = GEOM.scatter;
+      if (cv2 && G && G.rail) {
+        const r2 = cv2.getBoundingClientRect();
+        cutDrag.at = Math.max(0, Math.min(
+          1, (e.clientX - r2.left - G.rail.x0) / G.rail.pw));
+        drawScatter();
+      }
       return;
     }
     if (!dragging) return;
@@ -4295,19 +5061,16 @@ BARRY.dspca = (function () {
       return;
     }
     if (cutDrag) {
+      /* COMMITTED ON RELEASE, not on every move. A refit is a second of
+         server on a real set; one per pixel of drag would be minutes.
+         Where it was let go is where it lands. */
       const cv2 = document.getElementById('dpScatter');
       const G = GEOM.scatter;
       if (cv2 && G && G.rail) {
         const r2 = cv2.getBoundingClientRect();
         cutDrag.at = Math.max(0, Math.min(
           1, (e.clientX - r2.left - G.rail.x0) / G.rail.pw));
-        drawScatter();
       }
-      return;
-    }
-    if (cutDrag) {
-      /* COMMITTED ON RELEASE, not on every move. A refit is a second of
-         server on a real set; one per pixel of drag would be minutes. */
       const cur = cutDrag.base.slice();
       cur[cutDrag.at_i] = cutDrag.at;
       cutDrag = null;
@@ -4769,6 +5532,10 @@ BARRY.dspca = (function () {
 
   return {
     paint,
+    /* Open an X-ray bundle in the workbench (2026-11-07): X-ray Many's
+       "Open in Single", and anything else that holds one. Resolves true
+       once its read is in `q` and a fit is on its way. */
+    openBundle,
     // For web/_dev/dspca.html, which drives the real panel rather than a
     // copy of it. A harness that reimplements the thing it is testing tests
     // nothing.
@@ -4810,6 +5577,14 @@ BARRY.dspca = (function () {
     _fitBody: () => fitBody({}),
     _pickedClass: pickedClass,
     _rcDefault: rootcanalDefault,
+    _firstReadable: firstReadable,
+    // "Previously processed", and the bundle the workbench is on.
+    _done: () => done,
+    _loadDone: loadDone,
+    _bundle: () => bundle,
+    _leaveBundle: leaveBundle,
+    _saveBundle: saveBundle,
+    _openSaved: openSaved,
     _hood: openHood,
     _hoodData: () => hood,
     _compare: refitCompare,
@@ -4881,6 +5656,6 @@ BARRY.dspca = (function () {
     _resizeInfo: () => ({ seen: roSeen, drew: roDrew,
                           watching: !!sizeWatch, mismatched: mismatched() }),
     _reset: () => { cands = null; plan = null; fit = null; q.read = null;
-                    q.entry = null; picked = null; pics = {}; },
+                    q.entry = null; picked = null; pics = {}; bundle = null; },
   };
 }());

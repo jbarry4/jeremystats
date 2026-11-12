@@ -284,10 +284,222 @@ def _trim_for(G, grace):
     return a
 
 
-def envelope(events, custom=None, identity="cls_single"):
+def box_for(G, grace):
+    """The box at a grace: (lo, hi, trim, peeled).
+
+    The even trim first -- the same share off each end of every axis. On a
+    small group that alone leaves nothing out (2026-11-06: "the grace border
+    is not applying" -- 39 hand-sorted P-spikes, 5%, 0 outside): one step of
+    trim crosses an extreme on all six ends at once, six events where the
+    grace allows one or two, so the bisection kept none. So the rest of the
+    grace is then taken one event at a time, the most outlying first -- the
+    one standing furthest beyond its neighbour at an end of an axis, in that
+    axis's span -- until floor(grace x n) are outside."""
+    q = _trim_for(G, grace)
+    lo, hi = _box_at(G, q)
+    n = G.shape[0]
+    want = int(np.floor(float(grace) * n + 1e-9))
+    keep = _inside(G, lo, hi)
+    peeled = 0
+    while int(n - keep.sum()) < want and keep.sum() > MIN_EACH:
+        K = G[keep]
+        span = np.maximum(K.max(axis=0) - K.min(axis=0), 1e-12)
+        best, gap = None, -1.0
+        for a in range(G.shape[1]):
+            order = np.argsort(K[:, a])
+            for i0, i1 in ((order[0], order[1]), (order[-1], order[-2])):
+                g = abs(K[i0, a] - K[i1, a]) / span[a]
+                if g > gap:
+                    gap, best = g, i0
+        idx = np.where(keep)[0][best]
+        keep[idx] = False
+        peeled += 1
+    if peeled:
+        K = G[keep]
+        lo, hi = K.min(axis=0), K.max(axis=0)
+    return lo, hi, q, peeled
+
+
+# --------------------------------------------------------------------------
+# SHAPES (2026-11-11: "experiment with non-box borders: box borders, snap to
+# point minimum borders, and something more curvy / ice cream scoopy in the
+# middle; all 3 for 5% and 10% grace").
+#
+#   box        the one this file was built on: per axis, the range.
+#   ellipsoid  the SCOOP. An oval fitted to the group's spread robustly
+#              (minimum covariance determinant, so a few odd events do not
+#              stretch it). Its grace leaves out the events furthest from
+#              its centre, by that fit's own distance.
+#   hull       the SNAP. The convex hull: the tightest border with no dents,
+#              its corners the outermost events. Its grace peels events one
+#              at a time -- each one a corner of the hull when it goes, the
+#              furthest from the centre first -- so exactly the grace's share
+#              of the group is left outside.
+#
+# The scoop and the snap are both unchanged by rescaling an axis, so uV
+# against dB against ms needs no choice. Each level keeps its shape (centre
+# and matrix; corners, faces and planes) beside `edges`, which for these two
+# is the shape's extent on each axis: what code that only knows boxes reads.
+# --------------------------------------------------------------------------
+SHAPES = ("box", "ellipsoid", "hull")
+SHAPE_WORDS = {"box": "Box", "ellipsoid": "Scoop", "hull": "Snap"}
+
+
+def _robust(G):
+    """(centre, covariance) of G: the minimum covariance determinant's, or
+    the plain ones when there are too few events for it."""
+    c, S = G.mean(axis=0), np.cov(G, rowvar=False)
+    if G.shape[0] >= 4 * G.shape[1]:
+        try:
+            from sklearn.covariance import MinCovDet
+            m = MinCovDet(random_state=0).fit(G)
+            c, S = m.location_, m.covariance_
+        except Exception:                                # noqa: BLE001
+            pass
+    S = np.atleast_2d(np.asarray(S, dtype=float))
+    # A ridge, so a flat cloud still has an inverse.
+    S = S + np.eye(S.shape[0]) * 1e-9 * max(float(np.trace(S)), 1e-12)
+    return np.asarray(c, dtype=float), S
+
+
+def _d2(X, c, Si):
+    D = X - c
+    return np.einsum("ij,jk,ik->i", D, Si, D)
+
+
+def _scale(G):
+    """A centre and a spread per axis, for the hull's arithmetic only."""
+    c = np.median(G, axis=0)
+    s = np.std(G, axis=0)
+    s[~(s > 0)] = 1.0
+    return c, s
+
+
+def _hull(Z):
+    from scipy.spatial import ConvexHull
+    try:
+        return ConvexHull(Z)
+    except Exception:                                    # noqa: BLE001
+        return ConvexHull(Z, qhull_options="QJ")
+
+
+def _hull_peel(G, fit, want):
+    """The events the snap's grace leaves out, in the order it does: each a
+    corner of the hull of what is left when it goes, the furthest from the
+    robust centre first. A smaller grace's are the first of these."""
+    c, S = fit
+    d2 = _d2(G, c, np.linalg.inv(S))
+    sc, ss = _scale(G)
+    Z = (G - sc) / ss
+    keep = np.ones(G.shape[0], dtype=bool)
+    out = []
+    for _ in range(int(want)):
+        idx = np.where(keep)[0]
+        if idx.size <= max(MIN_EACH, 5):
+            break
+        h = _hull(Z[idx])
+        corners = idx[h.vertices]
+        j = int(corners[np.argmax(d2[corners])])
+        keep[j] = False
+        out.append(j)
+    return out
+
+
+def _shape_level(G, grace, shape, fit, peel):
+    """(shape, lo, hi) of the scoop or the snap at a grace."""
+    n = G.shape[0]
+    want = int(np.floor(float(grace) * n + 1e-9))
+    if shape == "ellipsoid":
+        c, S = fit
+        d2 = np.sort(_d2(G, c, np.linalg.inv(S)))
+        t = float(d2[max(0, n - want - 1)])
+        M = S * t                 # inside: (x - c)' M^-1 (x - c) <= 1
+        w, V = np.linalg.eigh(M)
+        half = np.sqrt(np.maximum(np.diag(M), 0.0))
+        return ({"kind": "ellipsoid", "center": [float(v) for v in c],
+                 "M": [[float(v) for v in row] for row in M], "t": t,
+                 "axes": [[float(v) for v in V[:, k] * np.sqrt(max(w[k], 0.0))]
+                          for k in range(V.shape[1])]},
+                c - half, c + half, want)
+    keep = np.ones(n, dtype=bool)
+    keep[list(peel[:want])] = False
+    K = G[keep]
+    sc, ss = _scale(G)
+    h = _hull((K - sc) / ss)
+    vmap = {int(v): k for k, v in enumerate(h.vertices)}
+    return ({"kind": "hull", "center": [float(v) for v in sc],
+             "scale": [float(v) for v in ss],
+             "eq": [[float(v) for v in row] for row in h.equations],
+             "vertices": [[float(v) for v in K[int(i)]] for i in h.vertices],
+             "faces": [[vmap[int(a)] for a in tri] for tri in h.simplices]},
+            K.min(axis=0), K.max(axis=0), int(n - keep.sum()))
+
+
+def _inside_level(X, lv, shape="box"):
+    """Inside a level's border: its box, scoop or snap. Missing a number is
+    never inside."""
+    sh = lv.get("shape") if shape != "box" else None
+    if not sh:
+        ed = lv["edges"]
+        lo = np.array([np.nan if ed[k]["lo"] is None else ed[k]["lo"]
+                       for k, _l, _u in AXES], dtype=float)
+        hi = np.array([np.nan if ed[k]["hi"] is None else ed[k]["hi"]
+                       for k, _l, _u in AXES], dtype=float)
+        return _inside(X, lo, hi)
+    fin = np.isfinite(X).all(axis=1)
+    out = np.zeros(X.shape[0], dtype=bool)
+    if not fin.any():
+        return out
+    Xf = X[fin]
+    if sh["kind"] == "ellipsoid":
+        Mi = np.linalg.inv(np.asarray(sh["M"], dtype=float))
+        out[fin] = _d2(Xf, np.asarray(sh["center"], dtype=float), Mi) <= 1.0 + 1e-9
+    else:
+        E = np.asarray(sh["eq"], dtype=float)
+        Z = (Xf - np.asarray(sh["center"], dtype=float)) / np.asarray(sh["scale"], dtype=float)
+        out[fin] = (Z @ E[:, :3].T + E[:, 3] <= 1e-9).all(axis=1)
+    return out
+
+
+def _classify_level(X, lv, group, shape="box"):
+    """`_classify_box`, for any shape: inside is the group; outside, or
+    missing an axis while having another, ambiguous; no values, None."""
+    fin = np.isfinite(X)
+    out = np.full(X.shape[0], "amb", dtype=object)
+    out[_inside_level(X, lv, shape)] = group
+    out[~fin.any(axis=1)] = None
+    return out
+
+
+def shape_sweep(G, T, shape, graces):
+    """At each grace: the share of G left outside and how many of T land
+    inside, for any shape -- what the grace sweep draws."""
+    fit = _robust(G) if shape != "box" else None
+    peel = (_hull_peel(G, fit, int(np.floor(max(graces) * G.shape[0] + 1e-9)))
+            if shape == "hull" else None)
+    out = []
+    for g in graces:
+        if shape == "box":
+            lo, hi, _q, _p = box_for(G, float(g))
+            lv = {"edges": {k: {"lo": _f(lo[a]), "hi": _f(hi[a])}
+                            for a, (k, _l, _u) in enumerate(AXES)}}
+        else:
+            sh, lo, hi, _w = _shape_level(G, g, shape, fit, peel)
+            lv = {"shape": sh, "edges": {k: {"lo": _f(lo[a]), "hi": _f(hi[a])}
+                                         for a, (k, _l, _u) in enumerate(AXES)}}
+        out.append((float(g), lo, hi, _inside_level(G, lv, shape),
+                    _inside_level(T, lv, shape)))
+    return out
+
+
+def envelope(events, custom=None, identity="cls_single", shape="box"):
     """The border around ONE identity's events: per axis, the range they
     span, at no grace; pulled in at each grace until that share of them is
-    left outside."""
+    left outside. `shape`: the box, the scoop (ellipsoid) or the snap
+    (convex hull) -- see SHAPES above."""
+    if shape not in SHAPES:
+        raise BorderError("A border is one of %s; not %r."
+                          % (", ".join(SHAPES), shape))
     X = _matrix(events)
     y = identities(events, identity)
     comp = np.isfinite(X).all(axis=1)
@@ -306,18 +518,29 @@ def envelope(events, custom=None, identity="cls_single"):
     graces.sort()
     n_id = int(np.sum(y >= 0))
     levels = []
+    fit = _robust(G) if shape != "box" else None
+    peel = (_hull_peel(G, fit, int(np.floor(max(graces) * G.shape[0] + 1e-9)))
+            if shape == "hull" else None)
     for g in graces:
-        q = _trim_for(G, float(g))
-        lo, hi = _box_at(G, q)
-        cls = _classify_box(X, lo, hi, group)
-        c, w, r = _counts(cls, y)
-        left = int(np.sum(~_inside(G, lo, hi)))
-        levels.append({
-            "grace": float(g), "trim": round(q, 6), "reached": True,
+        if shape == "box":
+            lo, hi, q, peeled = box_for(G, float(g))
+            sh = None
+        else:
+            sh, lo, hi, peeled = _shape_level(G, float(g), shape, fit, peel)
+            q = None
+        lv = {
+            "grace": float(g), "trim": None if q is None else round(q, 6),
+            "reached": True, "peeled": peeled,
             "edges": {k: {"lo": _f(lo[a]), "hi": _f(hi[a])}
-                      for a, (k, _l, _u) in enumerate(AXES)},
-            "counts": c, "wrong": w, "switch_rate": r,
-            "outside": left, "outside_rate": left / float(G.shape[0])})
+                      for a, (k, _l, _u) in enumerate(AXES)}}
+        if sh:
+            lv["shape"] = sh
+        cls = _classify_level(X, lv, group, shape)
+        c, w, r = _counts(cls, y)
+        left = int(np.sum(~_inside_level(G, lv, shape)))
+        lv.update({"counts": c, "wrong": w, "switch_rate": r,
+                   "outside": left, "outside_rate": left / float(G.shape[0])})
+        levels.append(lv)
     box0 = {k: {"lo": _f(np.min(G[:, a])), "hi": _f(np.max(G[:, a]))}
             for a, (k, _l, _u) in enumerate(AXES)}
     cls0 = _classify_box(X, np.array([box0[k]["lo"] for k, _l, _u in AXES]),
@@ -325,7 +548,7 @@ def envelope(events, custom=None, identity="cls_single"):
                          group)
     c0, w0, r0 = _counts(cls0, y)
     return {
-        "schema": 1, "kind": "envelope", "group": group,
+        "schema": 1, "kind": "envelope", "group": group, "shape": shape,
         "axes": [{"key": k, "label": lab, "unit": u} for k, lab, u in AXES],
         "ied_above": {k: True for k, _l, _u in AXES},
         "strict": box0,
@@ -367,10 +590,8 @@ def apply(events, border, grace, identity="cls_single"):
     lv = level_of(border, grace)
     if is_envelope(border):
         X = _matrix(events)
-        ed = lv["edges"]
-        lo = np.array([ed[k]["lo"] for k, _l, _u in AXES], dtype=float)
-        hi = np.array([ed[k]["hi"] for k, _l, _u in AXES], dtype=float)
-        cls = _classify_box(X, lo, hi, border.get("group", "ds"))
+        cls = _classify_level(X, lv, border.get("group", "ds"),
+                              border.get("shape") or "box")
         y = identities(events, identity)
         c, w, r = _counts(cls, y)
         return list(cls), {"counts": c, "wrong": w, "switch_rate": r,
@@ -391,6 +612,27 @@ def apply(events, border, grace, identity="cls_single"):
 def rule_words(border, grace):
     """The rule in a sentence, at a grace."""
     lv = level_of(border, grace)
+    if is_envelope(border) and (border.get("shape") or "box") != "box":
+        word = "P-spike" if border.get("group") == "ied" else "DS"
+        g = float(lv["grace"])
+        sh = lv.get("shape") or {}
+        if sh.get("kind") == "ellipsoid":
+            c = sh.get("center") or [None] * 3
+            where = ("inside the scoop: an ellipsoid fitted robustly to the %s "
+                     "events, centred at %s" % (word, ", ".join(
+                         "%s %s %s" % (lab, _num(c[a]), u)
+                         for a, (k, lab, u) in enumerate(AXES))))
+            how = ("it reaches the furthest %s event" % word if g == 0 else
+                   "it leaves out the %s of the %s events furthest from its "
+                   "centre" % (grace_words(g), word))
+        else:
+            where = ("inside the snap: the convex hull of the %s events, %d "
+                     "corners" % (word, len(sh.get("vertices") or [])))
+            how = ("its corners are the outermost %s events" % word if g == 0
+                   else "the outermost %s of the %s events peeled off, one "
+                   "corner at a time" % (grace_words(g), word))
+        return ("Solid %s: %s. Outside it is ambiguous (grace %s: %s)."
+                % (word, where, grace_words(g), how))
     if is_envelope(border):
         word = "P-spike" if border.get("group") == "ied" else "DS"
         ed = lv["edges"]

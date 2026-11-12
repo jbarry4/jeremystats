@@ -74,6 +74,18 @@ async function until(fn, ms) {
     W().fetch = function (url, opts) {
       const m = String((opts && opts.method) || 'GET').toUpperCase();
       const u = String(url);
+      /* The getting-ready jobs run on the server and would sync with the
+         real shared database: answered here, GET included, as finished. */
+      if (/\/api\/firstrun/.test(u)) {
+        answered.push(m + ' ' + u.replace(/^.*\/api\//, '/api/')
+                      + (m !== 'GET' ? ' ' + ((opts && opts.body) || '') : ''));
+        const body = /prepare/.test(u) ? { ok: true, running: null }
+          : { ok: true, wanted: false, job: { running: null, error: null, done: {
+              sync: { ok: true, pulled: 3, pushed: 1 },
+              cache: { folders: { of: 10, here: 9 } } } } };
+        return Promise.resolve(new (W().Response)(JSON.stringify(body),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
       if (m !== 'GET' && /\/api\/(profile|vacc\/|activity|people|prefs)/.test(u)) {
         answered.push(m + ' ' + u.replace(/^.*\/api\//, '/api/'));
         let body = { ok: true };
@@ -153,17 +165,39 @@ async function until(fn, ms) {
     check('and offers a way on (Skip, or Continue once connected)', !!skip,
           skip && skip.textContent);
     skip.click();
-    const find = await until(() => D().querySelector('.wl-find'), 8000);
-    check('on to Recordings', !!find);
+    /* 2026-11-07: the lab's records, then the recordings, then the caches,
+       each moving on by itself -- no button pressed from here to Done
+       unless the VACC is not signed in on this computer. */
+    const lab = await until(() => /From the lab/.test(
+      (D().querySelector('.wl-title') || {}).textContent || ''), 8000);
+    check('on to "From the lab"', !!lab);
+    check('which starts the sync job on the server',
+          !!(await until(() => answered.some((a) => /POST \/api\/firstrun\/prepare.*sync/.test(a)), 5000)),
+          answered.join(' '));
+    const find = await until(() => D().querySelector('.wl-find'), 12000);
+    check('and moves on to Recordings by itself', !!find);
     await sleep(600);
-    const btns = Array.from(D().querySelectorAll('.wl-find button')).map((b) => b.textContent);
-    check('the two finding buttons are there, or the step says to sign in first',
-          (btns.some((t) => /on VACC/.test(t)) && btns.some((t) => /on netfiles/.test(t)))
-          || /needs the VACC/.test(find.textContent), btns.join(' | '));
-    const on = Array.from(D().querySelectorAll('.wl-page > .wl-actions button'))
-      .find((b) => !b.hidden);
-    on.click();
-    const done = await until(() => D().querySelector('.wl-sum'), 8000);
+    if (/needs the VACC/.test(find.textContent)) {
+      say('  (the VACC is not signed in on this computer: skipping by hand)', 'note');
+      Array.from(D().querySelectorAll('.wl-page > .wl-actions button'))
+        .find((b) => !b.hidden).click();
+    } else {
+      check('the finding buttons are there while it works',
+            Array.from(D().querySelectorAll('.wl-find button'))
+              .some((b) => /on VACC|on netfiles|Looking/.test(b.textContent)));
+    }
+    const getReady = await until(() => /Getting ready/.test(
+      (D().querySelector('.wl-title') || {}).textContent || ''), 90000);
+    check('on to "Getting ready" without a click', !!getReady);
+    check('which starts the cache job',
+          !!(await until(() => answered.some((a) => /POST \/api\/firstrun\/prepare.*cache/.test(a)), 5000)),
+          answered.join(' '));
+    const kept = await until(() => /kept the recordings list/.test(
+      (D().querySelector('.wl-term') || {}).textContent || ''), 60000);
+    check('the console says each list as it is kept', !!kept);
+    const done = await until(() => D().querySelector('.wl-sum'), 90000);
+    check('marked ready on the server (stub)',
+          answered.some((a) => /POST \/api\/firstrun .*"ready":true/.test(a)), answered.join(' '));
     check('on to Done', !!done && /set/.test(D().querySelector('.wl-big').textContent),
           D().querySelector('.wl-big') && D().querySelector('.wl-big').textContent);
     Array.from(D().querySelectorAll('.wl-page button')).find((b) => /^Open/.test(b.textContent))
@@ -179,8 +213,43 @@ async function until(fn, ms) {
     const esc = await until(() => !D().querySelector('.wl-overlay:not(.gone)'), 3000);
     check('Escape closes the on-demand one', !!esc);
     check('every write went to the stub, none to the server',
-          answered.every((a) => /\/api\/(profile|vacc\/|activity|people|prefs)/.test(a)),
+          answered.every((a) => /\/api\/(profile|vacc\/|activity|people|prefs|firstrun)/.test(a)),
           answered.join(' '));
+
+    say('');
+    say('=== 5. the boot knows, and the VACC tab follows the status ===');
+    check('the catalogue says whether the getting-ready stage is wanted',
+          typeof B.state.catalog.firstrun === 'boolean', String(B.state.catalog.firstrun));
+    await B.vacc.status();
+    const tab = D().getElementById('sessModeVacc');
+    check('Sessions’ VACC tab is shown exactly when an account is set up',
+          !tab || tab.hidden === !(B.vacc.last || {}).configured,
+          tab && ('hidden=' + tab.hidden + ' configured=' + (B.vacc.last || {}).configured));
+    check('the catalogue says whether the optimisation update is wanted',
+          typeof B.state.catalog.optimize === 'boolean', String(B.state.catalog.optimize));
+
+    say('');
+    say('=== 6. the optimisation update (a computer set up before) ===');
+    answered.length = 0;
+    B.welcome.optimize();
+    const upd = await until(() => /has been updated/.test(
+      (D().querySelector('.wl-overlay:not(.gone) .wl-title') || {}).textContent || ''), 5000);
+    check('one page: "… has been updated"', !!upd);
+    check('with no step rail and no welcome steps',
+          D().querySelector('.wl-overlay:not(.gone) .wl-rail').hidden === true
+          && !D().querySelector('.wl-overlay:not(.gone) .wl-form'));
+    check('a way to carry on while it works',
+          /background/.test((D().querySelector('.wl-overlay:not(.gone) .wl-later') || {}).textContent || ''));
+    check('it runs the cache job only, never the sync',
+          !!(await until(() => answered.some((a) => /prepare.*cache/.test(a)), 5000))
+          && !answered.some((a) => /prepare.*sync/.test(a)), answered.join(' '));
+    const keptU = await until(() => /kept the recordings list/.test(
+      (D().querySelector('.wl-overlay:not(.gone) .wl-term') || {}).textContent || ''), 60000);
+    check('says each list as it is kept', !!keptU);
+    const gone2 = await until(() => !D().querySelector('.wl-overlay:not(.gone)'), 30000);
+    check('and opens Jarvis by itself when done', !!gone2);
+    check('without marking a first opening (that is a new computer’s)',
+          !answered.some((a) => /"ready":true/.test(a)), answered.join(' '));
     B.profile.load = realLoad;
     await realLoad();
     check('the real profile is read back after', !B.profile.get()

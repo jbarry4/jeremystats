@@ -41,6 +41,158 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 16: 2026-11-09 (morning, scheduled), 11-08 08:50 to 11-09 08:50
+
+Nothing new. Bluebarry's 11-08 report (build `2026.11.06.4 11fcd58a`,
+written 18:16): 0 faults, 0 actions. Jarvis was running but nobody used
+it. There is no 11-08 or 11-09 shard. `git fetch` brought nothing:
+`origin/master` is still `83b3c701` (`.DS_Store` only). Strawbarry's
+11-06 and Blackbarry's 11-05 reports have still not come by git. Floss:
+0 open. In the cloud, read only, from `2026-11-08T13:45Z`: 0 `errors`
+rows, 0 `client.error` rows and 0 `activity` rows from any machine. As a
+control, the same query from `2026-11-07T13:45Z` returns pass 15's 15
+Bluebarry errors and 78 actions, so the query works and the silence is
+real. `tools/check_wf_border_lend.py` still passes (7 ok). No code
+changed. `2026.11.07.1` to `.3` are still uncommitted.
+
+Next pass: Bluebarry's 11-09 report and shard. Then Strawbarry's 11-06
+and Blackbarry's 11-05 reports when git brings them. Then `git fetch`,
+then the cloud `errors` and `client.error` rows from `2026-11-09T13:45Z`.
+
+## Pass 15: 2026-11-08 (morning, scheduled), 11-07 13:05 to 11-08 08:50
+
+Nothing new. Bluebarry's 11-07 report (build `2026.11.06.4 11fcd58a`):
+0 faults, 97 actions, 15 left out. Those are the shard's 15 records,
+all read in pass 14 (the `harness dupes` row is left out by the
+`harness` pattern). The shard has nothing after 13:06, and there is no
+11-08 shard. `git fetch` brought nothing new: `origin/master` is still
+`f26427e1`/`83b3c701` (`.DS_Store` only). Floss: 0 open. In the cloud,
+read only, from `2026-11-07T13:45Z`: the same 15 Bluebarry `errors`
+rows, 0 `client.error` rows, and activity only from Bluebarry (78
+rows, 17:54Z to 18:27Z). No other machine ran Jarvis on 11-07.
+`tools/check_wf_border_lend.py` still passes (7 ok). No code changed.
+`2026.11.07.1` to `.3` are still uncommitted.
+
+Next pass: Bluebarry's 11-08 report, if Jarvis runs today (a Sunday).
+Then Strawbarry's 11-06 and Blackbarry's 11-05 reports when git brings
+them. Then `git fetch`, then the cloud `errors` and `client.error` rows
+from `2026-11-08T13:45Z`.
+
+## Pass 14: 2026-11-07 (afternoon, by hand), 08:50 to 13:05
+
+Covered: the raw shard `11-07@desktop-4h65ai7-d565` (no report yet), the
+Floss inbox (`tools/floss_inbox.py --remote`: 0 open), `git fetch` (nothing
+new), and the cloud `errors` and `client.error` rows from `13:50Z`, read
+only. Nothing from other machines. Note for the next pass: the cloud
+`errors` table has `where_`, not `where`, and neither table has `user`.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-07 | Bluebarry | 1 (9 test) | fixed in `2026.11.07.2` (1) |
+
+1. **`dspca/plan` at 12:56:05, "This set (harness dupes) is not attached
+   to a recording".** `harness dupes` is `web/_dev/bankdupes.html`'s seed,
+   banked into the LIVE app's bank for a few seconds (the harness was run
+   against the live app, not `tools/harness_run.ps1`). A top-level window
+   on the live app, so no `X-Barry-Test`, opened DS-PCA in those seconds.
+   `loadCandidates` in `web/js/dspca.js` auto-picked `cands[0]`, the newest
+   set, although `/api/dspca/candidates` had marked it `readable: false`.
+   Any real set with no gid would do the same. It now uses
+   `firstReadable`, the recording picker's rule. `web/_dev/dspca.html` has
+   three new checks (308 ok). The 9 test faults are Root Canal and
+   `ui/mode.bounce` harness probes.
+
+## Pass 13: 2026-11-07 (morning, scheduled), 11-06 08:50 to 11-07 08:50
+
+Covered: Strawbarry's 11-05 report (on disk since 11-06 12:11),
+Bluebarry's 11-06 report and the raw shard `11-06@desktop-4h65ai7-d565`.
+There is no 11-07 shard yet. `git fetch` brought `f26427e1`/`83b3c701`
+(Shahriar, 11-06 15:21), which changed only `.DS_Store`, with no report.
+I also read the cloud, without writing to it: the `errors` table from
+`2026-11-06T13:50Z`, and the `activity` table's `client.error` rows from
+the same time. The column is `action`, not `kind`, and `errors` has no
+`shard` column. The cloud's last activity row is Bluebarry's, at 22:22Z
+on 11-06.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | Strawbarry (Aggie Krempasky) | 0 | 297 actions, build `2026.11.05.5` |
+| 11-06 | Bluebarry (Shahriar) | 0 (34 test) | all `test: true`, from the other session's Root Canal harness runs (1) |
+| 11-06 | Strawbarry (Maddie Massad, Aggie, Rain) | 0 (cloud) | 241 actions, nothing in `errors`. Its report has not come by git yet |
+| 11-06 | both | 20 `client.error` rows | 18 "stuck" (slow), 1 longtask, 1 from a script run in the page. None is a fault (2) |
+
+1. **Bluebarry's 34 test faults** came in two runs, 13:11–13:14 and
+   16:28–17:19 local: `rootcanal/fit` and `pool-fit` probes on
+   `harness-none`, `harness-nope`, `hb-1` and `hb-other`. Three were
+   different: **`rootcanal/pool-fit`, "PTEN m51 s1 2025-04-08 is in this
+   pool twice: as the read cached here (not banked) and as the read
+   cached here (not banked)"**, at 16:56:56, 17:07:23 and 17:08:30. That
+   was `web/_dev/rootcanalpool.html` ticking m51 s1's DS set and its
+   Panning set. Panning's sets became pool candidates on 11-06, in the
+   other session's uncommitted work. That session has since made the
+   harness pick recordings by gid, and made the picker swap one set for
+   the other (`toggleMember` and "Select all" in `web/js/rootcanal.js`).
+   The server refused correctly. I changed nothing. **For the other
+   session:** when both members are reads cached here,
+   `_rootcanal_member_kind` in `backend/app.py` describes them in the
+   same words, so the refusal does not say which one to keep. The
+   members already carry `set_type` ("ds" or "pooled"), so the wording
+   could name "its DS set" and "its Panning set". A person would only
+   see this with a pool saved holding both, before the picker's guard
+   existed. That pool's two rows have different ids, so the row's "counted
+   twice" warning would not show either. I left it alone because it is
+   that session's feature and still in progress.
+2. **`client.error` rows in `activity`:**
+   - **First registry read after a start, 30–35 s, three times.**
+     Strawbarry at 17:12–17:13Z (Aggie, right after "Ready"):
+     `GET /api/registry` took 30 s, and `csc/window`, `vacc/signin/state`,
+     `presets/support_panels` and `people` each waited about 30 s
+     behind it ("arranging recordings 50 of 2,039"). Bluebarry at
+     17:18Z: ten routes at 30–35 s just after the 12:17 local restart
+     ("Loading the analysis libraries — done in 15.2 s"), on a page left
+     open since the day before. Bluebarry at 19:39Z: `registry` 34.6 s
+     and `csc/window` 30.4 s just after "Ready". Pass 12 saw the same on
+     Strawbarry on 11-05. The small routes that wait are likely queued
+     in the browser behind the slow ones, not held by the server. I did
+     not measure that. It is slow, not broken. Whether to warm the
+     registry at start-up is a performance choice and is left open.
+   - Strawbarry at 18:02:34Z (Maddie Massad): ToolKit's curation pane
+     spinner ("reading the curation sets", then "reading the recording
+     registry", `web/js/toolkit.js` ~1620) ran 30 s after they left
+     Panning. Its last request was `/api/vacc/knows` matching 2,039
+     recordings, which reads the registry. It is the same slowness as
+     above. They went on working a minute later.
+   - Bluebarry at 18:00:26Z (13:00 local): "Uncaught TypeError: Cannot
+     read properties of null (reading 'click')" at `<anonymous>:6:78`.
+     The only thing around it is `link.scope` rows a minute apart in the
+     Sessions view. That is a script run inside the live page (CDP or
+     the console), most likely the other Claude session driving the app,
+     not Jarvis's own code. It is not a fault.
+   - Bluebarry at 22:19:11Z: a 1.0 s longtask during Root Canal pool
+     work. Not a fault.
+   - None of the `stuck` rows is `GET /api/link`, so pass 11's fix holds
+     everywhere. There was no repeat of pass 12's 34 s
+     `POST /api/session/state`.
+
+`tools/check_wf_border_lend.py` still passes (7 ok) on the code on
+disk. The other session went on editing `_wf_definition` on 11-06.
+"No border to lend" did not appear anywhere.
+
+Builds: Bluebarry's 11-06 report says `2026.11.06.4 11fcd58a`.
+Everything up to `2026.11.06.4`, including passes 11 and 12, is now
+committed and on `origin/master` (`git log origin/master..HEAD` is
+empty). Strawbarry ran `2026.11.05.5` on 11-05, so it had pass 11's
+fixes but not `2026.11.05.6`'s workflow fix. The other session's Panning
+pool work is still uncommitted, so it is on Bluebarry only. No code
+changed this pass, so there is no CHANGELOG entry.
+
+Next pass: Bluebarry's 11-07 report, if Jarvis runs today (a Saturday).
+Then Strawbarry's 11-06 report and Blackbarry's 11-05 report when git
+brings them. Blackbarry used Jarvis on 11-05 but has written no report
+since 11-04. Then `git fetch`, then the cloud `errors` table and
+`activity` `client.error` rows (`action=eq.client.error`) from
+`2026-11-07T13:45Z`.
+
 ## Pass 12: 2026-11-06 (morning, scheduled), 11-05 09:05 to 11-06 08:50
 
 Covered: Bluebarry's 11-04 and 11-05 reports, Blackbarry's 11-02 and 11-04

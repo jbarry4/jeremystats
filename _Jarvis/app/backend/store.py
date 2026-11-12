@@ -95,6 +95,9 @@ PREFS_SPEC = {
     "rootcanal_border_archive": shards.MAPLWW,
     # Root Canal's archived workflows (2026-11-05), the same way.
     "rootcanal_workflow_archive": shards.MAPLWW,
+    # A workflow moved to another folder on the page (2026-11-11):
+    # {workflow artifact id: "Snap/10%"}, over the folder it was saved in.
+    "rootcanal_workflow_in": shards.MAPLWW,
     # Root Canal's folders for saved pools and pools of pools (2026-10-20):
     # the folders, {id: {name, at, by, gone}}, and which folder each pool is
     # in, {pool id: folder id or ""}. Merged per key for the same reason as
@@ -102,6 +105,26 @@ PREFS_SPEC = {
     # renaming one folder does not undo somebody else's new one.
     "rootcanal_pool_folders": shards.MAPLWW,
     "rootcanal_pool_in": shards.MAPLWW,
+    # Root Canal's archived saved pools (and pools of pools) and saved
+    # singles (2026-11-06): {artifact id: {at, by}}, the borders' way. An
+    # archived folder is `archived: true` on its own record in
+    # rootcanal_pool_folders, which is merged per folder already.
+    "rootcanal_pool_archive": shards.MAPLWW,
+    "rootcanal_single_archive": shards.MAPLWW,
+    # X-ray Many (2026-11-07), each merged per id for the same reason: the
+    # folders {fid: {name, at, by, source, archived?}}, the box drawn on
+    # each recording {"<fid>|<gid>": {sel_lo, sel_hi, t_lo_ms, t_hi_ms,
+    # at, by}}, and each folder's global parameters {fid: {method, ...}}.
+    # Two people drawing boxes on different recordings both keep theirs.
+    "dspca_many_folders": shards.MAPLWW,
+    "dspca_many_boxes": shards.MAPLWW,
+    "dspca_many_params": shards.MAPLWW,
+    # The Extraction Room (2026-11-10): each PTEN mouse's %KO, by mouse key.
+    "extraction_ko": shards.MAPLWW,
+    # ... and which recordings have DS1 and DS2 swapped by hand.
+    "extraction_flip": shards.MAPLWW,
+    # ... and which are separable, or not, by a person's call.
+    "extraction_sep": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -1293,8 +1316,21 @@ def get_prefs(self):
     return merged
 
 
-def set_prefs(self, patch):
-    """Shallow-merge a patch into preferences. A null value clears a key."""
+def set_prefs(self, patch, merge=None):
+    """Shallow-merge a patch into preferences. A null value clears a key.
+
+    `merge` is {key: {id: value or None}}: one id of a map-valued pref
+    changed, put into the map as this server reads it now (2026-11-06).
+    A page holds the prefs it loaded at boot and never reloads them, so a
+    whole map from it lacks every id a colleague added since -- and the
+    per-key stamps (shards.Book._stamp_keys) wrote each of those as
+    "gone", which won everywhere: archiving one pool here un-archived
+    theirs. Merged here, the ids the page did not touch go back exactly
+    as read and keep their stamps; only the one it named is re-stamped.
+    """
+    for key, ids in (merge or {}).items():
+        if not isinstance(ids, dict):
+            raise ValueError("merge for %r is not a map of ids" % key)
     with _LOCK:
         rec = self.prefs.read(PREFS_BASE) or {}
         # This machine's own value for every local key the patch does not
@@ -1325,6 +1361,20 @@ def set_prefs(self, patch):
                 rec.pop(k, None)
             else:
                 rec[k] = v
+        # Per id, onto the map just read (2026-11-06). A copy, so the
+        # record read() handed over is only changed where it is assigned.
+        for key, ids in (merge or {}).items():
+            got = rec.get(key)
+            if got is not None and not isinstance(got, dict):
+                raise ValueError("%r is not a map, so it cannot be merged "
+                                 "by id" % key)
+            cur = dict(got or {})
+            for i, v in ids.items():
+                if v is None:
+                    cur.pop(str(i), None)
+                else:
+                    cur[str(i)] = v
+            rec[key] = cur
         rec["updated"] = _now()
         self.prefs.write(PREFS_BASE, rec)
         return self.get_prefs()

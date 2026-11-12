@@ -238,10 +238,21 @@ BARRY.welcome = (function () {
   }
 
   /* ------------------------------------------------------------ the steps */
+  /* 2026-11-07: "the VACC login should happen in the CLI and then be
+     already done", "on the initial sync it should not ask if new files
+     should be added", and a getting-ready stage so the first views are not
+     skeleton bars. So a step Setup already did is shown done and passed
+     (the VACC is confirmed, not asked again), and the last three run by
+     themselves: the lab's records first, so a recording the lab already
+     has is matched rather than minted again; then every recording on the
+     cluster and on netfiles, added without a question; then every cache
+     the first views would otherwise build cold (backend/firstrun.py). */
   const STEPS = [
     ['you', 'You'],
     ['vacc', 'VACC'],
+    ['sync', 'From the lab'],
     ['find', 'Recordings'],
+    ['ready', 'Getting ready'],
   ];
 
   /* Build the whole thing into `host`. `done(how)` is called once, when it
@@ -249,8 +260,9 @@ BARRY.welcome = (function () {
   function build(host, done, opts) {
     const o = opts || {};
     const st = {
-      at: 'hello',
-      did: { you: null, vacc: null, find: null },   // 'done' | 'skipped'
+      // `only`: one step and nothing else -- the optimisation update.
+      at: o.only || 'hello',
+      did: { you: null, vacc: null, sync: null, find: null, ready: null },
       roster: null,
       picked: null,
       signin: null,          // /api/vacc/signin/state
@@ -291,6 +303,12 @@ BARRY.welcome = (function () {
     window.addEventListener('keydown', onKey, true);
 
     function go(step) {
+      // Said in Setup or on another visit: shown done, not asked again.
+      const prof = (BARRY.profile && BARRY.profile.get && BARRY.profile.get()) || {};
+      if (step === 'you' && prof.set && !o.escape) {
+        st.did.you = 'done';
+        step = 'vacc';
+      }
       st.at = step;
       clearTimeout(pollTimer);
       if (st.term) { st.term.stop(); st.term = null; }
@@ -300,7 +318,7 @@ BARRY.welcome = (function () {
 
     function paintRail() {
       rail.textContent = '';
-      rail.hidden = st.at === 'hello';
+      rail.hidden = st.at === 'hello' || !!o.only;
       STEPS.forEach(([id, label], i) => {
         const state = st.at === id ? 'on'
           : st.did[id] === 'done' ? 'done'
@@ -316,6 +334,17 @@ BARRY.welcome = (function () {
     function paintFoot() {
       foot.textContent = '';
       if (st.at === 'done') return;
+      if (o.only) {
+        // The work is the server's: leaving does not stop it.
+        foot.appendChild(el('button', {
+          class: 'linkish wl-later', type: 'button',
+          text: 'Carry on in the background',
+          title: 'Jarvis opens now and the update finishes behind it. Views '
+            + 'opened before it is done work their lists out as they always did.',
+          onclick: () => close('later'),
+        }));
+        return;
+      }
       foot.appendChild(el('button', {
         class: 'linkish wl-later', type: 'button',
         text: o.escape ? 'Close' : 'Not now — I will set this up later',
@@ -331,7 +360,7 @@ BARRY.welcome = (function () {
       paintRail();
       paintFoot();
       body.textContent = '';
-      const page = ({ hello, you, vacc, find, done: finished })[st.at]();
+      const page = ({ hello, you, vacc, sync, find, ready, done: finished })[st.at]();
       page.classList.add('wl-page');
       body.appendChild(page);
       const first = page.querySelector('[data-autofocus]');
@@ -373,15 +402,23 @@ BARRY.welcome = (function () {
         el('p', { class: 'wl-sub', text: o.escape
           ? 'The three steps a new computer is walked through, again. Each one '
             + 'starts from how things stand now.'
-          : 'This computer is new to ' + word + '. Three steps and you are in.' }),
+          : 'This computer is new to ' + word + '. Five steps, and the last three '
+            + 'run by themselves.' }),
         el('ol', { class: 'wl-plan' }, [
           item(1, 'You', 'Your name goes on every decision, figure and run you make.'),
-          item(2, 'Your VACC account', 'So tools can run on the cluster and read netfiles.'),
-          item(3, 'Your recordings', 'Jarvis looks on the VACC and on netfiles and adds what it finds.'),
+          item(2, 'Your VACC account', 'So tools can run on the cluster and read netfiles. '
+            + 'Already signed in during Setup? It is only checked.'),
+          item(3, 'From the lab', 'Everything the lab has recorded and decided, brought '
+            + 'up to date from the shared database.'),
+          item(4, 'Your recordings', 'Every recording on the VACC and on netfiles, found '
+            + 'and added.'),
+          item(5, 'Getting ready', 'Every list worked out and kept, so no view makes you '
+            + 'wait the first time.'),
         ]),
         row([primary('Start', () => go('you'), { 'data-autofocus': '1' })]),
-        el('p', { class: 'wl-hint', text: 'About five minutes. Nothing is copied '
-          + 'and nothing on the cluster changes.' }),
+        el('p', { class: 'wl-hint', text: 'About five minutes, most of it the netfiles '
+          + 'walk. Nothing is copied and nothing on the cluster changes. Every step '
+          + 'says what it is doing as it does it.' }),
       ]);
     }
 
@@ -539,10 +576,10 @@ BARRY.welcome = (function () {
       box.appendChild(term.node);
       st.term = term;
       term.start();
-      const skip = ghost('Skip for now', () => { st.did.vacc = 'skipped'; go('find'); },
+      const skip = ghost('Skip for now', () => { st.did.vacc = 'skipped'; go('sync'); },
         { title: 'Jarvis works without it. Sign in later from your profile, '
                + 'under VACC account.' });
-      const next = primary('Continue', () => go('find'));
+      const next = primary('Continue', () => go('sync'));
       const actions = row([skip, next]);
       box.appendChild(actions);
 
@@ -579,6 +616,11 @@ BARRY.welcome = (function () {
           } catch (e) { /* the switch is a courtesy */ }
         }
         draw();
+        // Signed in before this screen (Setup): checked, said, and on.
+        if (st.vacc_auto && st.vstatus.available && !closed && st.at === 'vacc') {
+          term.local('signed in during Setup — nothing to ask', 'ok');
+          setTimeout(() => { if (!closed && st.at === 'vacc') go('sync'); }, 1400);
+        }
       }
 
       function form(netidGuess) {
@@ -678,6 +720,21 @@ BARRY.welcome = (function () {
               } }),
           ]));
           if (justSignedIn) confirm(line);
+          /* Already signed in when this step opened -- in Setup, or on
+             an earlier visit. Not a form and not a button to press: the
+             connection is proved once, here, and the step moves on. */
+          else if (!v.available && !st.vacc_tried) {
+            st.vacc_tried = true;
+            st.vacc_auto = true;
+            confirm(line);
+          } else if (v.available && !st.vacc_tried && !o.escape) {
+            st.vacc_tried = true;
+            st.vacc_auto = true;
+            st.did.vacc = 'done';
+            term.local('signed in already as ' + (v.netid || s.netid)
+                       + ' and the cluster answers — nothing to ask', 'ok');
+            setTimeout(() => { if (!closed && st.at === 'vacc') go('sync'); }, 1400);
+          }
         } else {
           const email = String(((BARRY.profile && BARRY.profile.get && BARRY.profile.get()) || {}).email || '');
           const guess = /@uvm\.edu$/i.test(email) ? email.split('@')[0] : '';
@@ -774,9 +831,9 @@ BARRY.welcome = (function () {
         }
         for (const r of (f.unidentifiable || [])) term.local('no name  ' + r.path, 'dim');
       }
-      const skip = ghost('Skip for now', () => { st.did.find = st.did.find || 'skipped'; go('done'); },
+      const skip = ghost('Skip for now', () => { st.did.find = st.did.find || 'skipped'; go('ready'); },
         { title: 'Later: Sessions › VACC has the same two buttons.' });
-      const next = primary('Continue', () => { st.did.find = 'done'; go('done'); });
+      const next = primary('Continue', () => { st.did.find = 'done'; go('ready'); });
       box.appendChild(row([skip, next]));
 
       const signedIn = () => !!((st.vstatus && st.vstatus.configured)
@@ -790,7 +847,10 @@ BARRY.welcome = (function () {
         if (look) {
           term.local(look === 'netfiles'
             ? 'Find everything on netfiles: the cluster walks the lab’s share (minutes)'
-            : 'Find everything on VACC: scratch, the uploads and temp (seconds)');
+            : look === 'all'
+              ? 'Find everything: the cluster’s own space (seconds) and the lab’s '
+                + 'netfiles share (a few minutes), both at once'
+              : 'Find everything on VACC: scratch, the uploads and temp (seconds)');
         }
         try {
           st.found = look ? await apiPost('/api/vacc/found/look', { which: look })
@@ -809,13 +869,48 @@ BARRY.welcome = (function () {
         clearTimeout(pollTimer);
         if (st.found && st.found.walking) {
           pollTimer = setTimeout(() => { if (!closed && st.at === 'find') read(false); }, 5000);
+          return;
+        }
+        autoStep();
+      }
+
+      /* By itself, the whole way (2026-11-07: "it should not ask if new
+         files should be added ... it should just already map everything
+         that is already there ... new users are not in a place to make
+         that sort of call"). A place not looked through in the last day is
+         walked; what the walks find is added; then on to the next step.
+         The ones that need a person stay listed, for later. */
+      const DAY_S = 86400;
+      function autoStep() {
+        const f = st.found;
+        if (!f || !f.ok || f.walking || st.busy || closed || st.at !== 'find') return;
+        const roots = f.roots || [];
+        const stale = roots.some((r) => r.age_s == null || r.age_s > DAY_S);
+        if (stale && !st.find_walked) {
+          st.find_walked = true;
+          read('all');
+          return;
+        }
+        if (f.n_new && !st.find_added) {
+          st.find_added = true;
+          add(null, null);
+          return;
+        }
+        if (!st.find_moved) {
+          st.find_moved = true;
+          st.did.find = 'done';
+          term.local('every recording the cluster can see is in ' + word
+            + (f.n_refused ? '; ' + n(f.n_refused) + ' need a person to say which, '
+              + 'in Sessions › VACC when you have a minute' : ''), 'ok');
+          setTimeout(() => { if (!closed && st.at === 'find') go('ready'); }, 1800);
         }
       }
 
       async function add(btn, line) {
         const f = st.found || {};
         if (!f.n_new || st.busy) return;
-        st.busy = true; btn.disabled = true; btn.textContent = 'Adding…';
+        st.busy = true;
+        if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
         term.local('Add ' + n(f.n_new) + ' recordings found: each gets a permanent id', 'hot');
         try {
           const got = await apiPost('/api/vacc/found/add', { confirm: true, digest: f.digest });
@@ -825,10 +920,18 @@ BARRY.welcome = (function () {
           catch (e) { /* the marks catch up on their own */ }
           st.did.find = 'done';
           st.found = null;
+          st.busy = false;
           await read(false);
         } catch (e) {
-          say(line, e.message, 'warn');
-          btn.disabled = false;
+          if (line) say(line, e.message, 'warn');
+          term.local(e.message, 'warn');
+          if (btn) btn.disabled = false;
+          // The list moved under it (a walk finished): read it and go again.
+          if (/changed since it was shown/i.test(e.message || '')) {
+            st.find_added = false;
+            st.busy = false;
+            await read(false);
+          }
         } finally {
           st.busy = false;
         }
@@ -942,6 +1045,134 @@ BARRY.welcome = (function () {
       return box;
     }
 
+    /* -------------------------------------------- the server's two jobs */
+    /* Start one (backend/app.py `/api/firstrun/prepare`) and wait for it.
+       It runs on the server, so a reload in the middle loses nothing; the
+       console shows what it says as it goes. Resolves with what it did. */
+    async function runJob(stage) {
+      try {
+        await apiPost('/api/firstrun/prepare', { stage });
+      } catch (e) {
+        return { error: e.message };
+      }
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1000));
+        if (closed) return null;
+        let fr = null;
+        try { fr = await api('/api/firstrun', { priority: 'high' }); } catch (e) { fr = null; }
+        const job = (fr && fr.job) || {};
+        if (job.done && job.done[stage] && job.running !== stage) return job.done[stage];
+        if (!job.running && job.error) return { error: job.error };
+      }
+    }
+
+    function jobPage(title, sub, show) {
+      const box = el('div', {});
+      box.appendChild(head(title, sub));
+      const term = terminal({ show });
+      box.appendChild(term.node);
+      st.term = term;
+      term.start();
+      const msg = msgLine();
+      box.appendChild(msg);
+      return { box, term, msg };
+    }
+
+    /* ---------------------------------------------------------- 3  the lab */
+    function sync() {
+      const p = jobPage('From the lab',
+        'Everything the lab has recorded, curated and decided, brought up to date '
+        + 'from the shared database before Jarvis looks for recordings, so one the '
+        + 'lab already has is matched to its record and never added twice.',
+        (t) => !t || t === 'ready:sync');
+      const next = primary('Continue', () => go('find'));
+      next.hidden = true;
+      p.box.appendChild(row([next]));
+      say(p.msg, 'Syncing…', 'busy');
+      runJob('sync').then((got) => {
+        if (closed || st.at !== 'sync') return;
+        st.did.sync = got && got.ok ? 'done' : 'skipped';
+        say(p.msg, !got ? '' : got.error ? 'The sync stopped: ' + got.error
+          + '. Jarvis carries on with the records it came with.'
+          : got.skipped ? 'No shared-database key here: working from the records '
+            + 'Jarvis came with.'
+          : 'Up to date with the lab.', got && got.ok ? 'ok' : 'warn');
+        next.hidden = false;
+        setTimeout(() => { if (!closed && st.at === 'sync') go('find'); }, 1600);
+      });
+      return p.box;
+    }
+
+    /* ---------------------------------------------------------- 5  ready */
+    /* The server's half first -- every folder asked once and the answers
+       kept, the recordings list, what the cluster can reach, the sync
+       summary, the analysis libraries -- then the page's: each list the
+       views open on, fetched fresh into this browser's kept copy
+       (web/js/data.js), so the first visit to each view draws at once. */
+    function ready() {
+      const update = o.only === 'ready';
+      const p = jobPage(update ? word + ' has been updated' : 'Getting ready',
+        update
+          ? 'A one-time optimisation for this computer. ' + word + ' now keeps what '
+            + 'it works out between starts -- whether each recording folder opens, '
+            + 'the recordings list, what the VACC can reach -- so views open from '
+            + 'what is kept instead of working it all out again. This builds all of '
+            + 'it once, now. Everything you have is left exactly as it is.'
+          : 'Every list the views open on, worked out once and kept on this computer, '
+            + 'so nothing makes you wait the first time. From here on each one is kept '
+            + 'up to date as things change, and only what changed is worked out again.',
+        (t) => !t || (/^ready:/.test(t) && t !== 'ready:sync'));
+      const leave = () => (update ? close('finished') : go('done'));
+      const next = primary(update ? 'Open ' + word : 'Continue', leave);
+      next.hidden = true;
+      p.box.appendChild(row([next]));
+      say(p.msg, 'Getting ready…', 'busy');
+      const LISTS = [
+        ['/api/registry', 'the recordings list', (r) => n(r.total) + ' recordings'],
+        ['/api/bank', 'the Event Bank', (r) => n((r.entries || []).length) + ' banked sets'],
+        ['/api/toolkit/scopes', 'what each tool can pick from',
+         (r) => n((r.sessions || []).length) + ' recordings'],
+        ['/api/vacc/knows', 'what the VACC can reach',
+         (r) => n(Object.keys(r.knows || {}).length) + ' recordings VACC loaded'],
+        ['/api/people', 'the people', (r) => n((r.people || []).length) + ' people'],
+        ['/api/notes', 'the patch notes', (r) => (r.version ? 'version ' + r.version : 'read')],
+      ];
+      const n = (x) => Number(x || 0).toLocaleString();
+      (async () => {
+        const got = await runJob('cache');
+        if (closed || st.at !== 'ready') return;
+        if (got && got.error) p.term.local('the server’s half stopped: ' + got.error, 'warn');
+        p.term.local('Now this browser’s copies: each list fetched fresh and kept');
+        for (const [url, what, count] of LISTS) {
+          if (closed || st.at !== 'ready') return;
+          const t0 = performance.now();
+          try {
+            const r = await BARRY.data.get(url, { fresh: true });
+            p.term.local('kept ' + what + ': ' + count(r || {}) + ' ('
+              + ((performance.now() - t0) / 1000).toFixed(1) + ' s)', 'ok');
+          } catch (e) {
+            p.term.local(what + ': ' + e.message + ' — read when a view first wants it', 'dim');
+          }
+        }
+        try { if (BARRY.vacc && BARRY.vacc.loadKnows) await BARRY.vacc.loadKnows(true); }
+        catch (e) { /* the marks catch up on their own */ }
+        try { if (BARRY.warmup && BARRY.warmup.start) BARRY.warmup.start(); }
+        catch (e) { /* a courtesy */ }
+        // A new computer's first opening is over. (The server recorded the
+        // optimisation itself, when its job finished.)
+        if (!update) {
+          try { await apiPost('/api/firstrun', { ready: true }); } catch (e) { /* asked again next time */ }
+        }
+        st.did.ready = 'done';
+        log(update ? 'welcome.optimized' : 'welcome.ready', {});
+        p.term.local('ready — the next opening starts from all of this', 'hot');
+        say(p.msg, 'Ready.', 'ok');
+        next.hidden = false;
+        setTimeout(() => { if (!closed && st.at === 'ready') leave(); }, 1600);
+      })();
+      return p.box;
+    }
+
     /* ---------------------------------------------------------- done */
     function finished() {
       const who = (BARRY.profile && BARRY.profile.who && BARRY.profile.who()) || '';
@@ -959,8 +1190,11 @@ BARRY.welcome = (function () {
           item('You', st.did.you, who, 'not said yet'),
           item('VACC', st.did.vacc, 'connected as ' + (v.netid || '?'),
                'later, from your profile'),
+          item('From the lab', st.did.sync, 'up to date', 'from the records Jarvis came with'),
           item('Recordings', st.did.find, st.added ? st.added.toLocaleString() + ' added'
                : 'looked through', 'later, from Sessions › VACC'),
+          item('Getting ready', st.did.ready, 'every list kept on this computer',
+               'each view works its list out the first time it opens'),
         ]),
         row([primary('Open ' + word, () => close('finished'), { 'data-autofocus': '1' })]),
         el('p', { class: 'wl-hint', text: 'This is on the start screen as “Set up this '
@@ -992,14 +1226,35 @@ BARRY.welcome = (function () {
     const not = instead || after;
     if (!frameOk()) return false;
     const prof = BARRY.profile && BARRY.profile.get && BARRY.profile.get();
-    if (prof && !needs(prof)) return false;
+    /* Or the first opening after Setup (backend/firstrun.py): the catalogue
+       says so, and /api/firstrun is asked to be sure, because the page can
+       hold a kept copy of the catalogue from before it was done. */
+    const cat = BARRY.state.catalog;
+    const maybeFirst = !cat || !!cat.firstrun || !!cat.optimize;
+    if (prof && !needs(prof) && !maybeFirst) return false;
     (async () => {
       let p = prof;
       if (!p) {
         try { p = await BARRY.profile.load(); } catch (e) { p = null; }
       }
+      let first = false, tune = false;
+      if (maybeFirst) {
+        try {
+          const fr = await api('/api/firstrun');
+          first = !!fr.wanted;
+          tune = !!fr.optimize;
+        } catch (e) { first = false; }
+      }
+      /* Set up before the getting-ready stage existed: the optimisation
+         update, once, instead of the welcome (2026-11-09). A computer that
+         still needs the welcome gets that; its last step is the same job. */
+      if (!needs(p) && !first && tune) {
+        box.classList.add('boot-menu', 'boot-welcome');
+        build(box, () => after(), { from: 'update', only: 'ready' });
+        return;
+      }
       // Set up after all, or an older server with no profile route.
-      if (!needs(p)) { not(); return; }
+      if (!needs(p) && !first) { not(); return; }
       box.classList.add('boot-menu', 'boot-welcome');
       if (BARRY.ui && BARRY.ui.reducedMotion && BARRY.ui.reducedMotion()) {
         box.classList.add('still');
@@ -1010,6 +1265,18 @@ BARRY.welcome = (function () {
       not();
     });
     return true;
+  }
+
+  /* The optimisation update on demand, in an overlay of its own -- for a
+     harness, and for running it again by hand (`BARRY.welcome.optimize()`). */
+  function optimize() {
+    if (live) return live;
+    const shade = el('div', { class: 'wl-overlay boot-welcome' });
+    document.body.appendChild(shade);
+    return build(shade, () => {
+      shade.classList.add('gone');
+      setTimeout(() => shade.remove(), 380);
+    }, { from: 'menu', only: 'ready' });
   }
 
   /* On demand: the start menu's "Set up this computer". */
@@ -1024,5 +1291,5 @@ BARRY.welcome = (function () {
   }
 
   // `terminal` for Sessions' Everything VACC knows, which wears the same console.
-  return { maybe, open, needs, terminal, get open_() { return !!live; } };
+  return { maybe, open, optimize, needs, terminal, get open_() { return !!live; } };
 })();

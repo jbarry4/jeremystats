@@ -1,0 +1,132 @@
+{
+  "_at": {
+    "added": "2026-11-11T20:44:34.261222+00:00",
+    "deleted": "2026-11-11T20:44:39.863023+00:00",
+    "id": "2026-11-11T20:44:34.261222+00:00",
+    "kind": "2026-11-11T20:44:34.261222+00:00",
+    "name": "2026-11-11T20:44:34.261222+00:00",
+    "nickname": "2026-11-11T20:44:34.261222+00:00",
+    "schema": "2026-11-11T20:44:34.261222+00:00",
+    "subject": "2026-11-11T20:44:34.261222+00:00",
+    "subject_key": "2026-11-11T20:44:34.261222+00:00",
+    "version": "2026-11-11T20:44:37.611486+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "79205f0ac672:407217e59f31>d65a543857e3:2": [
+        "set",
+        "2026-11-11T20:44:39.863023+00:00"
+      ]
+    },
+    "versions": {
+      "3b9539585dc6": [
+        "set",
+        "2026-11-11T20:44:34.261222+00:00"
+      ],
+      "407217e59f31": [
+        "set",
+        "2026-11-11T20:44:37.611486+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-11T20:44:39.863023+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T15:44:34-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-11T20:44:39+00:00",
+      "by_id": "d65a543857e3",
+      "by_version": 2,
+      "digest": "105dfa2dab10",
+      "id": "79205f0ac672:407217e59f31>d65a543857e3:2",
+      "version": 2,
+      "version_id": "407217e59f31"
+    }
+  ],
+  "deleted": null,
+  "id": "79205f0ac672",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 Snap 10% \u00b7 Verified DS",
+  "nickname": "Snap 10% \u00b7 Verified DS",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 Snap 10% \u00b7 Verified DS",
+    "workflow_key": "8dc87851f26c480cb54052f46cf1e8d3"
+  },
+  "subject_key": "rootcanal_workflow|8dc87851f26c480cb54052f46cf1e8d3",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.11.4",
+      "at": "2026-11-11T15:44:34-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "31e0a16cec96",
+      "id": "3b9539585dc6",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.1,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "PTEN Baseline v2"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-11T15:44:34-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.11.4",
+      "at": "2026-11-11T15:44:37-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "105dfa2dab10",
+      "id": "407217e59f31",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3018,
+        "grace": 0.1,
+        "kept": 2172,
+        "kind": "ds",
+        "ran": true,
+        "target": "PTEN Baseline v2"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 2
+    }
+  ]
+}
