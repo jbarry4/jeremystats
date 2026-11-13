@@ -1,0 +1,17 @@
+{
+  "_at": {
+    "email": "2026-11-02T15:27:20.404147+00:00",
+    "initials": "2026-11-02T15:27:20.404147+00:00",
+    "name": "2026-11-02T15:27:20.404147+00:00",
+    "role": "2026-11-02T15:27:20.404147+00:00"
+  },
+  "_shard": {
+    "at": "2026-11-02T15:27:20.404147+00:00",
+    "machine": "ip0af550d3.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "email": "akrempas@uvm.edu",
+  "initials": "AK",
+  "name": "Aggie Krempasky",
+  "role": "Undergraduate Student"
+}

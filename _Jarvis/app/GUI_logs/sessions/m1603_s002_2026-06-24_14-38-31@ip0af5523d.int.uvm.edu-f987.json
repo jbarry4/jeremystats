@@ -1,0 +1,185 @@
+{
+  "_at": {
+    "bad_channels": "2026-11-05T18:08:04.970612+00:00",
+    "created": "2026-09-02T23:51:19.879808+00:00",
+    "duration_s": "2026-09-03T00:08:55.429107+00:00",
+    "first_seen_by": "2026-09-03T00:08:55.429107+00:00",
+    "fs": "2026-09-03T00:08:55.429107+00:00",
+    "gid": "2026-09-02T23:51:19.879808+00:00",
+    "group": "2026-09-03T00:08:55.429107+00:00",
+    "has_video": "2026-09-03T00:08:55.429107+00:00",
+    "key": "2026-09-03T00:08:55.429107+00:00",
+    "label": "2026-09-03T00:08:55.429107+00:00",
+    "loose_key": "2026-09-03T00:08:55.429107+00:00",
+    "mouse": "2026-09-03T00:08:55.429107+00:00",
+    "n_channels": "2026-09-03T00:08:55.429107+00:00",
+    "project": "2026-09-03T00:08:55.429107+00:00",
+    "project_source": "2026-09-03T00:08:55.429107+00:00",
+    "retired": "2026-09-03T13:40:41.540602+00:00",
+    "schema": "2026-09-03T00:08:55.429107+00:00",
+    "session": "2026-09-03T00:08:55.429107+00:00",
+    "start": "2026-09-03T00:08:55.429107+00:00",
+    "updated": "2026-11-12T19:00:47.260671+00:00",
+    "view_state": "2026-11-09T15:31:48.347597+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31": [
+        "set",
+        "2026-09-03T00:08:55.429107+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31": [
+        "set",
+        "2026-09-03T00:08:55.429107+00:00"
+      ],
+      "vacc:s655a06b22296": [
+        "set",
+        "2026-11-12T19:00:47.260671+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-03T00:08:55.429107+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-03T00:08:55.429107+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-11-09T15:23:49.711564+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:00:47.260671+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "created": {
+    "at": "2026-09-02T18:50:55-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 960.4096,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s655a06b22296",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m1603_s002_2026-06-24_14-38-31",
+  "label": "KCNT1 m1603 s2 2026-06-24",
+  "loose_key": "m1603_s002",
+  "mouse": 1603,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+    "vacc:s655a06b22296"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:40:08-04:00",
+      "by": "barry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+      "root": "Y:/Jeremy3/KCNT1/Summer'26",
+      "scan": "scan_ff32bceba3"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:55-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
+      "scan": "scan_94ff1eb81c"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-11-09T10:23:49-05:00",
+      "by": "Rain Younger",
+      "copies": {
+        "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31": {
+          "at": "2026-10-29T13:09:53-04:00",
+          "duration_s": 960.4096,
+          "fs": 30000.0,
+          "n_channels": 64
+        }
+      },
+      "machine": "Strawbarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+      "root": null,
+      "scan": null
+    }
+  },
+  "session": 2,
+  "start": "2026-06-24T14:38:31",
+  "updated": {
+    "app_version": "2026.11.11.4",
+    "at": "2026-11-12T14:00:47-05:00",
+    "commit": "233b1502",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af5523d.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "climBy": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 2.5,
+    "hp": 1,
+    "invert": true,
+    "lp": 70,
+    "marks_fade": null,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 1.4884,
+    "stft_mode": null,
+    "t0": 55.290029000000004,
+    "ylim": null
+  }
+}
