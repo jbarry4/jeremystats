@@ -1,18 +1,30 @@
 {
   "_at": {
-    "added": "2026-11-09T15:33:56.753456+00:00",
-    "deleted": "2026-11-09T15:33:56.753456+00:00",
+    "added": "2026-11-06T21:45:25.282776+00:00",
+    "deleted": "2026-11-13T16:48:01.332041+00:00",
     "id": "2026-11-09T15:33:56.753456+00:00",
     "kind": "2026-11-09T15:33:56.753456+00:00",
     "name": "2026-11-09T15:33:56.753456+00:00",
-    "nickname": "2026-11-09T15:33:56.753456+00:00",
+    "nickname": "2026-11-12T18:20:17.443347+00:00",
     "schema": "2026-11-09T15:33:56.753456+00:00",
     "subject": "2026-11-09T15:33:56.753456+00:00",
     "subject_key": "2026-11-09T15:33:56.753456+00:00",
-    "version": "2026-11-09T15:33:56.753456+00:00"
+    "version": "2026-11-12T18:20:17.443347+00:00"
   },
   "_keys": {
     "cited": {
+      "07cdcb084c86:194cb909ab64>52c981f18afd:2": [
+        "set",
+        "2026-11-11T20:44:14.244134+00:00"
+      ],
+      "07cdcb084c86:194cb909ab64>5a92ae19610b:2": [
+        "set",
+        "2026-11-11T20:44:08.268321+00:00"
+      ],
+      "07cdcb084c86:194cb909ab64>6d6737df45ff:2": [
+        "set",
+        "2026-11-11T20:44:26.539611+00:00"
+      ],
       "07cdcb084c86:194cb909ab64>7677889ca85c:4": [
         "set",
         "2026-11-09T15:33:56.753456+00:00"
@@ -20,6 +32,10 @@
       "07cdcb084c86:194cb909ab64>7677889ca85c:5": [
         "set",
         "2026-11-09T15:33:56.753456+00:00"
+      ],
+      "07cdcb084c86:194cb909ab64>79205f0ac672:2": [
+        "set",
+        "2026-11-11T20:44:37.647414+00:00"
       ],
       "07cdcb084c86:194cb909ab64>ab9613cbc7c2:6": [
         "set",
@@ -29,6 +45,14 @@
         "set",
         "2026-11-09T15:33:56.753456+00:00"
       ],
+      "07cdcb084c86:194cb909ab64>bc0fbf8e4569:2": [
+        "set",
+        "2026-11-11T20:44:21.877410+00:00"
+      ],
+      "07cdcb084c86:194cb909ab64>bff8c4363fc4:2": [
+        "set",
+        "2026-11-11T20:44:31.822015+00:00"
+      ],
       "07cdcb084c86:194cb909ab64>df8f89c45c34:2": [
         "set",
         "2026-11-09T15:33:56.753456+00:00"
@@ -36,17 +60,41 @@
       "07cdcb084c86:194cb909ab64>f7e3cb9cee38:2": [
         "set",
         "2026-11-09T15:33:56.753456+00:00"
+      ],
+      "07cdcb084c86:237515859692>178daabb125c:2": [
+        "set",
+        "2026-11-12T18:20:17.443347+00:00"
+      ],
+      "07cdcb084c86:237515859692>178daabb125c:3": [
+        "set",
+        "2026-11-12T18:20:17.443347+00:00"
+      ],
+      "07cdcb084c86:237515859692>4a29af93e601:2": [
+        "set",
+        "2026-11-13T16:48:01.332041+00:00"
+      ],
+      "07cdcb084c86:237515859692>bac8eaf5dfa8:2": [
+        "set",
+        "2026-11-12T18:20:17.443347+00:00"
+      ],
+      "07cdcb084c86:237515859692>bac8eaf5dfa8:3": [
+        "set",
+        "2026-11-12T18:20:17.443347+00:00"
       ]
     },
     "versions": {
       "194cb909ab64": [
         "set",
         "2026-11-09T15:33:56.753456+00:00"
+      ],
+      "237515859692": [
+        "set",
+        "2026-11-12T18:20:17.443347+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-09T15:33:56.753456+00:00",
+    "at": "2026-11-13T16:48:01.332041+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -109,13 +157,112 @@
       "id": "07cdcb084c86:194cb909ab64>f7e3cb9cee38:2",
       "version": 1,
       "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:08+00:00",
+      "by_id": "5a92ae19610b",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>5a92ae19610b:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:14+00:00",
+      "by_id": "52c981f18afd",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>52c981f18afd:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:21+00:00",
+      "by_id": "bc0fbf8e4569",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>bc0fbf8e4569:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:26+00:00",
+      "by_id": "6d6737df45ff",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>6d6737df45ff:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:31+00:00",
+      "by_id": "bff8c4363fc4",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>bff8c4363fc4:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-11T20:44:37+00:00",
+      "by_id": "79205f0ac672",
+      "by_version": 2,
+      "digest": "5f015391d057",
+      "id": "07cdcb084c86:194cb909ab64>79205f0ac672:2",
+      "version": 1,
+      "version_id": "194cb909ab64"
+    },
+    {
+      "at": "2026-11-12T16:57:54+00:00",
+      "by_id": "178daabb125c",
+      "by_version": 2,
+      "digest": "4af5b0a6d7d3",
+      "id": "07cdcb084c86:237515859692>178daabb125c:2",
+      "version": 2,
+      "version_id": "237515859692"
+    },
+    {
+      "at": "2026-11-12T16:58:08+00:00",
+      "by_id": "178daabb125c",
+      "by_version": 3,
+      "digest": "4af5b0a6d7d3",
+      "id": "07cdcb084c86:237515859692>178daabb125c:3",
+      "version": 2,
+      "version_id": "237515859692"
+    },
+    {
+      "at": "2026-11-12T18:11:54+00:00",
+      "by_id": "bac8eaf5dfa8",
+      "by_version": 2,
+      "digest": "4af5b0a6d7d3",
+      "id": "07cdcb084c86:237515859692>bac8eaf5dfa8:2",
+      "version": 2,
+      "version_id": "237515859692"
+    },
+    {
+      "at": "2026-11-12T18:13:56+00:00",
+      "by_id": "bac8eaf5dfa8",
+      "by_version": 3,
+      "digest": "4af5b0a6d7d3",
+      "id": "07cdcb084c86:237515859692>bac8eaf5dfa8:3",
+      "version": 2,
+      "version_id": "237515859692"
+    },
+    {
+      "at": "2026-11-13T16:35:49+00:00",
+      "by_id": "4a29af93e601",
+      "by_version": 2,
+      "digest": "4af5b0a6d7d3",
+      "id": "07cdcb084c86:237515859692>4a29af93e601:2",
+      "version": 2,
+      "version_id": "237515859692"
     }
   ],
   "deleted": null,
   "id": "07cdcb084c86",
   "kind": "rootcanal_pool",
   "name": "Root Canal pool \u00b7 PTEN \u00b7 9 recordings, 9 mice",
-  "nickname": "CTL Baseline v2",
+  "nickname": "CTL Baseline v2 (Optimized parameters)",
   "schema": "arc.artifact/1",
   "subject": {
     "gids": [
@@ -138,7 +285,7 @@
     ]
   },
   "subject_key": "rootcanal_pool|610c3354c8c74aea835aee0f031071c1",
-  "version": 1,
+  "version": 2,
   "versions": [
     {
       "app_version": "2026.11.06.4",
@@ -516,6 +663,383 @@
       },
       "params_hash": "4b546b206b07",
       "v": 1
+    },
+    {
+      "app_version": "2026.11.12.1",
+      "at": "2026-11-12T11:35:36-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "4af5b0a6d7d3",
+      "id": "237515859692",
+      "inputs": [
+        {
+          "banked": false,
+          "entry_id": "41dd94702761",
+          "key": "u:41dd94702761:60aed3ff1b24",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "60aed3ff1b24",
+          "rows_digest": "af9e49172fd6"
+        },
+        {
+          "banked": false,
+          "entry_id": "edc1a5080093",
+          "key": "u:edc1a5080093:ed129dcf795f",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "ed129dcf795f",
+          "rows_digest": "18cd58dbfb26"
+        },
+        {
+          "banked": false,
+          "entry_id": "43a2cfedde17",
+          "key": "u:43a2cfedde17:eb7bce636f49",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "eb7bce636f49",
+          "rows_digest": "7b94533d129d"
+        },
+        {
+          "banked": false,
+          "entry_id": "f4c18a9a8bd4",
+          "key": "u:f4c18a9a8bd4:dc44cec4aead",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "dc44cec4aead",
+          "rows_digest": "a89cf7d2d89c"
+        },
+        {
+          "banked": false,
+          "entry_id": "8aad148bd6f6",
+          "key": "u:8aad148bd6f6:f9564ad5a261",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "f9564ad5a261",
+          "rows_digest": "1207429bc16a"
+        },
+        {
+          "banked": false,
+          "entry_id": "1429bf1f239f",
+          "key": "u:1429bf1f239f:3829091ad76a",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "3829091ad76a",
+          "rows_digest": "a1c56db57179"
+        },
+        {
+          "banked": false,
+          "entry_id": "cb139fb2ea29",
+          "key": "u:cb139fb2ea29:959100ae5600",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "959100ae5600",
+          "rows_digest": "5e0e66cabeee"
+        },
+        {
+          "banked": false,
+          "entry_id": "d4a4bcb4e47f",
+          "key": "u:d4a4bcb4e47f:f659bb7fb360",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "f659bb7fb360",
+          "rows_digest": "b8bc896ad350"
+        },
+        {
+          "banked": false,
+          "entry_id": "ab69363ee622",
+          "key": "u:ab69363ee622:7b051e58ccd3",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 1,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "7b051e58ccd3",
+          "rows_digest": "4d3a0496ad2a"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "delta_bic": 637.4147792069089,
+        "events": 2185,
+        "members": 9,
+        "mice": 9,
+        "stats": null,
+        "switch_rate": 0.0,
+        "unbanked": 9
+      },
+      "note": "Tried to reduce Ambiguous data points using optimized parameters.",
+      "params": {
+        "all_ds": false,
+        "band": [
+          240.0,
+          420.0
+        ],
+        "band_pool": false,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "drawn": [],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 1,
+        "margin_mode": null,
+        "measure": {
+          "band_hi": 420.0,
+          "band_lo": 240.0,
+          "cross_ms": 75.0,
+          "filt": "custom",
+          "filter_label": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+          "hi_hz": 150.0,
+          "lo_hz": 10.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 33.0
+        },
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "57dd6357b509",
+      "v": 2
     }
   ]
 }

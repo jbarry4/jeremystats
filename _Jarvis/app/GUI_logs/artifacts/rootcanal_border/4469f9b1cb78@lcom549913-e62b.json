@@ -1,0 +1,146 @@
+{
+  "_at": {
+    "added": "2026-11-12T18:20:17.176748+00:00",
+    "deleted": "2026-11-12T18:20:17.176748+00:00",
+    "id": "2026-11-12T18:20:17.176748+00:00",
+    "kind": "2026-11-12T18:20:17.176748+00:00",
+    "name": "2026-11-12T18:20:17.176748+00:00",
+    "nickname": "2026-11-12T18:20:17.176748+00:00",
+    "schema": "2026-11-12T18:20:17.176748+00:00",
+    "subject": "2026-11-12T18:20:17.176748+00:00",
+    "subject_key": "2026-11-12T18:20:17.176748+00:00",
+    "version": "2026-11-12T18:20:17.176748+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "6c5c5b8282af": [
+        "set",
+        "2026-11-12T18:20:17.176748+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T18:20:17.176748+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T12:02:49-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "4469f9b1cb78",
+  "kind": "rootcanal_border",
+  "name": "Envelope \u00b7 P-spike \u00b7 354 to 2071 \u00b5V \u00b7 23.7 to 43.5 dB \u00b7 3.8 to 16.0 ms",
+  "nickname": "P-spike border \u00b7 PTEN Baseline (Optimized Parameters/Snap)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "wf-1b97dc4903e54217a1954e80ef57dd8a",
+    "gids": [
+      "s14510e30e1bd",
+      "s38b9e61c5684",
+      "s4a67210fc7ac",
+      "sc74c98b2495d",
+      "sd0d0bded958b"
+    ],
+    "level": "workflow",
+    "name": "Envelope \u00b7 P-spike \u00b7 354 to 2071 \u00b5V \u00b7 23.7 to 43.5 dB \u00b7 3.8 to 16.0 ms"
+  },
+  "subject_key": "rootcanal_border|wf-1b97dc4903e54217a1954e80ef57dd8a",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T12:02:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "5097bb512422",
+      "id": "6c5c5b8282af",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 39,
+        "filter": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+        "grace": 0.05,
+        "group": "ied",
+        "kind": "envelope",
+        "level": "workflow",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 0,
+              "ied": 39,
+              "none": 0
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 0,
+              "ied": 39,
+              "none": 0
+            },
+            "grace": 0.01,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 1,
+              "ds": 0,
+              "ied": 38,
+              "none": 0
+            },
+            "grace": 0.05,
+            "outside_rate": 0.02564102564102564,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 5,
+        "recordings": 5,
+        "source": null,
+        "strict": {
+          "amp_uV": {
+            "hi": 2071.153715798339,
+            "lo": 353.9025756519853
+          },
+          "hf_db": {
+            "hi": 43.45629595426643,
+            "lo": 23.684105484581394
+          },
+          "hw_ms": {
+            "hi": 15.963998260793915,
+            "lo": 3.840478883163172
+          }
+        }
+      },
+      "nickname": "P-spike border \u00b7 PTEN Baseline (Optimized Parameters/Snap)",
+      "nickname_at": "2026-11-12T12:02:49-05:00",
+      "note": null,
+      "params": {
+        "grace": 0.05,
+        "level": "workflow",
+        "measure": {
+          "band_hi": 420.0,
+          "band_lo": 240.0,
+          "cross_ms": 75.0,
+          "filt": "custom",
+          "filter_label": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+          "hi_hz": 150.0,
+          "lo_hz": 10.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 33.0
+        }
+      },
+      "params_hash": "5048fbf23b05",
+      "v": 1
+    }
+  ]
+}

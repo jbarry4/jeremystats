@@ -19,16 +19,260 @@
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-27T19:34:04.756627+00:00",
-    "updated": "2026-11-10T21:05:02.926672+00:00",
+    "updated": "2026-11-12T18:37:27.121839+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-22T14:33:18.151050+00:00",
     "xf_overview_aid": "2026-10-22T17:56:53.803893+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
     "xf_simplify_lock": "2026-10-29T12:30:13.790961+00:00",
-    "xf_simplify_panning": "2026-11-09T15:51:32.905933+00:00",
+    "xf_simplify_panning": "2026-11-09T17:00:59.120251+00:00",
     "xf_simplify_spotter": "2026-10-21T14:46:13.790670+00:00"
   },
   "_keys": {
+    "dspca_many_boxes": {
+      "xm-df8f89c45c34-v2|s016e132432c8": [
+        "set",
+        "2026-11-10T20:50:37.019933+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s0a9e96cf1739": [
+        "set",
+        "2026-11-10T20:50:38.066055+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s14510e30e1bd": [
+        "set",
+        "2026-11-10T20:50:23.836666+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s37c7c8edfe10": [
+        "set",
+        "2026-11-10T20:49:00.631902+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s38b9e61c5684": [
+        "set",
+        "2026-11-10T20:50:26.999731+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s43b16cd74bcb": [
+        "set",
+        "2026-11-10T20:50:28.770318+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s45bae70722f2": [
+        "set",
+        "2026-11-10T20:50:29.693137+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s4a67210fc7ac": [
+        "set",
+        "2026-11-10T20:50:25.731813+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s500a5aec223e": [
+        "set",
+        "2026-11-10T20:50:32.396285+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s6cdd64d005c4": [
+        "set",
+        "2026-11-10T20:50:24.869398+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s79ba9ba163c4": [
+        "set",
+        "2026-11-10T20:50:40.859113+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s8d7f397b9708": [
+        "set",
+        "2026-11-10T20:50:27.802039+00:00"
+      ],
+      "xm-df8f89c45c34-v2|s9eb56573e0b4": [
+        "set",
+        "2026-11-10T20:50:39.912257+00:00"
+      ],
+      "xm-df8f89c45c34-v2|sba57286bdee3": [
+        "set",
+        "2026-11-10T20:50:33.630432+00:00"
+      ],
+      "xm-df8f89c45c34-v2|sc74c98b2495d": [
+        "set",
+        "2026-11-10T20:50:31.579045+00:00"
+      ],
+      "xm-df8f89c45c34-v2|sd0d0bded958b": [
+        "set",
+        "2026-11-10T20:50:30.825701+00:00"
+      ],
+      "xm-df8f89c45c34-v2|sd42a6992b76c": [
+        "set",
+        "2026-11-10T20:50:34.837945+00:00"
+      ],
+      "xm-df8f89c45c34-v2|sd94396e874c7": [
+        "set",
+        "2026-11-10T20:50:35.798405+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s016e132432c8": [
+        "set",
+        "2026-11-11T16:17:07.204702+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s0a9e96cf1739": [
+        "set",
+        "2026-11-11T16:17:03.481102+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s14510e30e1bd": [
+        "set",
+        "2026-11-11T16:18:01.066670+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s37c7c8edfe10": [
+        "set",
+        "2026-11-11T16:16:59.923109+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s38b9e61c5684": [
+        "set",
+        "2026-11-11T16:17:48.888739+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s43b16cd74bcb": [
+        "set",
+        "2026-11-11T16:17:23.662706+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s45bae70722f2": [
+        "set",
+        "2026-11-11T16:17:27.150160+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s4a67210fc7ac": [
+        "set",
+        "2026-11-11T16:17:52.788553+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s500a5aec223e": [
+        "set",
+        "2026-11-11T16:17:41.264443+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s6cdd64d005c4": [
+        "set",
+        "2026-11-11T16:17:56.505017+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s79ba9ba163c4": [
+        "set",
+        "2026-11-11T16:16:50.738963+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s8d7f397b9708": [
+        "set",
+        "2026-11-11T16:17:19.838016+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|s9eb56573e0b4": [
+        "set",
+        "2026-11-11T16:16:55.587282+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|sba57286bdee3": [
+        "set",
+        "2026-11-11T16:17:44.422497+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|sc74c98b2495d": [
+        "set",
+        "2026-11-11T16:17:36.832469+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|sd0d0bded958b": [
+        "set",
+        "2026-11-11T16:17:31.203619+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|sd42a6992b76c": [
+        "set",
+        "2026-11-11T16:17:15.702710+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2|sd94396e874c7": [
+        "set",
+        "2026-11-11T16:17:12.531102+00:00"
+      ]
+    },
+    "dspca_many_folders": {
+      "xm-df8f89c45c34-v2": [
+        "set",
+        "2026-11-09T19:49:23.147999+00:00"
+      ],
+      "xm-f7e3cb9cee38-v2": [
+        "set",
+        "2026-11-09T19:49:23.147999+00:00"
+      ]
+    },
+    "extraction_ko": {
+      "PTEN|m1": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m10": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m11": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m13": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m28": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m3": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m33": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m34": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m5": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m7": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ],
+      "PTEN|m8": [
+        "set",
+        "2026-11-10T21:05:55.057638+00:00"
+      ]
+    },
+    "extraction_sep": {
+      "dentate_spike|s016e132432c8": [
+        "set",
+        "2026-11-11T16:09:38.572426+00:00"
+      ],
+      "dentate_spike|s38b9e61c5684": [
+        "set",
+        "2026-11-11T18:53:28.060767+00:00"
+      ],
+      "dentate_spike|s45bae70722f2": [
+        "set",
+        "2026-11-11T16:10:23.224015+00:00"
+      ],
+      "dentate_spike|s4a67210fc7ac": [
+        "set",
+        "2026-11-11T18:53:53.740210+00:00"
+      ],
+      "dentate_spike|s6cdd64d005c4": [
+        "set",
+        "2026-11-11T16:10:10.627417+00:00"
+      ],
+      "dentate_spike|s79ba9ba163c4": [
+        "set",
+        "2026-11-11T18:51:12.421291+00:00"
+      ],
+      "dentate_spike|s8d7f397b9708": [
+        "set",
+        "2026-11-11T16:32:21.111587+00:00"
+      ],
+      "dentate_spike|s9eb56573e0b4": [
+        "set",
+        "2026-11-11T16:09:25.406331+00:00"
+      ],
+      "dentate_spike|sba57286bdee3": [
+        "set",
+        "2026-11-11T16:10:02.467849+00:00"
+      ],
+      "dentate_spike|sd42a6992b76c": [
+        "set",
+        "2026-11-11T16:14:14.775042+00:00"
+      ]
+    },
     "jarvis": {
       "BarryLab": [
         "set",
@@ -36,7 +280,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-22T14:55:07.675464+00:00"
+        "2026-11-11T20:49:16.876000+00:00"
       ],
       "LCOM549913": [
         "set",
@@ -44,6 +288,10 @@
       ]
     },
     "rootcanal_border_archive": {
+      "11a8e9ce8aa5": [
+        "set",
+        "2026-11-06T21:45:56.664707+00:00"
+      ],
       "15226fe7fabc": [
         "set",
         "2026-10-20T15:12:56.671308+00:00"
@@ -55,26 +303,144 @@
       "568cf6685aa5": [
         "set",
         "2026-10-20T15:12:57.760437+00:00"
+      ],
+      "959031444962": [
+        "set",
+        "2026-11-06T21:45:56.664707+00:00"
+      ]
+    },
+    "rootcanal_pool_archive": {
+      "02c595d4b703": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "0e1a59048686": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "0fb7e710f1b9": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "1a1b84f9b305": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "292d870b84ff": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "2bcb6f90da9e": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "2bd3bc6e6182": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "3c5dd8f8b304": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "3fcedd33613b": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "54e26d8f6167": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "6f63056cb070": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "73bf871e2bc5": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "789627824001": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "8156d6dd639b": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "868fe10ec9a9": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "b4ad57ac0221": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "bb730c074dd7": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "c99a5e02865d": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "e842bc62e6af": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "f02a7d391541": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "f669e8c87dc9": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "f9c2c93db12e": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "ff1cf9ff5dbb": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
       ]
     },
     "rootcanal_pool_folders": {
+      "fd056f86f2ef2": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
       "fmvh1dtmqhde4": [
         "set",
-        "2026-10-20T18:48:32.425536+00:00"
+        "2026-11-06T21:45:47.190715+00:00"
       ],
       "fmw42dnrnqb7q": [
         "set",
-        "2026-11-05T21:35:06.495105+00:00"
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "prelim": [
+        "set",
+        "2026-11-06T21:00:02.638101+00:00"
       ]
     },
     "rootcanal_pool_in": {
+      "07cdcb084c86": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
       "0fb7e710f1b9": [
         "set",
         "2026-11-05T21:39:49.916580+00:00"
       ],
+      "105b40acbbb0": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
       "292d870b84ff": [
         "set",
         "2026-10-20T18:48:36.059697+00:00"
+      ],
+      "3561fc988afd": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
       ],
       "3fcedd33613b": [
         "set",
@@ -89,6 +455,80 @@
         "2026-11-05T21:41:04.585668+00:00"
       ]
     },
+    "rootcanal_single_archive": {
+      "08994c0181de": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "2416047cb6cb": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "3dd45223661d": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "436ddbd1d26f": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "4d6fea9f0d53": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "5b4c4b22d415": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "5e2b01269161": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "61f0a9a590a4": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "6ffd9785706d": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "72a0f7928dfc": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "9139077dc61c": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "9eb0bb4433bf": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "b4ec6a487d1d": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "bdeb87febb92": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "dab8690c073f": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "deb6a2b3a4b0": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "e55c9480c4f5": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ],
+      "ff8ff015efe6": [
+        "set",
+        "2026-11-06T21:45:47.190715+00:00"
+      ]
+    },
     "themes": {
       "BarryLab": [
         "set",
@@ -96,7 +536,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-04T20:23:28.595801+00:00"
+        "2026-11-06T21:23:50.184025+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -116,7 +556,7 @@
       ],
       "LCOM549913": [
         "set",
-        "2026-11-09T15:58:18.014925+00:00"
+        "2026-11-12T18:37:27.121839+00:00"
       ],
       "ip0af50ae7.int.uvm.edu": [
         "set",
@@ -130,7 +570,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-04T14:42:29.189225+00:00"
+        "2026-11-09T22:18:15.382252+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -155,7 +595,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-10T21:05:02.926672+00:00",
+    "at": "2026-11-12T18:37:27.121839+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -579,6 +1019,387 @@
   "curate_span": 2.5,
   "density": "compact",
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
+  "dspca_many_boxes": {
+    "xm-df8f89c45c34-v2|s016e132432c8": {
+      "at": "2026-11-10T20:50:36.661Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 60,
+      "sel_lo": 27,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s0a9e96cf1739": {
+      "at": "2026-11-10T20:50:37.702Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 22,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s14510e30e1bd": {
+      "at": "2026-11-10T20:50:23.477Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 15,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s37c7c8edfe10": {
+      "at": "2026-11-10T20:49:00.272Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 25,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s38b9e61c5684": {
+      "at": "2026-11-10T20:50:26.637Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 60,
+      "sel_lo": 22,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s43b16cd74bcb": {
+      "at": "2026-11-10T20:50:28.411Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 60,
+      "sel_lo": 22,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s45bae70722f2": {
+      "at": "2026-11-10T20:50:29.325Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 62,
+      "sel_lo": 20,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s4a67210fc7ac": {
+      "at": "2026-11-10T20:50:25.365Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 61,
+      "sel_lo": 13,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s500a5aec223e": {
+      "at": "2026-11-10T20:50:32.032Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 63,
+      "sel_lo": 20,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s6cdd64d005c4": {
+      "at": "2026-11-10T20:50:24.494Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 61,
+      "sel_lo": 12,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s79ba9ba163c4": {
+      "at": "2026-11-10T20:50:40.494Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 53,
+      "sel_lo": 19,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s8d7f397b9708": {
+      "at": "2026-11-10T20:50:27.437Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 18,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|s9eb56573e0b4": {
+      "at": "2026-11-10T20:50:39.549Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 20,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|sba57286bdee3": {
+      "at": "2026-11-10T20:50:33.269Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 26,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|sc74c98b2495d": {
+      "at": "2026-11-10T20:50:31.207Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 18,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|sd0d0bded958b": {
+      "at": "2026-11-10T20:50:30.461Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 57,
+      "sel_lo": 11,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|sd42a6992b76c": {
+      "at": "2026-11-10T20:50:34.470Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 13,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-df8f89c45c34-v2|sd94396e874c7": {
+      "at": "2026-11-10T20:50:35.438Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 53,
+      "sel_lo": 5,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s016e132432c8": {
+      "at": "2026-11-11T16:17:06.832Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 60,
+      "sel_lo": 24,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s0a9e96cf1739": {
+      "at": "2026-11-11T16:17:02.664Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 18,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s14510e30e1bd": {
+      "at": "2026-11-11T16:18:00.697Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 14,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s37c7c8edfe10": {
+      "at": "2026-11-11T16:16:58.889Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 24,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s38b9e61c5684": {
+      "at": "2026-11-11T16:17:48.515Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 58,
+      "sel_lo": 17,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s43b16cd74bcb": {
+      "at": "2026-11-11T16:17:23.297Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 62,
+      "sel_lo": 21,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s45bae70722f2": {
+      "at": "2026-11-11T16:17:26.785Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 62,
+      "sel_lo": 20,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s4a67210fc7ac": {
+      "at": "2026-11-11T16:17:52.426Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 61,
+      "sel_lo": 13,
+      "t_hi_ms": -0.1,
+      "t_lo_ms": -0.1
+    },
+    "xm-f7e3cb9cee38-v2|s500a5aec223e": {
+      "at": "2026-11-11T16:17:40.899Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 63,
+      "sel_lo": 18,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s6cdd64d005c4": {
+      "at": "2026-11-11T16:17:56.105Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 14,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s79ba9ba163c4": {
+      "at": "2026-11-11T16:16:50.180Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 49,
+      "sel_lo": 21,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s8d7f397b9708": {
+      "at": "2026-11-11T16:17:19.474Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 20,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|s9eb56573e0b4": {
+      "at": "2026-11-11T16:16:55.218Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 63,
+      "sel_lo": 23,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|sba57286bdee3": {
+      "at": "2026-11-11T16:17:44.041Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 25,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|sc74c98b2495d": {
+      "at": "2026-11-11T16:17:36.449Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 16,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|sd0d0bded958b": {
+      "at": "2026-11-11T16:17:30.842Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 62,
+      "sel_lo": 9,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|sd42a6992b76c": {
+      "at": "2026-11-11T16:17:15.316Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 12,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    },
+    "xm-f7e3cb9cee38-v2|sd94396e874c7": {
+      "at": "2026-11-11T16:17:12.161Z",
+      "by": "Shahriar Tafti",
+      "sel_hi": 51,
+      "sel_lo": 2,
+      "t_hi_ms": 0,
+      "t_lo_ms": 0
+    }
+  },
+  "dspca_many_folders": {
+    "xm-df8f89c45c34-v2": {
+      "at": "2026-11-09T14:49:21-05:00",
+      "by": "Shahriar Tafti",
+      "name": "Verified DS 5%",
+      "source": {
+        "artifact_id": "df8f89c45c34",
+        "grace": 0.05,
+        "kind": "ds",
+        "nickname": "Verified DS 5% \u00b7 CTL & PTEN v2",
+        "version": 2
+      }
+    },
+    "xm-f7e3cb9cee38-v2": {
+      "at": "2026-11-09T14:49:21-05:00",
+      "by": "Shahriar Tafti",
+      "name": "Verified DS 10%",
+      "source": {
+        "artifact_id": "f7e3cb9cee38",
+        "grace": 0.1,
+        "kind": "ds",
+        "nickname": "Verified DS 10% \u00b7 CTL & PTEN v2",
+        "version": 2
+      }
+    }
+  },
+  "extraction_ko": {
+    "PTEN|m1": 5.18,
+    "PTEN|m10": 9.51,
+    "PTEN|m11": 13.5,
+    "PTEN|m13": 18.87,
+    "PTEN|m28": 20.19,
+    "PTEN|m3": 24.57,
+    "PTEN|m33": 4.41,
+    "PTEN|m34": 28.43,
+    "PTEN|m5": 27.64,
+    "PTEN|m7": 24.12,
+    "PTEN|m8": 3.89
+  },
+  "extraction_sep": {
+    "dentate_spike|s016e132432c8": {
+      "at": "2026-11-11T16:09:37+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|s38b9e61c5684": {
+      "at": "2026-11-11T18:53:28+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|s45bae70722f2": {
+      "at": "2026-11-11T16:10:22+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|s4a67210fc7ac": {
+      "at": "2026-11-11T18:53:53+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|s6cdd64d005c4": {
+      "at": "2026-11-11T16:10:10+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|s79ba9ba163c4": {
+      "at": "2026-11-11T18:51:12+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|s8d7f397b9708": {
+      "at": "2026-11-11T16:32:21+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|s9eb56573e0b4": {
+      "at": "2026-11-11T16:09:25+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|sba57286bdee3": {
+      "at": "2026-11-11T16:10:02+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|sd42a6992b76c": {
+      "at": "2026-11-11T16:14:14+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    }
+  },
   "fav_scripts": [],
   "figure_profile": "nature",
   "gobble": {
@@ -630,6 +1451,9 @@
   ],
   "result_group": "",
   "rootcanal_border_archive": {
+    "11a8e9ce8aa5": {
+      "at": "2026-11-06T21:44:58.993Z"
+    },
     "15226fe7fabc": {
       "at": "2026-10-20T15:12:56.308Z"
     },
@@ -638,28 +1462,219 @@
     },
     "568cf6685aa5": {
       "at": "2026-10-20T15:12:57.392Z"
+    },
+    "959031444962": {
+      "at": "2026-11-06T21:44:58.993Z"
+    }
+  },
+  "rootcanal_pool_archive": {
+    "02c595d4b703": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "0e1a59048686": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "0fb7e710f1b9": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "1a1b84f9b305": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "292d870b84ff": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "2bcb6f90da9e": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "2bd3bc6e6182": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "3c5dd8f8b304": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "3fcedd33613b": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "54e26d8f6167": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "6f63056cb070": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "73bf871e2bc5": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "789627824001": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "8156d6dd639b": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "868fe10ec9a9": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "b4ad57ac0221": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "bb730c074dd7": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "c99a5e02865d": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "e842bc62e6af": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "f02a7d391541": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "f669e8c87dc9": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "f9c2c93db12e": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "ff1cf9ff5dbb": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
     }
   },
   "rootcanal_pool_folders": {
+    "fd056f86f2ef2": {
+      "archived": false,
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti",
+      "gone": false,
+      "name": "PTEN Panning Complete v2 (Version Bug Fixed)"
+    },
     "fmvh1dtmqhde4": {
+      "archived": true,
+      "archived_at": "2026-11-06T21:44:58.993Z",
       "at": "2026-10-20T18:48:32.066Z",
       "by": "Shahriar Tafti",
       "gone": false,
       "name": "Full Incisor JA Management"
     },
     "fmw42dnrnqb7q": {
+      "archived": true,
+      "archived_at": "2026-11-06T21:44:58.993Z",
       "at": "2026-11-05T21:35:06.131Z",
       "by": "Aggie Krempasky",
       "gone": false,
       "name": "PTEN Panning Complete"
+    },
+    "prelim": {
+      "at": "2026-11-06T21:00:02.266Z",
+      "by": "Shahriar Tafti",
+      "gone": true,
+      "name": "Preliminary analysis"
     }
   },
   "rootcanal_pool_in": {
+    "07cdcb084c86": "fd056f86f2ef2",
     "0fb7e710f1b9": "fmw42dnrnqb7q",
+    "105b40acbbb0": "fd056f86f2ef2",
     "292d870b84ff": "fmvh1dtmqhde4",
+    "3561fc988afd": "fd056f86f2ef2",
     "3fcedd33613b": "fmw42dnrnqb7q",
     "f669e8c87dc9": "fmvh1dtmqhde4",
     "ff1cf9ff5dbb": "fmw42dnrnqb7q"
+  },
+  "rootcanal_single_archive": {
+    "08994c0181de": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "2416047cb6cb": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "3dd45223661d": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "436ddbd1d26f": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "4d6fea9f0d53": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "5b4c4b22d415": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "5e2b01269161": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "61f0a9a590a4": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "6ffd9785706d": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "72a0f7928dfc": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "9139077dc61c": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "9eb0bb4433bf": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "b4ec6a487d1d": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "bdeb87febb92": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "dab8690c073f": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "deb6a2b3a4b0": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "e55c9480c4f5": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    },
+    "ff8ff015efe6": {
+      "at": "2026-11-06T21:44:58.993Z",
+      "by": "Shahriar Tafti"
+    }
   },
   "rootcanal_workflow_archive": {},
   "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":47,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792594113036},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied.e416ca89864b7\":{\"review\":\"left\",\"index\":2,\"id\":\"eed47a8fc9a\",\"t\":28.9797,\"at\":1792529201623},\"s96884739a6ff:ied.eb24519453878\":{\"review\":\"left\",\"index\":2,\"id\":\"e1fee148c8a\",\"t\":28.9797,\"at\":1792529475731},\"s96884739a6ff:ied.e4f29a49cd91b\":{\"review\":\"left\",\"index\":2,\"id\":\"eaa245ff8f4\",\"t\":28.9797,\"at\":1792529897037},\"s96884739a6ff:ied.e03354d2f1624\":{\"review\":\"left\",\"index\":2,\"id\":\"e6a7153f152\",\"t\":28.9797,\"at\":1792533155695},\"s96884739a6ff:ied.e559a3bcfc28e\":{\"review\":\"left\",\"index\":2,\"id\":\"ea750f67c19\",\"t\":28.9797,\"at\":1792682740249},\"s96884739a6ff:ied.eb80419a5ec93\":{\"review\":\"left\",\"index\":2,\"id\":\"ebe581b6994\",\"t\":28.9797,\"at\":1792684532212}}",
@@ -801,13 +1816,13 @@
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
     "Jeremy-Barrys-MacBook-Pro-191.local": "dark",
-    "LCOM549913": "horizon-night",
+    "LCOM549913": "thanksgiving",
     "ip0af50ae7.int.uvm.edu": "halloween"
   },
-  "updated": "2026-11-10T16:05:02-05:00",
+  "updated": "2026-11-12T13:37:27-05:00",
   "vacc": {
     "BarryLab": true,
-    "DESKTOP-4H65AI7": true,
+    "DESKTOP-4H65AI7": false,
     "DESKTOP-AH45FAE": true,
     "DESKTOP-NR2H5O7": true,
     "Home": true,
@@ -819,6 +1834,6 @@
   "xf_overview_aid": "hidden",
   "xf_simplify_curate": false,
   "xf_simplify_lock": false,
-  "xf_simplify_panning": true,
+  "xf_simplify_panning": false,
   "xf_simplify_spotter": false
 }

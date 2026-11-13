@@ -1,0 +1,20 @@
+{
+ "definition": {
+  "grace": 0.05,
+  "kind": "ds",
+  "shape": "hull",
+  "source": {
+   "artifact_id": "07cdcb084c86",
+   "nickname": "CTL Baseline v2 (Optimized parameters)",
+   "type": "pool",
+   "version": 2
+  },
+  "target": {
+   "artifact_id": "07cdcb084c86",
+   "nickname": "CTL Baseline v2 (Optimized parameters)",
+   "version": 2
+  }
+ },
+ "run": null,
+ "schema": 1
+}

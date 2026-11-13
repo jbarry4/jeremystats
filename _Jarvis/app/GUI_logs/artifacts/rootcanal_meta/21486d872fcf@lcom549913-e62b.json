@@ -1,0 +1,103 @@
+{
+  "_at": {
+    "added": "2026-11-11T19:50:18.102976+00:00",
+    "deleted": "2026-11-12T18:20:17.062132+00:00",
+    "id": "2026-11-11T19:50:18.102976+00:00",
+    "kind": "2026-11-11T19:50:18.102976+00:00",
+    "name": "2026-11-11T19:50:18.102976+00:00",
+    "nickname": "2026-11-12T18:20:17.062132+00:00",
+    "schema": "2026-11-11T19:50:18.102976+00:00",
+    "subject": "2026-11-11T19:50:18.102976+00:00",
+    "subject_key": "2026-11-11T19:50:18.102976+00:00",
+    "version": "2026-11-12T18:20:17.062132+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "94f95d0e64a6": [
+        "set",
+        "2026-11-11T19:50:18.102976+00:00"
+      ],
+      "e976bbfe87b1": [
+        "set",
+        "2026-11-12T18:20:17.062132+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T18:20:17.062132+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T14:50:18-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "21486d872fcf",
+  "kind": "rootcanal_meta",
+  "name": "Fewest ambiguous \u00b7 5% grace",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "grace": 0.05,
+    "meta_key": "2ba64f7dec44|5fc870e1",
+    "name": "Fewest ambiguous \u00b7 5% grace"
+  },
+  "subject_key": "rootcanal_meta|2ba64f7dec44|5fc870e1",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.11.3",
+      "at": "2026-11-11T14:50:18-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "2b9568879c6e",
+      "id": "94f95d0e64a6",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "best": null,
+        "grace": 0.05,
+        "purple": null,
+        "purple_today": null,
+        "ran": false
+      },
+      "note": null,
+      "params": {
+        "grace": 0.05
+      },
+      "params_hash": "04db0fe9ad4a",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.1",
+      "at": "2026-11-12T11:25:29-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "46f8b4f1032a",
+      "id": "e976bbfe87b1",
+      "inputs": [
+        {
+          "artifact_id": "2ba64f7dec44",
+          "version": 7
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "best": "10\u2013150 Hz \u00b7 peak \u00b133 ms \u00b7 half-width search \u00b175 ms \u00b7 HF 240\u2013420 Hz",
+        "grace": 0.05,
+        "purple": 42,
+        "purple_today": 1334,
+        "ran": true
+      },
+      "note": null,
+      "params": {
+        "grace": 0.05
+      },
+      "params_hash": "04db0fe9ad4a",
+      "v": 2
+    }
+  ]
+}

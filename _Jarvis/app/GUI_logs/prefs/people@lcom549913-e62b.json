@@ -8,7 +8,7 @@
       ],
       "Angelina Woychosky": [
         "set",
-        "2026-11-09T15:36:08.810906+00:00"
+        "2026-11-09T21:15:42.331339+00:00"
       ],
       "Avery (AI)": [
         "set",
@@ -21,6 +21,10 @@
       "Debug_Bot": [
         "set",
         "2026-10-23T13:44:27.257819+00:00"
+      ],
+      "Eshal Anwer": [
+        "set",
+        "2026-11-12T18:20:13.971947+00:00"
       ],
       "Fatima": [
         "set",
@@ -117,7 +121,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-09T16:58:56.340522+00:00",
+    "at": "2026-11-12T18:20:13.971947+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -152,6 +156,16 @@
       "edited_at": "2026-09-09T13:38:41.369697+00:00",
       "id": "unknown",
       "name": "unknown"
+    },
+    {
+      "at": "2026-09-08T21:23:16.555182+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-09T16:58:56.329261+00:00",
+      "email": "Isabella.Piatek@uvm.edu",
+      "id": "Isabella Piatek",
+      "initials": "IP",
+      "name": "Isabella Piatek",
+      "role": "Graduate Student"
     },
     {
       "at": "2026-09-09T15:29:28.090683+00:00",
@@ -281,9 +295,9 @@
       "role": "Graduate Student"
     },
     {
-      "at": "2026-11-09T15:36:08.810904+00:00",
-      "by": "Isabella Piatek",
-      "edited_at": "2026-11-09T15:36:08.810905+00:00",
+      "at": "2026-11-09T21:15:42.330771+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-11-09T21:15:42.330794+00:00",
       "email": "awoychos@uvm.edu",
       "id": "Angelina Woychosky",
       "initials": "AW",
@@ -291,14 +305,14 @@
       "role": "Undergraduate Student"
     },
     {
-      "at": "2026-09-08T21:23:16.555182+00:00",
+      "at": "2026-11-12T18:20:13.964682+00:00",
       "by": "Isabella Piatek",
-      "edited_at": "2026-11-09T16:58:56.329261+00:00",
-      "email": "Isabella.Piatek@uvm.edu",
-      "id": "Isabella Piatek",
-      "initials": "IP",
-      "name": "Isabella Piatek",
-      "role": "Graduate Student"
+      "edited_at": "2026-11-12T18:20:13.964683+00:00",
+      "email": "eanwer@uvm.edu",
+      "id": "Eshal Anwer",
+      "initials": "EA",
+      "name": "Eshal Anwer",
+      "role": "Undergraduate Student"
     }
   ]
 }

@@ -1,0 +1,161 @@
+{
+  "_at": {
+    "added": "2026-11-13T16:48:01.428007+00:00",
+    "deleted": "2026-11-13T16:48:01.428007+00:00",
+    "id": "2026-11-13T16:48:01.428007+00:00",
+    "kind": "2026-11-13T16:48:01.428007+00:00",
+    "name": "2026-11-13T16:48:01.428007+00:00",
+    "nickname": "2026-11-13T16:48:01.428007+00:00",
+    "schema": "2026-11-13T16:48:01.428007+00:00",
+    "subject": "2026-11-13T16:48:01.428007+00:00",
+    "subject_key": "2026-11-13T16:48:01.428007+00:00",
+    "version": "2026-11-13T16:48:01.428007+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "064661e19f42": [
+        "set",
+        "2026-11-13T16:48:01.428007+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-13T16:48:01.428007+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-13T11:35:49-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "6b2c2ff0fc07",
+  "kind": "rootcanal_border",
+  "name": "Envelope \u00b7 DS \u00b7 133 to 2646 \u00b5V \u00b7 -5.1 to 32.0 dB \u00b7 4.1 to 46.2 ms",
+  "nickname": "DS border \u00b7 PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "wf-5e280037d2774e26b088f3af354934f9",
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "level": "workflow",
+    "name": "Envelope \u00b7 DS \u00b7 133 to 2646 \u00b5V \u00b7 -5.1 to 32.0 dB \u00b7 4.1 to 46.2 ms"
+  },
+  "subject_key": "rootcanal_border|wf-5e280037d2774e26b088f3af354934f9",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.13.1",
+      "at": "2026-11-13T11:35:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "c5efea96593b",
+      "id": "064661e19f42",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 2185,
+        "filter": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+        "grace": 0.1,
+        "group": "ds",
+        "kind": "envelope",
+        "level": "workflow",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 2183,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 21,
+              "ds": 2162,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.01,
+            "outside_rate": 0.00961978928080623,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 109,
+              "ds": 2074,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.05,
+            "outside_rate": 0.04993128721942281,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 218,
+              "ds": 1965,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.1,
+            "outside_rate": 0.09986257443884562,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": "CTL Baseline v2 (Optimized parameters)",
+        "strict": {
+          "amp_uV": {
+            "hi": 2645.599326851556,
+            "lo": 132.69680030431493
+          },
+          "hf_db": {
+            "hi": 32.029890341390434,
+            "lo": -5.064785488191958
+          },
+          "hw_ms": {
+            "hi": 46.159923530073684,
+            "lo": 4.1471155835446325
+          }
+        }
+      },
+      "nickname": "DS border \u00b7 PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+      "nickname_at": "2026-11-13T11:35:49-05:00",
+      "note": null,
+      "params": {
+        "grace": 0.1,
+        "level": "workflow",
+        "measure": {
+          "band_hi": 420.0,
+          "band_lo": 240.0,
+          "cross_ms": 75.0,
+          "filt": "custom",
+          "filter_label": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+          "hi_hz": 150.0,
+          "lo_hz": 10.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 33.0
+        }
+      },
+      "params_hash": "275c7dc2eecf",
+      "v": 1
+    }
+  ]
+}

@@ -1,15 +1,15 @@
 {
   "_at": {
-    "added": "2026-11-09T15:33:56.778209+00:00",
-    "deleted": "2026-11-09T15:33:56.778209+00:00",
+    "added": "2026-11-06T21:45:46.935332+00:00",
+    "deleted": "2026-11-13T16:48:01.395484+00:00",
     "id": "2026-11-09T15:33:56.778209+00:00",
     "kind": "2026-11-09T15:33:56.778209+00:00",
     "name": "2026-11-09T15:33:56.778209+00:00",
-    "nickname": "2026-11-09T15:33:56.778209+00:00",
+    "nickname": "2026-11-12T18:20:17.468462+00:00",
     "schema": "2026-11-09T15:33:56.778209+00:00",
     "subject": "2026-11-09T15:33:56.778209+00:00",
     "subject_key": "2026-11-09T15:33:56.778209+00:00",
-    "version": "2026-11-09T15:33:56.778209+00:00"
+    "version": "2026-11-12T18:20:17.468462+00:00"
   },
   "_keys": {
     "cited": {
@@ -20,17 +20,37 @@
       "3561fc988afd:c38c37935c1b>f7e3cb9cee38:2": [
         "set",
         "2026-11-09T15:33:56.778209+00:00"
+      ],
+      "3561fc988afd:fe816a66a8b7>4a29af93e601:2": [
+        "set",
+        "2026-11-13T16:48:01.395484+00:00"
+      ],
+      "3561fc988afd:fe816a66a8b7>6fa7fef7b7a3:2": [
+        "set",
+        "2026-11-12T18:20:17.468462+00:00"
+      ],
+      "3561fc988afd:fe816a66a8b7>bac8eaf5dfa8:2": [
+        "set",
+        "2026-11-12T18:20:17.468462+00:00"
+      ],
+      "3561fc988afd:fe816a66a8b7>bac8eaf5dfa8:3": [
+        "set",
+        "2026-11-12T18:20:17.468462+00:00"
       ]
     },
     "versions": {
       "c38c37935c1b": [
         "set",
         "2026-11-09T15:33:56.778209+00:00"
+      ],
+      "fe816a66a8b7": [
+        "set",
+        "2026-11-12T18:20:17.468462+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-09T15:33:56.778209+00:00",
+    "at": "2026-11-13T16:48:01.395484+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -57,13 +77,49 @@
       "id": "3561fc988afd:c38c37935c1b>f7e3cb9cee38:2",
       "version": 1,
       "version_id": "c38c37935c1b"
+    },
+    {
+      "at": "2026-11-12T17:31:14+00:00",
+      "by_id": "6fa7fef7b7a3",
+      "by_version": 2,
+      "digest": "ecfafeccdaa8",
+      "id": "3561fc988afd:fe816a66a8b7>6fa7fef7b7a3:2",
+      "version": 2,
+      "version_id": "fe816a66a8b7"
+    },
+    {
+      "at": "2026-11-12T18:11:54+00:00",
+      "by_id": "bac8eaf5dfa8",
+      "by_version": 2,
+      "digest": "ecfafeccdaa8",
+      "id": "3561fc988afd:fe816a66a8b7>bac8eaf5dfa8:2",
+      "version": 2,
+      "version_id": "fe816a66a8b7"
+    },
+    {
+      "at": "2026-11-12T18:13:56+00:00",
+      "by_id": "bac8eaf5dfa8",
+      "by_version": 3,
+      "digest": "ecfafeccdaa8",
+      "id": "3561fc988afd:fe816a66a8b7>bac8eaf5dfa8:3",
+      "version": 2,
+      "version_id": "fe816a66a8b7"
+    },
+    {
+      "at": "2026-11-13T16:35:49+00:00",
+      "by_id": "4a29af93e601",
+      "by_version": 2,
+      "digest": "ecfafeccdaa8",
+      "id": "3561fc988afd:fe816a66a8b7>4a29af93e601:2",
+      "version": 2,
+      "version_id": "fe816a66a8b7"
     }
   ],
   "deleted": null,
   "id": "3561fc988afd",
   "kind": "rootcanal_pool",
   "name": "Root Canal pool \u00b7 PTEN \u00b7 18 recordings, 18 mice",
-  "nickname": "CTL & PTEN Baseline v2",
+  "nickname": "CTL & PTEN Baseline v2 (Optimized parameters)",
   "schema": "arc.artifact/1",
   "subject": {
     "gids": [
@@ -95,7 +151,7 @@
     ]
   },
   "subject_key": "rootcanal_pool|36a5804f41174a3d996eebbc15dabeae",
-  "version": 1,
+  "version": 2,
   "versions": [
     {
       "app_version": "2026.11.06.4",
@@ -770,6 +826,680 @@
       },
       "params_hash": "4b546b206b07",
       "v": 1
+    },
+    {
+      "app_version": "2026.11.12.1",
+      "at": "2026-11-12T11:34:26-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "ecfafeccdaa8",
+      "id": "fe816a66a8b7",
+      "inputs": [
+        {
+          "banked": false,
+          "entry_id": "bfa98498290b",
+          "key": "u:bfa98498290b:fefd51d1a66e",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "fefd51d1a66e",
+          "rows_digest": "6b59df17187f"
+        },
+        {
+          "banked": false,
+          "entry_id": "afa70b62f372",
+          "key": "u:afa70b62f372:baf2e2fd68c8",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "baf2e2fd68c8",
+          "rows_digest": "648b2019f3af"
+        },
+        {
+          "banked": false,
+          "entry_id": "41dd94702761",
+          "key": "u:41dd94702761:60aed3ff1b24",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "60aed3ff1b24",
+          "rows_digest": "8c6da369aab7"
+        },
+        {
+          "banked": false,
+          "entry_id": "edc1a5080093",
+          "key": "u:edc1a5080093:ed129dcf795f",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "ed129dcf795f",
+          "rows_digest": "de483d83252a"
+        },
+        {
+          "banked": false,
+          "entry_id": "43a2cfedde17",
+          "key": "u:43a2cfedde17:eb7bce636f49",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "eb7bce636f49",
+          "rows_digest": "f9fea63cd5f8"
+        },
+        {
+          "banked": false,
+          "entry_id": "f4c18a9a8bd4",
+          "key": "u:f4c18a9a8bd4:dc44cec4aead",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "dc44cec4aead",
+          "rows_digest": "912815d56fd2"
+        },
+        {
+          "banked": false,
+          "entry_id": "35c325a44d44",
+          "key": "u:35c325a44d44:55afbebef125",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "55afbebef125",
+          "rows_digest": "418d9a58b59a"
+        },
+        {
+          "banked": false,
+          "entry_id": "db66d3c694fd",
+          "key": "u:db66d3c694fd:028cc6516c8a",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "028cc6516c8a",
+          "rows_digest": "4bd4d6e4c11c"
+        },
+        {
+          "banked": false,
+          "entry_id": "a62d1b78448b",
+          "key": "u:a62d1b78448b:327729abea4c",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "327729abea4c",
+          "rows_digest": "fe61ace2685a"
+        },
+        {
+          "banked": false,
+          "entry_id": "eaecc4a5e194",
+          "key": "u:eaecc4a5e194:7167feadaee5",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "7167feadaee5",
+          "rows_digest": "d3176b3c911a"
+        },
+        {
+          "banked": false,
+          "entry_id": "b60578899091",
+          "key": "u:b60578899091:ea1b1c14d5f7",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "ea1b1c14d5f7",
+          "rows_digest": "b457cf50f4c3"
+        },
+        {
+          "banked": false,
+          "entry_id": "8aad148bd6f6",
+          "key": "u:8aad148bd6f6:f9564ad5a261",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "f9564ad5a261",
+          "rows_digest": "1cf56c8f6661"
+        },
+        {
+          "banked": false,
+          "entry_id": "1429bf1f239f",
+          "key": "u:1429bf1f239f:3829091ad76a",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "3829091ad76a",
+          "rows_digest": "f6a01fe6eced"
+        },
+        {
+          "banked": false,
+          "entry_id": "cb139fb2ea29",
+          "key": "u:cb139fb2ea29:959100ae5600",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "959100ae5600",
+          "rows_digest": "09c5fbd694e8"
+        },
+        {
+          "banked": false,
+          "entry_id": "d4a4bcb4e47f",
+          "key": "u:d4a4bcb4e47f:f659bb7fb360",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "f659bb7fb360",
+          "rows_digest": "2a2091f096a8"
+        },
+        {
+          "banked": false,
+          "entry_id": "ab69363ee622",
+          "key": "u:ab69363ee622:7b051e58ccd3",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "7b051e58ccd3",
+          "rows_digest": "d3d3b20d37eb"
+        },
+        {
+          "banked": false,
+          "entry_id": "ece9a84acdea",
+          "key": "u:ece9a84acdea:480aaf60d2df",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "480aaf60d2df",
+          "rows_digest": "0541c0b2a64b"
+        },
+        {
+          "banked": false,
+          "entry_id": "2a8e47760eea",
+          "key": "u:2a8e47760eea:5e7ee5596c45",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "5e7ee5596c45",
+          "rows_digest": "c05d7baa22e9"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "delta_bic": 1741.1662583943544,
+        "events": 5203,
+        "members": 18,
+        "mice": 18,
+        "stats": null,
+        "switch_rate": 0.2932692307692308,
+        "unbanked": 18
+      },
+      "note": "Tried to reduce Ambiguous data points using optimized parameters.",
+      "params": {
+        "all_ds": false,
+        "band": [
+          240.0,
+          420.0
+        ],
+        "band_pool": false,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "drawn": [],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "margin_mode": null,
+        "measure": {
+          "band_hi": 420.0,
+          "band_lo": 240.0,
+          "cross_ms": 75.0,
+          "filt": "custom",
+          "filter_label": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+          "hi_hz": 150.0,
+          "lo_hz": 10.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 33.0
+        },
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "fcb1ecc5e687",
+      "v": 2
     }
   ]
 }
