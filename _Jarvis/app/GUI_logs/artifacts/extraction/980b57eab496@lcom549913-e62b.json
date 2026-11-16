@@ -1,17 +1,23 @@
 {
   "_at": {
     "added": "2026-11-10T21:07:05.977306+00:00",
-    "deleted": "2026-11-13T16:48:01.269132+00:00",
+    "deleted": "2026-11-13T18:25:00.058257+00:00",
     "id": "2026-11-10T21:07:05.977306+00:00",
     "kind": "2026-11-10T21:07:05.977306+00:00",
     "name": "2026-11-10T21:07:05.977306+00:00",
-    "nickname": "2026-11-13T16:48:01.269132+00:00",
+    "nickname": "2026-11-13T18:25:00.058257+00:00",
     "schema": "2026-11-10T21:07:05.977306+00:00",
     "subject": "2026-11-10T21:07:05.977306+00:00",
     "subject_key": "2026-11-10T21:07:05.977306+00:00",
-    "version": "2026-11-13T16:48:01.269132+00:00"
+    "version": "2026-11-13T17:43:38.330960+00:00"
   },
   "_keys": {
+    "cited": {
+      "980b57eab496:f44700dbf421>eeea75890533:1": [
+        "set",
+        "2026-11-13T18:25:00.058257+00:00"
+      ]
+    },
     "versions": {
       "0c560e454fc6": [
         "set",
@@ -25,6 +31,10 @@
         "set",
         "2026-11-13T16:48:01.269132+00:00"
       ],
+      "97d9d9003432": [
+        "set",
+        "2026-11-13T17:43:38.330960+00:00"
+      ],
       "9e560e5bd512": [
         "set",
         "2026-11-10T21:07:05.977306+00:00"
@@ -36,11 +46,15 @@
       "f44700dbf421": [
         "set",
         "2026-11-13T16:48:01.269132+00:00"
+      ],
+      "fa966fec0f82": [
+        "set",
+        "2026-11-13T17:26:17.499533+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-13T16:48:01.269132+00:00",
+    "at": "2026-11-13T18:25:00.058257+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -49,7 +63,17 @@
     "by": "Shahriar Tafti",
     "machine": "Bluebarry"
   },
-  "cited": [],
+  "cited": [
+    {
+      "at": "2026-11-13T18:24:11+00:00",
+      "by_id": "eeea75890533",
+      "by_version": 1,
+      "digest": "7fe80a8cba46",
+      "id": "980b57eab496:f44700dbf421>eeea75890533:1",
+      "version": 6,
+      "version_id": "f44700dbf421"
+    }
+  ],
   "deleted": null,
   "id": "980b57eab496",
   "kind": "extraction",
@@ -81,7 +105,7 @@
     "room_name": "Dentate Spike"
   },
   "subject_key": "extraction|dentate_spike",
-  "version": 6,
+  "version": 8,
   "versions": [
     {
       "app_version": "2026.11.09.4",
@@ -395,6 +419,62 @@
       },
       "params_hash": "a53036b5e6ab",
       "v": 6
+    },
+    {
+      "app_version": "2026.11.13.1",
+      "at": "2026-11-13T11:37:25-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "a5646b44207e",
+      "id": "fa966fec0f82",
+      "inputs": [
+        {
+          "artifact_id": "4a29af93e601",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4201,
+        "folder": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": "PTEN and CTL Baseline, 10% grace (2026-11-13): the same events as the CTL Baseline 10% set (border around the CTL pool, applied to the CTL & PTEN pool), from a workflow named for what it holds. Hand bands carried over.",
+      "params": {
+        "folder": "xm-12427c99f8",
+        "round": "direct"
+      },
+      "params_hash": "d0b4d5709f33",
+      "v": 7
+    },
+    {
+      "app_version": "2026.11.13.2",
+      "at": "2026-11-13T12:41:02-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "768b9df7e4e1",
+      "id": "97d9d9003432",
+      "inputs": [
+        {
+          "artifact_id": "a7eee6a6ca9f",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4177,
+        "folder": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room; No P-spikes]))",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": "PTEN and CTL Baseline, 10% grace, no P-spikes (2026-11-13): the 10% set's events less the 24 that also sit inside the P-spike border -- inside the DS border only. Hand bands carried over.",
+      "params": {
+        "folder": "xm-1d6cfcdd3d",
+        "round": "direct"
+      },
+      "params_hash": "ad3da79b6dbe",
+      "v": 8
     }
   ]
 }
