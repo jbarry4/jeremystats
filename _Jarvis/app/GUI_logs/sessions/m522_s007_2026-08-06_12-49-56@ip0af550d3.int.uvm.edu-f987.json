@@ -1,0 +1,80 @@
+{
+  "_at": {
+    "created": "2026-11-02T15:11:32.234732+00:00",
+    "duration_s": "2026-11-02T15:11:32.234732+00:00",
+    "first_seen_by": "2026-11-02T15:11:32.234732+00:00",
+    "found_on": "2026-11-02T15:11:32.234732+00:00",
+    "fs": "2026-11-02T15:11:32.234732+00:00",
+    "gid": "2026-11-02T15:11:32.234732+00:00",
+    "group": "2026-11-02T15:11:32.234732+00:00",
+    "key": "2026-11-02T15:11:32.234732+00:00",
+    "label": "2026-11-02T15:11:32.234732+00:00",
+    "loose_key": "2026-11-02T15:11:32.234732+00:00",
+    "mouse": "2026-11-02T15:11:32.234732+00:00",
+    "n_channels": "2026-11-02T15:11:32.234732+00:00",
+    "project": "2026-11-02T15:11:32.234732+00:00",
+    "project_source": "2026-11-02T15:11:32.234732+00:00",
+    "retired": "2026-11-02T15:22:52.135013+00:00",
+    "schema": "2026-11-02T15:11:32.234732+00:00",
+    "session": "2026-11-02T15:11:32.234732+00:00",
+    "start": "2026-11-02T15:11:32.234732+00:00",
+    "updated": "2026-11-02T15:22:52.135013+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\KCNT1_m0522_s07_080626\\2026-08-06_12-49-56": [
+        "set",
+        "2026-11-02T15:11:32.234732+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T15:22:52.135013+00:00",
+    "machine": "ip0af550d3.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "channel_banks": [],
+  "created": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T10:11:32-05:00",
+    "commit": "d972b0bd",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af550d3.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
+  },
+  "duration_s": 1622.699,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-11-02T10:11:00-05:00",
+    "by": "Aggie Krempasky",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s4db6369c718e",
+  "group": "KCNT1",
+  "key": "m522_s007_2026-08-06_12-49-56",
+  "label": "KCNT1 m522 s7 2026-08-06",
+  "loose_key": "m522_s007",
+  "mouse": 522,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\KCNT1_m0522_s07_080626\\2026-08-06_12-49-56"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 7,
+  "start": "2026-08-06T12:49:56",
+  "updated": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T10:22:52-05:00",
+    "commit": "d972b0bd",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af550d3.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
+  }
+}

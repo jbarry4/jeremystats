@@ -1,0 +1,83 @@
+{
+  "_at": {
+    "created": "2026-11-02T15:13:13.668843+00:00",
+    "first_seen_by": "2026-11-02T15:13:13.668843+00:00",
+    "found_on": "2026-11-02T15:13:13.668843+00:00",
+    "fs": "2026-11-02T15:13:13.668843+00:00",
+    "gid": "2026-11-02T15:13:13.668843+00:00",
+    "group": "2026-11-02T15:13:13.668843+00:00",
+    "key": "2026-11-02T15:13:13.668843+00:00",
+    "label": "2026-11-02T15:13:13.668843+00:00",
+    "loose_key": "2026-11-02T15:13:13.668843+00:00",
+    "mouse": "2026-11-02T15:13:13.668843+00:00",
+    "n_channels": "2026-11-02T15:13:13.668843+00:00",
+    "project": "2026-11-02T15:13:13.668843+00:00",
+    "project_source": "2026-11-02T15:13:13.668843+00:00",
+    "retired": "2026-11-02T15:22:29.929519+00:00",
+    "schema": "2026-11-02T15:13:13.668843+00:00",
+    "session": "2026-11-02T15:13:13.668843+00:00",
+    "start": "2026-11-02T15:13:13.668843+00:00",
+    "updated": "2026-11-02T15:22:29.929519+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_13-20-05": [
+        "set",
+        "2026-11-02T15:13:13.668843+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_15-20-10": [
+        "set",
+        "2026-11-02T15:13:14.650678+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T15:22:29.929519+00:00",
+    "machine": "ip0af550d3.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "channel_banks": [],
+  "created": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T10:13:13-05:00",
+    "commit": "d972b0bd",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af550d3.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
+  },
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-11-02T10:11:00-05:00",
+    "by": "Aggie Krempasky",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s8a0ca3029abe",
+  "group": "PTEN",
+  "key": "m011_s005_2023-08-18_13-20-18",
+  "label": "PTEN m11 s5 2023-08-18",
+  "loose_key": "m011_s005",
+  "mouse": 11,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_13-20-05",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_15-20-10"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 5,
+  "start": "2023-08-18T13:20:18",
+  "updated": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T10:22:29-05:00",
+    "commit": "d972b0bd",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af550d3.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
+  }
+}
