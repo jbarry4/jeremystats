@@ -238,7 +238,11 @@ function row(id, kind, run, stale) {
                                         wPCA: 'Harness PCA' }[id],
            name: kind, version: 2, updated: '2026-11-05', kind, definition: DEF[kind],
            ran: true, counts: run.counts, kept: run.kept, n: run.n, bank: run.bank,
-           border_ref: run.border_ref, grace: 0.05, stale: stale || [], mismatch: [] };
+           border_ref: run.border_ref, grace: 0.05, stale: stale || [], mismatch: [],
+           run_version: 2,
+           versions: [{ v: 1, at: '2026-11-04', by: 'Debug_Bot', here: true, ran: false },
+                      { v: 2, at: '2026-11-05', by: 'Debug_Bot', here: true, ran: true,
+                        kept: run.kept, grace: 0.05 }] };
 }
 const FIX = {
   list: [row('wDS', 'ds', RUN_DS, [{ what: 'target pool', artifact_id: 'pT',
@@ -270,7 +274,11 @@ const FIX = {
               events: 160, all_ds: true },
             { artifact_id: 'pT', nickname: 'PTEN ALL PTEN Baseline Full Incisor', version: 1,
               events: 240, all_ds: false },
-            { artifact_id: 'pQ', nickname: 'CTL Baseline', version: 1, events: 120 },
+            { artifact_id: 'pQ', nickname: 'CTL Baseline', version: 2, events: 118,
+              versions: [{ v: 1, at: '2026-11-04', by: 'Debug_Bot', here: true, events: 120,
+                           members: 4, mice: 4 },
+                         { v: 2, at: '2026-11-11', by: 'Debug_Bot', here: true, events: 118,
+                           members: 4, mice: 4, note: 'Optimized parameters' }] },
             { artifact_id: 'pP', nickname: 'PTEN Baseline', version: 1, events: 120 },
             { artifact_id: 'pX', nickname: 'Another pool', version: 3, events: 9 }],
     sets: [{ entry_id: 'h1', session_label: 'PTEN m13 s2', name: 'IED spikes (hand-sorted)',
@@ -303,6 +311,30 @@ const FIX = {
                   nums: [1, 2, 3, 4, 5, 6, 7, 8], clim: [-4, 4] } },
 };
 FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
+/* THE HALO (2026-11-12): each event's gauge against the two harness boxes
+   -- the largest |x - c| / half-width -- as the server gives them for a run
+   saved before runs kept them. */
+function gaugesOf(run) {
+  const g = (B) => run.cols.amp.map((_, j) => {
+    const v = [run.cols.amp[j], run.cols.hf[j], run.cols.hw[j]];
+    return +Math.max(...v.map((x, a) => Math.abs(x - (B[a][0] + B[a][1]) / 2)
+      / ((B[a][1] - B[a][0]) / 2))).toFixed(4);
+  });
+  return { ga: g(BOX_DS), gb: g(BOX_P),
+           centres: { ds: BOX_DS.map((r) => (r[0] + r[1]) / 2),
+                      pspike: BOX_P.map((r) => (r[0] + r[1]) / 2) } };
+}
+FIX.haloA = gaugesOf(RUN_A);
+// The rule, written out again here so the page is checked against it.
+function haloExpect(cls, G, R, M) {
+  return cls.map((c, j) => {
+    if (c !== 'neither') return c;
+    const a = G.ga[j], b = G.gb[j];
+    if (a <= R && b >= M * a) return 'halo_ds';
+    if (b <= R && a >= M * b) return 'halo_pspike';
+    return Math.min(a, b) <= R ? 'halo_amb' : 'halo_far';
+  });
+}
 
 (async () => {
   const frame = document.getElementById('app');
@@ -349,6 +381,10 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
      + '    return json({ ok: true, definition: F.one[pk].payload.definition, run: F.one[pk].payload.run }); }'
      + '  if (p === "/api/rootcanal/workflow/save") { hit("save");'
      + '    return json({ ok: true, artifact_id: "wDS", version: 3, nickname: body.nickname }); }'
+     + '  var mh = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)\\/halo$/);'
+     + '  if (mh) { var post = !!(o && o.method === "POST"); hit((post ? "halo:" : "halo-get:") + mh[1]);'
+     + '    if (post) return json({ ok: true, artifact_id: mh[1], version: 3 });'
+     + '    return json(Object.assign({ ok: true, version: 2 }, F.haloA)); }'
      + '  var m = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)\\/(run|bank)$/);'
      + '  if (m) { hit(m[2] + ":" + m[1]); if (m[2] === "bank") return json({ ok: true, entry_id: "bk-picked", n: (body.picks || []).length });'
      + '    return json({ ok: true, artifact_id: m[1], version: 3, run: F.one[m[1]].payload.run, definition: F.one[m[1]].payload.definition }); }'
@@ -809,26 +845,239 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
     ok('exactly the two ticked are banked, as P-spikes, under the name typed',
        bk.picks.length === 2 && bk.type === 'ied' && bk.name === 'harness picks', JSON.stringify(bk));
 
+    head('AMBIGUOUS: THE HALO, ON THE APPLY STAGE');
+    const stageBtn = (re) => btn(re, D().querySelector('.wf-stage-seg'));
+    if (S().stage !== 'apply') stageBtn(/^Apply border$/).click();
+    await until(() => D().querySelector('.wf-halo'), 4000, 'the halo card');
+    const hc = () => D().querySelector('.wf-halo');
+    ok('the Halo card is on the Apply stage, off, its sliders asleep at 2× and 1.5×',
+       hc().querySelector('.wf-halo-seg .active').textContent === 'Off'
+       && hc().querySelector('.wf-halo-reach').disabled && hc().querySelector('.wf-halo-margin').disabled
+       && hc().querySelector('.wf-halo-reach').value === '2'
+       && hc().querySelector('.wf-halo-margin').value === '1.5');
+    stageBtn(/^Extract$/).click();
+    await until(() => !D().querySelector('.wf-halo'), 4000, 'extract');
+    ok('and only there: not on Extract', !D().querySelector('.wf-halo'));
+    stageBtn(/^Apply border$/).click();
+    await until(() => D().querySelector('.wf-halo'), 4000, 'apply again');
+    btn(/^On$/, D().querySelector('.wf-halo-seg')).click();
+    await until(() => D().querySelector('.wf-halo-counts'), 6000, 'the halo counts');
+    const hget = sent().filter((x) => x[0] === 'halo-get:wA');
+    ok('a run saved before runs kept gauges asks for them once, for the version on show',
+       hget.length === 1 && /version=2/.test(hget[0][2]), JSON.stringify(hget.map((x) => x[2])));
+    const want = (R, M) => counts(haloExpect(RUN_A.cols.cls, FIX.haloA, R, M));
+    const shownCounts = () => Object.fromEntries(Array.from(hc().querySelectorAll('.wf-halo-counts b[data-k]'))
+      .map((b) => [b.dataset.k, Number(b.textContent.replace(/[^0-9]/g, ''))]));
+    const HK = ['halo_ds', 'halo_pspike', 'halo_amb', 'halo_far'];
+    const w1 = want(2, 1.5), c1 = shownCounts();
+    ok('balanced (2×, 1.5×): every event outside both sorted by the rule, none lost',
+       HK.every((k) => (w1[k] || 0) === c1[k])
+       && HK.reduce((t, k) => t + c1[k], 0) === (RUN_A.counts.neither || 0),
+       JSON.stringify(c1) + ' vs ' + JSON.stringify(w1));
+    const hcls = (c, a, b) => ev(WF + '._haloClass(' + JSON.stringify(c) + ', ' + a + ', ' + b + ', 2, 1.5)');
+    const rule = [['neither', 1.2, 2.0, 'halo_ds'], ['neither', 2.0, 1.3, 'halo_pspike'],
+                  ['neither', 1.5, 1.8, 'halo_amb'], ['neither', 1.9, 5.0, 'halo_ds'],
+                  ['neither', 2.5, 3.0, 'halo_far'], ['ds', 0.5, 3, 'ds'], ['both', 0.5, 0.6, 'both'],
+                  ['pspike', 3, 0.9, 'pspike']];
+    const ruleGot = rule.map(([c, a, b]) => hcls(c, a, b));
+    ok('the rule: within the reach and 1.5× nearer is captured; near both is extended; beyond '
+       + 'both halos is far out; inside a border is left alone',
+       rule.every((r, k) => ruleGot[k] === r[3]), JSON.stringify(ruleGot));
+    ok('inside a border, or both, is left exactly as it was',
+       ['ds', 'pspike', 'both'].every((k) => (w1[k] || 0) === (RUN_A.counts[k] || 0)));
+    const viewBoxes = () => JSON.parse(ev('JSON.stringify(' + WF + '._boxesOf(' + WF
+      + '._shownRun(), "ambiguous"))'));
+    const halos = viewBoxes().filter((b) => b.halo);
+    ok('two dotted halos, each its border grown 2× about its centre',
+       halos.length === 2 && halos.every((b) => JSON.stringify(b.dash) === '[2,4]' && b.dashed)
+       && Math.abs(halos[0].hi.amp - (1400 + 2 * 1000)) < 1e-6
+       && Math.abs(halos[0].lo.hf - (10 - 2 * 10)) < 1e-6
+       && Math.abs(halos[1].hi.hw - (18 + 2 * 12)) < 1e-6,
+       JSON.stringify(halos.map((b) => [b.lo, b.hi])));
+    const Rh = JSON.parse(ev('JSON.stringify(' + WF + '._rangesOf(' + WF + '._shownRun(), "ambiguous"))'));
+    const R0 = JSON.parse(ev('JSON.stringify(' + WF + '._rangesOf(' + WF
+      + '._state().data.wA.payload.run, "ambiguous"))'));
+    ok('the halos never widen the frame: they are clipped', JSON.stringify(Rh) === JSON.stringify(R0),
+       JSON.stringify(Rh) + ' vs ' + JSON.stringify(R0));
+    const lgT = D().querySelector('.wf-detail .wf-legend').textContent;
+    ok('the legend names the captured, the extended zone and the far out, and the dotted halos',
+       /captured by the DS halo/.test(lgT) && /captured by the P-spike halo/.test(lgT)
+       && /extended ambiguous/.test(lgT) && /far out/.test(lgT)
+       && D().querySelectorAll('.wf-detail .wf-legend .wf-lg-box.dotted').length === 2, lgT);
+    const dsC = rgbOf('var(--call-ds)'), capC = lgDot(/captured by the DS halo/);
+    ok('captured DS is the DS blue paled toward the ground, not the blue itself',
+       !!capC && capC !== dsC && (([, r, g, b]) => +b > +r)(capC.match(/(\d+), (\d+), (\d+)/)),
+       capC + ' vs ' + dsC);
+    ok('the conflicts say where the outside ones went',
+       /captured by DS/.test(D().querySelector('.wf-venn').textContent)
+       && /far out/.test(D().querySelector('.wf-venn').textContent));
+    ok('the rule line says the halo is being tried, not saved',
+       /Halo: reach 2×, margin 1.5×, being tried, not saved/.test(D().querySelector('.wf-rule').textContent));
+    const rowsH = D().querySelectorAll('.wf-amb-tab tr').length - 1;
+    ok('the table to choose from keeps only the still ambiguous',
+       rowsH === (w1.both || 0) + (w1.halo_amb || 0) + (w1.halo_far || 0),
+       rowsH + ' rows');
+    const card0 = hc();
+    const reach = hc().querySelector('.wf-halo-reach');
+    reach.value = '3';
+    reach.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }));
+    const w3 = want(3, 1.5), c3 = shownCounts();
+    ok('moving Reach recounts in place, without rebuilding the card mid-drag',
+       hc() === card0 && HK.every((k) => (w3[k] || 0) === c3[k]),
+       JSON.stringify(c3) + ' vs ' + JSON.stringify(w3));
+    reach.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+    await until(() => hc() !== card0, 4000, 'the rebuild on letting go');
+    const halo3 = viewBoxes().filter((b) => b.halo);
+    ok('letting go redraws with it: the halos grown 3×',
+       halo3.length === 2 && Math.abs(halo3[0].hi.amp - (1400 + 3 * 1000)) < 1e-6,
+       JSON.stringify(halo3.map((b) => b.hi)));
+    ev('window.__wfPrompt = window.prompt; window.prompt = function(){ return "harness halo note"; }');
+    btn(/^Save with this halo$/).click();
+    await until(() => sent().some((x) => x[0] === 'halo:wA'), 4000, 'the halo save');
+    ev('window.prompt = window.__wfPrompt');
+    const hs = sent().filter((x) => x[0] === 'halo:wA').pop()[1];
+    ok('Save sends the version on show, the reach, the margin and the note',
+       hs.version === 2 && hs.reach === 3 && hs.margin === 1.5 && hs.note === 'harness halo note'
+       && !hs.off, JSON.stringify(hs));
+    await until(() => sent().some((x) => x[0] === 'one:wA' && /version=3/.test(x[2])), 4000,
+                'the saved version opened');
+    await until(() => D().querySelector('.wf-halo'), 4000, 'its halo card');
+    ok('the saved version opens; with no halo saved in it the card starts off again',
+       hc().querySelector('.wf-halo-seg .active').textContent === 'Off'
+       && /Outside both: /.test(D().querySelector('.wf-venn').textContent));
+
+    head('THE 3D: ZOOM WHERE YOU POINT, MOVE, PUT BACK; THE 2D FRAME HOLDS EVERY BORDER');
+    const zrunA = 'BARRY.rcWorkflow._state().data.wA.payload.run';
+    const zRf = JSON.parse(ev('JSON.stringify(' + WF + '._rangesOf(' + zrunA + ', "ambiguous"))'));
+    const zbxs = JSON.parse(ev('JSON.stringify(' + WF + '._boxesOf(' + zrunA + ', "ambiguous"))'))
+      .filter((b) => !b.halo);
+    ok('the 2D frame holds every border, solid and dashed',
+       zbxs.length === 4 && zbxs.every((b) => ['amp', 'hf', 'hw'].every((c) =>
+         zRf[c][0] <= b.lo[c] + 1e-9 && b.hi[c] <= zRf[c][1] + 1e-9)), JSON.stringify(zRf));
+    // Settled first: a canvas rebuilt mid-check would take the wheel and
+    // leave the one measured behind.
+    await sleep(500);
+    const zc3 = D().querySelector('.wf-3d');
+    await until(() => zc3.__pick && zc3.__pick.pts.length > 10, 4000, 'the 3D drawn');
+    const zr3 = zc3.getBoundingClientRect();
+    const zmid = [zr3.width / 2, zr3.height / 2];
+    const zpt = zc3.__pick.pts.slice().sort((a, b) =>
+      Math.hypot(b.q[0] - zmid[0], b.q[1] - zmid[1]) - Math.hypot(a.q[0] - zmid[0], a.q[1] - zmid[1]))
+      .find((z) => z.q[0] > 20 && z.q[0] < zr3.width - 20 && z.q[1] > 20 && z.q[1] < zr3.height - 20);
+    // A wheel event's pointer is a whole pixel: the dot is up to half a
+    // pixel from it, and that half pixel grows with the zoom. So the check
+    // is the zoom's own geometry -- the dot moves away from the pointer by
+    // the zoom's factor -- with the pointer where the event put it.
+    const zz0 = S().view.zoom;
+    const rr0 = zc3.getBoundingClientRect();
+    const zcx = Math.round(rr0.left + zpt.q[0]), zcy = Math.round(rr0.top + zpt.q[1]);
+    for (let k = 0; k < 15; k++) {
+      zc3.dispatchEvent(new frame.contentWindow.WheelEvent('wheel', { deltaY: -100,
+        clientX: zcx, clientY: zcy, bubbles: true, cancelable: true }));
+    }
+    await sleep(120);
+    const zc3b = D().querySelector('.wf-3d');
+    const zsame = zc3b === zc3 && zc3.isConnected;
+    const zafter = (zc3b.__pick.pts || []).find((z) => z.p.n === zpt.p.n);
+    const zvw = S().view;
+    const zptr = [zcx - rr0.left, zcy - rr0.top], zf = zvw.zoom / zz0;
+    const zexp = [0, 1].map((i) => zptr[i] + (zpt.q[i] - zptr[i]) * zf);
+    ok('the wheel zooms toward the dot under the pointer: it stays put',
+       zvw.zoom > 4 && zvw.zoom <= 20 && zvw.at.some((x) => x !== 0) && !!zafter
+       && Math.hypot(zafter.q[0] - zexp[0], zafter.q[1] - zexp[1]) < 1.5
+       && Math.hypot(zafter.q[0] - zpt.q[0], zafter.q[1] - zpt.q[1]) < 15,
+       'same canvas ' + zsame + '; zoom ' + zvw.zoom + ' at ' + JSON.stringify(zvw.at) + ' moved '
+       + (zafter ? Math.hypot(zafter.q[0] - zpt.q[0], zafter.q[1] - zpt.q[1]).toFixed(2)
+          + ', off the zoom’s geometry by '
+          + Math.hypot(zafter.q[0] - zexp[0], zafter.q[1] - zexp[1]).toFixed(2) : 'gone'));
+    const zyaw0 = zvw.yaw, zpitch0 = zvw.pitch, zpk0 = S().picked;
+    const zbefore = new Map(zc3b.__pick.pts.map((z) => [z.p.n, z.q.slice()]));
+    const ZPE = frame.contentWindow.PointerEvent;
+    const zat0 = { clientX: zr3.left + 60, clientY: zr3.top + 60 };
+    zc3b.dispatchEvent(new ZPE('pointerdown', Object.assign({ shiftKey: true, button: 0,
+      buttons: 1, pointerId: 1, bubbles: true }, zat0)));
+    zc3b.dispatchEvent(new ZPE('pointermove', { shiftKey: true, buttons: 1, pointerId: 1,
+      bubbles: true, clientX: zat0.clientX + 40, clientY: zat0.clientY }));
+    zc3b.dispatchEvent(new ZPE('pointerup', { shiftKey: true, button: 0, pointerId: 1,
+      bubbles: true, clientX: zat0.clientX + 40, clientY: zat0.clientY }));
+    await sleep(80);
+    const zc3c = D().querySelector('.wf-3d');
+    const zmoved = zc3c.__pick.pts.filter((z) => zbefore.has(z.p.n))
+      .map((z) => [z.q[0] - zbefore.get(z.p.n)[0], z.q[1] - zbefore.get(z.p.n)[1]]);
+    ok('shift+drag moves the picture 40 px, without turning it or picking',
+       zmoved.length > 5 && zmoved.every(([dx, dy]) => Math.abs(dx - 40) <= 1 && Math.abs(dy) <= 1)
+       && S().view.yaw === zyaw0 && S().view.pitch === zpitch0 && S().picked === zpk0,
+       zmoved.slice(0, 3).map((d) => d.map((x) => x.toFixed(1)).join(',')).join(' '));
+    zc3c.dispatchEvent(new frame.contentWindow.MouseEvent('dblclick', { bubbles: true }));
+    await sleep(80);
+    ok('double-click puts it back: zoom 1, centred, the turn kept',
+       S().view.zoom === 1 && S().view.at.every((x) => x === 0) && S().view.yaw === zyaw0,
+       JSON.stringify(S().view));
+
     head('THE BUILDER: PREVIEW, AND SAVE WHAT IT SAYS');
+    // Two pools filed in a folder of the Pooled tab; the rest unfiled.
+    ev('window.__wfMem.rootcanal_pool_folders = { fa: { name: "Harness v2" } };'
+       + ' window.__wfMem.rootcanal_pool_in = { pQ: "fa", pP: "fa" }');
     btn(/^New workflow$/).click();
     await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
     const kinds = Array.from(D().querySelectorAll('.wf-builder .seg')[0].querySelectorAll('button')).map((n) => n.textContent);
     ok('the four to choose from', JSON.stringify(kinds)
        === '["Verified dentate spikes","Verified P-spikes","Ambiguous","Pooled PCA"]',
        JSON.stringify(kinds));
-    const sels = Array.from(D().querySelectorAll('.wf-builder select'));
-    ok('the controls and the target picked by name, by default: CTL Baseline and PTEN Baseline',
-       sels.length === 2 && sels[0].value === 'pQ' && sels[1].value === 'pP',
-       sels.map((s) => s.value).join(','));
+    // WHICH POOL, WHICH VERSION (2026-11-12: "I dont like that I have to
+    // click from a drop down"): one button each, and a picker behind it.
+    const inS = () => D().querySelector('.wf-builder .wf-in-source');
+    const inT = () => D().querySelector('.wf-builder .wf-in-target');
+    ok('no drop-downs: a button for each pool saying it and its version, CTL Baseline and PTEN Baseline by default, each at its newest',
+       !D().querySelector('.wf-builder select') && !!inS() && inS().dataset.id === 'pQ' && inS().dataset.v === '2'
+       && !!inT() && inT().dataset.id === 'pP' && inT().dataset.v === '1'
+       && /^CTL Baselinev2118 events/.test(inS().textContent),
+       (inS() || {}).textContent + ' | ' + (inT() || {}).textContent);
+    const offered = Array.from(D().querySelectorAll('.wf-builder .wf-b-shape button')).map((n) => n.textContent);
+    ok('the scoop is retired: Box and Snap are the shapes offered', JSON.stringify(offered) === '["Box","Snap"]',
+       JSON.stringify(offered));
+    inS().click();
+    const pickDlg = () => D().querySelector('.wf-pick-dlg');
+    await until(() => pickDlg() && pickDlg().querySelector('.wf-pick-vers .vtree-row'), 3000, 'the picker');
+    const groupsNow = () => Array.from(pickDlg().querySelectorAll('.wf-pick-list > .wf-pick-group')).map((g) =>
+      [g.dataset.group, Array.from(g.querySelectorAll('.wf-pick-row')).map((r) => r.dataset.id)]);
+    ok('pressed: every pool from the Pooled tab, in its folders, in number order',
+       JSON.stringify(groupsNow()) === JSON.stringify([['Harness v2', ['pQ', 'pP']],
+                                                     ['Preliminary analysis', ['pX', 'pT', 'pC']]]),
+       JSON.stringify(groupsNow()));
+    const vRows = Array.from(pickDlg().querySelectorAll('.wf-pick-vers .vtree-row')).map((r) => r.dataset.v);
+    ok('the one chosen is lit, and its whole version tree beside it, newest first, its note on its row',
+       (pickDlg().querySelector('.wf-pick-row.on') || {}).dataset.id === 'pQ'
+       && JSON.stringify(vRows) === '["2","1"]'
+       && (pickDlg().querySelector('.wf-pick-vers .vtree-row.on') || {}).dataset.v === '2'
+       && /Optimized parameters/.test(pickDlg().querySelector('.wf-pick-vers').textContent), JSON.stringify(vRows));
+    const fnd = pickDlg().querySelector('.wf-pick-find');
+    fnd.value = 'incisor'; fnd.dispatchEvent(new (frame.contentWindow.Event)('input', { bubbles: true }));
+    ok('found by name', JSON.stringify(Array.from(pickDlg().querySelectorAll('.wf-pick-row')).map((r) => r.dataset.id))
+       === '["pT","pC"]');
+    pickDlg().querySelector('.wf-pick-row[data-id="pT"] input').click();
+    await until(() => JSON.stringify(Array.from(pickDlg().querySelectorAll('.wf-pick-vers .vtree-row')).map((r) => r.dataset.v)) === '["1"]',
+                3000, 'its versions');
+    ok('clicking another pool shows its versions instead', /PTEN ALL PTEN Baseline Full Incisor/.test(pickDlg().querySelector('.wf-pick-vers').textContent));
+    fnd.value = ''; fnd.dispatchEvent(new (frame.contentWindow.Event)('input', { bubbles: true }));
+    pickDlg().querySelector('.wf-pick-row[data-id="pQ"] input').click();
+    await until(() => (pickDlg().querySelector('.wf-pick-vers .vtree-row.on') || {}).dataset && pickDlg().querySelector('.wf-pick-vers .vtree-row.on').dataset.v === '2', 3000, 'back');
+    pickDlg().querySelector('.wf-pick-vers .vtree-row[data-v="1"]').click();
+    ok('a version picked is said before it is used', /‘CTL Baseline’ v1, 120 events, 4 recordings · 4 mice/.test(
+       pickDlg().querySelector('.wf-pick-say').textContent), pickDlg().querySelector('.wf-pick-say').textContent);
+    btn(/^Use this version$/, pickDlg()).click();
+    await until(() => !pickDlg() && inS() && inS().dataset.v === '1', 3000, 'the pick');
+    ok('used: the button says CTL Baseline v1, and that v2 is newer',
+       inS().dataset.id === 'pQ' && /v2 is newer/.test(D().querySelector('.wf-builder').textContent));
     btn(/^Save$/, D().querySelector('.wf-builder')).click();
     await until(() => toasts().some((t) => /Give it a name first/.test(t)), 3000, 'the refusal');
     ok('it will not save without a name', !sent().some((x) => x[0] === 'save'));
     btn(/^Preview$/, D().querySelector('.wf-builder')).click();
     await until(() => sent().some((x) => x[0] === 'preview'), 4000, 'the preview');
     const pv = sent().filter((x) => x[0] === 'preview').pop()[1];
-    ok('the preview asks for what the builder says: DS, around the controls, to the target, 5%',
-       pv.kind === 'ds' && pv.source.artifact_id === 'pQ' && pv.target.artifact_id === 'pP'
-       && pv.grace === 0.05, JSON.stringify(pv));
+    ok('the preview asks for what the builder says: DS, around the controls’ v1, to the target, 5%',
+       pv.kind === 'ds' && pv.source.artifact_id === 'pQ' && pv.source.version === 1
+       && pv.target.artifact_id === 'pP' && pv.grace === 0.05, JSON.stringify(pv));
     await until(() => /Preview · nothing saved/.test((D().querySelector('.wf-detail') || {}).textContent || ''), 4000, 'shown');
     ok('shown as a preview, saying nothing is saved, with its 3D',
        inked(D().querySelector('.wf-3d')) > 1000);
@@ -836,7 +1085,39 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
     nm.value = 'Harness new'; nm.dispatchEvent(new (frame.contentWindow.Event)('input', { bubbles: true }));
     btn(/^Save$/, D().querySelector('.wf-builder')).click();
     await until(() => sent().some((x) => x[0] === 'save'), 4000, 'the save');
-    ok('saved under its name', sent().filter((x) => x[0] === 'save').pop()[1].nickname === 'Harness new');
+    ok('saved under its name, pinned to the version picked',
+       sent().filter((x) => x[0] === 'save').pop()[1].nickname === 'Harness new'
+       && sent().filter((x) => x[0] === 'save').pop()[1].source.version === 1);
+    ev('delete window.__wfMem.rootcanal_pool_folders; delete window.__wfMem.rootcanal_pool_in');
+
+    head('AMBIGUOUS: WHERE IT IS APPLIED (2026-11-12)');
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
+    btn(/^Ambiguous$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-builder .wf-in-target'), 3000, 'its target');
+    const aT = () => D().querySelector('.wf-builder .wf-in-target');
+    ok('Applied to is offered, and starts as the DS workflow’s own target',
+       aT().dataset.id === 'pT' && aT().dataset.v === '1'
+       && /The DS workflow’s own target/.test(D().querySelector('.wf-builder').textContent),
+       aT().dataset.id + ' v' + aT().dataset.v);
+    ok('the borders it borrows are buttons too, each at its last run',
+       (D().querySelector('.wf-builder .wf-in-ds') || {}).dataset.v === '2'
+       && (D().querySelector('.wf-builder .wf-in-pspike') || {}).dataset.v === '2');
+    aT().click();
+    await until(() => pickDlg() && pickDlg().querySelector('.wf-pick-row'), 3000, 'the picker');
+    pickDlg().querySelector('.wf-pick-row[data-id="pP"] input').click();
+    await until(() => pickDlg().querySelector('.wf-pick-vers .vtree-row.on'), 3000, 'its versions');
+    btn(/^Use this version$/, pickDlg()).click();
+    await until(() => !pickDlg() && aT() && aT().dataset.id === 'pP', 3000, 'the pick');
+    const nPvA = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Preview$/, D().querySelector('.wf-builder')).click();
+    await until(() => sent().filter((x) => x[0] === 'preview').length > nPvA, 4000, 'the preview');
+    const pvA = sent().filter((x) => x[0] === 'preview').pop()[1];
+    ok('the preview applies both borders to the pool picked, at its version',
+       pvA.kind === 'ambiguous' && pvA.target && pvA.target.artifact_id === 'pP' && pvA.target.version === 1
+       && pvA.uses.ds.version === 2 && pvA.uses.pspike.version === 2
+       && !/The DS workflow’s own target/.test(D().querySelector('.wf-builder').textContent), JSON.stringify(pvA));
+    btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
 
     head('THE P-SPIKE BUILDER: THE HAND-SORTED SETS, AND MAKING THEM READY');
     btn(/^New workflow$/).click();
@@ -859,6 +1140,44 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
        JSON.stringify(pq));
     ok('and Prepare all is offered', !!btn(/^Prepare all$/));
     btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
+
+    head('A POOL NOT YET PICKED (2026-11-13)');
+    // The pools on show named as the live ones are ("… (Optimized
+    // parameters)"), so the builder's defaults by name find none. Saved
+    // like that, the server said "There is no saved pool None to use as
+    // the target" and filed it as a fault (Bluebarry, 11-12).
+    ev('(function(){ var W = ' + WF + '._state(); window.__wfSrcWas = W.sources;'
+       + ' var s = JSON.parse(JSON.stringify(window.__wfFix.sources)); s.ok = true;'
+       + ' s.pools.forEach(function(p){ p.nickname += " (Optimized parameters)"; p.all_ds = false; });'
+       + ' W.sources = s; })()');
+    const nUp0 = sent().filter((x) => x[0] === 'save' || x[0] === 'preview').length;
+    btn(/^New workflow$/).click();
+    await until(() => D().querySelector('.wf-builder'), 6000, 'the builder');
+    btn(/^Verified P-spikes$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-builder .wf-in-target'), 4000, 'its target');
+    ok('no default found by name: Applied to says Select pool',
+       /Select pool/.test(D().querySelector('.wf-builder .wf-in-target').textContent),
+       D().querySelector('.wf-builder .wf-in-target').textContent);
+    const nmU = D().querySelector('.wf-name-in');
+    nmU.value = 'Harness unpicked'; nmU.dispatchEvent(new (frame.contentWindow.Event)('input', { bubbles: true }));
+    btn(/^Save$/, D().querySelector('.wf-builder')).click();
+    await sleep(300);
+    btn(/^Preview$/, D().querySelector('.wf-builder')).click();
+    await sleep(300);
+    ok('P-spike, no pool picked: Save and Preview say which to pick, and send nothing',
+       toasts().some((t) => /Pick the pool it is applied to first/.test(t))
+       && sent().filter((x) => x[0] === 'save' || x[0] === 'preview').length === nUp0,
+       toasts().join(' | '));
+    btn(/^Verified dentate spikes$/, D().querySelector('.wf-builder')).click();
+    await until(() => D().querySelector('.wf-builder .wf-in-source'), 4000, 'its source');
+    btn(/^Save$/, D().querySelector('.wf-builder')).click();
+    await sleep(300);
+    ok('DS, no pool picked: the pool the border is drawn around is asked for first, nothing sent',
+       toasts().some((t) => /Pick the pool the DS border is drawn around first/.test(t))
+       && sent().filter((x) => x[0] === 'save' || x[0] === 'preview').length === nUp0,
+       toasts().join(' | '));
+    btn(/^Cancel$/, D().querySelector('.wf-builder')).click();
+    ev('(function(){ ' + WF + '._state().sources = window.__wfSrcWas; delete window.__wfSrcWas; })()');
 
     head('POOLED PCA: TWO POOLS MADE ONE, THE 2D PCA, THE 3D BESIDE IT');
     ev('window.__wfFix.list.push(window.__wfFix.pcaRow)');
@@ -1105,16 +1424,37 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
     btn(/^Pooled PCA$/, D().querySelector('.wf-builder')).click();
     await until(() => D().querySelector('.wf-pools'), 4000, 'the pools');
     const pTicks = Array.from(D().querySelectorAll('.wf-pools .wf-set')).filter((n) =>
-      n.querySelector('input').checked).map((n) => n.textContent.split(' · ')[0]);
+      n.querySelector('input').checked).map((n) => n.querySelector('span').textContent);
     ok('PTEN Baseline and CTL Baseline ticked by default', JSON.stringify(pTicks.sort())
        === '["CTL Baseline","PTEN Baseline"]', JSON.stringify(pTicks));
+    const qRow = () => D().querySelector('.wf-pools .wf-set[data-pool="pQ"]');
+    qRow().querySelector('.wf-vbtn').click();
+    await until(() => D().querySelector('.vpop .vtree-row'), 3000, 'the tree');
+    ok('each pool has its version in its row; pressed, its tree, and its tick left alone',
+       qRow().querySelector('input').checked);
+    D().querySelector('.vpop .vtree-row[data-v="1"]').click();
+    await until(() => /^v1/.test(qRow().querySelector('.wf-vbtn').textContent), 3000, 'the pick');
+    const vbD = D().querySelector('.wf-builder .wf-in-ds');
+    ok('the borrowed workflow is a button saying it and its run: its last run by default',
+       !!vbD && vbD.dataset.id === 'wDS' && vbD.dataset.v === '2' && /^Harness DSv2/.test(vbD.textContent),
+       vbD && vbD.textContent);
+    vbD.click();
+    await until(() => D().querySelector('.wf-pick-dlg .wf-pick-vers .vtree-row'), 3000, 'the picker');
+    const wRows = Array.from(D().querySelectorAll('.wf-pick-dlg .wf-pick-row')).map((r) => r.dataset.id);
+    const r1 = D().querySelector('.wf-pick-dlg .wf-pick-vers .vtree-row[data-v="1"]');
+    ok('pressed: the DS workflows only, and a version that holds no run is shown and cannot be picked, with why',
+       JSON.stringify(wRows) === '["wDS"]' && !!r1 && r1.disabled && /holds no border/.test(r1.textContent),
+       JSON.stringify(wRows) + ' ' + (r1 && r1.textContent));
+    btn(/^Use this version$/, D().querySelector('.wf-pick-dlg')).click();
+    await until(() => !D().querySelector('.wf-pick-dlg'), 3000, 'closed');
     btn(/^Preview$/, D().querySelector('.wf-builder')).click();
     await until(() => sent().filter((x) => x[0] === 'preview').length > nPv3, 4000, 'the preview');
     const pv2 = sent().filter((x) => x[0] === 'preview').pop()[1];
-    ok('the preview asks for the two pools as one, coloured also by the verified borders',
+    ok('the preview asks for the two pools as one, CTL’s v1, coloured also by the verified borders’ runs',
        pv2.kind === 'pca' && JSON.stringify(pv2.pools.map((p) => p.artifact_id).sort()) === '["pP","pQ"]'
-       && pv2.uses && pv2.uses.ds.artifact_id === 'wDS' && pv2.uses.pspike.artifact_id === 'wP',
-       JSON.stringify(pv2));
+       && pv2.pools.find((p) => p.artifact_id === 'pQ').version === 1
+       && pv2.uses && pv2.uses.ds.artifact_id === 'wDS' && pv2.uses.ds.version === 2
+       && pv2.uses.pspike.artifact_id === 'wP', JSON.stringify(pv2));
     await until(() => /Preview · nothing saved/.test((D().querySelector('.wf-detail') || {}).textContent || '')
                 && inked(D().querySelector('.wf-pca')) > 3000, 4000, 'the PCA preview');
     ok('and the preview is the PCA, with the 3D beside it', inked(D().querySelector('.wf-pca')) > 3000
@@ -1129,20 +1469,29 @@ FIX.pcaRow = row('wPCA', 'pca', RUN_PCA);
        + '   archived_at: "2026-11-06T00:00:00Z" } };'
        + ' window.__wfMem.rootcanal_pool_in = { pC: "fz" }');
     btn(/^New workflow$/).click();
-    await until(() => D().querySelector('.wf-builder select'), 6000, 'the builder');
-    const optsOf = () => Array.from(D().querySelectorAll('.wf-builder select')[0].options)
-      .map((o) => [o.value, o.textContent]);
-    ok('an archived pool, and one in an archived folder, are not offered',
-       !optsOf().some(([v]) => v === 'pX' || v === 'pC') && optsOf().some(([v]) => v === 'pQ'),
-       JSON.stringify(optsOf()));
-    ok('Show archived pools · 2 offers them', !!btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')));
-    btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')).click();
-    await until(() => optsOf().some(([v]) => v === 'pX'), 4000, 'shown');
-    ok('shown, each says why it was out of sight',
-       optsOf().some(([v, t]) => v === 'pX' && / · archived$/.test(t))
-       && optsOf().some(([v, t]) => v === 'pC' && / · in an archived folder$/.test(t)),
-       JSON.stringify(optsOf()));
+    await until(() => D().querySelector('.wf-builder .wf-in-source'), 6000, 'the builder');
+    D().querySelector('.wf-builder .wf-in-source').click();
+    await until(() => D().querySelector('.wf-pick-dlg .wf-pick-row'), 3000, 'the picker');
+    const liveOf = () => Array.from(D().querySelectorAll('.wf-pick-dlg .wf-pick-list > .wf-pick-group .wf-pick-row'))
+      .map((r) => r.dataset.id);
+    ok('an archived pool, and one in an archived folder, are not among the pools offered',
+       !liveOf().some((v) => v === 'pX' || v === 'pC') && liveOf().includes('pQ'), JSON.stringify(liveOf()));
+    const drawer = D().querySelector('.wf-pick-dlg .arch-toggle');
+    ok('they are in the drawer under them', !!drawer && /Show 2 archived pools/.test(drawer.textContent),
+       drawer && drawer.textContent);
+    drawer.click();
+    await until(() => D().querySelector('.wf-pick-dlg .arch-body .wf-pick-row'), 3000, 'the drawer');
+    const inDrawer = Array.from(D().querySelectorAll('.wf-pick-dlg .arch-body .wf-pick-row')).map((r) =>
+      [r.dataset.id, (r.querySelector('.flagchip') || {}).textContent]);
+    ok('opened, each says why it was out of sight',
+       inDrawer.some(([v, t]) => v === 'pX' && t === 'archived')
+       && inDrawer.some(([v, t]) => v === 'pC' && t === 'in an archived folder'), JSON.stringify(inDrawer));
+    btn(/^Cancel$/, D().querySelector('.wf-pick-dlg')).click();
+    await until(() => !D().querySelector('.wf-pick-dlg'), 3000, 'closed');
+    ok('Show archived pools is for Pooled PCA’s list alone', !btn(/^Show archived pools/, D().querySelector('.wf-builder')));
     btn(/^Pooled PCA$/, D().querySelector('.wf-builder')).click();
+    await until(() => btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')), 4000, 'its button');
+    btn(/^Show archived pools · 2$/, D().querySelector('.wf-builder')).click();
     await until(() => D().querySelector('.wf-pools .wf-set[data-pool="pX"]'), 4000, 'the pools');
     const lx = D().querySelector('.wf-pools .wf-set[data-pool="pX"]');
     ok('in the PCA’s pools too, faded, with Put back', lx.classList.contains('archived')

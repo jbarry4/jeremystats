@@ -61,6 +61,12 @@ BARRY.rcWorkflow = (function () {
      hull). backend/rcborder.py draws them; this draws what it drew. */
   const SHAPES = [['box', 'Box'], ['ellipsoid', 'Scoop'], ['hull', 'Snap']];
   const SHAPE_WORD = { box: 'Box', ellipsoid: 'Scoop', hull: 'Snap' };
+  /* THE SCOOP IS RETIRED (2026-11-12: "retire and archive all the scoop
+     stuff... like the data and the option in the workflow"). Its runs were
+     archived, not deleted, and still draw when shown; it is no longer
+     offered for a new border, and the server refuses one. */
+  const RETIRED = { ellipsoid: 'The scoop was retired on 2026-11-12. Pick the box or the snap.' };
+  const SHAPES_OFFERED = SHAPES.filter(([k]) => !RETIRED[k]);
   const FOLDER_KEY = 'rootcanal_workflow_in';
   const FOLDER_OPEN_KEY = 'barry.rcworkflow.folders';
 
@@ -71,7 +77,9 @@ BARRY.rcWorkflow = (function () {
     openId: null, openVersion: null, stage: 'apply',
     builder: null, prep: null, preview: null,
     showArchived: false,
-    view: { yaw: -0.65, pitch: 0.42, zoom: 1 },
+    // `at`: the frame's point at the 3D canvas's middle, in its -1..1 units
+    // (moved by shift+drag, zoomed toward by the wheel); `key`: whose view.
+    view: { yaw: -0.65, pitch: 0.42, zoom: 1, at: [0, 0, 0], key: null },
     picked: null,        // {which: 'src'|'tgt', n}
     ev: null,            // the picked event's traces: {busy, data, err}
     avg: null,           // {label, busy, data, err}
@@ -224,6 +232,10 @@ BARRY.rcWorkflow = (function () {
 
   /* The run on show: a preview, or the open workflow's chosen version. */
   function shownRun() {
+    return haloView(shownBase());
+  }
+  /* The run as saved, before the Halo on the page re-sorts it. */
+  function shownBase() {
     if (W.preview) return W.preview.run;
     const d = W.openId && W.data[W.openId];
     return d && d.payload ? d.payload.run : null;
@@ -261,15 +273,54 @@ BARRY.rcWorkflow = (function () {
   const measured = (p) => finite(p.amp) && finite(p.hf) && finite(p.hw);
 
   /* One frame for every picture of a run: every axis spans the same values
-     in every stage, so a box does not seem to move when the stage does. */
-  function rangesOf(run) {
+     in every stage, so a box does not seem to move when the stage does.
+     EVERY BORDER WHOLE (2026-11-12: "the borders in the 2D graph get cut
+     off"): the dots set the frame, from their 0.5% to their 99.5%, and it
+     then grows to hold every border of `kind`, solid and dashed alike; a
+     border's own events can reach past the target's. A grown copy of a
+     border (`halo`) never widens it: the pictures clip that instead. With
+     no `kind`, the dots alone. */
+  function borderExtents(run, kind) {
+    const ext = {};
+    const take = (i, v) => {
+      if (!finite(v)) return;
+      const c = AX[i][0];
+      const e = ext[c] || (ext[c] = [v, v]);
+      if (v < e[0]) e[0] = v;
+      if (v > e[1]) e[1] = v;
+    };
+    let boxes = [];
+    // A border that cannot be read leaves the dots' frame, not no picture.
+    try { boxes = boxesOf(run, kind) || []; } catch (e) { boxes = []; }
+    for (const b of boxes) {
+      if (!b || b.halo) continue;
+      const sh = b.shape;
+      if (sh && sh.kind === 'hull') {
+        for (const v of sh.vertices || []) for (let i = 0; i < 3; i++) take(i, v && v[i]);
+      } else if (sh && sh.kind === 'ellipsoid' && sh.center) {
+        for (let i = 0; i < 3; i++) {
+          const r = sh.M && sh.M[i] ? Math.sqrt(Math.max(0, sh.M[i][i]))
+            : Math.sqrt((sh.axes || []).reduce((s, a) => s + (a && finite(a[i]) ? a[i] * a[i] : 0), 0));
+          take(i, sh.center[i] - r);
+          take(i, sh.center[i] + r);
+        }
+      }
+      AX.forEach(([c], i) => { take(i, (b.lo || {})[c]); take(i, (b.hi || {})[c]); });
+    }
+    return ext;
+  }
+
+  function rangesOf(run, kind) {
     const all = pointsOf(run.cols).concat(pointsOf(run.src_cols));
+    const ext = kind ? borderExtents(run, kind) : {};
     const out = {};
     for (const [c] of AX) {
       const v = all.map((p) => p[c]).filter(finite).sort((a, b) => a - b);
-      if (!v.length) { out[c] = [0, 1]; continue; }
+      const e = ext[c];
+      if (!v.length && !e) { out[c] = [0, 1]; continue; }
       const q = (f) => v[Math.min(v.length - 1, Math.max(0, Math.floor(f * (v.length - 1))))];
-      let lo = q(0.005), hi = q(0.995);
+      let lo = v.length ? q(0.005) : e[0], hi = v.length ? q(0.995) : e[1];
+      if (e) { lo = Math.min(lo, e[0]); hi = Math.max(hi, e[1]); }
       if (hi <= lo) { lo -= 1; hi += 1; }
       const pad = (hi - lo) * 0.06;
       out[c] = [lo - pad, hi + pad];
@@ -310,6 +361,32 @@ BARRY.rcWorkflow = (function () {
       add(b.ds && b.ds.border, b.ds && b.ds.grace, tok('--call-ds'), 'DS');
       add(b.pspike && b.pspike.border, b.pspike && b.pspike.grace,
           tok('--call-p'), 'P-spike');
+      // THE HALOS (2026-11-12): each solid border grown `reach` times about
+      // the centre its gauge is measured from, dotted. Never part of the
+      // frame (borderExtents skips `halo`), so a wide one is clipped.
+      const H0 = kind === 'ambiguous' && run.halo;
+      if (H0 && H0.centres) {
+        const R = Number(H0.reach);
+        for (const [side, words] of [['ds', 'DS'], ['pspike', 'P-spike']]) {
+          const solid = out.find((x) => !x.dashed && x.label.indexOf(words + ' ') === 0);
+          const c = H0.centres[side];
+          if (!solid || !c) continue;
+          const grow = (v, k) => c[k] + R * (v - c[k]);
+          const lo = {}, hi = {};
+          AX.forEach(([col], k) => { lo[col] = grow(solid.lo[col], k); hi[col] = grow(solid.hi[col], k); });
+          let shape = null;
+          if (solid.shape && solid.shape.kind === 'hull') {
+            shape = Object.assign({}, solid.shape, {
+              vertices: (solid.shape.vertices || []).map((v) => v.map((x, k) => grow(x, k))) });
+          } else if (solid.shape && solid.shape.kind === 'ellipsoid') {
+            shape = Object.assign({}, solid.shape, {
+              M: solid.shape.M.map((row) => row.map((x) => x * R * R)),
+              axes: solid.shape.axes.map((a) => a.map((x) => x * R)) });
+          }
+          out.push({ lo, hi, colour: solid.colour, dashed: true, dash: [2, 4], halo: true,
+                     shape, label: words + ' halo: its border grown ' + R + '× about its centre' });
+        }
+      }
     } else {
       add(run.border, run.grace, kind === 'ds' ? tok('--call-ds') : tok('--call-p'),
           kind === 'ds' ? 'DS' : 'P-spike');
@@ -325,6 +402,11 @@ BARRY.rcWorkflow = (function () {
     if (kind === 'ambiguous' || kind === 'pca') {
       return cls === 'ds' ? DS : (cls === 'pspike' || cls === 'ied') ? P
         : cls === 'both' ? tok('--call-amb') : cls === 'neither' ? tok('--call-amb-2')
+        // THE HALO (2026-11-12): captured, the side's colour paled toward
+        // the ground; the extended zone, the paler purple; beyond both
+        // halos, grey.
+        : cls === 'halo_ds' ? paler(DS) : cls === 'halo_pspike' ? paler(P)
+        : cls === 'halo_amb' ? tok('--call-amb-2')
         : tok('--text-3');
     }
     const grp = kind === 'ds' ? DS : P;
@@ -344,7 +426,284 @@ BARRY.rcWorkflow = (function () {
     both: 'inside both borders', neither: 'outside both borders',
     partial: 'missing a number: not judged by the grace',
     null: 'not measured',
+    halo_ds: 'outside both, captured by the DS halo',
+    halo_pspike: 'outside both, captured by the P-spike halo',
+    halo_amb: 'outside both, in the extended ambiguous zone',
+    halo_far: 'outside both, beyond both halos',
   };
+
+  /* ==================================================================
+     THE HALO (2026-11-12: "capture outside both ... some of them clearly
+     fall on the P-spike side, and some clearly on the DS side ... and have
+     ones that once again fall on the extended ambiguous zone"). An option
+     of an Ambiguous run's Apply stage. Each event carries its gauge against
+     each border (ga: DS, gb: P-spike): how far out it is in that border's
+     own size, 1 on the border, 2 twice as far from its centre as the
+     border reaches. Of the events outside both:
+       captured     within a halo (gauge <= reach) and `margin` times
+                    nearer that border than the other;
+       extended     within a halo, near both: still ambiguous;
+       far out      beyond both halos.
+     The same rule as rcworkflow.halo_class; a saved halo is the server's.
+     Tried here live, on a copy of the run; saved as the next version.
+     ================================================================== */
+  const HALO_DEFAULT = { reach: 2, margin: 1.5 };
+  const HALO_WORDS = { halo_ds: 'captured DS', halo_pspike: 'captured P-spike',
+                       halo_amb: 'extended ambiguous', halo_far: 'far out' };
+  const AMB_KEPT = new Set(['both', 'neither', 'halo_amb', 'halo_far']);
+  function haloClass(c, ga, gb, R, M) {
+    if (c !== 'neither' || !finite(ga) || !finite(gb)) return c;
+    if (ga <= R && gb >= M * ga) return 'halo_ds';
+    if (gb <= R && ga >= M * gb) return 'halo_pspike';
+    if (Math.min(ga, gb) <= R) return 'halo_amb';
+    return 'halo_far';
+  }
+  /* The classes an Ambiguous run is told in, with its halo or without. */
+  const ambClasses = (run) => (run && run.halo
+    ? ['ds', 'halo_ds', 'pspike', 'halo_pspike', 'both', 'halo_amb', 'halo_far']
+    : ['ds', 'pspike', 'both', 'neither']);
+  const ambKept = (run) => (run && run.halo ? ['both', 'halo_amb', 'halo_far']
+    : ['both', 'neither']);
+
+  /* A colour paled toward the ground: a canvas reads any CSS colour back
+     as #rrggbb, so a theme's var() or name works too. */
+  const PALE = new Map();
+  function paler(c, f) {
+    const k = c + '|' + (f || 0.5) + '|' + tok('--bg');
+    if (PALE.has(k)) return PALE.get(k);
+    const g = document.createElement('canvas').getContext('2d');
+    const rgb = (x) => {
+      g.fillStyle = '#000'; g.fillStyle = x;
+      const s = String(g.fillStyle);
+      if (s[0] === '#') return [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
+      const m = s.match(/[\d.]+/g) || [0, 0, 0];
+      return m.slice(0, 3).map(Number);
+    };
+    const a = rgb(c), b = rgb(tok('--bg', '#ffffff')), t = f || 0.5;
+    const out = 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')';
+    PALE.set(k, out);
+    return out;
+  }
+
+  /* The Halo's state, for the run on show: on or off, its reach and
+     margin, and the gauges of a run saved before runs kept them. */
+  function haloState(base) {
+    if (!W.halo || W.halo.base !== base) {
+      const h = (base && base.halo) || null;
+      W.halo = { base, on: !!h, reach: h ? Number(h.reach) : HALO_DEFAULT.reach,
+                 margin: h ? Number(h.margin) : HALO_DEFAULT.margin,
+                 got: W.halo && W.halo.got && W.halo.gotFor === base ? W.halo.got : null,
+                 gotFor: W.halo && W.halo.gotFor === base ? base : null,
+                 busy: false, err: null, view: null };
+    }
+    return W.halo;
+  }
+  function haloGauges(base) {
+    const c = base.cols || {};
+    if (c.ga && c.gb && base.halo_centres) {
+      return { ga: c.ga, gb: c.gb, centres: base.halo_centres };
+    }
+    const H0 = W.halo;
+    return H0 && H0.gotFor === base ? H0.got : null;
+  }
+  /* The run as the Halo would leave it: a copy, its classes re-sorted. A
+     saved halo turned off shows the classes from before it. */
+  function haloView(base) {
+    if (!base || !base.borders || !base.cols || base.pools) return base;
+    const S = haloState(base);
+    const col = base.cols;
+    const plain = col.cls_plain || col.cls;
+    const gg = S.on ? haloGauges(base) : null;
+    const key = S.on && gg ? S.reach + '|' + S.margin : (S.on ? 'wait' : 'off');
+    if (S.view && S.view.key === key) return S.view.run;
+    let run;
+    if (S.on && gg) {
+      const cls = plain.map((c, j) => haloClass(c, gg.ga[j], gg.gb[j], S.reach, S.margin));
+      const counts = {};
+      for (const c of cls) counts[String(c)] = (counts[String(c)] || 0) + 1;
+      const saved = base.halo && Number(base.halo.reach) === S.reach
+        && Number(base.halo.margin) === S.margin;
+      run = Object.assign({}, base, {
+        cols: Object.assign({}, col, { cls, ga: gg.ga, gb: gg.gb }),
+        counts,
+        halo: { reach: S.reach, margin: S.margin, centres: gg.centres,
+                saved: !!saved, words: saved ? base.halo.words : null } });
+    } else if (!S.on && col.cls_plain) {
+      const counts = {};
+      for (const c of plain) counts[String(c)] = (counts[String(c)] || 0) + 1;
+      run = Object.assign({}, base, { cols: Object.assign({}, col, { cls: plain }),
+                                      counts, halo: null });
+    } else if (S.on && base.halo) {
+      // A saved halo whose gauges are on their way: its own classes.
+      run = Object.assign({}, base, { cols: Object.assign({}, col, {
+        cls: col.cls.map((c) => (c === 'neither' ? 'halo_far' : c)) }) });
+    } else {
+      run = base;
+    }
+    S.view = { key, run };
+    return run;
+  }
+  async function haloFetch(base) {
+    const S = haloState(base);
+    if (haloGauges(base) || S.busy || W.preview || !W.openId) return;
+    S.busy = true;
+    try {
+      const d = W.data[W.openId] || {};
+      const v = d.shown || d.version;
+      const got = await api('/api/rootcanal/workflow/' + encodeURIComponent(W.openId)
+                            + '/halo' + (v != null ? '?version=' + v : ''));
+      S.got = { ga: got.ga, gb: got.gb, centres: got.centres };
+      S.gotFor = base;
+      S.view = null;
+    } catch (e) {
+      S.err = e.message;
+    }
+    S.busy = false;
+    refresh();
+  }
+  async function haloSave(view) {
+    const d = W.data[W.openId] || {};
+    const v = d.shown || d.version;
+    const S = W.halo;
+    const words = view.halo ? 'reach ' + S.reach + '×, margin ' + S.margin + '×' : 'off';
+    const note = window.prompt('A note for this version (the halo, ' + words
+      + ', is said in it already):', '');
+    if (note === null) return;
+    W.busy = 'Saving the halo';
+    refresh();
+    try {
+      const out = await apiPost('/api/rootcanal/workflow/' + encodeURIComponent(W.openId)
+        + '/halo', view.halo ? { version: v, reach: S.reach, margin: S.margin, note }
+        : { version: v, off: true, note });
+      toast('Saved as v' + out.version + ': ' + (view.halo ? 'the halo applied.'
+        : 'the halo taken off.'), 'ok', 6000);
+      W.busy = null;
+      await loadList();
+      await loadOne(W.openId, out.version);
+    } catch (e) {
+      W.busy = null;
+      toast('The halo could not be saved: ' + e.message, 'err', 9000);
+      refresh();
+    }
+  }
+  /* The Apply stage's Halo card: on or off, reach and margin, what each
+     setting does to the events outside both, and Save. */
+  function haloCard(base, run) {
+    const S = haloState(base);
+    if (S.on && !haloGauges(base) && !S.busy && !S.err) haloFetch(base);
+    const c = run.counts || {};
+    const n = (k) => (c[k] || 0).toLocaleString();
+    const outside = ['neither', 'halo_ds', 'halo_pspike', 'halo_amb', 'halo_far']
+      .reduce((s, k) => s + (c[k] || 0), 0);
+    // While a slider moves only its number and the counts change in place
+    // (rebuilding the card mid-drag would drop the drag); the pictures
+    // follow when it is let go.
+    const slider = (key, label, min, max, step, words) => el('label', { class: 'wf-halo-sl' }, [
+      el('span', { class: 'wf-b-l', text: label }),
+      el('input', { type: 'range', min, max, step, value: S[key],
+        class: 'wf-halo-' + key, disabled: S.on ? null : 'disabled',
+        oninput: (e) => {
+          S[key] = Number(e.target.value); S.view = null;
+          const out = e.target.parentNode.querySelector('b');
+          if (out) out.textContent = S[key] + '×';
+          const v = haloView(base), cc = v.counts || {};
+          const card = e.target.closest('.wf-halo');
+          for (const b of card ? card.querySelectorAll('.wf-halo-counts b[data-k]') : []) {
+            b.textContent = (cc[b.dataset.k] || 0).toLocaleString();
+          }
+        },
+        onchange: () => refresh() }),
+      el('b', { text: S[key] + '×' }),
+      el('span', { class: 'hint', text: words })]);
+    const saved = base.halo;
+    const same = saved && S.on && Number(saved.reach) === S.reach
+      && Number(saved.margin) === S.margin;
+    const dirty = S.on ? !same : !!saved;
+    return el('div', { class: 'card wf-halo' + (S.on ? ' on' : '') }, [
+      el('div', { class: 'wf-halo-head' }, [
+        el('strong', { text: 'Halo' }),
+        el('span', { class: 'hint', text: 'Capture the events outside both borders '
+          + 'that clearly lean one way.' }),
+        BARRY.ui.seg([['off', 'Off'], ['on', 'On']], S.on ? 'on' : 'off',
+          (v) => { S.on = v === 'on'; S.view = null; refresh(); }, { extra: 'wf-halo-seg' }),
+        saved ? BARRY.ui.chip('this version: halo ' + saved.reach + '× / ' + saved.margin + '×')
+          : null,
+      ].filter(Boolean)),
+      el('p', { class: 'hint', text: 'Each border is grown into a dotted halo about its '
+        + 'own centre. An event outside both goes to a side when it is inside that '
+        + 'side’s halo and clearly nearer that border than the other, each measured in '
+        + 'its own border’s size. Inside a halo but near both, it stays ambiguous (the '
+        + 'extended zone); beyond both halos, it is far out. Inside a border, or both, '
+        + 'is left as it was.' }),
+      el('div', { class: 'wf-halo-sls' }, [
+        slider('reach', 'Reach', 1.1, 4, 0.1, 'how far out a halo goes, in its '
+          + 'border’s size (2× = twice as far from the centre as the border reaches)'),
+        slider('margin', 'Margin', 1, 3, 0.05, 'how many times nearer one border '
+          + 'than the other an event must be to be captured'),
+      ]),
+      S.on && S.busy ? loader('Measuring each event against both borders') : null,
+      S.err ? el('p', { class: 'hint wf-warn', text: 'The gauges could not be read: ' + S.err }) : null,
+      S.on && run.halo ? el('div', { class: 'wf-halo-counts' }, [
+        el('span', { text: 'Of ' + outside.toLocaleString() + ' outside both:' }),
+        ...['halo_ds', 'halo_pspike', 'halo_amb', 'halo_far'].map((k) =>
+          el('span', { class: 'wf-lg' }, [
+            el('i', { class: 'wf-lg-dot', style: 'background:' + colourOf('ambiguous', k) }),
+            el('span', { text: HALO_WORDS[k] }), el('b', { text: n(k), 'data-k': k })])),
+      ]) : null,
+      !W.preview ? el('div', { class: 'wf-halo-foot' }, [
+        BARRY.ui.button({ kind: dirty ? 'primary' : 'ghost', size: 'sm', extra: 'wf-halo-save',
+          text: S.on ? 'Save with this halo' : 'Save without the halo',
+          disabled: !dirty || (S.on && !run.halo) || !!W.busy ? 'disabled' : null,
+          title: 'The run with the halo applied, as this workflow’s next version, '
+                 + 'saying so in its note.',
+          onclick: () => haloSave(run) }),
+        el('span', { class: 'hint', text: dirty ? 'Saving makes the next version; this one '
+          + 'stays as it is.' : (saved ? 'Saved with this halo.' : 'Turn it on to try it.') }),
+        // A side, banked whole: one border alone and what its halo captured.
+        saved && !dirty ? BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'wf-halo-bank-ds',
+          text: 'Bank the DS side…', disabled: W.busy ? 'disabled' : null,
+          onclick: () => bankSide('ds', run) }) : null,
+        saved && !dirty ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          extra: 'wf-halo-bank-p', text: 'Bank the P-spike side…',
+          disabled: W.busy ? 'disabled' : null,
+          onclick: () => bankSide('pspike', run) }) : null,
+      ].filter(Boolean)) : el('p', { class: 'hint', text: 'Save the workflow first; the '
+        + 'halo is tried on a saved run.' }),
+    ].filter(Boolean));
+  }
+  /* One side of a halo'd run into the Bank as one entry: the border's own
+     events and the ones its halo captured. */
+  async function bankSide(side, run) {
+    const d = W.data[W.openId] || {};
+    const v = d.shown || d.version;
+    const row = (W.list || []).find((r) => r.artifact_id === W.openId) || {};
+    const c = run.counts || {};
+    const own = c[side] || 0, cap = c['halo_' + side] || 0;
+    const word = side === 'ds' ? 'DS' : 'P-spike';
+    await BARRY.ui.bankDialog({
+      title: 'Bank the ' + word + ' side of ‘' + (row.nickname || '') + '’ v' + v,
+      name: (side === 'ds' ? 'Dentate spikes' : 'P-spikes') + ' · ' + (row.nickname || '')
+        + ' · halo ' + run.halo.reach + '×/' + run.halo.margin + '×',
+      what: 'Banks the ' + (own + cap).toLocaleString() + ' events on the ' + word
+        + ' side as ONE Event Bank entry: ' + own.toLocaleString() + ' inside the '
+        + word + ' border only, and ' + cap.toLocaleString() + ' outside both that the '
+        + word + ' halo captured (reach ' + run.halo.reach + '×, margin '
+        + run.halo.margin + '×).',
+      facts: [
+        'Inside both, the extended ambiguous zone and the far out ones stay out.',
+        'Type ' + (side === 'ds' ? 'Dentate spike' : 'P-spike') + ', pipeline “Root Canal '
+          + 'workflow”: a border’s and a halo’s call, not a person’s, so not marked curated.',
+        'Each event says which recording and set it came from; the entry names this '
+          + 'workflow version, its borders and its halo.',
+      ],
+      okText: 'Bank ' + (own + cap).toLocaleString() + ' events',
+      onBank: async (b) => {
+        const out = await apiPost('/api/rootcanal/workflow/' + encodeURIComponent(W.openId)
+          + '/bank', { version: v, side, name: b.name, note: b.note });
+        toast('Banked ' + out.n.toLocaleString() + ' events as ‘' + b.name + '’.', 'ok', 7000);
+      },
+    });
+  }
 
   /* A Pooled PCA's dot, by the call chosen to colour it: the one pool's
      ('ds' / 'ied'), each pool's own, or the verified borders' classes. */
@@ -542,7 +901,7 @@ BARRY.rcWorkflow = (function () {
     const pts = pointsOf(run.cols);
     if (stage === 'extract') {
       const keep = kind === 'ambiguous'
-        ? (p) => p.cls === 'both' || p.cls === 'neither'
+        ? (p) => AMB_KEPT.has(p.cls)
         : (p) => p.cls === 'inside';
       return { which: 'tgt', pts, keep };
     }
@@ -562,7 +921,7 @@ BARRY.rcWorkflow = (function () {
      two), so its Define is the target's, and says so. A Pooled PCA has no
      stages and is not asked. */
   const isKept = (kind) => (kind === 'ambiguous'
-    ? (p) => p.cls === 'both' || p.cls === 'neither'
+    ? (p) => AMB_KEPT.has(p.cls)
     : (p) => p.cls === 'inside');
 
   function panelSet(run, kind, stage) {
@@ -716,13 +1075,20 @@ BARRY.rcWorkflow = (function () {
     if (!s0) return;
     const { g, w, h } = s0;
     const view = o.view || W.view;
-    const R = o.ranges || rangesOf(run);
+    const R = o.ranges || rangesOf(run, kind);
     // A narrow one (Pooled PCA's, beside its 2D) a little smaller, so its
     // axis names have room around it.
     const scale = Math.min(w * 0.8, h) * (o.small ? 0.36 : w < 560 ? 0.27 : 0.31)
       * (view.zoom || 1);
     const cx = w / 2, cy = h / 2 + (o.small ? 4 : 0);
-    const P = (a, b, c) => project([a, b, c], view, scale, cx, cy);
+    // ZOOMED AND MOVED (2026-11-12): `at` is the frame's point drawn at the
+    // canvas's middle, so turning turns about what is being looked at. A
+    // thumbnail's own view has none: the frame's middle.
+    const at = Array.isArray(view.at) && view.at.length === 3 ? view.at : null;
+    const P = at ? (a, b, c) => project([a - at[0], b - at[1], c - at[2]], view, scale, cx, cy)
+                 : (a, b, c) => project([a, b, c], view, scale, cx, cy);
+    // What wire3d zooms and moves by: this drawing's own numbers.
+    cv.__view3 = { w, h, s: scale, cx, cy };
     const depth = (a, b, c) => P(a, b, c)[2];
     // Which edges face the viewer: the ticks go on those.
     const zf = depth(0, -1, 1) > depth(0, -1, -1) ? 1 : -1;      // front, along amp
@@ -771,7 +1137,7 @@ BARRY.rcWorkflow = (function () {
       g.textAlign = 'center';
       tickAlong(niceTicks(R.amp[0], R.amp[1], 5), ampEdge, [0, 15]);
       tickAlong(niceTicks(R.hw[0], R.hw[1], 4), hwEdge, [0, 15]);
-      const hfLeft = P(-xf, 0, zf)[0] < cx;
+      const hfLeft = P(-xf, 0, zf)[0] < P(0, 0, 0)[0];
       g.textAlign = hfLeft ? 'right' : 'left';
       tickAlong(niceTicks(R.hf[0], R.hf[1], 4), hfEdge, [hfLeft ? -6 : 6, 3]);
       g.font = FONT(11, true);
@@ -780,10 +1146,13 @@ BARRY.rcWorkflow = (function () {
       const a0 = P(0, -1, zf), h0 = P(xf, -1, 0), f0 = P(-xf, 1, zf);
       const out = (q, dx, dy) => [q[0] + dx, q[1] + dy];
       const am = out(a0, 0, 32), hm = out(h0, 0, 32);
-      fitText(g, 'max amplitude · µV', am[0], am[1], w, h);
-      fitText(g, 'half-width · ms', hm[0], hm[1], w, h);
+      // Zoomed in, an axis whose edge has left the canvas loses its name,
+      // rather than having it pinned to the canvas's edge over the dots.
+      const onCv = (q) => q[0] > -80 && q[0] < w + 80 && q[1] > -80 && q[1] < h + 80;
+      if (onCv(am)) fitText(g, 'max amplitude · µV', am[0], am[1], w, h);
+      if (onCv(hm)) fitText(g, 'half-width · ms', hm[0], hm[1], w, h);
       g.textAlign = hfLeft ? 'right' : 'left';
-      fitText(g, 'HF power · dB', f0[0] + (hfLeft ? -6 : 6), f0[1] - 10, w, h);
+      if (onCv(f0)) fitText(g, 'HF power · dB', f0[0] + (hfLeft ? -6 : 6), f0[1] - 10, w, h);
       g.textAlign = 'left';
     }
     // The borders.
@@ -906,7 +1275,7 @@ BARRY.rcWorkflow = (function () {
     const sh = b.shape;
     g.strokeStyle = b.colour;
     g.lineWidth = b.dashed ? 1 : (small ? 1.1 : 1.5);
-    const dash = b.dashed ? [5, 4] : [];
+    const dash = b.dash || (b.dashed ? [5, 4] : []);
     if (sh.kind === 'ellipsoid') {
       const c = sh.center, A = sh.axes;
       const at = (u, v, w) => [0, 1, 2].map((k) => c[k] + u * A[0][k] + v * A[1][k] + w * A[2][k]);
@@ -991,7 +1360,7 @@ BARRY.rcWorkflow = (function () {
     const c = (i, j, k) => P(i ? hi[0] : lo[0], j ? hi[1] : lo[1], k ? hi[2] : lo[2]);
     g.strokeStyle = b.colour;
     g.lineWidth = b.dashed ? 1 : (small ? 1.3 : 2);
-    const dash = b.dashed ? [5, 4] : [];
+    const dash = b.dash || (b.dashed ? [5, 4] : []);
     // A faint fill on the solid box's floor, so it reads as a volume.
     if (!b.dashed && !small) {
       g.fillStyle = b.colour;
@@ -1017,20 +1386,30 @@ BARRY.rcWorkflow = (function () {
     const s0 = sized(cv, o.h || 190);
     if (!s0) return;
     const { g, w, h } = s0;
-    const R = o.ranges || rangesOf(run);
+    const R = o.ranges || rangesOf(run, kind);
     const wx = AX.find((a) => a[0] === xa), wy = AX.find((a) => a[0] === ya);
-    let X, Y;
+    let X, Y, box;
     if (o.small) {
       const L = 3, B = 3, T = 3, Rr = 3;
       X = (v) => L + ((v - R[xa][0]) / (R[xa][1] - R[xa][0])) * (w - L - Rr);
       Y = (v) => h - B - ((v - R[ya][0]) / (R[ya][1] - R[ya][0])) * (h - B - T);
       g.strokeStyle = tok('--line');
       g.strokeRect(L, T, w - L - Rr, h - B - T);
+      box = [L, T, w - L - Rr, h - B - T];
     } else {
       const F = axes2d(g, w, h, R[xa], R[ya], wx[2] + ' · ' + wx[3],
                        wy[2] + ' · ' + wy[3], { L: 44, B: 32 });
       X = F.X; Y = F.Y;
+      box = [F.L, F.T, w - F.L - F.R, h - F.B - F.T];
     }
+    // Nothing past the plot (2026-11-12): a dot beyond the frame, or a
+    // border's grown copy, is cut at its edge, never drawn over the axes.
+    g.save();
+    g.beginPath();
+    g.rect(box[0], box[1], box[2], box[3]);
+    g.clip();
+    const inBox = (q) => q[0] >= box[0] && q[0] <= box[0] + box[2]
+      && q[1] >= box[1] && q[1] <= box[1] + box[3];
     const set = stageSet(run, kind, stage);
     const pts = (o.only ? set.pts.filter(o.only) : set.pts).filter(measured);
     const r = o.small ? 1 : 1.6;
@@ -1050,7 +1429,7 @@ BARRY.rcWorkflow = (function () {
     for (const b of boxesOf(run, kind)) {
       g.strokeStyle = b.colour;
       g.lineWidth = b.dashed ? 1 : (o.small ? 1.2 : 1.8);
-      g.setLineDash(b.dashed ? [5, 4] : []);
+      g.setLineDash(b.dash || (b.dashed ? [5, 4] : []));
       if (b.shape) {
         shape2d(g, b, AX.findIndex((a) => a[0] === xa), AX.findIndex((a) => a[0] === ya), X, Y);
         g.setLineDash([]);
@@ -1070,8 +1449,10 @@ BARRY.rcWorkflow = (function () {
         g.lineWidth = 1;
       }
     }
+    g.restore();
+    // Only a dot on show can be picked: one cut off is not under the pointer.
     if (!o.small) cv.__pick = { which: set.which, pts: pts.filter((p) => set.keep(p))
-      .map((p) => ({ p, q: [X(p[xa]), Y(p[ya])] })) };
+      .map((p) => ({ p, q: [X(p[xa]), Y(p[ya])] })).filter((z) => inBox(z.q)) };
   }
 
   /* ---------- Pooled PCA ---------- */
@@ -1408,13 +1789,13 @@ BARRY.rcWorkflow = (function () {
   function flowOf(run, kind, stage) {
     if (kind === 'pca' || !stage) {
       return { rows: run.by_mouse || [],
-               classes: kind === 'ambiguous' ? ['ds', 'pspike', 'both', 'neither']
+               classes: kind === 'ambiguous' ? ambClasses(run)
                  : kind === 'pca' ? ['ds', 'ied'] : ['inside', 'outside'],
                dim: new Set(), words: (c) => shortClass(c, kind),
                colour: (c) => colourOf(kind, c, 'tgt') };
     }
     const S = panelSet(run, kind, stage);
-    const classes = kind === 'ambiguous' ? ['ds', 'pspike', 'both', 'neither']
+    const classes = kind === 'ambiguous' ? ambClasses(run)
                                          : ['inside', 'outside'];
     // Its own events missing a number: their own band, only when there are
     // any (2026-11-06), never "left outside by the grace".
@@ -1533,7 +1914,7 @@ BARRY.rcWorkflow = (function () {
   const shortClass = (c, kind) => (kind === 'pca' ? PCA_WORDS[c] : null)
     || ({ inside: 'inside', outside: 'outside', ds: 'DS only', pspike: 'P-spike only',
           both: 'both', neither: 'neither',
-          partial: 'missing a number: not judged by the grace' })[c] || c;
+          partial: 'missing a number: not judged by the grace' })[c] || HALO_WORDS[c] || c;
 
   /* ==================================================================
      Picking a dot
@@ -1563,35 +1944,104 @@ BARRY.rcWorkflow = (function () {
     if (p && xOpen()) openX(p);
   }
 
+  /* Moves the 3D picture by (dx, dy) screen pixels at `s` pixels to the
+     frame's unit: `at`, the point at the canvas's middle, slides along the
+     screen's own two directions at the view's turn. */
+  function shift3d(dx, dy, s) {
+    if (!(s > 0) || !isFinite(dx) || !isFinite(dy)) return;
+    const v = W.view;
+    const cyw = Math.cos(v.yaw), syw = Math.sin(v.yaw);
+    const cp = Math.cos(v.pitch), sp = Math.sin(v.pitch);
+    const ex = [cyw, 0, -syw], ey = [-syw * sp, cp, -cyw * sp];
+    const at = Array.isArray(v.at) && v.at.length === 3 ? v.at : [0, 0, 0];
+    v.at = at.map((a, i) => Math.max(-3, Math.min(3, a - (dx / s) * ex[i] + (dy / s) * ey[i])));
+  }
+
+  const ZOOM3D = [0.4, 20];
+  let tap3d = null;      // the last plain click on a 3D canvas: {t, x, y}
+
   /* Turned by dragging, on the canvas's own pointer: nothing is left
-     listening on the window when the canvas is rebuilt. */
+     listening on the window when the canvas is rebuilt.
+     ZOOM WHERE YOU POINT (2026-11-12: "on the 3D graph you can only zoom
+     into the center and not a specific region"): the wheel zooms about the
+     point under the pointer, which stays where it is; shift+drag, or a drag
+     with the right or middle button, moves the picture; a double-click
+     puts the zoom and the move back. A plain drag still turns it, and a
+     click that does not move still picks a dot. */
   function wire3d(cv, run, kind, stage) {
+    // Another workflow opened: its own frame, not zoomed into the last one's.
+    const key = (W.preview ? 'preview' : String(W.openId)) + '|' + kind;
+    if (W.view.key !== key) { W.view.key = key; W.view.zoom = 1; W.view.at = [0, 0, 0]; }
+    const home = () => {
+      W.view.zoom = 1;
+      W.view.at = [0, 0, 0];
+      draw3d(cv, run, kind, stage);
+    };
     let drag = null;
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
+    // No scrolling by the middle button over the picture: it moves it.
+    cv.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
     cv.addEventListener('pointerdown', (e) => {
-      drag = { x: e.clientX, y: e.clientY, yaw: W.view.yaw, pitch: W.view.pitch,
-               moved: false };
+      if (e.button === 1) e.preventDefault();
+      const move = e.shiftKey || e.button === 1 || e.button === 2;
+      drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY,
+               yaw: W.view.yaw, pitch: W.view.pitch, move, button: e.button, moved: false };
+      if (move) cv.style.cursor = 'move';
       try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
     });
     cv.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-      W.view.yaw = drag.yaw + dx * 0.008;
-      W.view.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + dy * 0.008));
+      if (drag.move) {
+        const v = cv.__view3;
+        if (v) shift3d(e.clientX - drag.lx, e.clientY - drag.ly, v.s);
+        drag.lx = e.clientX;
+        drag.ly = e.clientY;
+      } else {
+        W.view.yaw = drag.yaw + dx * 0.008;
+        W.view.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + dy * 0.008));
+      }
       draw3d(cv, run, kind, stage);
     });
+    const end = () => { drag = null; cv.style.cursor = ''; };
+    cv.addEventListener('pointercancel', end);
     cv.addEventListener('pointerup', (e) => {
       if (!drag) return;
       const was = drag;
-      drag = null;
-      if (!was.moved) {
-        const b = cv.getBoundingClientRect();
-        pickAt(cv, e.clientX - b.left, e.clientY - b.top);
+      end();
+      if (was.moved || was.button !== 0) return;
+      // A second click where the first was, soon after: a double-click,
+      // seen here too, as the first may have picked a dot and so rebuilt
+      // the canvas the browser's own double-click would go to.
+      const now = Date.now(), t = tap3d;
+      tap3d = { t: now, x: e.clientX, y: e.clientY };
+      if (t && now - t.t < 450 && Math.abs(e.clientX - t.x) + Math.abs(e.clientY - t.y) < 8) {
+        tap3d = null;
+        home();
+        return;
       }
+      const b = cv.getBoundingClientRect();
+      pickAt(cv, e.clientX - b.left, e.clientY - b.top);
     });
+    cv.addEventListener('dblclick', (e) => { e.preventDefault(); home(); });
     cv.addEventListener('wheel', (e) => {
       e.preventDefault();
-      W.view.zoom = Math.max(0.4, Math.min(4, W.view.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+      const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+      if (!d) return;
+      const z0 = W.view.zoom || 1;
+      const z1 = Math.max(ZOOM3D[0], Math.min(ZOOM3D[1],
+        z0 * Math.exp(-Math.max(-120, Math.min(120, d)) * 0.0018)));
+      if (z1 === z0) return;
+      W.view.zoom = z1;
+      // The point under the pointer stays put: everything else moves away
+      // from it (in) or toward it (out) by the zoom's change.
+      const v = cv.__view3;
+      if (v) {
+        const b = cv.getBoundingClientRect();
+        const f = z1 / z0;
+        shift3d((e.clientX - b.left - v.cx) * (1 - f), (e.clientY - b.top - v.cy) * (1 - f), v.s * f);
+      }
       draw3d(cv, run, kind, stage);
     }, { passive: false });
   }
@@ -2256,7 +2706,7 @@ BARRY.rcWorkflow = (function () {
     later(() => { draw3d(big, run, kind, st); });
     wire3d(big, run, kind, st);
     live.push(() => draw3d(big, run, kind, st));
-    const R = rangesOf(run);
+    const R = rangesOf(run, kind);
     const flats = [['amp', 'hf'], ['hf', 'hw'], ['amp', 'hw']].map(([xa, ya]) => {
       const cv = el('canvas', { class: 'wf-2d' });
       later(() => draw2d(cv, run, kind, st, xa, ya, { ranges: R }));
@@ -2309,11 +2759,14 @@ BARRY.rcWorkflow = (function () {
           + '. Run with the newest inputs to make the next version from them.' })
         : null,
       legend(run, kind, W.stage),
+      // THE HALO (2026-11-12), on the Apply stage of an Ambiguous run.
+      kind === 'ambiguous' && W.stage === 'apply' ? haloCard(shownBase(), run) : null,
       W.stage === 'extract' && kind !== 'ambiguous' ? bankCard(row, run, kind) : null,
       el('div', { class: 'wf-views' }, [
         el('div', { class: 'wf-3d-wrap' }, [big,
-          el('span', { class: 'hint', text: 'Drag to turn, scroll to zoom, click '
-                       + 'a dot to look at it.' })]),
+          el('span', { class: 'hint', text: 'Drag to turn it. Scroll to zoom in on '
+                       + 'the spot under the pointer; shift+drag or right-drag to move '
+                       + 'it; double-click to put it back. Click a dot to look at it.' })]),
         el('div', { class: 'wf-2d-col' }, flats),
       ]),
       inspector(run, kind),
@@ -2422,7 +2875,9 @@ BARRY.rcWorkflow = (function () {
           el('strong', { class: 'wf-side-h', text: 'The same events in 3D' }), side,
           el('span', { class: 'hint', text: 'Amplitude, HF power and half-width as '
             + 'measured, coloured the same. The two lines are PC1 (solid) and PC2 '
-            + '(dashed). Drag to turn, scroll to zoom, click a dot.' })]),
+            + '(dashed). Drag to turn it. Scroll to zoom in on the spot under the '
+            + 'pointer; shift+drag or right-drag to move it; double-click to put it '
+            + 'back. Click a dot to look at it.' })]),
       ]),
       inspector(run, 'pca'),
       el('div', { class: 'wf-panels' }, [
@@ -2441,7 +2896,7 @@ BARRY.rcWorkflow = (function () {
             const cv = el('canvas', { class: 'wf-flow' });
             later(() => drawFlow(cv, run, 'pca')); return cv; })()),
         panel('Every mouse', 'Each mouse on its own: amplitude across, HF up, '
-          + 'coloured as chosen above.', perMouse(run, 'pca', rangesOf(run))),
+          + 'coloured as chosen above.', perMouse(run, 'pca', rangesOf(run, 'pca'))),
       ]),
       d ? lineage(row, d) : null,
     ].filter(Boolean));
@@ -2569,7 +3024,9 @@ BARRY.rcWorkflow = (function () {
         + '’ at grace ' + graceWords((b.ds || {}).grace) + ', P-spike border from ‘'
         + (((b.pspike || {}).workflow) || {}).nickname + '’ at grace '
         + graceWords((b.pspike || {}).grace) + '. Ambiguous: outside both, or '
-        + 'inside both.';
+        + 'inside both.' + (run.halo ? ' Halo: reach ' + run.halo.reach + '×, margin '
+          + run.halo.margin + '×' + (run.halo.saved === false ? ', being tried, not saved.'
+            : ', saved with this version.') : '');
     }
     return run.rule || '';
   }
@@ -2590,10 +3047,21 @@ BARRY.rcWorkflow = (function () {
       cm ? null : el('i', { class: 'wf-lg-dot', style: 'background:' + colour }),
       el('span', { text }), c != null ? el('b', { text: cnt(c) }) : null].filter(Boolean));
     const box = (colour, dashed, text) => el('span', { class: 'wf-lg' }, [
-      el('i', { class: 'wf-lg-box' + (dashed ? ' dashed' : ''),
+      el('i', { class: 'wf-lg-box' + (dashed === 'dotted' ? ' dotted' : dashed ? ' dashed' : ''),
                 style: 'border-color:' + colour }), el('span', { text })]);
     const dots = [];
-    if (kind === 'ambiguous') {
+    if (kind === 'ambiguous' && run.halo) {
+      const A = (c) => colourOf('ambiguous', c);
+      dots.push(dot(A('ds'), 'DS border only', 'ds'),
+                dot(A('halo_ds'), 'outside both, captured by the DS halo', 'halo_ds'),
+                dot(A('pspike'), 'P-spike border only', 'pspike'),
+                dot(A('halo_pspike'), 'outside both, captured by the P-spike halo',
+                    'halo_pspike'),
+                dot(A('both'), 'inside both: ambiguous', 'both'),
+                dot(A('halo_amb'), 'outside both, near both halos: extended ambiguous',
+                    'halo_amb'),
+                dot(A('halo_far'), 'outside both, beyond both halos: far out', 'halo_far'));
+    } else if (kind === 'ambiguous') {
       dots.push(dot(tok('--call-ds'), 'DS border only', 'ds'),
                 dot(tok('--call-p'), 'P-spike border only', 'pspike'),
                 dot(tok('--call-amb'), 'inside both: ambiguous', 'both'),
@@ -2614,8 +3082,9 @@ BARRY.rcWorkflow = (function () {
                   dot(tok('--text-3'), 'outside the border', 'outside'));
       }
     }
-    const boxes = boxesOf(run, kind).map((b) => box(b.colour, b.dashed,
-      b.dashed ? b.label + (b.shape ? ' (the widest it gets)' : ' (the widest the box gets)') : b.label));
+    const boxes = boxesOf(run, kind).map((b) => box(b.colour, b.halo ? 'dotted' : b.dashed,
+      b.halo || !b.dashed ? b.label
+        : b.label + (b.shape ? ' (the widest it gets)' : ' (the widest the box gets)')));
     boxes.push(box(tok('--line'), false, 'frame: the axes, lowest to highest value on show'));
     return el('div', { class: 'wf-legend' }, [
       cm ? el('div', { class: 'wf-legend-row' }, [el('span', { class: 'wf-lg-h',
@@ -2669,7 +3138,11 @@ BARRY.rcWorkflow = (function () {
                                               el('strong', { text: n('both') })]),
       el('div', { class: 'wf-venn-c p' }, [el('span', { text: 'P-spike only' }),
                                            el('strong', { text: n('pspike') })]),
-      el('span', { class: 'hint', text: 'Outside both: ' + n('neither') + '.' }),
+      run.halo
+        ? el('span', { class: 'hint wf-venn-halo', text: 'Outside both, with the halo: '
+            + n('halo_ds') + ' captured by DS, ' + n('halo_pspike') + ' captured by P-spike, '
+            + n('halo_amb') + ' extended ambiguous, ' + n('halo_far') + ' far out.' })
+        : el('span', { class: 'hint', text: 'Outside both: ' + n('neither') + '.' }),
     ]);
   }
 
@@ -2729,8 +3202,8 @@ BARRY.rcWorkflow = (function () {
         + 'pool to average from. Apply and Extract average the target’s.' })]);
     }
     const classes = st === 'extract'
-      ? (kind === 'ambiguous' ? ['both', 'neither'] : ['inside'])
-      : kind === 'ambiguous' ? ['ds', 'pspike', 'both', 'neither'] : ['inside', 'outside'];
+      ? (kind === 'ambiguous' ? ambKept(run) : ['inside'])
+      : kind === 'ambiguous' ? ambClasses(run) : ['inside', 'outside'];
     const word = (c) => (st === 'extract' && kind !== 'ambiguous' ? 'extracted'
       : own && c === 'outside' ? 'left outside' : shortClass(c));
     const kids = [el('div', { class: 'wf-avg-btns' }, classes.map((c) =>
@@ -3032,8 +3505,11 @@ BARRY.rcWorkflow = (function () {
 
   /* ---------- the ambiguous ones, to choose from ---------- */
   function ambTable(run) {
-    const pts = pointsOf(run.cols).filter((p) => (W.ambShow === 'all'
-      ? (p.cls === 'both' || p.cls === 'neither') : p.cls === W.ambShow));
+    // A choice the other way of telling them has no class for shows all.
+    const show = (run.halo ? W.ambShow === 'neither'
+      : (W.ambShow === 'halo_amb' || W.ambShow === 'halo_far')) ? 'all' : W.ambShow;
+    const pts = pointsOf(run.cols).filter((p) => (show === 'all'
+      ? AMB_KEPT.has(p.cls) : p.cls === show));
     const mem = run.members || [];
     const picks = W.ambPick;
     const MAX = 400;
@@ -3041,8 +3517,11 @@ BARRY.rcWorkflow = (function () {
     return el('div', { class: 'card wf-amb' }, [
       el('div', { class: 'wf-amb-head' }, [
         el('strong', { text: 'Ambiguous events, to choose from' }),
-        BARRY.ui.seg([['all', 'all'], ['neither', 'outside both'], ['both', 'inside both']],
-                     W.ambShow, (v) => { W.ambShow = v; refresh(); }),
+        BARRY.ui.seg(run.halo
+          ? [['all', 'all'], ['halo_amb', 'extended'], ['halo_far', 'far out'],
+             ['both', 'inside both']]
+          : [['all', 'all'], ['neither', 'outside both'], ['both', 'inside both']],
+        show, (v) => { W.ambShow = v; refresh(); }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Tick all shown',
           onclick: () => { shown.forEach((p) => picks.add(p.n)); refresh(); } }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Untick all',
@@ -3235,6 +3714,26 @@ BARRY.rcWorkflow = (function () {
                               .map((s) => s.entry_id))),
       uses: { ds: ((dd.uses || {}).ds || {}).artifact_id || null,
               pspike: ((dd.uses || {}).pspike || {}).artifact_id || null },
+      /* WHICH VERSION of each input (2026-11-12). An edit keeps what the
+         definition pinned; a new one, or a different pick, takes the newest
+         (null). */
+      sourceV: (dd.source || {}).version || null,
+      targetV: (dd.target || {}).version || null,
+      poolV: new Map((dd.pools || []).filter((p) => p.version)
+        .map((p) => [p.artifact_id, p.version])),
+      usesV: { ds: ((dd.uses || {}).ds || {}).version || null,
+               pspike: ((dd.uses || {}).pspike || {}).version || null },
+      // What the definition pinned, said in the tree.
+      pinned: row ? {
+        source: refOf(dd.source),
+        target: refOf(dd.target),
+        pools: new Map((dd.pools || []).map((p) => [p.artifact_id, p.version])),
+        uses: { ds: refOf((dd.uses || {}).ds), pspike: refOf((dd.uses || {}).pspike) },
+      } : null,
+      /* An Ambiguous workflow's own target (2026-11-12: "We get to choose
+         p-spike border, ds border... but not where to apply it to"). Until
+         one is picked it is the DS workflow's. */
+      ambTargetSet: kind === 'ambiguous' && !!(dd.target || {}).artifact_id,
     };
     if (!W.builder.uses.ds) {
       const r = (W.list || []).find((x) => x.kind === 'ds' && x.ran);
@@ -3248,56 +3747,402 @@ BARRY.rcWorkflow = (function () {
     refresh();
   }
 
+  /* An input as the server takes it: the id and the version its button
+     shows -- the one picked, else the newest (a pool) or the last run (a
+     workflow). With none, the server pins the newest itself. */
+  const pinRef = (aid, v) => (v != null ? { artifact_id: aid, version: Number(v) }
+                                        : { artifact_id: aid });
+  const poolRef = (aid, v) => pinRef(aid, v != null ? v : (poolOf(aid) || {}).version);
+  const targetRef = () => poolRef(W.builder.target, W.builder.targetV);
+  const runRef = (B, k) => pinRef(B.uses[k], B.usesV[k] != null ? B.usesV[k]
+    : ((W.list || []).find((x) => x.artifact_id === B.uses[k]) || {}).run_version);
+  const usesRef = (B) => ({ ds: runRef(B, 'ds'), pspike: runRef(B, 'pspike') });
+  const refOf = (r) => (r && r.artifact_id ? { id: r.artifact_id, v: r.version || null } : null);
+
+  /* Where an Ambiguous workflow is applied: its own pick, else the DS
+     workflow's target, as that workflow pins it. */
+  function ambTarget(B) {
+    if (B.ambTargetSet) return { id: B.target, v: B.targetV };
+    const r = (W.list || []).find((x) => x.artifact_id === B.uses.ds);
+    const t = r && (r.definition || {}).target;
+    return t ? { id: t.artifact_id, v: t.version || null } : { id: null, v: null };
+  }
+
   function builderBody() {
     const B = W.builder;
     const body = { kind: B.kind, nickname: B.nickname,
                    folder: String(B.folder || '').split('/').map((x) => x.trim()).filter(Boolean) };
     if (B.kind === 'pca') {
-      body.pools = Array.from(B.pools).map((id) => ({ artifact_id: id }));
-      if (B.pcaUses && B.uses.ds && B.uses.pspike) {
-        body.uses = { ds: { artifact_id: B.uses.ds }, pspike: { artifact_id: B.uses.pspike } };
-      }
+      body.pools = Array.from(B.pools).map((id) => poolRef(id, B.poolV.get(id)));
+      if (B.pcaUses && B.uses.ds && B.uses.pspike) body.uses = usesRef(B);
     } else if (B.kind !== 'ambiguous') {
       const g = B.custom !== '' && isFinite(Number(B.custom))
         ? Number(B.custom) / 100 : B.grace;
       body.grace = g;
       body.shape = B.shape || 'box';
-      body.target = { artifact_id: B.target };
-      if (B.kind === 'ds') body.source = { artifact_id: B.source };
+      body.target = targetRef();
+      if (B.kind === 'ds') body.source = poolRef(B.source, B.sourceV);
       else body.source = { entries: Array.from(B.sets).map((id) => ({ entry_id: id })) };
     } else {
-      body.uses = { ds: { artifact_id: B.uses.ds }, pspike: { artifact_id: B.uses.pspike } };
+      body.uses = usesRef(B);
+      const t = ambTarget(B);
+      if (t.id) body.target = poolRef(t.id, t.v);
     }
     return body;
+  }
+
+  /* WHICH VERSION OF AN INPUT (2026-11-12: "No version select here. Use the
+     same git like branching select thing"). Beside the pick of WHICH pool or
+     workflow, the button every other version choice is (ui.versionButton):
+     the version chosen, and the whole tree in a pop-up. The workflow is
+     pinned to it; a newer version saved later is flagged on the workflow's
+     strip and never taken by itself. */
+  const NOT_HERE = 'Saved on another computer; it has not reached this one yet.';
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+  function pinButton(o) {
+    const vs = (o.versions || []).map((v) => ({
+      v: v.v, at: v.at, by: v.by, here: v.here, raw: v,
+      n: o.count(v),
+      note: [v.nickname ? '‘' + v.nickname + '’' : null, v.note].filter(Boolean)
+        .join(' · ') || null,
+    }));
+    if (!vs.length) return null;
+    const newest = Math.max.apply(null, vs.map((v) => v.v || 0));
+    const cur = o.value != null ? Number(o.value) : null;
+    const btn = BARRY.ui.versionButton({
+      versions: vs, idOf: (v) => v.v, value: cur, unit: o.unit, producer: false,
+      disabled: (v) => (v.here === false ? NOT_HERE : (o.why ? o.why(v.raw) : null)),
+      state: (v) => (o.pinned != null && v.v === Number(o.pinned)
+        ? ['what it is pinned to now'] : []),
+      line: o.line ? (v) => o.line(v.raw) : null,
+      heading: o.heading, sub: o.sub,
+      onpick: (v) => { if (v) { o.onpick(v.v); refresh(); } },
+    });
+    btn.classList.add('wf-vbtn');
+    if (o.extra) btn.classList.add(o.extra);
+    // Inside a pool's label (Pooled PCA), a press must not tick its box.
+    btn.addEventListener('click', (e) => e.preventDefault());
+    if (cur == null || cur >= newest) return btn;
+    return el('span', { class: 'wf-pin' }, [btn,
+      el('span', { class: 'hint wf-newer', text: 'v' + newest + ' is newer' })]);
+  }
+
+  const poolOf = (aid) => ((W.sources || {}).pools || []).find((p) => p.artifact_id === aid);
+  // A pool from an older server has no list: its newest is all there is.
+  const poolVersions = (p) => ((p.versions || []).length ? p.versions
+    : p.version ? [{ v: p.version, events: p.events, members: p.members,
+                     mice: p.mice, here: true }] : []);
+
+  function poolPin(aid, value, onpick, pinned, extra) {
+    const p = poolOf(aid);
+    if (!p) return null;
+    return pinButton({
+      versions: poolVersions(p), value: value != null ? value : p.version,
+      unit: 'events', count: (v) => v.events, pinned, onpick, extra,
+      line: (v) => [v.members != null ? plural(v.members, 'recording', 'recordings') : null,
+                    v.mice != null ? plural(v.mice, 'mouse', 'mice') : null]
+        .filter(Boolean).join(' · ') || null,
+      heading: 'Which version of ‘' + (p.nickname || aid) + '’',
+      sub: 'The workflow reads the version chosen here, and stays pinned to it. '
+         + 'A newer version saved later is flagged on the workflow’s strip, and '
+         + 'never used by itself.',
+    });
+  }
+
+  /* ==================================================================
+     CHOOSING AN INPUT (2026-11-12: "I dont like that I have to click from
+     a drop down. Have it say select Pool and then shows all pools and then
+     click on that to see the versions... try to model it after other
+     version selection GUIs throughout the UI"; "what it applies to is
+     options for the Pooled tab").
+
+     Add a set's shape (toolkit.js newSetDialog): one button that says what
+     is chosen, or "Select pool". Pressed, a pop-up lists everything there is
+     to choose from as rows, grouped by the folders they are filed in -- the
+     Pooled tab's folders for a pool, the Workflow tab's for a workflow --
+     with the archived ones in a drawer and a box to find one by name.
+     Picking a row draws its whole version tree beneath it; "Use this
+     version" takes the version lit there.
+     ================================================================== */
+  const has = (m, k) => Object.prototype.hasOwnProperty.call(m, k);
+
+  /* The Pooled tab's folder a pool is in (rootcanal.js `folderOf`): where
+     it was put, else -- saved before folders -- Preliminary analysis. */
+  function poolFolderName(id) {
+    const inm = prefOf('rootcanal_pool_in');
+    const fs = prefOf('rootcanal_pool_folders');
+    const fid = has(inm, id) ? inm[id] : 'prelim';
+    if (!fid) return '';
+    const f = fs[fid];
+    if (f && !f.gone) return f.name || 'Untitled folder';
+    return fid === 'prelim' && !f ? 'Preliminary analysis' : '';
+  }
+
+  const POOL_PICK = {
+    nouns: ['pool', 'pools'], unit: 'events', empty: 'Select pool',
+    count: (v) => v.events,
+    line: (v) => [v.members != null ? plural(v.members, 'recording', 'recordings') : null,
+                  v.mice != null ? plural(v.mice, 'mouse', 'mice') : null]
+      .filter(Boolean).join(' · ') || null,
+    why: () => null,
+    items: () => ((W.sources || {}).pools || []).map((p) => {
+      const vs = poolVersions(p);
+      return {
+        id: p.artifact_id, name: p.nickname || p.artifact_id,
+        group: poolFolderName(p.artifact_id), shelved: poolShelved(p.artifact_id),
+        versions: vs, dflt: p.version,
+        what: [p.events != null ? Number(p.events).toLocaleString() + ' events' : null,
+               p.members != null ? plural(p.members, 'recording', 'recordings') : null,
+               p.mice != null ? plural(p.mice, 'mouse', 'mice') : null,
+               plural(vs.length, 'version', 'versions'),
+               p.all_ds ? 'every event taken as DS' : null].filter(Boolean).join(' · '),
+      };
+    }),
+  };
+
+  const wfPick = (k) => ({
+    nouns: ['workflow', 'workflows'], unit: 'kept', empty: 'Select workflow',
+    count: (v) => (v.ran ? v.kept : null),
+    line: (v) => (v.ran ? 'a run' + (v.grace != null ? ', grace ' + graceWords(v.grace) : '')
+                        : 'defined, not run'),
+    why: (v) => (v.ran ? null : 'A definition saved and not run: it holds no border to lend.'),
+    items: () => (W.list || []).filter((r) => r.kind === k).map((r) => {
+      const vs = (r.versions || []).length ? r.versions
+        : r.run_version ? [{ v: r.run_version, ran: true, kept: r.kept, here: true }] : [];
+      return {
+        id: r.artifact_id, name: r.nickname || r.name,
+        group: folderOf(r).join(' › '), shelved: archived()[r.artifact_id] ? 'archived' : '',
+        versions: vs, dflt: r.run_version || null,
+        what: [r.ran ? 'last run v' + r.run_version : 'not run yet',
+               r.kept != null ? Number(r.kept).toLocaleString() + ' kept' : null,
+               r.grace != null ? 'grace ' + graceWords(r.grace) : null,
+               r.shape ? SHAPE_WORD[r.shape] || r.shape : null,
+               plural(vs.length, 'version', 'versions')].filter(Boolean).join(' · '),
+      };
+    }),
+  });
+
+  /* The button: what is chosen and its version, or "Select pool". */
+  function inputControl(o) {
+    const P = o.pick;
+    const it = o.id ? P.items().find((x) => x.id === o.id) : null;
+    const v = it ? (o.v != null ? Number(o.v) : it.dflt) : null;
+    const ver = it ? it.versions.find((x) => Number(x.v) === v) : null;
+    const newest = it && it.versions.length
+      ? Math.max.apply(null, it.versions.map((x) => Number(x.v) || 0)) : null;
+    const n = ver ? P.count(ver) : null;
+    const btn = el('button', {
+      type: 'button', class: 'vbtn wf-in' + (o.extra ? ' ' + o.extra : ''),
+      'aria-haspopup': 'dialog', 'data-id': it ? it.id : '',
+      'data-v': it && v != null ? String(v) : '',
+      title: 'Every ' + P.nouns[0] + ' there is, and every version of the one '
+             + 'picked. Click to choose.',
+      onclick: () => inputDialog(Object.assign({}, o, { item: it, v })),
+    }, it ? [
+      el('span', { class: 'wf-in-name', text: it.name }),
+      el('strong', { class: 'vbtn-n', text: v != null ? 'v' + v : 'no run yet' }),
+      n != null ? el('span', { class: 'vbtn-c',
+                               text: Number(n).toLocaleString() + ' ' + P.unit }) : null,
+      it.shelved ? el('span', { class: 'vbtn-c', text: shelvedWords(it.shelved).slice(3) }) : null,
+      el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }),
+    ].filter(Boolean) : [
+      el('strong', { class: 'wf-in-empty', text: P.empty }),
+      el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }),
+    ]);
+    if (v == null || newest == null || v >= newest) return btn;
+    return el('span', { class: 'wf-pin' }, [btn,
+      el('span', { class: 'hint wf-newer', text: 'v' + newest + ' is newer' })]);
+  }
+
+  function inputDialog(o) {
+    const P = o.pick;
+    const items = P.items();
+    const noun = P.nouns[0];
+    let cur = o.item ? items.find((x) => x.id === o.item.id) || null : null;
+    let ver = cur ? o.v : null;
+    let q = '';
+    const listBox = el('div', { class: 'bm-list wf-pick-list' });
+    const verBox = el('div', { class: 'wf-pick-vers' });
+    const say = el('p', { class: 'confirm-msg wf-pick-say' });
+    const okBtn = el('button', { class: 'btn wf-pick-ok', text: 'Use this version',
+                                 disabled: 'disabled' });
+    const find = el('input', { type: 'search', class: 'wf-pick-find',
+      placeholder: 'Find a ' + noun + ' by its name or folder…',
+      oninput: (e) => { q = e.target.value; paintList(); } });
+
+    const rowOf = (it) => el('label', {
+      class: 'bm-row wf-pick-row' + (cur && cur.id === it.id ? ' on' : '')
+             + (it.shelved ? ' is-archived' : ''),
+      'data-id': it.id,
+    }, [
+      el('input', { type: 'radio', name: 'wfPick',
+        checked: cur && cur.id === it.id ? 'checked' : null,
+        onchange: () => choose(it) }),
+      el('span', { class: 'mk-name', text: it.name }),
+      it.shelved ? BARRY.ui.chip(shelvedWords(it.shelved).slice(3), { flag: true }) : null,
+      el('span', { class: 'person-what', text: it.what }),
+    ].filter(Boolean));
+
+    // Folders by name, the unfiled last; the rows in each in number order.
+    const grouped = (xs) => {
+      const byG = new Map();
+      for (const it of xs) {
+        if (!byG.has(it.group)) byG.set(it.group, []);
+        byG.get(it.group).push(it);
+      }
+      const names = Array.from(byG.keys()).sort((a, b) => (!a ? 1 : !b ? -1 : natural(a, b)));
+      return names.map((g) => el('div', { class: 'wf-pick-group', 'data-group': g }, [
+        el('div', { class: 'wf-pick-folder', text: g || 'Not in a folder' }),
+      ].concat(byG.get(g).sort((a, b) => natural(a.name, b.name)).map(rowOf))));
+    };
+
+    function paintList() {
+      listBox.innerHTML = '';
+      const hit = items.filter((it) => BARRY.ui.searchMatch([it.name, it.group], q));
+      const [live, gone] = BARRY.ui.splitArchived(hit, (it) => !!it.shelved);
+      grouped(live).forEach((n) => listBox.appendChild(n));
+      const tail = BARRY.ui.archivedTail({
+        key: 'wf-pick-' + noun, items: gone, noun: P.nouns,
+        render: (xs) => grouped(xs), onToggle: () => paintList(),
+        forceOpen: !!(cur && gone.includes(cur)),
+      });
+      if (tail) listBox.appendChild(tail);
+      if (!hit.length) {
+        listBox.appendChild(el('p', { class: 'hint', text: q
+          ? 'No ' + P.nouns[1] + ' match ‘' + q + '’.'
+          : 'There are no ' + P.nouns[1] + ' to choose from yet.' }));
+      }
+    }
+
+    function choose(it) {
+      cur = it;
+      ver = it.dflt != null ? Number(it.dflt) : null;
+      if (o.item && o.item.id === it.id && o.v != null) ver = Number(o.v);
+      listBox.querySelectorAll('.wf-pick-row').forEach((r) => {
+        r.classList.toggle('on', r.dataset.id === it.id);
+      });
+      paintVers();
+    }
+
+    function sayIt() {
+      const vv = cur && ver != null ? cur.versions.find((x) => Number(x.v) === Number(ver)) : null;
+      if (!cur) {
+        say.textContent = 'Pick a ' + noun + ' to see its versions.';
+      } else if (!vv) {
+        say.textContent = 'Pick one of its versions.';
+      } else {
+        const n = P.count(vv);
+        say.textContent = '‘' + cur.name + '’ v' + vv.v
+          + (n != null ? ', ' + Number(n).toLocaleString() + ' ' + P.unit : '')
+          + (P.line(vv) ? ', ' + P.line(vv) : '') + '.';
+      }
+      const why = vv ? (vv.here === false ? NOT_HERE : P.why(vv)) : 'nothing chosen';
+      okBtn.disabled = why ? 'disabled' : null;
+    }
+
+    function paintVers() {
+      verBox.innerHTML = '';
+      if (!cur) { sayIt(); return; }
+      // The label is set in capitals; the name is not, so it is read as written.
+      verBox.appendChild(el('div', { class: 'section-label', text: 'Versions' }));
+      verBox.appendChild(el('div', { class: 'wf-pick-of', text: cur.name }));
+      const pin = o.pinned && o.pinned.id === cur.id ? Number(o.pinned.v) : null;
+      const tree = BARRY.ui.versionTree({
+        versions: cur.versions.map((v) => ({
+          v: v.v, at: v.at, by: v.by, here: v.here, raw: v, n: P.count(v),
+          note: [v.nickname ? '‘' + v.nickname + '’' : null, v.note]
+            .filter(Boolean).join(' · ') || null })),
+        idOf: (v) => v.v, value: ver, unit: P.unit, producer: false, notes: true,
+        disabled: (v) => (v.here === false ? NOT_HERE : P.why(v.raw)),
+        state: (v) => (pin != null && Number(v.v) === pin ? ['what it is pinned to now'] : []),
+        line: (v) => P.line(v.raw),
+        onpick: (v) => { ver = v ? Number(v.v) : null; sayIt(); },
+      });
+      verBox.appendChild(el('div', { class: 'ncs-vers' }, [tree]));
+      requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
+      sayIt();
+    }
+
+    okBtn.onclick = () => {
+      if (!cur || ver == null) return;
+      closeModal();
+      o.onpick(cur.id, Number(ver));
+      refresh();
+    };
+    paintList();
+    paintVers();
+    showModal(el('div', { class: 'ncs-modal wf-pick-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: o.title }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal, title: 'Close',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb ncs' }, [
+        o.sub ? el('p', { class: 'hint wf-pick-sub', text: o.sub }) : null,
+        // Which one on the left, its versions on the right; one above the
+        // other on a narrow window.
+        el('div', { class: 'wf-pick-cols' }, [
+          el('div', { class: 'wf-pick-left' }, [
+            el('div', { class: 'section-label',
+                        text: P.nouns[1][0].toUpperCase() + P.nouns[1].slice(1) }),
+            find, listBox,
+          ]),
+          el('div', { class: 'wf-pick-right' }, [verBox, say]),
+        ]),
+      ]),
+      BARRY.ui.modalFoot(null, [
+        el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
+        okBtn,
+      ]),
+    ]));
+    const on = listBox.querySelector('.wf-pick-row.on');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
   }
 
   function builderCard() {
     const B = W.builder;
     const S = W.sources || { pools: [], sets: [] };
-    // An archived pool is left out unless it is picked already, or Show
-    // archived is on -- then it says so.
+    // An archived pool is left out of Pooled PCA's list unless it is picked
+    // already, or Show archived is on -- then it says so. (The pickers keep
+    // theirs in a drawer of their own.)
     const nShelved = (S.pools || []).filter((p) => poolShelved(p.artifact_id)).length;
     const offered = (keep) => (S.pools || []).filter((p) => W.builderArch
       || !poolShelved(p.artifact_id) || keep(p.artifact_id));
-    const poolOpts = (cur, onPick) => el('select', { class: 'wf-sel',
-      onchange: (e) => { onPick(e.target.value); refresh(); } },
-      offered((id) => id === cur).map((p) => el('option', {
-        value: p.artifact_id, selected: p.artifact_id === cur ? 'selected' : null,
-        text: p.nickname + ' · v' + p.version + ' · ' + (p.events || 0).toLocaleString()
-              + ' events' + (p.all_ds ? ' · every event DS' : '')
-              + shelvedWords(poolShelved(p.artifact_id)) })));
+    // Which pool, and which of its versions: one button, one pop-up
+    // (2026-11-12).
+    const PIN = B.pinned || {};
+    const poolIn = (slot, title, sub) => {
+      const amb = slot === 'target' && B.kind === 'ambiguous';
+      const at = amb ? ambTarget(B)
+        : slot === 'source' ? { id: B.source, v: B.sourceV } : { id: B.target, v: B.targetV };
+      return inputControl({
+        pick: POOL_PICK, id: at.id, v: at.v, extra: 'wf-in-' + slot,
+        pinned: PIN[slot] || null, title, sub,
+        onpick: (id, v) => {
+          if (slot === 'source') { B.source = id; B.sourceV = v; return; }
+          B.target = id; B.targetV = v; W.prep = null;
+          if (amb) B.ambTargetSet = true;
+        },
+      });
+    };
     const archBtn = nShelved || W.builderArch ? BARRY.ui.button({ kind: 'ghost',
       size: 'sm', extra: 'wf-b-arch',
       text: (W.builderArch ? 'Hide' : 'Show') + ' archived pools · ' + nShelved,
       title: 'Pools archived in Pooled, or in a folder archived there, are not '
              + 'offered unless shown.',
       onclick: () => { W.builderArch = !W.builderArch; refresh(); } }) : null;
-    const wfOpts = (k) => el('select', { class: 'wf-sel',
-      onchange: (e) => { B.uses[k] = e.target.value; refresh(); } },
-      [el('option', { value: '', text: 'Pick one' })].concat(
-        (W.list || []).filter((r) => r.kind === k).map((r) => el('option', {
-          value: r.artifact_id, selected: r.artifact_id === B.uses[k] ? 'selected' : null,
-          text: r.nickname + ' · v' + r.version + (r.ran ? '' : ' · not run yet') }))));
+    // Which workflow, and which of its runs.
+    const wfOpts = (k) => inputControl({
+      pick: wfPick(k), id: B.uses[k], v: B.usesV[k], extra: 'wf-in-' + k,
+      pinned: (PIN.uses || {})[k] || null,
+      title: k === 'ds' ? 'The DS border: which workflow, which run'
+                        : 'The P-spike border: which workflow, which run',
+      sub: 'Its border is the one this workflow borrows. Only a version that '
+         + 'holds a run has a border.',
+      onpick: (id, v) => { B.uses[k] = id; B.usesV[k] = v; },
+    });
     const rows = [
       el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'Which' }),
@@ -3317,13 +4162,15 @@ BARRY.rcWorkflow = (function () {
           oninput: (e) => { B.folder = e.target.value; } }),
       ]),
     ];
-    if (B.kind !== 'ambiguous' && archBtn) {
+    if (B.kind === 'pca' && archBtn) {
       rows.push(el('div', { class: 'wf-b-row' }, [archBtn]));
     }
     if (B.kind === 'ds') {
       rows.push(el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'Border around DS, from' }),
-        poolOpts(B.source, (v) => { B.source = v; }),
+        poolIn('source', 'The pool the DS border is drawn around',
+               'A pool from the Pooled tab, and which of its versions. Every '
+               + 'event in it is taken as a dentate spike: the controls.'),
         el('span', { class: 'hint', text: 'Every event of this pool is taken as a '
           + 'dentate spike: the controls.' }),
       ]));
@@ -3353,8 +4200,11 @@ BARRY.rcWorkflow = (function () {
             el('input', { type: 'checkbox', checked: B.pools.has(p.artifact_id) ? 'checked' : null,
               onchange: (e) => { if (e.target.checked) B.pools.add(p.artifact_id);
                                  else B.pools.delete(p.artifact_id); refresh(); } }),
-            el('span', { text: p.nickname + ' · v' + p.version + ' · '
-              + (p.events || 0).toLocaleString() + ' events' + shelvedWords(why) }),
+            el('span', { text: p.nickname + shelvedWords(why) }),
+            // A button in a label does not tick its box.
+            poolPin(p.artifact_id, B.poolV.get(p.artifact_id),
+                    (v) => { B.poolV.set(p.artifact_id, v); },
+                    B.pinned ? B.pinned.pools.get(p.artifact_id) : null),
             why === 'archived' ? BARRY.ui.button({ kind: 'mini', text: 'Put back',
               extra: 'wf-pool-unarchive',
               title: 'Back in the saved pools, everyone’s, once it syncs.',
@@ -3375,7 +4225,9 @@ BARRY.rcWorkflow = (function () {
     } else if (B.kind !== 'ambiguous') {
       rows.push(el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'Applied to' }),
-        poolOpts(B.target, (v) => { B.target = v; W.prep = null; }),
+        poolIn('target', 'The pool the border is applied to',
+               'A pool from the Pooled tab, and which of its versions. What is '
+               + 'inside the border is what the workflow extracts.'),
       ]));
       rows.push(el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'Grace' }),
@@ -3390,9 +4242,10 @@ BARRY.rcWorkflow = (function () {
       ]));
       rows.push(el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'Shape' }),
-        BARRY.ui.seg(SHAPES, B.shape || 'box', (v) => { B.shape = v; refresh(); }, { extra: 'wf-b-shape' }),
-        el('span', { class: 'hint', text: B.shape === 'ellipsoid'
-          ? 'The scoop: an oval fitted to the events’ spread (robustly); the grace leaves out those furthest from its centre.'
+        BARRY.ui.seg(SHAPES_OFFERED, B.shape || 'box', (v) => { B.shape = v; refresh(); }, { extra: 'wf-b-shape' }),
+        el('span', { class: 'hint' + (RETIRED[B.shape] ? ' wf-retired' : ''),
+          text: RETIRED[B.shape]
+          ? RETIRED[B.shape]
           : B.shape === 'hull'
             ? 'The snap: the tightest border with no dents, its corners the outermost events; the grace peels them off one at a time.'
             : 'The box: on each axis, the range of the events.' }),
@@ -3402,9 +4255,16 @@ BARRY.rcWorkflow = (function () {
         el('span', { class: 'wf-b-l', text: 'DS border from' }), wfOpts('ds')]));
       rows.push(el('div', { class: 'wf-b-row' }, [
         el('span', { class: 'wf-b-l', text: 'P-spike border from' }), wfOpts('pspike')]));
-      rows.push(el('p', { class: 'hint', text: 'Applied to the DS workflow’s '
-        + 'target. Outside both borders, or inside both, is ambiguous: shown, '
-        + 'not banked, for you to choose from.' }));
+      rows.push(el('div', { class: 'wf-b-row' }, [
+        el('span', { class: 'wf-b-l', text: 'Applied to' }),
+        poolIn('target', 'The pool both borders are applied to',
+               'A pool from the Pooled tab, and which of its versions. Until '
+               + 'you pick one, it is the DS workflow’s own target.'),
+        B.ambTargetSet ? null : el('span', { class: 'hint wf-amb-default',
+          text: 'The DS workflow’s own target, until you pick another.' }),
+      ].filter(Boolean)));
+      rows.push(el('p', { class: 'hint', text: 'Outside both borders, or inside '
+        + 'both, is ambiguous: shown, not banked, for you to choose from.' }));
     }
     rows.push(el('div', { class: 'wf-b-row' }, [
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Preview',
@@ -3422,8 +4282,33 @@ BARRY.rcWorkflow = (function () {
     ].concat(rows));
   }
 
+  /* A POOL NOT YET PICKED (2026-11-13). The builder's own defaults are found
+     by name ("PTEN Baseline", "CTL Baseline"), and the pools on show are
+     named otherwise now ("PTEN Baseline v2 (Optimized parameters)"), so a
+     new one can open on "Select pool". Saved like that, the server said
+     "There is no saved pool None to use as the target" and filed it as a
+     fault (11-12). Said here, by the button's own words, and nothing sent. */
+  function missingPool(B) {
+    if (B.kind !== 'ds' && B.kind !== 'pspike') return null;
+    if (B.kind === 'ds' && !B.source) {
+      return { which: 'source', say: 'Pick the pool the DS border is drawn around first.' };
+    }
+    if (!B.target) return { which: 'target', say: 'Pick the pool it is applied to first.' };
+    return null;
+  }
+
+  function sayMissingPool(B) {
+    const miss = missingPool(B);
+    if (!miss) return false;
+    toast(miss.say, 'warn', 6000);
+    const b = root && root.querySelector('.wf-builder .wf-in-' + miss.which);
+    if (b) b.focus();
+    return true;
+  }
+
   async function previewBuilder() {
     if (W.busy) return;
+    if (W.builder && sayMissingPool(W.builder)) return;
     W.busy = 'Previewing';
     refresh();
     try {
@@ -3448,6 +4333,7 @@ BARRY.rcWorkflow = (function () {
       if (n) n.focus();
       return;
     }
+    if (sayMissingPool(B)) return;
     let got;
     try {
       got = await apiPost('/api/rootcanal/workflow/save',
@@ -3514,7 +4400,7 @@ BARRY.rcWorkflow = (function () {
     W.prep = Object.assign({}, W.prep, { say: 'Checking the sets…', err: null });
     refresh();
     try {
-      W.prep = { sets: await checkSets(Array.from(B.sets), { artifact_id: B.target }),
+      W.prep = { sets: await checkSets(Array.from(B.sets), targetRef()),
                  say: null };
     } catch (e) {
       W.prep = { err: e.message };
@@ -3539,7 +4425,7 @@ BARRY.rcWorkflow = (function () {
     const B = W.builder;
     W.prep = Object.assign({}, W.prep || {}, { running: true, err: null });
     refresh();
-    const got = await prepareSets(Array.from(B.sets), { artifact_id: B.target },
+    const got = await prepareSets(Array.from(B.sets), targetRef(),
       (t) => { if (W.prep) { W.prep.say = t + '…'; refresh(); } });
     W.sources = null;
     await loadSources();
@@ -3563,6 +4449,8 @@ BARRY.rcWorkflow = (function () {
     _pointsOf: pointsOf,
     _rangesOf: rangesOf,
     _boxesOf: boxesOf,
+    _shownRun: () => shownRun(),
+    _haloClass: haloClass,
     _pcWords: pcWords,
   };
 })();

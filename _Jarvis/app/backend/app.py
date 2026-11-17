@@ -9,6 +9,7 @@ code runs on Windows and macOS.
 """
 from __future__ import annotations
 
+import collections
 import datetime
 import hashlib
 import io
@@ -10580,6 +10581,7 @@ def api_dspca_bundle(artifact_id):
 # the loading (each bundle's payload and read) and the saving (one artifact
 # per room, a version per extraction). See its docstring for what is kept.
 from . import extraction as extractionmod                    # noqa: E402
+from . import dsmix as dsmixmod                               # noqa: E402
 
 
 def _er_ko():
@@ -10632,9 +10634,21 @@ def api_extraction():
         # results are not in that version -- newer bundles, or never taken.
         dsr = _er_rooms().get("dentate_spike") or {}
         folders = []
+        # THE NEW ROUND (2026-11-12): a folder with no X-ray results can be
+        # taken in all the same, fitted here; how many of its recordings are
+        # read on this machine says whether it can be. And a set put away.
+        reads = _xm_reads()
+        set_arch = (STORE.get_prefs() or {}).get(extractionmod.SET_ARCHIVE_KEY) or {}
         for fid, f in _xm_folders().items():
             if not isinstance(f, dict) or f.get("gone"):
                 continue
+            try:
+                _wf, _v, _run = _xm_source(f.get("source"))
+                mem = xraymanymod.members_of(_wf["id"], _v, _run)
+            except Exception:                            # noqa: BLE001
+                mem = []
+            n_read = sum(1 for m in mem if m.get("n") and _xm_read_of(
+                reads, m["gid"], m["stamps_hash"])[1])
             mine = [r for k, r in bundles.items()
                     if str(k or "").startswith("xray_single|%s|" % fid)]
             took = [v for v in dsr.get("versions") or []
@@ -10645,6 +10659,10 @@ def api_extraction():
                     if isinstance(i, dict)}
             folders.append({"id": fid, "name": f.get("name"),
                             "archived": bool(f.get("archived")),
+                            "set_archived": (set_arch.get(fid) or None),
+                            "members": sum(1 for m in mem if m.get("n")),
+                            "read_here": n_read,
+                            "events": sum(int(m.get("n") or 0) for m in mem),
                             "bundles": len(mine),
                             "in_room": ({"v": last.get("v"), "at": last.get("at"),
                                          "by": last.get("by")} if last else None),
@@ -10673,6 +10691,9 @@ def api_extraction_extract():
         return fail("extraction/extract", exc, 400, {"folder": fid})
     ko = _er_ko()
     bundles = _xm_bundles()
+    if body.get("direct") or not any(
+            str(k or "").startswith("xray_single|%s|" % fid) for k in bundles):
+        return _er_direct_extract(room, fid, f, wf, v, mem, ko, body)
     recs, left, inputs = [], [], []
     for m in mem:
         b = bundles.get("xray_single|%s|%s" % (fid, m["gid"]))
@@ -10743,6 +10764,130 @@ def api_extraction_extract():
                     "left": left})
 
 
+def _er_fit_params(got, band):
+    """The fit the new round makes of a read: X-ray Many's defaults, in the
+    room's band (2026-11-12, no X-ray)."""
+    body = dict(xraymanymod.DEFAULT_PARAMS)
+    body.update({k: band.get(k) for k in xraymanymod.BOX_KEYS})
+    return _dspca_fit_params(body, got)
+
+
+def _er_direct_fit(gid, rh, band, sink=None, leave_out=None, twin=None):
+    """(res, got, params, arrays, layers) of one read in one band, the
+    Bite line added to the arrays (its sink: today's default unless said),
+    and delta middle and the hump rows (2026-11-13). `leave_out`: contacts
+    made again from their neighbours by the cubic (the low contacts; see
+    extraction.rebuild_contacts -- the read in memory is not touched)."""
+    got = _dspca_load(gid, rh)
+    if leave_out:
+        got = extractionmod.rebuild_contacts(got, leave_out)
+    if twin:
+        # Only the events inside the recording's time window (2026-11-13).
+        got = extractionmod.subset_read(got, twin)
+    p = _er_fit_params(got, band)
+    layers = _dspca_layers(gid)
+    res = dspca.fit(got, p, layers=layers)
+    res["unit"] = xraymanymod.unit_of(p)
+    A = extractionmod.split_arrays(res)
+    extractionmod.keep_fit(A, p)
+    lay = layers if str(p.rule) == "anatomy" else None
+    extractionmod.add_bite(A, str(p.rule), bool(p.flip), lay, sink=sink)
+    extractionmod.add_humps(A, str(p.rule), bool(p.flip), lay)
+    return res, got, p, A, lay
+
+
+def _er_bands(room, folder):
+    """{gid: band}: the bands drawn by hand in this room's set."""
+    return _er_calls(extractionmod.BAND_KEY, room, folder,
+                     lambda v: v.get("sel_lo") is not None)
+
+
+def _er_direct_extract(room, fid, f, wf, v, mem, ko, body):
+    """THE NEW ROUND (2026-11-12): a folder's recordings fitted by the room
+    itself -- each read at its kept events, in its band (drawn by hand,
+    else over the two bottom sinks of its average), split by the Bite line
+    -- and saved as the room's next version. A recording not read on this
+    machine is left out and said."""
+    reads = _xm_reads()
+    bands = _er_bands(room, fid)
+    groups = _xm_groups(sorted({m["gid"] for m in mem}))
+    recs, left = [], []
+    for m in mem:
+        gid = m["gid"]
+        try:
+            if not m["n"]:
+                raise ValueError("no events kept for it")
+            rh, here, _rec = _xm_read_of(reads, gid, m["stamps_hash"])
+            if not (rh and here):
+                raise ValueError("its read is not on this computer: read the "
+                                 "folder in X-ray Many first")
+            got = _dspca_load(gid, rh)
+            nums = [int(n) for n in got.get("nums") or []]
+            band = (extractionmod.clean_band(bands.get(gid), nums) if gid in bands
+                    else None)
+            if band is None:
+                res0 = dspca.fit(got, _er_fit_params(got, {}), layers=_dspca_layers(gid))
+                band = extractionmod.default_band(res0["disp"], res0.get("nums_all")
+                                                  or nums, float(got.get("surround_ms") or 50))
+            res, got, p, A, _lay = _er_direct_fit(gid, rh, band)
+            sep = xraymanymod.separation(res)
+            sub = {"gid": gid, "entry_id": m.get("entry_id"),
+                   "session_label": m.get("session_label"),
+                   "mouse_key": m.get("mouse_key"), "group": groups.get(gid)}
+            one = extractionmod.direct_record(
+                sub, res, got, A, A["types_bite"], band, ko, sep=sep, read=rh,
+                fit_params={k: band.get(k) for k in xraymanymod.BOX_KEYS})
+            one["bite"] = {k: (A["_bite"].get("params") or {}).get(k)
+                           for k in ("half_ms", "sink", "n_bumps", "min_share")}
+            sc = extractionmod.bite_view(A)
+            one["bite"].update(verdict=sc["verdict"], scores=sc["scores"],
+                               line=sc["line"])
+            one["split"] = {"method": "bite", "cut": None, "default": True,
+                            "words": extractionmod.SPLIT_WORDS["bite"]}
+            one["stamps_hash"] = m["stamps_hash"]
+            recs.append(one)
+        except Exception as exc:                         # noqa: BLE001
+            left.append({"gid": gid, "session_label": m.get("session_label"),
+                         "why": str(exc)})
+    if not recs:
+        return jsonify({"ok": False, "error": "Nothing to extract from ‘%s’: %s"
+                        % (f.get("name"), "; ".join(
+                            "%s (%s)" % (x["session_label"], x["why"])
+                            for x in left[:6]) or "it has no recordings"),
+                        "left": left}), 400
+    recs.sort(key=lambda r: (0 if str(r.get("group")).upper() == "CTL" else 1,
+                             r.get("ko_pct") if r.get("ko_pct") is not None
+                             else 999, natsortmod.key(r.get("session_label") or "")))
+    payload = {"schema": extractionmod.SCHEMA, "room": room, "round": "direct",
+               "room_name": extractionmod.room_name(room),
+               "source": {"folder": fid, "folder_name": f.get("name"),
+                          "workflow": {"artifact_id": wf["id"], "version": v,
+                                       "nickname": wf.get("nickname")}},
+               "ko_from": "JB % hits, the lab's sheet (2026-11-10); "
+                          "controls are 0",
+               "filter": "5-100 Hz, 60 Hz notched. The blob timing might be "
+                         "worth redoing with other filters: a narrow band "
+                         "rounds off slow sinks.",
+               "recordings": recs, "left_out": left}
+    subject = {"room": room, "room_name": extractionmod.room_name(room),
+               "gids": sorted({r["gid"] for r in recs})}
+    inputs = [{"artifact_id": wf["id"], "version": v}]
+    try:
+        saved = ARTIFACTS.put(extractionmod.KIND, subject, payload,
+                              params={"folder": fid, "round": "direct"},
+                              inputs=inputs, note=body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/extract", exc, 500, {"folder": fid})
+    STORE.record_activity([{"action": "extraction.extract",
+                            "detail": {"room": room, "folder": fid, "direct": True,
+                                       "artifact": saved.get("id"),
+                                       "version": saved.get("version"),
+                                       "n": len(recs), "left": len(left)}}])
+    return jsonify({"ok": True, "artifact_id": saved["id"],
+                    "version": saved.get("version"), "n": len(recs),
+                    "left": left})
+
+
 def _er_pay_folder(pay):
     """The X-ray Many folder an extraction was taken from: its set."""
     return ((pay or {}).get("source") or {}).get("folder")
@@ -10771,9 +10916,13 @@ def api_extraction_one(artifact_id):
         now, said = extractionmod.ko_of(r.get("mouse_key"), r.get("group"), ko)
         r["ko_now"] = now
         r["ko_now_said"] = said
+    splits = _er_splits(pay.get("room"), _er_pay_folder(pay))
+    _er_apply_splits(pay, splits)
     return jsonify({"ok": True, "payload": pay, "version": row.get("v"),
+                    "splits": splits,
                     "flips": _er_flips(pay.get("room"), _er_pay_folder(pay)),
                     "seps": _er_seps(pay.get("room"), _er_pay_folder(pay)),
+                    "mode": _er_mode(pay.get("room"), _er_pay_folder(pay)),
                     "artifact": ARTIFACTS.summary(artifact_id)})
 
 
@@ -10851,22 +11000,23 @@ def _er_seps(room, folder):
     """{gid: {verdict, at, by}}: the recordings a person has called
     separable ('yes') or not ('no') in this room's set, over X-ray's call."""
     return _er_calls(extractionmod.SEP_KEY, room, folder,
-                     lambda v: v.get("verdict") in ("yes", "no"))
+                     lambda v: v.get("verdict") in extractionmod.SEP_CALLS)
 
 
 @app.route("/api/extraction/sep", methods=["POST"])
 def api_extraction_sep():
-    """Call a recording separable or not, over X-ray's call, or give the
-    call back to X-ray: {room, gid, verdict: 'yes' | 'no' | null}. Shared;
-    the bundle keeps its own test and its numbers."""
+    """Call a recording separable or not, or "no DS1" (all its events DS2,
+    2026-11-13), over X-ray's call, or give the call back to X-ray: {room,
+    gid, verdict: 'yes' | 'no' | 'no_ds1' | null}. Shared; the bundle
+    keeps its own test and its numbers."""
     body = request.get_json(force=True) or {}
     room = body.get("room") or "dentate_spike"
     gid = str(body.get("gid") or "").strip()
     verdict = body.get("verdict")
     if not gid:
         return jsonify({"ok": False, "error": "Say which recording (gid)."}), 400
-    if verdict not in ("yes", "no", None):
-        return jsonify({"ok": False, "error": "A call is yes, no or null."}), 400
+    if verdict not in extractionmod.SEP_CALLS + (None,):
+        return jsonify({"ok": False, "error": "A call is yes, no, no_ds1 or null."}), 400
     folder = _er_folder(room, body.get("folder"))
     who = (STORE.provenance() or {}).get("user")
     val = ({"verdict": verdict, "by": who,
@@ -11004,6 +11154,1362 @@ def _er_round2_rows(pay, flips, ko_now):
     return rows
 
 
+# --------------------------------------------------------------------------
+# THE SPLIT BY HAND (2026-11-11), see extraction.py "THE SPLIT, BY HAND".
+# Each recording's per-event arrays are cached on this machine the first
+# time they are asked for (one refit of its bundle's read, seconds); every
+# method and cut after that is a mean over rows. A choice is shared, per
+# set, like the separable calls: {method, cut}.
+# --------------------------------------------------------------------------
+_ER_SPLIT_DIR = os.path.join(LOGS_DIR, ".cache", "extraction")
+_ER_SPLIT_MEMO = collections.OrderedDict()
+
+
+def _er_split_arrays(rec, low=None):
+    """(arrays, rule, flip) of one extracted recording: from the cache, or
+    a refit of its bundle's read with the bundle's own settings. `low`
+    (contacts to leave out): a new-round record only."""
+    import numpy as np
+    b = rec.get("bundle") or {}
+    gid = rec.get("gid")
+    if rec.get("direct"):
+        return _er_direct_arrays(rec, low)
+    if low:
+        raise ValueError("Leaving out low contacts is for the new round's "
+                         "sets, which the room fits itself.")
+    key = "%s__%s_v%s" % (shards.safe_base(gid or "?"), b.get("artifact_id"),
+                          b.get("version"))
+    if key in _ER_SPLIT_MEMO:
+        _ER_SPLIT_MEMO.move_to_end(key)
+        return _ER_SPLIT_MEMO[key]
+    path = os.path.join(_ER_SPLIT_DIR, key + ".npz")
+    got_a = None
+    if os.path.isfile(path):
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                got_a = {k: np.array(z[k]) for k in z.files}
+        except Exception:                                # noqa: BLE001
+            got_a = None
+    if got_a is not None and "x_delta_mid" not in got_a:
+        # Kept before delta middle and the hump rows (2026-11-13): their
+        # PCA needs the fit's own features, so it is fitted again, once.
+        got_a = None
+    if got_a is None:
+        pay = ARTIFACTS.payload(b.get("artifact_id"), b.get("version"))
+        if pay is None:
+            raise ValueError("its X-ray bundle is not on this machine")
+        rh = pay.get("read")
+        if not (rh and DSPCA.has_cached(gid, rh, ".npz")):
+            raise ValueError("its read is not on this machine")
+        got = _dspca_load(gid, rh)
+        p = _dspca_fit_params(dict(pay.get("params") or {}), got)
+        res = dspca.fit(got, p, layers=_dspca_layers(gid))
+        got_a = extractionmod.split_arrays(res)
+        extractionmod.keep_fit(got_a, p)
+        got_a["rule"] = np.array(str(p.rule))
+        got_a["flip"] = np.array(bool(p.flip))
+        got_a["own"] = np.array(str(p.method))
+        try:
+            extractionmod.add_bite(got_a, str(p.rule), bool(p.flip))
+            extractionmod.add_humps(got_a, str(p.rule), bool(p.flip))
+        except Exception:                                # noqa: BLE001
+            pass                                         # said per split
+        os.makedirs(_ER_SPLIT_DIR, exist_ok=True)
+        tmp = path[:-4] + ".part.npz"
+        np.savez_compressed(tmp, **{k: v for k, v in got_a.items()
+                                    if not k.startswith("_")})
+        os.replace(tmp, path)
+    if "x_bite" not in got_a:
+        # The Bite line (2026-11-12), on an X-ray round's arrays as well.
+        try:
+            extractionmod.add_bite(got_a, str(got_a.get("rule", "tort")),
+                                   bool(got_a.get("flip", False)))
+        except Exception:                                # noqa: BLE001
+            n = int(np.asarray(got_a["types_delta"]).size)
+            got_a.update(x_bite=np.zeros(n, np.float32),
+                         y_bite=np.zeros(n, np.float32),
+                         types_bite=np.asarray(got_a["types_delta"]),
+                         bounds_bite=np.asarray([0.5]))
+    out = (got_a, str(got_a.get("rule", "tort")), bool(got_a.get("flip", False)))
+    _ER_SPLIT_MEMO[key] = out
+    while len(_ER_SPLIT_MEMO) > 8:
+        _ER_SPLIT_MEMO.popitem(last=False)
+    return out
+
+
+def _er_direct_arrays(rec, low=None):
+    """(arrays, rule, flip) of a new-round record: its read fitted in its
+    band (the record's `box`, which a hand-drawn band replaces), kept in
+    memory by read and band. The Bite line is on them. `low`: contacts
+    left out (filled in from their neighbours), kept apart by them."""
+    band = rec.get("box") or {}
+    # The version's sink, so a version made before the humps keeps its own
+    # Bite line (and the lines placed on it) -- named apart on disk.
+    sink = _er_rec_sink(rec)
+    low = sorted({int(c) for c in low or []})
+    # Contacts interpolated by hand on this recording (2026-11-13): made
+    # again by the cubic, as the low contacts of a look are.
+    interp = sorted({int(c) for c in rec.get("interp") or []})
+    twin = list(rec.get("twin") or []) or None
+    key = "direct|%s|%s|%s|%s|%s|%s|%s" % (rec.get("gid"), rec.get("read"), json.dumps(
+        {k: band.get(k) for k in xraymanymod.BOX_KEYS}, sort_keys=True), sink, low,
+        interp, twin)
+    if key in _ER_SPLIT_MEMO:
+        _ER_SPLIT_MEMO.move_to_end(key)
+        return _ER_SPLIT_MEMO[key]
+    if not (rec.get("read") and DSPCA.has_cached(rec.get("gid"), rec["read"], ".npz")):
+        raise ValueError("its read is not on this machine")
+    # ON DISK TOO, by read and band (2026-11-12): a room of eighteen cards
+    # with bands drawn by hand would otherwise fit every one again on every
+    # look. The Bite line's own working (`_bite`) is not kept: its classes
+    # are in the arrays, and the picture is fitted again only when asked.
+    import numpy as np
+    bk = "%s_%s_%s_%s" % (band.get("sel_lo"), band.get("sel_hi"),
+                          band.get("t_lo_ms"), band.get("t_hi_ms"))
+    path = os.path.join(_ER_SPLIT_DIR, "direct__%s__%s__%s%s%s%s%s.npz" % (
+        shards.safe_base(rec.get("gid") or "?"), rec.get("read"),
+        bk.replace(".", "p").replace("-", "m"),
+        "" if sink == "bumps" else "__" + sink,
+        "__interp" + "-".join(str(c) for c in interp) if interp else "",
+        ("__t%s_%s" % (twin[0], twin[1])).replace(".", "p") if twin else "",
+        "__lowcubic" + "-".join(str(c) for c in low) if low else ""))
+    A = None
+    if os.path.isfile(path):
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                A = {k: np.array(z[k]) for k in z.files}
+        except Exception:                                # noqa: BLE001
+            A = None
+    if A is not None and "x_delta_mid" not in A:
+        # Kept before delta middle and the hump rows (2026-11-13): fitted
+        # again, once -- their PCA needs the fit's own features.
+        A = None
+    if A is None:
+        if not (rec.get("read") and DSPCA.has_cached(rec.get("gid"), rec["read"], ".npz")):
+            raise ValueError("its read is not on this machine")
+        _res, _got, p, A, _lay = _er_direct_fit(rec["gid"], rec["read"], band,
+                                                sink=sink,
+                                                leave_out=sorted(set(low) | set(interp)),
+                                                twin=twin)
+        A["rule"] = np.array(str(p.rule))
+        A["flip"] = np.array(bool(p.flip))
+        try:
+            bv = extractionmod.bite_view(A)
+            A["bite_json"] = np.array(json.dumps({"verdict": bv["verdict"],
+                                                  "scores": bv["scores"],
+                                                  "line": bv["line"]}))
+        except Exception:                                # noqa: BLE001
+            pass
+        try:
+            os.makedirs(_ER_SPLIT_DIR, exist_ok=True)
+            tmp = path[:-4] + ".part.npz"
+            np.savez_compressed(tmp, **{k: v for k, v in A.items()
+                                        if not k.startswith("_")})
+            os.replace(tmp, path)
+        except Exception:                                # noqa: BLE001
+            pass
+    out = (A, str(A.get("rule", "tort")), bool(A.get("flip", False)))
+    _ER_SPLIT_MEMO[key] = out
+    while len(_ER_SPLIT_MEMO) > 24:
+        _ER_SPLIT_MEMO.popitem(last=False)
+    return out
+
+
+def _er_split_classes(rec, method, cut, with_types=False, low=None):
+    """A recording's classes and counts under a method and a cut (and each
+    event's class, when asked). `low`: with those contacts left out."""
+    A, rule, flip = _er_split_arrays(rec, low)
+    layers = _dspca_layers(rec.get("gid")) if rule == "anatomy" else None
+    types = extractionmod.split_types(A, method, cut, rule, flip, layers)
+    cls = extractionmod.split_classes(A, types, rec.get("box"),
+                                      rec.get("spacing_um"), rec.get("unit"))
+    counts = {str(c["c"]): int(c["n"]) for c in cls}
+    if with_types:
+        return cls, counts, [int(t) for t in types]
+    return cls, counts
+
+
+def _er_splits(room, folder):
+    """{gid: {method, cut, by, at}}: the recordings split by hand in this
+    room's set."""
+    return _er_calls(extractionmod.SPLIT_KEY, room, folder,
+                     lambda v: v.get("method") in extractionmod.SPLIT_METHODS)
+
+
+def _er_put_band(r, bd):
+    """A record with its set's hand-drawn band put on it (in place), when
+    that band is not the record's own."""
+    if not bd:
+        return r
+    nb = extractionmod.clean_band(bd, r.get("contacts") or [])
+    if nb and any(nb.get(k) != (r.get("box") or {}).get(k)
+                  for k in xraymanymod.BOX_KEYS):
+        r["box"] = r["band"] = dict(nb, by=bd.get("by"), at=bd.get("at"))
+        r["band_moved"] = True
+    return r
+
+
+def _er_interps(room):
+    """{gid: {contacts, by, at}}: the contacts interpolated by hand on each
+    recording of the room -- the recording's, so every set uses them."""
+    room = room or "dentate_spike"
+    got = (STORE.get_prefs() or {}).get(extractionmod.INTERP_KEY) or {}
+    out = {}
+    for k, v in got.items():
+        parts = str(k).split("|")
+        if (len(parts) == 2 and parts[0] == room and isinstance(v, dict)
+                and v.get("contacts")):
+            out[parts[1]] = v
+    return out
+
+
+def _er_put_interp(r, val):
+    """A record with its recording's interpolated contacts put on it (in
+    place): fitted again with them, as a band drawn by hand is."""
+    cs = sorted(int(c) for c in (val or {}).get("contacts") or [])
+    if cs and r.get("direct"):
+        r["interp"] = cs
+        r["interp_by"] = {"by": val.get("by"), "at": val.get("at")}
+    return r
+
+
+def _er_interp_look(rec, spec):
+    """The record as Compare splits looks at it: `spec` None keeps the
+    card's interpolated contacts, False takes them off, a list tries those
+    contacts instead (checked as the card's are). A copy; the card keeps
+    its own."""
+    if spec is None:
+        return rec
+    rec = dict(rec)
+    rec.pop("interp", None)
+    rec.pop("interp_by", None)
+    if spec is False:
+        return rec
+    bad = []
+    if rec.get("read") and DSPCA.has_cached(rec.get("gid"), rec["read"], ".npz"):
+        bad = list((_dspca_load(rec["gid"], rec["read"]).get("bad") or {}).keys())
+    cs = extractionmod.clean_interp(spec, rec.get("contacts") or [], bad)
+    if cs:
+        rec["interp"] = cs
+    return rec
+
+
+def _er_twins(room):
+    """{gid: {t0, t1, by, at}}: each recording's time window, where one is
+    kept -- the recording's, so every set uses it."""
+    room = room or "dentate_spike"
+    got = (STORE.get_prefs() or {}).get(extractionmod.TWIN_KEY) or {}
+    out = {}
+    for k, v in got.items():
+        parts = str(k).split("|")
+        if len(parts) == 2 and parts[0] == room and isinstance(v, dict) and v.get("t1"):
+            out[parts[1]] = v
+    return out
+
+
+def _er_put_twin(r, val):
+    """A record with its recording's time window put on it (in place)."""
+    if val and r.get("direct"):
+        r["twin"] = [float(val["t0"]), float(val["t1"])]
+        r["twin_by"] = {"by": val.get("by"), "at": val.get("at")}
+    return r
+
+
+def _er_twin_look(rec, spec):
+    """The record as Compare splits looks at it: `spec` None keeps the
+    card's window, False takes it off, [t0, t1] tries that one. A copy."""
+    if spec is None:
+        return rec
+    rec = dict(rec)
+    rec.pop("twin", None)
+    rec.pop("twin_by", None)
+    if spec is not False:
+        rec["twin"] = extractionmod.clean_twin(spec[0], spec[1])
+    return rec
+
+
+def _er_rec_sink(rec):
+    """What the Bite line's sink is for this record (sinkcut.SINKS): a
+    new-round version says it; one made before 2026-11-12's humps said
+    "bumps"; an X-ray round's arrays take today's default."""
+    from . import sinkcut
+    if rec.get("direct"):
+        return str((rec.get("bite") or {}).get("sink") or "bumps")
+    return sinkcut.SINK_DEFAULT
+
+
+BITE_STALE_WORDS = ("Its Bite line was placed by hand on the earlier sink "
+                    "picture (each event's own two bumps), so that place now "
+                    "means other events: the line is back at its default "
+                    "until it is placed again.")
+
+
+def _er_bite_stale(ch, rec):
+    """A Bite line placed by hand in an order made from another sink: its
+    place (k) would pick other events now."""
+    return bool(ch and ch.get("method") == "bite" and ch.get("cut") is not None
+                and str(ch.get("sink") or "bumps") != _er_rec_sink(rec))
+
+
+def _er_apply_splits(pay, splits):
+    """The recordings split by hand, with the classes their split gives:
+    what the cards draw and the stats count. One that cannot be split here
+    keeps what was extracted, and says why. A Bite line placed on another
+    sink's order is taken out of `splits` (in place) for this version and
+    said on its record."""
+    direct = pay.get("round") == "direct"
+    bands = _er_bands(pay.get("room"), _er_pay_folder(pay)) if direct else {}
+    interps = _er_interps(pay.get("room")) if direct else {}
+    twins = _er_twins(pay.get("room")) if direct else {}
+    for r in pay.get("recordings") or []:
+        _er_put_band(r, bands.get(r.get("gid")))
+        _er_put_interp(r, interps.get(r.get("gid")))
+        _er_put_twin(r, twins.get(r.get("gid")))
+        if _er_bite_stale(splits.get(r.get("gid")), r):
+            r["split_stale"] = dict(splits.pop(r.get("gid")),
+                                    words=BITE_STALE_WORDS)
+        refit = r.get("band_moved") or r.get("interp") or r.get("twin")
+        if refit:
+            try:
+                A, _rule, _flip = _er_split_arrays(r)
+                bj = A.get("bite_json")
+                if bj is not None:
+                    r["bite"] = dict(r.get("bite") or {}, **json.loads(str(bj)))
+                if r.get("twin"):
+                    # Only the window's events: its count, beside the set's.
+                    r["n_all"] = r.get("n")
+                    r["n"] = int(len(A["types_delta"]))
+                if r.get("interp") or r.get("twin"):
+                    # The tile the band is drawn on, with them interpolated.
+                    r["csd_all"] = extractionmod.csd_all(A["disp"])
+            except Exception as exc:                     # noqa: BLE001
+                r["band_error"] = str(exc)
+        ch = splits.get(r.get("gid"))
+        if not ch and refit:
+            ch = {"method": "bite", "cut": None}
+        if not ch:
+            continue
+        try:
+            cls, counts = _er_split_classes(r, ch["method"], ch.get("cut"))
+            r["classes"], r["counts"] = cls, counts
+            r["split"] = dict(ch, words=extractionmod.SPLIT_WORDS.get(ch["method"]))
+        except Exception as exc:                         # noqa: BLE001
+            r["split"] = dict(ch, error=str(exc))
+    _er_no_ds1_and_length(pay)
+    return pay
+
+
+_ER_DUR = {"at": 0.0, "by": {}}
+
+
+def _er_durations():
+    """{gid: seconds} -- each recording's length from the registry, read at
+    most every ten minutes (one REG.all(), never a lookup per card)."""
+    now = time.time()
+    if now - _ER_DUR["at"] > 600 or not _ER_DUR["by"]:
+        by = {}
+        try:
+            for row in REG.all() or []:
+                g, d = row.get("gid"), row.get("duration_s")
+                if g and d and g not in by:
+                    by[g] = float(d)
+        except Exception:                                # noqa: BLE001
+            by = _ER_DUR["by"]
+        _ER_DUR.update(at=now, by=by)
+    return _ER_DUR["by"]
+
+
+def _er_no_ds1_and_length(pay):
+    """Every record (in place) with its recording's length, so a card can
+    say its DS1 and DS2 rates (2026-11-13: "somewhere include the recording
+    length and the DS1/2 rate"); and a recording called "no DS1" as one
+    class, DS2, of every event -- what its card draws and the stats count."""
+    import numpy as np
+    durs = _er_durations()
+    seps = _er_seps(pay.get("room"), _er_pay_folder(pay))
+    for r in pay.get("recordings") or []:
+        if durs.get(r.get("gid")):
+            r["duration_s"] = durs[r.get("gid")]
+        if (seps.get(r.get("gid")) or {}).get("verdict") != "no_ds1":
+            continue
+        try:
+            A, _rule, _flip = _er_split_arrays(r)
+            n = int(np.asarray(A["types_delta"]).size)
+            r["classes"] = extractionmod.split_classes(
+                A, np.full(n, 2), r.get("box"), r.get("spacing_um"), r.get("unit"))
+            r["counts"] = {"2": n}
+            r["no_ds1"] = True
+        except Exception as exc:                         # noqa: BLE001
+            r["no_ds1_error"] = str(exc)
+    _er_apply_mode(pay)
+    return pay
+
+
+# --------------------------------------------------------------------------
+# DS3, THE TRIM AND THE MIX-UP (2026-11-13; backend/dsmix.py). A set-wide
+# mode, shared: "plain" (as split), "ds3" (the hybrid laid over the split)
+# or "trim" (the unsure taken out), one at a time. Every card carries the
+# mix-up three ways whatever the mode.
+# --------------------------------------------------------------------------
+MODE_KEY = "extraction_mode"
+_ER_LAYER_MEMO = collections.OrderedDict()
+
+
+def _er_mode(room, folder):
+    got = (STORE.get_prefs() or {}).get(MODE_KEY) or {}
+    return dsmixmod.clean_mode(got.get("%s|%s" % (room or "dentate_spike", folder)))
+
+
+def _er_rec_split(r):
+    """(method, cut) a record is split by as it stands."""
+    sp = r.get("split") or {}
+    if sp.get("method") and not sp.get("error"):
+        return sp["method"], sp.get("cut")
+    if r.get("direct"):
+        return "bite", None
+    return None, None
+
+
+def _er_layers(r, method, cut, mode, low=None):
+    """(arrays, the split's classes, dsmix.layers) of one record under one
+    split; the layers kept in memory by everything they depend on."""
+    import numpy as np
+    A, rule, flip = _er_split_arrays(r, low)
+    if method is None:
+        method = str(A.get("own", "delta"))
+    box = r.get("box") or {}
+    key = json.dumps([r.get("gid"), r.get("read") or (r.get("bundle") or {}),
+                      [box.get(k) for k in xraymanymod.BOX_KEYS],
+                      r.get("interp"), r.get("twin"), _er_rec_sink(r), low, method, cut,
+                      mode["ds3_cut"], mode["trim_cut"]], sort_keys=True, default=str)
+    hit = _ER_LAYER_MEMO.get(key)
+    if hit is None:
+        lay = _dspca_layers(r.get("gid")) if rule == "anatomy" else None
+        types = np.asarray(extractionmod.split_types(A, method, cut, rule, flip, lay),
+                           dtype=int)
+        hit = (types, dsmixmod.layers(A, method, types, mode["ds3_cut"],
+                                      mode["trim_cut"]))
+        _ER_LAYER_MEMO[key] = hit
+        while len(_ER_LAYER_MEMO) > 400:
+            _ER_LAYER_MEMO.popitem(last=False)
+    else:
+        _ER_LAYER_MEMO.move_to_end(key)
+    return A, hit[0], hit[1]
+
+
+def _er_layer_words(L, mode, per_event=False):
+    """dsmix.layers for a page: without the per-event lists unless asked."""
+    d3 = {k: v for k, v in L["ds3"].items() if per_event or k not in ("score", "types")}
+    tr = {k: v for k, v in L["trim"].items() if per_event or k not in ("p_max", "types")}
+    return {"mode": mode["mode"], "ds3_cut": mode["ds3_cut"],
+            "trim_cut": mode["trim_cut"], "mix": L["mix"], "ds3": d3, "trim": tr}
+
+
+def _er_apply_mode(pay):
+    """Every record (in place) with its mix-up three ways and, under DS3 or
+    the trim, the classes that mode gives: what the cards draw and the
+    stats count. A card called "no DS1" has one class and is left alone."""
+    mode = _er_mode(pay.get("room"), _er_pay_folder(pay))
+    for r in pay.get("recordings") or []:
+        if r.get("no_ds1"):
+            continue
+        try:
+            method, cut = _er_rec_split(r)
+            A, _types, L = _er_layers(r, method, cut, mode)
+            r["mix"] = _er_layer_words(L, mode)
+            tm = dsmixmod.types_for(L, mode["mode"])
+            if tm is None:
+                continue
+            cls = extractionmod.split_classes(A, tm, r.get("box"),
+                                              r.get("spacing_um"), r.get("unit"))
+            for c in cls:
+                c["name"] = dsmixmod.NAMES.get(c["c"], c["name"])
+            r["classes"] = cls
+            r["counts"] = {str(c["c"]): int(c["n"]) for c in cls}
+        except Exception as exc:                         # noqa: BLE001
+            r["mix_error"] = str(exc)
+    return pay
+
+
+@app.route("/api/extraction/mode", methods=["POST"])
+def api_extraction_mode():
+    """The set's mode, shared: {room, folder, mode: plain | ds3 | trim,
+    ds3_cut?, trim_cut?}. Cuts not sent keep what the set has."""
+    body = request.get_json(force=True) or {}
+    room = body.get("room") or "dentate_spike"
+    folder = _er_folder(room, body.get("folder"))
+    cur = _er_mode(room, folder)
+    new = dsmixmod.clean_mode(dict(cur, **{k: body[k] for k in ("mode", "ds3_cut", "trim_cut")
+                                           if body.get(k) is not None}))
+    who = (STORE.provenance() or {}).get("user")
+    STORE.set_prefs({}, merge={MODE_KEY: {"%s|%s" % (room, folder): dict(
+        new, by=who, at=datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds"))}})
+    STORE.record_activity([{"action": "extraction.mode",
+                            "detail": dict(new, room=room, folder=folder)}])
+    return jsonify({"ok": True, "mode": new})
+
+
+def _er_pay_rec(aid, version, gid):
+    """(payload, record) -- the record in the band its card shows: the
+    set's hand-drawn band, where there is one (2026-11-12: Compare splits
+    and a line placed there used to be worked out in the version's own
+    band while the card had moved on)."""
+    pay = ARTIFACTS.payload(aid, version or None)
+    if not pay:
+        raise ValueError("There is no extraction %s here." % aid)
+    rec = next((r for r in pay.get("recordings") or [] if r.get("gid") == gid), None)
+    if not rec:
+        raise ValueError("That recording is not in this extraction.")
+    if pay.get("round") == "direct":
+        # A copy: the payload's own record stays the version's, for
+        # _er_one_rec to put the band on as it stands after a change.
+        rec = _er_put_band(dict(rec), _er_bands(pay.get("room"),
+                                                _er_pay_folder(pay)).get(gid))
+        _er_put_interp(rec, _er_interps(pay.get("room")).get(gid))
+        _er_put_twin(rec, _er_twins(pay.get("room")).get(gid))
+    return pay, rec
+
+
+def _er_live_splits(pay):
+    """The set's splits as they stand for this version: a Bite line placed
+    on another sink's order left out (see _er_bite_stale)."""
+    splits = _er_splits(pay.get("room"), _er_pay_folder(pay))
+    recs = {r.get("gid"): r for r in pay.get("recordings") or []}
+    return {g: ch for g, ch in splits.items()
+            if not (g in recs and _er_bite_stale(ch, recs[g]))}
+
+
+_ER_LOW_MEMO = {}
+
+
+def _er_low(rec):
+    """The low contacts of a new-round record's read (extraction.low_contacts),
+    worked out once per read: {contacts: [{c, off_pct, in_band}], first:
+    {contact: off_pct}, frac, band}."""
+    if not rec.get("direct"):
+        raise ValueError("Leaving out low contacts is for the new round's "
+                         "sets, which the room fits itself.")
+    key = (rec.get("gid"), rec.get("read"))
+    hit = _ER_LOW_MEMO.get(key)
+    if hit is None:
+        if not (rec.get("read") and DSPCA.has_cached(rec.get("gid"), rec["read"], ".npz")):
+            raise ValueError("its read is not on this machine")
+        got = _dspca_load(rec["gid"], rec["read"])
+        low, first = extractionmod.low_contacts(got)
+        hit = {"low": low, "first": first,
+               "bad": sorted(int(b) for b in (got.get("bad") or {}))}
+        _ER_LOW_MEMO[key] = hit
+    band = rec.get("box") or {}
+    lo, hi = band.get("sel_lo"), band.get("sel_hi")
+
+    def inside(c):
+        # A contact one past the band's edge still enters its CSD.
+        return lo is not None and hi is not None and int(lo) - 1 <= c <= int(hi) + 1
+    return {"contacts": [{"c": x["c"], "off_pct": round(100 * x["off"], 2),
+                          "in_band": inside(x["c"])} for x in hit["low"]],
+            "first": {str(c): round(100 * o, 2) for c, o in sorted(hit["first"].items())},
+            "bad": hit["bad"], "frac_pct": round(100 * extractionmod.LOW_FRAC, 1),
+            "band": [lo, hi]}
+
+
+def _er_low_list(rec, on):
+    """The contacts to leave out when the toggle is on, else None."""
+    if not on:
+        return None
+    return [x["c"] for x in _er_low(rec)["contacts"]] or None
+
+
+@app.route("/api/extraction/<artifact_id>/split")
+def api_extraction_split_view(artifact_id):
+    """One recording's fifteen splits, pre-rendered: each event's place and
+    class in each method, where its line starts, and the classes (CSD,
+    profile, sink, delta) each gives -- so the page flips between them
+    without asking again. ?version=&gid=&low=1 (the low contacts left out:
+    a look, nothing kept)."""
+    try:
+        pay, rec = _er_pay_rec(artifact_id, request.args.get("version"),
+                               request.args.get("gid"))
+        # Interpolation off, as a look (2026-11-13: "have an option to turn
+        # interpulation on and off here"): the card keeps its contacts.
+        interp_saved = list(rec.get("interp") or [])
+        ispec = request.args.get("interp")
+        interp_off = ispec in ("0", "false", "off")
+        # ...or any set of contacts tried there ("37,38,39"): a look too.
+        rec = _er_interp_look(rec, False if interp_off else
+                              ([c for c in ispec.split(",") if c.strip()]
+                               if ispec else None))
+        interp_try = bool(ispec) and not interp_off and sorted(
+            rec.get("interp") or []) != sorted(interp_saved)
+        twin_saved = list(rec.get("twin") or []) or None
+        tspec = request.args.get("twin")
+        if tspec:
+            rec = _er_twin_look(rec, False if tspec in ("0", "off") else
+                                [float(x) for x in tspec.split(",")[:2]])
+        twin_look = (list(rec.get("twin") or []) or None) != twin_saved
+        want_low = request.args.get("low") in ("1", "true", "yes")
+        set_mode = _er_mode(pay.get("room"), _er_pay_folder(pay))
+        low_info = _er_low(rec) if want_low else None
+        low = _er_low_list(rec, want_low)
+        A, rule, flip = _er_split_arrays(rec, low)
+        view = extractionmod.split_view(A)
+        pre = {}
+        for m in extractionmod.SPLIT_METHODS:
+            if not view["methods"][m].get("types"):
+                continue                       # said on the split: its `why`
+            try:
+                cls, counts, types = _er_split_classes(rec, m, None, with_types=True,
+                                                       low=low)
+                pre[m] = {"classes": cls, "counts": counts,
+                          "scores": _er_overlap_scores(A, types, m)}
+                try:
+                    _A, _t, L = _er_layers(rec, m, None, set_mode, low)
+                    pre[m]["layers"] = _er_layer_words(L, set_mode, per_event=True)
+                except Exception as exc:                 # noqa: BLE001
+                    pre[m]["layers_error"] = str(exc)
+            except Exception as exc:                     # noqa: BLE001
+                view["methods"][m]["why"] = str(exc)
+        ch = _er_splits(pay.get("room"), _er_pay_folder(pay)).get(rec.get("gid"))
+        stale = None
+        if _er_bite_stale(ch, rec):
+            stale, ch = dict(ch, words=BITE_STALE_WORDS), None
+        if low or (interp_off and interp_saved) or interp_try or twin_look:
+            ch = None                          # a look: every line at its default
+        try:
+            view["bite"] = extractionmod.bite_view(
+                A, ch.get("cut") if ch and ch.get("method") == "bite" else None)
+        except Exception as exc:                         # noqa: BLE001
+            view["bite"] = {"error": str(exc)}
+        # The Bite line on each hump alone: its order, cost and sides, drawn
+        # over the whole box's raster.
+        view["bite_rows"] = {}
+        for h in extractionmod.HUMP_SIDES:
+            m = "bite_" + h
+            if not view["methods"][m].get("types"):
+                continue
+            try:
+                view["bite_rows"][h] = extractionmod.hump_bite_view(
+                    A, h, ch.get("cut") if ch and ch.get("method") == m else None)
+            except Exception as exc:                     # noqa: BLE001
+                view["bite_rows"][h] = {"error": str(exc)}
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/split", exc, 400, {"artifact_id": artifact_id})
+    own = "bite" if rec.get("direct") else str(A.get("own", "delta"))
+    return jsonify(dict(view, ok=True, pre=pre, own=own, rule=rule, choice=ch,
+                        stale=stale, band=rec.get("box"),
+                        band_moved=bool(rec.get("band_moved")),
+                        direct=bool(rec.get("direct")),
+                        interp=rec.get("interp") or [],
+                        mode=set_mode, cite=dsmixmod.CITE,
+                        twin=rec.get("twin"), twin_saved=twin_saved,
+                        interp_saved=interp_saved,
+                        interp_off=bool(interp_off and interp_saved),
+                        low=dict(low_info, on=True, left_out=low or [])
+                        if want_low else None))
+
+
+@app.route("/api/extraction/split/preview", methods=["POST"])
+def api_extraction_split_preview():
+    """The classes a cut gives, while it is being dragged: {artifact_id,
+    version, gid, method, cut, low}. Nothing is saved."""
+    body = request.get_json(force=True) or {}
+    try:
+        _pay, rec = _er_pay_rec(body.get("artifact_id"), body.get("version"),
+                                body.get("gid"))
+        ib = body.get("interp")
+        rec = _er_interp_look(rec, False if ib is False else
+                              (ib if isinstance(ib, list) else None))
+        tb = body.get("twin")
+        rec = _er_twin_look(rec, False if tb is False else
+                            (tb if isinstance(tb, list) else None))
+        low = _er_low_list(rec, bool(body.get("low")))
+        cut = body.get("cut")
+        cls, counts, types = _er_split_classes(rec, body.get("method"),
+                                               None if cut is None else float(cut),
+                                               with_types=True, low=low)
+        A, _rule, _flip = _er_split_arrays(rec, low)
+        scores = _er_overlap_scores(A, types, body.get("method"))
+        lw = None
+        try:
+            md = _er_mode(_pay.get("room"), _er_pay_folder(_pay))
+            _A, _t, L = _er_layers(rec, body.get("method"),
+                                   None if cut is None else float(cut), md, low)
+            lw = _er_layer_words(L, md, per_event=True)
+        except Exception:                                # noqa: BLE001
+            lw = None
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/split-preview", exc, 400, {})
+    return jsonify({"ok": True, "classes": cls, "counts": counts, "types": types,
+                    "scores": scores, "layers": lw})
+
+
+def _er_overlap_scores(A, types, method=None):
+    """Any split's sink overlap (2026-11-12): within DS1, within DS2 and
+    between, on the Bite line's overlap of each event's two sink bumps --
+    so the methods can be put side by side on one yardstick. A split on one
+    hump (2026-11-13) is scored on that hump's sinks as well, as `hump`."""
+    import numpy as np
+    from . import sinkcut
+    F = A.get("_bite")
+    if F is None:
+        try:
+            extractionmod.bite_view(A)          # fits the Bite line's working
+            F = A.get("_bite")
+        except Exception:                                # noqa: BLE001
+            return None
+    if F is None:
+        return None
+    t = np.asarray(types, dtype=int)
+    try:
+        sc = sinkcut.scores(F["W"], t)
+        sc["verdict"] = sinkcut.verdict(sc.get("si"), min(sc.get("n1") or 0,
+                                                          sc.get("n2") or 0),
+                                        len(types))
+    except Exception:                                    # noqa: BLE001
+        return None
+    row = extractionmod.split_row(method) if method else "both"
+    if row != "both":
+        try:
+            if A.get("_bite_" + row) is None:
+                extractionmod.hump_bite_view(A, row)
+            Fh = A.get("_bite_" + row)
+            if Fh is not None:
+                hs = sinkcut.scores(Fh["W"], t)
+                sc["hump"] = {k: hs.get(k) for k in ("within1", "within2",
+                                                     "between", "si", "ncut")}
+                sc["hump"]["side"] = row
+        except Exception:                                # noqa: BLE001
+            pass
+    return sc
+
+
+@app.route("/api/extraction/split", methods=["POST"])
+def api_extraction_split_save():
+    """Split recordings by hand, for everybody: {artifact_id, version,
+    gids: [...] (or gid), method, cut}. method null gives each back to
+    X-ray's own split. Each is checked first, so a cut that cannot be made
+    is refused rather than saved."""
+    body = request.get_json(force=True) or {}
+    try:
+        pay = ARTIFACTS.payload(body.get("artifact_id"), body.get("version") or None)
+        if not pay:
+            raise ValueError("There is no extraction %s here." % body.get("artifact_id"))
+        room, folder = pay.get("room"), _er_pay_folder(pay)
+        gids = body.get("gids") or ([body["gid"]] if body.get("gid") else [])
+        method = body.get("method")
+        cut = body.get("cut")
+        if method is not None and method not in extractionmod.SPLIT_METHODS:
+            raise ValueError("A split is one of %s."
+                             % ", ".join(extractionmod.SPLIT_METHODS))
+        if body.get("low"):
+            raise ValueError("With the low contacts left out it is a look "
+                             "only: turn that off to keep a split.")
+        if body.get("twin") is False or isinstance(body.get("twin"), list):
+            raise ValueError("With another time window than the card's it is a "
+                             "look only: save the window on the card first.")
+        if body.get("interp") is False or isinstance(body.get("interp"), list):
+            raise ValueError("Without its interpolated contacts it is a look "
+                             "only: turn the interpolation back on to keep a "
+                             "split, or put the contacts back on the card.")
+        who = (STORE.provenance() or {}).get("user")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        recs = {r.get("gid"): r for r in pay.get("recordings") or []}
+        bands = (_er_bands(room, folder) if pay.get("round") == "direct" else {})
+        interps = (_er_interps(room) if pay.get("round") == "direct" else {})
+        stuck = []
+        for gid in gids:
+            if gid not in recs:
+                continue
+            # Checked in the band the card shows, its contacts as it has them.
+            _er_put_band(recs[gid], bands.get(gid))
+            _er_put_interp(recs[gid], interps.get(gid))
+            _er_put_twin(recs[gid], _er_twins(room).get(gid))
+            if method is not None:
+                try:
+                    _er_split_classes(recs[gid], method,
+                                      None if cut is None else float(cut))
+                except Exception as exc:                 # noqa: BLE001
+                    stuck.append("%s (%s)" % (recs[gid].get("session_label"), exc))
+                    continue
+            val = ({"method": method, "cut": None if cut is None else float(cut),
+                    "by": who, "at": now} if method else None)
+            if val and method == "bite":
+                # A Bite line is a place in an order, and the order is made
+                # from a sink: kept with it, so another sink's order does
+                # not read it as a place among other events.
+                val["sink"] = _er_rec_sink(recs[gid])
+            _er_set_call(extractionmod.SPLIT_KEY, room, folder, gid, val)
+        STORE.record_activity([{"action": "extraction.split",
+                                "detail": {"room": room, "folder": folder,
+                                           "n": len(gids), "method": method,
+                                           "cut": cut}}])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/split-save", exc, 400, {})
+    return jsonify({"ok": True, "splits": _er_live_splits(pay),
+                    "stuck": stuck})
+
+
+def _er_one_rec(pay, gid):
+    """One recording of a version with the set's bands and splits applied,
+    the rest of the version left out (a band or a split redraws one card)."""
+    mini = dict(pay, recordings=[r for r in pay.get("recordings") or []
+                                 if r.get("gid") == gid])
+    if not mini["recordings"]:
+        raise ValueError("That recording is not in this extraction.")
+    _er_apply_splits(mini, _er_splits(pay.get("room"), _er_pay_folder(pay)))
+    return mini["recordings"][0]
+
+
+@app.route("/api/extraction/band", methods=["POST"])
+def api_extraction_band():
+    """A recording's band, drawn by hand on its average CSD (2026-11-12, no
+    X-ray): {artifact_id, version, gid, sel_lo, sel_hi, t_lo_ms, t_hi_ms},
+    or {..., reset: true} for the automatic one. Shared, per set. A split
+    by hand keeps its method but loses its line, which was drawn in the
+    old band's space. Returns the card as it now stands."""
+    body = request.get_json(force=True) or {}
+    try:
+        pay, rec = _er_pay_rec(body.get("artifact_id"), body.get("version"),
+                               body.get("gid"))
+        if pay.get("round") != "direct":
+            raise ValueError("This version's bands are X-ray's: draw them in "
+                             "X-ray Many.")
+        room, folder, gid = pay.get("room"), _er_pay_folder(pay), rec["gid"]
+        who = (STORE.provenance() or {}).get("user")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        if body.get("reset"):
+            val = None
+        else:
+            nb = extractionmod.clean_band(body, rec.get("contacts") or [])
+            if nb is None:
+                raise ValueError("A band is at least 4 contacts deep, inside "
+                                 "the shank.")
+            val = dict(nb, auto=False, by=who, at=now)
+        _er_set_call(extractionmod.BAND_KEY, room, folder, gid, val)
+        ch = _er_splits(room, folder).get(gid)
+        if ch and ch.get("cut") is not None:
+            _er_set_call(extractionmod.SPLIT_KEY, room, folder, gid,
+                         dict(ch, cut=None, by=who, at=now))
+        if val is None:
+            # Back to the automatic band: the version's own record.
+            rec2 = _er_one_rec(pay, gid)
+        else:
+            rec2 = _er_one_rec(pay, gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/band", exc, 400, {})
+    STORE.record_activity([{"action": "extraction.band",
+                            "detail": {"room": room, "folder": folder,
+                                       "gid": gid, "band": val}}])
+    return jsonify({"ok": True, "rec": rec2,
+                    "bands": _er_bands(room, folder),
+                    "splits": _er_live_splits(pay)})
+
+
+def _er_theta(rec, contact):
+    """(bin starts, theta power per bin, fs read at, contact) of one
+    recording's contact over the whole recording -- read once (the channel,
+    decimated, holes kept as holes) and kept on the disk."""
+    import numpy as np
+    from . import panorama
+    gid = rec.get("gid")
+    path = os.path.join(_ER_SPLIT_DIR, "theta__%s__%d.npz" % (
+        shards.safe_base(gid or "?"), int(contact)))
+    if os.path.isfile(path):
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                return np.array(z["t"]), np.array(z["p"]), float(z["fs"]), int(contact)
+        except Exception:                                # noqa: BLE001
+            pass
+    if not rec.get("entry_id"):
+        raise ValueError("no bank entry to find the recording by")
+    sess, _row = _braces_session(_dspca_entry(rec["entry_id"]))
+    chans = _braces_channels(sess)
+    ch = next((c for c in chans if int(c.get("number") or -1) == int(contact)), None)
+    if ch is None:
+        raise ValueError("contact %d is not in this recording" % contact)
+    dur = float(sess.get("duration_s") or 0.0) or float(_er_durations().get(gid) or 0.0)
+    if dur <= 0:
+        raise ValueError("this recording's length is not known")
+    _seg, _t0, fs = csc._read_channel_window(sess, ch, 0.0, 0.05)
+    factor = max(1, int(fs // extractionmod.THETA_FS))
+    x, _gaps = panorama.read_gapped(sess, ch, 0.0, dur, factor, fs / factor)
+    t, p = extractionmod.theta_course(x, fs / factor)
+    try:
+        os.makedirs(_ER_SPLIT_DIR, exist_ok=True)
+        tmp = path[:-4] + ".part.npz"
+        np.savez_compressed(tmp, t=t, p=p, fs=np.array(fs / factor))
+        os.replace(tmp, path)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return t, p, fs / factor, int(contact)
+
+
+@app.route("/api/extraction/<artifact_id>/timeline")
+def api_extraction_timeline(artifact_id):
+    """When every event of a recording happened, its length, and theta
+    power over the whole recording at the middle of its band (2026-11-13),
+    for the strip over Compare splits. ?version=&gid=. The first time, the
+    channel is read from the recording (a minute or so); then from the
+    disk. Theta that cannot be read is said, and the events still come."""
+    import numpy as np
+    try:
+        pay, rec = _er_pay_rec(artifact_id, request.args.get("version"),
+                               request.args.get("gid"))
+        gid = rec["gid"]
+        got = _dspca_load(gid, rec["read"])
+        ts = [round(float(r.get("stamp_s")), 3) for r in got.get("rows") or []]
+        dur = _er_durations().get(gid)
+        band = rec.get("box") or {}
+        lo, hi = band.get("sel_lo"), band.get("sel_hi")
+        theta, why = None, None
+        if lo is not None and hi is not None:
+            # The middle of the band; past a bad or interpolated contact to
+            # the nearest good one.
+            skip = {int(b) for b in (got.get("bad") or {})} | {
+                int(c) for c in rec.get("interp") or []}
+            mid = (int(lo) + int(hi)) / 2.0
+            cands = sorted((c for c in range(int(lo), int(hi) + 1) if c not in skip),
+                           key=lambda c: (abs(c - mid), c))
+            try:
+                if not cands:
+                    raise ValueError("every contact in the band is bad")
+                t, p, fs, c = _er_theta(rec, cands[0])
+                theta = {"contact": c, "band": list(incisormod.THETA_BAND),
+                         "bin_s": extractionmod.THETA_BIN_S, "fs": round(fs, 2),
+                         "t": [round(float(v), 2) for v in t],
+                         "power": [None if not np.isfinite(v) else float("%.4g" % v)
+                                   for v in p],
+                         "unit": "µV²"}
+                if not dur and len(t):
+                    dur = float(t[-1] + extractionmod.THETA_BIN_S)
+            except Exception as exc:                     # noqa: BLE001
+                why = str(exc)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/timeline", exc, 400, {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "gid": gid, "events": ts, "duration_s": dur,
+                    "theta": theta, "theta_why": why, "twin": rec.get("twin")})
+
+
+@app.route("/api/extraction/interp", methods=["POST"])
+def api_extraction_interp():
+    """Contacts interpolated on one recording (2026-11-13): {artifact_id,
+    version, gid, contacts: [38, 39]}, or {..., contacts: []} to put them
+    back. Each is made again by the cubic through the two good contacts
+    either side (extraction.rebuild_contacts) before the CSD, in every set
+    of the room. A Bite line placed by hand loses its place -- the order is
+    made again -- and keeps its method. Returns the card as it now stands."""
+    body = request.get_json(force=True) or {}
+    try:
+        pay, rec = _er_pay_rec(body.get("artifact_id"), body.get("version"),
+                               body.get("gid"))
+        if pay.get("round") != "direct":
+            raise ValueError("This version was fitted by X-ray: contacts are "
+                             "interpolated on the new round's sets.")
+        room, folder, gid = pay.get("room"), _er_pay_folder(pay), rec["gid"]
+        bad = []
+        if rec.get("read") and DSPCA.has_cached(gid, rec["read"], ".npz"):
+            bad = list((_dspca_load(gid, rec["read"]).get("bad") or {}).keys())
+        cs = extractionmod.clean_interp(body.get("contacts") or [],
+                                        rec.get("contacts") or [], bad)
+        who = (STORE.provenance() or {}).get("user")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        val = {"contacts": cs, "by": who, "at": now} if cs else None
+        STORE.set_prefs({}, merge={extractionmod.INTERP_KEY: {
+            extractionmod.interp_key(room, gid): val}})
+        ch = _er_splits(room, folder).get(gid)
+        if ch and ch.get("method", "").startswith("bite") and ch.get("cut") is not None:
+            _er_set_call(extractionmod.SPLIT_KEY, room, folder, gid,
+                         dict(ch, cut=None, by=who, at=now))
+        rec2 = _er_one_rec(pay, gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/interp", exc, 400, {})
+    STORE.record_activity([{"action": "extraction.interp",
+                            "detail": {"room": room, "gid": gid, "contacts": cs}}])
+    return jsonify({"ok": True, "rec": rec2, "interps": _er_interps(room),
+                    "splits": _er_live_splits(pay)})
+
+
+@app.route("/api/extraction/twin", methods=["POST"])
+def api_extraction_twin():
+    """One recording's time window (2026-11-13): {artifact_id, version, gid,
+    t0, t1} in seconds, or {..., clear: true} for the whole recording.
+    Only the events stamped inside it are taken, in every set of the room.
+    A Bite line placed by hand goes back to its default (the order is made
+    again). Returns the card as it now stands."""
+    body = request.get_json(force=True) or {}
+    try:
+        pay, rec = _er_pay_rec(body.get("artifact_id"), body.get("version"),
+                               body.get("gid"))
+        if pay.get("round") != "direct":
+            raise ValueError("A time window is for the new round's sets, which "
+                             "the room fits itself.")
+        room, folder, gid = pay.get("room"), _er_pay_folder(pay), rec["gid"]
+        who = (STORE.provenance() or {}).get("user")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        val = None
+        if not body.get("clear"):
+            tw = extractionmod.clean_twin(body.get("t0"), body.get("t1"))
+            extractionmod.subset_read(_dspca_load(gid, rec["read"]), tw)   # enough events?
+            val = {"t0": tw[0], "t1": tw[1], "by": who, "at": now}
+        STORE.set_prefs({}, merge={extractionmod.TWIN_KEY: {
+            extractionmod.interp_key(room, gid): val}})
+        ch = _er_splits(room, folder).get(gid)
+        if ch and ch.get("method", "").startswith("bite") and ch.get("cut") is not None:
+            _er_set_call(extractionmod.SPLIT_KEY, room, folder, gid,
+                         dict(ch, cut=None, by=who, at=now))
+        rec2 = _er_one_rec(pay, gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/twin", exc, 400, {})
+    STORE.record_activity([{"action": "extraction.twin",
+                            "detail": {"room": room, "gid": gid, "twin": val}}])
+    return jsonify({"ok": True, "rec": rec2, "splits": _er_live_splits(pay)})
+
+
+@app.route("/api/extraction/set_archive", methods=["POST"])
+def api_extraction_set_archive():
+    """A set put away in the room, or put back: {folder, archived}. The
+    room's versions and every call stay; the set is only hidden."""
+    body = request.get_json(force=True) or {}
+    fid = str(body.get("folder") or "").strip()
+    if not fid:
+        return jsonify({"ok": False, "error": "Say which set (folder)."}), 400
+    val = ({"at": datetime.datetime.now(datetime.timezone.utc)
+            .isoformat(timespec="seconds"),
+            "by": (STORE.provenance() or {}).get("user")}
+           if body.get("archived") else None)
+    STORE.set_prefs({}, merge={extractionmod.SET_ARCHIVE_KEY: {fid: val}})
+    return jsonify({"ok": True, "archive": (STORE.get_prefs() or {}).get(
+        extractionmod.SET_ARCHIVE_KEY) or {}})
+
+
+def _er_impression_rows(pay):
+    """Every card of a version as it stands -- band, split, line, swap and
+    call -- with each event's class: what an Impression locks in. Not
+    separable is one class, 0 ("DS, one kind"); uncalled stays uncalled."""
+    import numpy as np
+    room, folder = pay.get("room"), _er_pay_folder(pay)
+    _er_apply_splits(pay, _er_splits(room, folder))
+    seps, flips = _er_seps(room, folder), _er_flips(room, folder)
+    imode = _er_mode(room, folder)
+    rows = []
+    for r in pay.get("recordings") or []:
+        gid = r.get("gid")
+        call = (seps.get(gid) or {}).get("verdict")
+        flip = bool(flips.get(gid))
+        ch = r.get("split") or {"method": "bite" if r.get("direct") else "delta",
+                                "cut": None}
+        row = {k: r.get(k) for k in ("gid", "entry_id", "session_label",
+                                     "mouse_key", "group", "ko_pct", "read",
+                                     "stamps_hash", "n", "spacing_um", "unit",
+                                     "contacts", "t_ms")}
+        row.update(band=r.get("box"), call=call, flip=flip,
+                   interp=r.get("interp"), twin=r.get("twin"),
+                   split={"method": ch.get("method"), "cut": ch.get("cut"),
+                          "words": extractionmod.SPLIT_WORDS.get(ch.get("method"))},
+                   bite=r.get("bite"), direct=bool(r.get("direct")),
+                   bundle=r.get("bundle"))
+        try:
+            A, rule, fl = _er_split_arrays(r)
+            layers = _dspca_layers(gid) if rule == "anatomy" else None
+            types = np.asarray(extractionmod.split_types(
+                A, ch.get("method") or "bite", ch.get("cut"), rule, fl, layers),
+                dtype=int)
+            if imode["mode"] != "plain" and call not in ("no", "no_ds1"):
+                # DS3 or the trim, as the set has it: laid over the split.
+                _A, _t, L = _er_layers(r, ch.get("method") or "bite", ch.get("cut"), imode)
+                tm = dsmixmod.types_for(L, imode["mode"])
+                if tm is not None:
+                    types = np.asarray(tm, dtype=int)
+                row["mode"] = imode
+            if flip:
+                types = np.where(np.isin(types, (1, 2)), 3 - types, types)
+            if call == "no":
+                types = np.zeros_like(types)
+            elif call == "no_ds1":
+                # No DS1 here (2026-11-13): every event is DS2.
+                types = np.full_like(types, 2)
+            row["types"] = [int(t) for t in types]
+            row["counts"] = {str(c): int((types == c).sum())
+                             for c in sorted(set(types.tolist()))}
+            row["classes"] = [{k: c.get(k) for k in ("c", "n", "sink", "delta",
+                                                     "source")}
+                              for c in (r.get("classes") or [])]
+        except Exception as exc:                         # noqa: BLE001
+            row["error"] = str(exc)
+        rows.append(row)
+    return rows
+
+
+@app.route("/api/extraction/impression", methods=["POST"])
+def api_extraction_impression():
+    """TAKE THE IMPRESSION (2026-11-12): lock one set's cards in, all at
+    once, as an artifact version: {artifact_id, version, note}. Blob
+    Analysis is cast from it."""
+    body = request.get_json(force=True) or {}
+    aid = body.get("artifact_id")
+    try:
+        pay = ARTIFACTS.payload(aid, body.get("version") or None) if aid else None
+        if not pay:
+            raise ValueError("There is no extraction %s here." % aid)
+        rec = ARTIFACTS.get(aid) or {}
+        ver = int(body.get("version") or rec.get("version") or 0)
+        rows = _er_impression_rows(pay)
+        bad = [r["session_label"] for r in rows if r.get("error")]
+        if bad:
+            raise ValueError("These cards cannot be locked here: %s."
+                             % "; ".join(bad[:6]))
+        src = pay.get("source") or {}
+        folder = src.get("folder")
+        payload = {"schema": "extraction.impression/1",
+                   "room": pay.get("room"), "folder": folder,
+                   "folder_name": src.get("folder_name"),
+                   "from": {"artifact_id": aid, "version": ver},
+                   "workflow": src.get("workflow"),
+                   "filter": pay.get("filter"),
+                   "round": pay.get("round") or "xray",
+                   "uncalled": sum(1 for r in rows if not r.get("call")),
+                   "recordings": rows}
+        subject = {"room": pay.get("room"), "folder": folder,
+                   "folder_name": src.get("folder_name"),
+                   "gids": sorted({r["gid"] for r in rows})}
+        saved = ARTIFACTS.put("extraction_impression", subject, payload,
+                              params={"from": ver}, inputs=[
+                                  {"artifact_id": aid, "version": ver}],
+                              note=body.get("note"))
+        try:
+            ARTIFACTS.cite(aid, ver, saved["id"], saved.get("version"))
+        except Exception:                                # noqa: BLE001
+            pass
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/impression", exc, 400, {"artifact_id": aid})
+    STORE.record_activity([{"action": "extraction.impression",
+                            "detail": {"from": aid, "version": ver,
+                                       "impression": saved.get("id"),
+                                       "v": saved.get("version"),
+                                       "n": len(rows)}}])
+    return jsonify({"ok": True, "artifact_id": saved["id"],
+                    "version": saved.get("version"), "n": len(rows),
+                    "uncalled": payload["uncalled"]})
+
+
+@app.route("/api/extraction/impressions")
+def api_extraction_impressions():
+    """Every Impression, newest first, with its versions."""
+    try:
+        out = []
+        for r in ARTIFACTS.list(kind="extraction_impression"):
+            cur = r.get("current") or {}
+            out.append({"artifact_id": r.get("id"), "version": r.get("version"),
+                        "subject": r.get("subject"), "at": cur.get("at"),
+                        "by": cur.get("by"), "summary": cur.get("n_summary") or {},
+                        "versions": [{"v": v.get("v"), "at": v.get("at"),
+                                      "by": v.get("by"), "note": v.get("note"),
+                                      "nickname": v.get("nickname"),
+                                      "summary": v.get("n_summary") or {},
+                                      "here": v.get("here", True)}
+                                     for v in r.get("versions") or []]})
+        out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/impressions", exc, 500)
+    return jsonify({"ok": True, "impressions": out})
+
+
+# --------------------------------------------------------------------------
+# BLOB ANALYSIS (2026-11-12), cast from an Impression: "top blob and bottom
+# blob analysis of DS1 and DS2 ... how long the sink lasts ... is it fast and
+# strong or slow and diffused ... per recording, per group (CTL/PTEN), per
+# separable / not separable, and a pick and choose". backend/blobs.py does
+# the measuring; here each locked-in card's read is fitted in its band and
+# measured with its classes, once per Impression version (kept on disk).
+# --------------------------------------------------------------------------
+_BLOB_MEMO = collections.OrderedDict()
+
+
+def _blob_set(aid, version):
+    """{recordings: [{gid, session_label, ..., call, summary}], left_out,
+    measures, ...} for one Impression version."""
+    from . import blobs as blobsmod
+    rec = ARTIFACTS.get(aid)
+    if not rec or rec.get("kind") != "extraction_impression":
+        raise ValueError("There is no Impression %s." % aid)
+    v = int(version or rec.get("version") or 0)
+    key = "%s_v%d" % (aid, v)
+    if key in _BLOB_MEMO:
+        _BLOB_MEMO.move_to_end(key)
+        return _BLOB_MEMO[key]
+    path = os.path.join(_ER_SPLIT_DIR, "blobs__%s.json" % key)
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                out = json.load(fh)
+            _BLOB_MEMO[key] = out
+            return out
+        except Exception:                                # noqa: BLE001
+            pass
+    import numpy as np
+    pay = ARTIFACTS.payload(aid, v)
+    if not pay:
+        raise ValueError("Impression v%d was taken on another computer and has "
+                         "not reached this one yet." % v)
+    recs, left = [], []
+    for row in pay.get("recordings") or []:
+        who = {k: row.get(k) for k in ("gid", "session_label", "mouse_key",
+                                        "group", "ko_pct", "call", "flip")}
+        if not row.get("call"):
+            left.append(dict(who, why="not called yet when the impression was taken"))
+            continue
+        if row.get("error") or not row.get("types"):
+            left.append(dict(who, why=row.get("error") or "no classes"))
+            continue
+        try:
+            r = {"gid": row["gid"], "direct": row.get("direct"),
+                 "read": row.get("read"), "box": row.get("band") or {},
+                 "bundle": row.get("bundle"), "contacts": row.get("contacts"),
+                 "bite": row.get("bite"), "interp": row.get("interp"),
+                 "twin": row.get("twin")}
+            A, _rule, _fl = _er_split_arrays(r)
+            types = np.asarray(row["types"], dtype=int)
+            if types.size != np.asarray(A["disp"]).shape[0]:
+                raise ValueError("its read no longer has the events the "
+                                 "impression locked in")
+            summ, _ev = blobsmod.recording(A, float(row.get("spacing_um") or 25.0),
+                                           classes=types)
+            recs.append(dict(who, split=row.get("split"), band=row.get("band"),
+                             counts=row.get("counts"), summary=summ))
+        except Exception as exc:                         # noqa: BLE001
+            left.append(dict(who, why=str(exc)))
+    out = {"artifact_id": aid, "version": v, "folder": pay.get("folder"),
+           "folder_name": pay.get("folder_name"), "workflow": pay.get("workflow"),
+           "filter": pay.get("filter") or "5-100 Hz, 60 Hz notched.",
+           "filter_note": ("The blob timing (duration, rise and decay) is "
+                           "measured on the 5-100 Hz CSD, which rounds off "
+                           "slow sinks: it might be worth redoing with other "
+                           "filters."),
+           "measures": blobsmod.MEASURES, "blobs": list(blobsmod.BLOBS),
+           "min_recs": blobsmod.MIN_RECS, "recordings": recs, "left_out": left}
+    try:
+        os.makedirs(_ER_SPLIT_DIR, exist_ok=True)
+        tmp = path + ".part"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+        os.replace(tmp, path)
+    except Exception:                                    # noqa: BLE001
+        pass
+    _BLOB_MEMO[key] = out
+    while len(_BLOB_MEMO) > 4:
+        _BLOB_MEMO.popitem(last=False)
+    return out
+
+
+def _blob_labels(recs, by, picks, cls):
+    """(labels, per-recording class) for one comparison. By group: CTL and
+    PTEN; by call: separable and not; by pick: the picked and the rest. DS1
+    and DS2 are the separable recordings' own; "one kind" is the not
+    separable ones' (2026-11-12: kept out of the DS1 vs DS2 comparisons)."""
+    picks = set(picks or [])
+    labels, classes = [], []
+    for r in recs:
+        if by == "sep":
+            lab = ("Separable" if r.get("call") == "yes" else
+                   "No DS1" if r.get("call") == "no_ds1" else "Not separable")
+        elif by == "pick":
+            lab = "Picked" if r.get("gid") in picks else "The rest"
+        else:
+            lab = "CTL" if str(r.get("group") or "").upper() == "CTL" else "PTEN"
+        if cls in ("1", "2", "3", 1, 2, 3):
+            c = int(cls)
+            # DS2 is the separable recordings' and the "no DS1" ones' (all
+            # of whose events are DS2); DS1 the separable ones' alone.
+            if not (r.get("call") == "yes"
+                    or (c == 2 and r.get("call") == "no_ds1")):
+                lab = None
+        elif cls in ("0", 0):
+            c = 0
+            if r.get("call") != "no":
+                lab = None
+        else:
+            c = "all"
+        labels.append(lab)
+        classes.append(c)
+    return labels, classes
+
+
+@app.route("/api/extraction/blobs", methods=["POST"])
+def api_extraction_blobs():
+    """Every locked-in recording of an Impression, measured: {artifact_id,
+    version}. The first time each read is fitted in its band (seconds a
+    recording); after that it is read from the disk."""
+    body = request.get_json(force=True) or {}
+    try:
+        out = _blob_set(body.get("artifact_id"), body.get("version"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/blobs", exc, 400, {})
+    return jsonify(dict(out, ok=True))
+
+
+@app.route("/api/extraction/blobs/compare", methods=["POST"])
+def api_extraction_blobs_compare():
+    """One measure of one blob of one class across groups: {artifact_id,
+    version, measure, blob ('top' | 'bottom'), cls ('all' | 1 | 2 | 0), by
+    ('group' | 'sep' | 'pick'), picks: [gid]}. The distributions with every
+    recording weighted the same, the shift function, the tests in words."""
+    from . import blobs as blobsmod
+    body = request.get_json(force=True) or {}
+    try:
+        data = _blob_set(body.get("artifact_id"), body.get("version"))
+        recs = data["recordings"]
+        if body.get("only"):
+            only = set(body["only"])
+            recs = [r for r in recs if r["gid"] in only]
+        labels, classes = _blob_labels(recs, body.get("by") or "group",
+                                       body.get("picks"), body.get("cls", "all"))
+        res = blobsmod.group_compare(
+            [r["summary"] for r in recs], labels, body.get("measure") or "peak",
+            blob=body.get("blob") or "top", cls=classes,
+            names=[r.get("session_label") for r in recs])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/blobs-compare", exc, 400, {})
+    return jsonify(dict(res, ok=True))
+
+
+@app.route("/api/extraction/blobs/all", methods=["POST"])
+def api_extraction_blobs_all():
+    """Every measure of both blobs for one class and one grouping, with the
+    false discovery rate held across all of them: {artifact_id, version,
+    cls, by, picks}. Only what the table needs is sent back."""
+    from . import blobs as blobsmod
+    body = request.get_json(force=True) or {}
+    try:
+        data = _blob_set(body.get("artifact_id"), body.get("version"))
+        recs = data["recordings"]
+        labels, classes = _blob_labels(recs, body.get("by") or "group",
+                                       body.get("picks"), body.get("cls", "all"))
+        got = blobsmod.compare_all([r["summary"] for r in recs], labels,
+                                   classes=(classes,))
+        rows = []
+        for x in got.get("results") or []:
+            cmp_ = x.get("compare") or {}
+            rows.append({
+                "measure": x.get("measure"), "blob": x.get("blob"),
+                "words": x.get("words"), "unit": x.get("unit"),
+                "higher": x.get("higher"),
+                "groups": [{"label": g.get("label"), "n_rec": g.get("n_rec"),
+                            "n_events": g.get("n_events"),
+                            "stats": g.get("stats"), "say": g.get("say"),
+                            "bimodal": g.get("bimodal")}
+                           for g in x.get("groups") or []],
+                "compare": ({"a": cmp_.get("a"), "b": cmp_.get("b"),
+                             "effect": cmp_.get("effect"),
+                             "tests": cmp_.get("tests")} if cmp_ else None)})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("extraction/blobs-all", exc, 400, {})
+    return jsonify({"ok": True, "rows": rows, "family": got.get("family")})
+
+
 @app.route("/api/extraction/round2", methods=["POST"])
 def api_extraction_round2():
     """Round II: {artifact_id, version?, split?, skip?}. See
@@ -11017,6 +12523,7 @@ def api_extraction_round2():
         split = float(body.get("split") if body.get("split") is not None
                       else extractionmod.KO_SPLIT)
         ko = _er_ko()
+        _er_apply_splits(pay, _er_splits(pay.get("room"), _er_pay_folder(pay)))
         recs = pay.get("recordings") or []
         ko_now = {r["gid"]: extractionmod.ko_of(r.get("mouse_key"),
                                                 r.get("group"), ko)[0]
@@ -11048,6 +12555,7 @@ def api_extraction_stats():
         min_n = int(body.get("min_n") if body.get("min_n") is not None
                     else extractionmod.MIN_N)
         ko = _er_ko()
+        _er_apply_splits(pay, _er_splits(pay.get("room"), _er_pay_folder(pay)))
         recs = pay.get("recordings") or []
         ko_now = {r["gid"]: extractionmod.ko_of(r.get("mouse_key"),
                                                 r.get("group"), ko)[0]
@@ -16127,10 +17635,21 @@ WF_PIPELINE = "Root Canal workflow"
 WF_HANDSORT = ("IED hand-sort (ETS)",)
 
 
+WF_POOL_UNPICKED = {
+    "target": "Pick the pool it is applied to first.",
+    "source": "Pick the pool the DS border is drawn around first.",
+    "pool": "Pick the pools to make one pool of first.",
+}
+
+
 def _wf_pool(ref, what):
     """(record, version, payload) of a saved pool a workflow names."""
     aid = (ref or {}).get("artifact_id")
-    rec = ARTIFACTS.get(aid) if aid else None
+    if not aid:
+        # None picked (2026-11-13): this said "There is no saved pool None".
+        raise rcworkflow.WorkflowError(WF_POOL_UNPICKED.get(
+            what, "Pick the pool for the %s first." % what))
+    rec = ARTIFACTS.get(aid)
     if not rec or rec.get("kind") != "rootcanal_pool":
         raise rcworkflow.WorkflowError(
             "There is no saved pool %s to use as the %s." % (aid, what))
@@ -16269,9 +17788,18 @@ def _wf_uses(uses):
     return out
 
 
-def _wf_definition(body):
+# THE SCOOP IS RETIRED (2026-11-12: "retire and archive all the scoop
+# stuff... like the data and the option in the workflow"). Refused for a new
+# definition or a preview; a saved one still runs, so an archived run can be
+# rebuilt exactly, and still draws (rcborder keeps the shape).
+WF_RETIRED_SHAPES = {"ellipsoid": "The scoop (ellipsoid) border was retired "
+                                  "on 2026-11-12. Pick the box or the snap."}
+
+
+def _wf_definition(body, allow_retired=False):
     """A workflow's definition, checked, with every input pinned to the
-    version it names (or the newest, when it names none)."""
+    version it names (or the newest, when it names none). A retired border
+    shape is refused unless `allow_retired` (a run of one saved before)."""
     kind = str(body.get("kind") or "")
     if kind not in rcworkflow.KINDS:
         raise rcworkflow.WorkflowError(
@@ -16315,6 +17843,8 @@ def _wf_definition(body):
             raise rcworkflow.WorkflowError(
                 "A border is a box, a scoop (ellipsoid) or a snap (hull); "
                 "not %r." % shape)
+        if shape in WF_RETIRED_SHAPES and not allow_retired:
+            raise rcworkflow.WorkflowError(WF_RETIRED_SHAPES[shape])
         out["shape"] = shape
         trec, tv, _tp = _wf_pool(body.get("target"), "target")
         out["target"] = {"artifact_id": trec["id"], "version": tv,
@@ -16348,6 +17878,10 @@ def _wf_definition(body):
             out["source"] = {"type": "sets", "entries": ents}
     else:
         out["uses"] = _wf_uses(body.get("uses") or {})
+        # THE HALO (2026-11-12): chosen on the Apply stage, not in the
+        # builder; kept here once saved, so Run again applies it too.
+        if body.get("halo"):
+            out["halo"] = rcworkflow.halo_params(body["halo"])
         t = body.get("target") or None
         if t:
             trec, tv, _tp = _wf_pool(t, "target")
@@ -16496,6 +18030,18 @@ def _wf_compute(defn):
             measure=(tpay.get("params") or {}).get("measure"),
             members=_wf_members(tpay),
             cols=rcworkflow.columns(tgt, cls, da, db))
+        # Every Ambiguous run keeps each event's gauge against both borders
+        # (2026-11-12), so the Apply stage's Halo can be tried on the page;
+        # a halo in the definition is applied here, so Run again keeps it.
+        try:
+            ga, gb, centres = rcworkflow.halo_gauges(
+                run["cols"], a["border"], a["grace"], b["border"], b["grace"])
+            run["cols"]["ga"], run["cols"]["gb"] = ga, gb
+            run["halo_centres"] = centres
+            if defn.get("halo"):
+                _wf_halo_apply(run, defn["halo"])
+        except rcborder.BorderError:
+            pass
         mism = []
         for side, x in (("DS", a), ("P-spike", b)):
             if x.get("target", {}).get("artifact_id") != tref["artifact_id"]:
@@ -16559,6 +18105,11 @@ def _wf_compute(defn):
                 src_events, scls, rcworkflow.distances(src_events, border, g)),
             cols=rcworkflow.columns(
                 tgt, cls, rcworkflow.distances(tgt, border, g)))
+    return _wf_tally(run, kind)
+
+
+def _wf_tally(run, kind):
+    """A run's counts, and its classes by mouse and by recording."""
     run.update(rcworkflow.summary(kind, run["cols"]["cls"]))
     ev = [{"mouse_key": m, "mouse_type": None, "gid": None}
           for m in run["cols"]["mouse"]]
@@ -16571,6 +18122,26 @@ def _wf_compute(defn):
             else None} for g in run["cols"]["g"]]
     run["by_recording"] = rcworkflow.breakdown(ev2, run["cols"]["cls"],
                                                "gid")
+    return run
+
+
+def _wf_halo_apply(run, h, from_version=None):
+    """THE HALO on an Ambiguous run, in place: the events outside both are
+    sorted by it; the classes before it are kept as `cls_plain`. Its
+    gauges must be in the columns already."""
+    h = rcworkflow.halo_params(h)
+    col = run["cols"]
+    plain = list(col.get("cls_plain") or col["cls"])
+    col["cls_plain"] = plain
+    col["cls"] = rcworkflow.halo_classes(plain, col["ga"], col["gb"], h)
+    c = rcworkflow.counts(col["cls"])
+    run["halo"] = dict(h, words=rcworkflow.halo_words(h),
+                       centres=run.get("halo_centres"),
+                       from_version=from_version,
+                       captured={"ds": c.get("halo_ds", 0),
+                                 "pspike": c.get("halo_pspike", 0),
+                                 "extended": c.get("halo_amb", 0),
+                                 "far": c.get("neither", 0)})
     return run
 
 
@@ -16721,6 +18292,30 @@ def _wf_last_run(aid, upto=None):
     return None, None
 
 
+def _wf_versions(r):
+    """An input's versions, for the builder's version tree (2026-11-12: "use
+    the same git like branching select thing"): what each one holds, and
+    whether its payload is on this machine. From the summaries; no payload
+    is read."""
+    out = []
+    for v in r.get("versions") or []:
+        if not isinstance(v, dict) or v.get("v") is None:
+            continue
+        ns = v.get("n_summary") or {}
+        out.append({"v": int(v["v"]), "at": v.get("at"), "by": v.get("by"),
+                    "machine": v.get("machine"), "note": v.get("note"),
+                    "nickname": v.get("nickname"),
+                    "here": v.get("here") is not False,
+                    # A pool's version.
+                    "events": ns.get("events"), "members": ns.get("members"),
+                    "mice": ns.get("mice"),
+                    # A workflow's version.
+                    "ran": ns.get("ran"), "kept": ns.get("kept"),
+                    "grace": ns.get("grace")})
+    out.sort(key=lambda x: x["v"])
+    return out
+
+
 def _wf_row(r):
     cur = r.get("current") or {}
     ns = cur.get("n_summary") or {}
@@ -16764,6 +18359,7 @@ def _wf_row(r):
             "grace": run.get("grace") or defn.get("grace"),
             "shape": run.get("shape") or defn.get("shape"),
             "folder": defn.get("folder") or [],
+            "versions": _wf_versions(r),
             "stale": stale, "mismatch": run.get("mismatch") or [],
             "sync": r.get("sync")}
 
@@ -16798,7 +18394,8 @@ def api_rootcanal_workflow_sources():
                           "all_ds": bool(prm.get("all_ds")),
                           "filter": ((prm.get("measure") or {})
                                      .get("filter_label")),
-                          "updated": cur.get("at")})
+                          "updated": cur.get("at"),
+                          "versions": _wf_versions(r)})
         pools = natsortmod.sort(pools, by=lambda p: p.get("nickname") or "")
         sets = []
         for s in _wf_handsorted():
@@ -16965,7 +18562,7 @@ def api_rootcanal_workflow_run(artifact_id):
             if fresh.get("pools"):
                 fresh["pools"] = [{"artifact_id": p["artifact_id"]}
                                   for p in fresh["pools"]]
-            defn = _wf_definition(fresh)
+            defn = _wf_definition(fresh, allow_retired=True)
         elif body.get("refresh_sets") and (defn.get("source") or {}).get(
                 "type") == "sets":
             # THE SETS AS PREPARED (2026-11-05). A P-spike workflow saved
@@ -16974,9 +18571,9 @@ def api_rootcanal_workflow_run(artifact_id):
             # each set's newest aligned one -- not the stamps from before.
             defn = _wf_definition(dict(defn, source={"entries": [
                 {"entry_id": it["entry_id"]}
-                for it in defn["source"]["entries"]]}))
+                for it in defn["source"]["entries"]]}), allow_retired=True)
         else:
-            defn = _wf_definition(defn)
+            defn = _wf_definition(defn, allow_retired=True)
         run = _wf_compute(defn)
         last_run = None
         for v in range(int(rec.get("version") or 1), 0, -1):
@@ -17115,6 +18712,17 @@ def api_rootcanal_workflow_bank(artifact_id):
         ver = body.get("version") or rec.get("version")
         run = (ARTIFACTS.payload(artifact_id, ver) or {}).get("run") or {}
         col = run.get("cols") or {}
+        # A WHOLE SIDE (2026-11-12): every event of one border alone, and
+        # what its halo captured -- a border's and a halo's call, not a
+        # person's picks.
+        side = body.get("side") if body.get("side") in ("ds", "pspike") \
+            else None
+        if side:
+            want = {side, "halo_" + side}
+            body = dict(body, type="ds" if side == "ds" else "ied",
+                        picks=[n for n, c in enumerate(col.get("cls") or [])
+                               if c in want and (col.get("t") or [])[n]
+                               is not None])
         picks = sorted({int(n) for n in body.get("picks") or []
                         if 0 <= int(n) < len(col.get("t") or [])})
         if not picks:
@@ -17141,20 +18749,147 @@ def api_rootcanal_workflow_bank(artifact_id):
             "type_name": {"ds": "Dentate spike", "ied": "P-spike"}.get(
                 etype, "Ambiguous DS / P-spike"),
             "name": name,
-            "note": ("Picked by hand from the ambiguous events of the Root "
-                     "Canal workflow ‘%s’ v%s." % (nick, ver)),
-            "events": events, "curated": True, "pipeline": WF_PIPELINE,
+            "id": (str(body.get("entry_id") or "").strip() or None)
+            if side else None,
+            "note": (("Every event of the Root Canal workflow ‘%s’ v%s inside "
+                      "the %s border only, and every one outside both that "
+                      "its halo captured (%s). A border's and a halo's call, "
+                      "not a person's." % (
+                          nick, ver, "DS" if side == "ds" else "P-spike",
+                          rcworkflow.halo_words(run["halo"])
+                          if run.get("halo") else "no halo on this version"))
+                     if side else
+                     ("Picked by hand from the ambiguous events of the Root "
+                      "Canal workflow ‘%s’ v%s." % (nick, ver)))
+            + ((" " + str(body.get("note")).strip())
+               if str(body.get("note") or "").strip() else ""),
+            "events": events, "curated": not side, "pipeline": WF_PIPELINE,
             "added_by": (STORE.provenance() or {}).get("user"),
             "parameters": {"tool": "rootcanal_workflow",
                            "workflow": {"artifact_id": artifact_id,
                                         "version": ver, "nickname": nick,
                                         "kind": "ambiguous"},
-                           "picked": len(picks)},
+                           "picked": len(picks),
+                           "side": side,
+                           "halo": ({k: run["halo"].get(k) for k in
+                                     ("reach", "margin", "captured",
+                                      "from_version")}
+                                    if run.get("halo") else None),
+                           "target": run.get("target"),
+                           "borders": {k: {"workflow": (v or {}).get(
+                               "workflow"), "grace": (v or {}).get("grace")}
+                               for k, v in (run.get("borders") or {})
+                               .items()}},
         })
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/workflow-bank", exc, 400,
                     {"artifact_id": artifact_id})
     return jsonify({"ok": True, "entry_id": made["id"], "n": len(events)})
+
+
+def _wf_halo_run(artifact_id, version):
+    """(rec, version, definition, run) of an Ambiguous run, with each
+    event's gauges against both borders -- worked out now for a run saved
+    before runs kept them."""
+    rec = ARTIFACTS.get(artifact_id)
+    if not rec or rec.get("kind") != "rootcanal_workflow":
+        raise rcworkflow.WorkflowError("There is no workflow %s."
+                                       % artifact_id)
+    if version is None:
+        version, _r = _wf_last_run(artifact_id)
+    pay = ARTIFACTS.payload(artifact_id, version) or {}
+    run, defn = pay.get("run"), pay.get("definition") or {}
+    if not run or defn.get("kind") != "ambiguous":
+        raise rcworkflow.WorkflowError(
+            "The Halo is an Ambiguous run's option; v%s of this workflow is "
+            "not one." % version)
+    run = json.loads(json.dumps(run))
+    col = run["cols"]
+    if not (col.get("ga") and col.get("gb") and run.get("halo_centres")):
+        b = run.get("borders") or {}
+        ga, gb, centres = rcworkflow.halo_gauges(
+            col, b["ds"]["border"], b["ds"]["grace"],
+            b["pspike"]["border"], b["pspike"]["grace"])
+        col["ga"], col["gb"] = ga, gb
+        run["halo_centres"] = centres
+    return rec, int(version), defn, run
+
+
+@app.route("/api/rootcanal/workflow/<artifact_id>/halo",
+           methods=["GET", "POST"])
+def api_rootcanal_workflow_halo(artifact_id):
+    """THE HALO of an Ambiguous run (2026-11-12). GET ?version=: each
+    event's gauge against both borders and the halos' centres, for the
+    page to try reaches and margins on. POST {version, reach, margin, note,
+    off}: the run with the halo applied (or taken off), saved as the
+    workflow's next version, saying so in its note and its metadata."""
+    try:
+        if request.method == "GET":
+            v = request.args.get("version")
+            _rec, ver, _d, run = _wf_halo_run(
+                artifact_id, int(v) if v not in (None, "") else None)
+            return jsonify({"ok": True, "version": ver,
+                            "ga": run["cols"]["ga"], "gb": run["cols"]["gb"],
+                            "centres": run["halo_centres"]})
+        body = request.get_json(force=True) or {}
+        v = body.get("version")
+        rec, ver, defn, run = _wf_halo_run(
+            artifact_id, int(v) if v not in (None, "") else None)
+        before = json.loads(json.dumps(run["cols"]))
+        col = run["cols"]
+        if col.get("cls_plain"):
+            col["cls"] = list(col["cls_plain"])
+        defn = dict(defn)
+        if body.get("off"):
+            defn.pop("halo", None)
+            col.pop("cls_plain", None)
+            run.pop("halo", None)
+            what = "Halo taken off"
+        else:
+            h = rcworkflow.halo_params(body)
+            defn["halo"] = h
+            _wf_halo_apply(run, h, from_version=ver)
+            what = ("Halo applied (reach %g×, margin %g×) to the run of v%s"
+                    % (h["reach"], h["margin"], ver))
+        _wf_tally(run, "ambiguous")
+        run["diff"] = rcworkflow.diff(before, run["cols"])
+        run["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        run["by"] = (STORE.provenance() or {}).get("user")
+        run["bank"] = None
+        user_note = str(body.get("note") or "").strip()
+        note = what + (". " + user_note if user_note else "")
+        inputs = []
+        if (defn.get("target") or {}).get("artifact_id"):
+            t = defn["target"]
+            inputs.append({"artifact_id": t["artifact_id"],
+                           "version": t["version"], "kind": "rootcanal_pool"})
+        for ref in (defn.get("uses") or {}).values():
+            inputs.append({"artifact_id": ref["artifact_id"],
+                           "version": ref["version"],
+                           "kind": "rootcanal_workflow"})
+        out = ARTIFACTS.add_version(
+            artifact_id, {"schema": 1, "definition": defn, "run": run},
+            params={"kind": "ambiguous", "halo": defn.get("halo")},
+            inputs=inputs, note=note)
+        nick = str(body.get("nickname") or "").strip()
+        if nick:
+            try:
+                ARTIFACTS.set_version_nickname(artifact_id, out.get("version"),
+                                               nick)
+            except Exception:                            # noqa: BLE001
+                pass
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-halo", exc, 400,
+                    {"artifact_id": artifact_id})
+    STORE.record_activity([{"action": "rootcanal.workflow.halo",
+                            "detail": {"artifact": artifact_id,
+                                       "from": ver,
+                                       "version": out.get("version"),
+                                       "halo": defn.get("halo")}}])
+    return jsonify({"ok": True, "artifact_id": artifact_id,
+                    "version": out.get("version"), "run": run,
+                    "definition": defn})
 
 
 # --------------------------------------------------------------------------
@@ -17179,6 +18914,11 @@ _META_LOCK = threading.Lock()
 _META_QUEUE = []         # artifact ids waiting, in order
 _META_THREAD = {"t": None}
 _META_SAVED = {"at": 0.0}
+# One writer of runs.json at a time (2026-11-12). Pressing Run writes it
+# twice at once -- the request, and the run's own thread as it starts --
+# and two writers through one scratch name collide on Windows: 2026-11-11
+# 15:29:16, "[WinError 32] ... runs.json.part -> runs.json".
+_META_WRITE = threading.Lock()
 
 
 def _meta_state_load():
@@ -17208,11 +18948,14 @@ def _meta_persist(force=False):
         return
     _META_SAVED["at"] = now
     try:
-        os.makedirs(_META_DIR, exist_ok=True)
-        tmp = _META_STATE + ".part"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(_META_RUNS, f, default=str)
-        os.replace(tmp, _META_STATE)
+        with _META_WRITE:
+            # A copy taken whole, under the lock, so the later writer
+            # always writes the later state, and a run's thread adding to
+            # a row cannot change it mid-write. The store's own write then
+            # gives it a private scratch name (the harness server shares
+            # this folder) and retries a rename something is holding up.
+            runs = json.loads(json.dumps(_META_RUNS, default=str))
+            shards.write_json_atomic(_META_STATE, runs)
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("rootcanal.meta.state", exc, None, {})
 

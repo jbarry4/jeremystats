@@ -183,6 +183,678 @@ def extract_one(bundle, subject, res, got, ko):
     }
 
 
+# --------------------------------------------------------------------------
+# THE SPLIT, BY HAND (2026-11-11: "include this sort of K-cluster plot below
+# each depth profile as a collapsible ... allow us to move where the line is
+# drawn for DS1 and DS2 and see the depth profile and CSDs update"; "have
+# these 3 options pre-rendered for us to flip through ... change one at a
+# time, or change all mice to the PCA").
+#
+# X-ray's fit makes all three splits every time (dspca.fit's `variants`):
+# PCA with no gap, PCA with the sink gap as a column, and the sink gap alone.
+# Each event's place in each, and its class there, is kept with the
+# per-event CSD and profiles (`split_arrays`, cached on this machine), so a
+# method or a cut is a mean over rows -- milliseconds -- and never a refit.
+# A cut is a line across the plot's x axis (the gap, or PC1): the two sides
+# are named DS1 and DS2 by X-ray's own rule, as each of its three is.
+# --------------------------------------------------------------------------
+SPLIT_KEY = "extraction_split"
+# THE BITE LINE (2026-11-12) is first and the default of the new round:
+# backend/sinkcut.py. Its line is drawn along the events in their overlap
+# order, so its "x" is each event's place in that order.
+#
+# DELTA MIDDLE AND THE HUMP ROWS (2026-11-13: "Add a Delta Middle ... where
+# instead of finding the greatest sink it just takes the middle of the hump.
+# And for all the total 5 methods... add 2 rows where one basically just
+# does it on the top hump, and one on the bottom hump"). Each of the five
+# again on the recording's top hump alone and its bottom hump alone (the
+# humps sinkcut.hump_cut parts): the Bite line on that hump's sink; PCA on
+# that hump's contacts; PCA + gap with the hump's strongest contact in place
+# of the gap ("PCA + gap would get channel position instead"); delta and
+# delta middle as where that hump's sink is strongest, or its middle, sorted
+# shallow to deep. See add_humps.
+BASE_METHODS = ("bite", "pca", "pca_gap", "delta", "delta_mid")
+HUMP_SIDES = ("top", "bottom")
+SPLIT_METHODS = BASE_METHODS + tuple("%s_%s" % (m, h) for h in HUMP_SIDES
+                                     for m in BASE_METHODS)
+_WORDS_BOTH = {"bite": "Bite line", "pca": "PCA, no gap", "pca_gap": "PCA + gap",
+               "delta": "delta only, no PCA", "delta_mid": "delta middle, no PCA"}
+_WORDS_HUMP = {"bite": "Bite line", "pca": "PCA", "pca_gap": "PCA + position",
+               "delta": "delta, by position", "delta_mid": "delta middle, by position"}
+SPLIT_WORDS = dict(_WORDS_BOTH, **{"%s_%s" % (m, h): "%s · %s hump only"
+                                   % (_WORDS_HUMP[m], h)
+                                   for h in HUMP_SIDES for m in BASE_METHODS})
+# Where a hump's middle is: halfway between its edges at this share of its
+# deepest point (half: a notch inside the hump does not move the edges).
+MID_LEVEL = 0.5
+ONE_HUMP = ("The average CSD has one sink hump in this band, so there is no "
+            "top and bottom hump to take apart.")
+
+
+def split_base(m):
+    """The method a split is a row of: "pca_gap_top" -> "pca_gap"."""
+    for h in HUMP_SIDES:
+        if str(m).endswith("_" + h):
+            return str(m)[:-len(h) - 1]
+    return str(m)
+
+
+def split_row(m):
+    """Which row a split is: "both", "top" or "bottom"."""
+    for h in HUMP_SIDES:
+        if str(m).endswith("_" + h):
+            return h
+    return "both"
+
+
+def split_arrays(res):
+    """What a recording's split can be redrawn from without fitting again:
+    the per-event CSD, profiles and sink gaps, and each method's place and
+    class for every event."""
+    v = res.get("variants") or {}
+    prof = np.asarray(res["prof"], dtype=np.float32)
+    pa = res.get("prof_all")
+    out = {"disp": np.asarray(res["disp"], dtype=np.float32), "prof": prof,
+           "prof_all": np.asarray(pa if pa is not None else prof, dtype=np.float32),
+           "gap_contacts": np.asarray(res.get("gap_contacts") or [], dtype=np.float32),
+           "nums_sel": np.asarray(res.get("nums_sel") or [], dtype=int),
+           "nums_all": np.asarray(res.get("nums_all") or res.get("nums_sel") or [],
+                                  dtype=int)}
+    if res.get("feat") is not None:
+        # The PCA's own features (2026-11-13), for a PCA on one hump's
+        # contacts: events x box contacts x the box's time samples.
+        out["feat"] = np.asarray(res["feat"], dtype=np.float32)
+    for m in ("pca", "pca_gap", "delta"):
+        vm = v.get(m) or {}
+        co = np.asarray(vm.get("coords") if vm.get("coords") is not None else [],
+                        dtype=np.float32)
+        if co.ndim == 1:
+            co = co.reshape(-1, 1)
+        out["types_" + m] = np.asarray(vm.get("types"), dtype=np.int16)
+        out["x_" + m] = co[:, 0] if co.size else np.zeros(0, np.float32)
+        out["y_" + m] = (co[:, 1] if co.size and co.shape[1] > 1
+                         else np.zeros(co.shape[0] if co.size else 0, np.float32))
+        out["bounds_" + m] = np.asarray(vm.get("bounds") or [], dtype=float)
+    return out
+
+
+def default_cut(A, method):
+    """Where the line starts: k-means' own boundary for the gap, and for a
+    PCA the point halfway between the two classes along PC1."""
+    b = A.get("bounds_" + method)
+    if b is not None and len(b) and split_base(method) != "pca" and split_base(
+            method) != "pca_gap":
+        return float(b[0])
+    x, t = np.asarray(A["x_" + method], dtype=float), A["types_" + method]
+    ok = np.isfinite(x)
+    ms = [float(np.mean(x[ok & (t == c)])) for c in (1, 2) if np.any(ok & (t == c))]
+    return float(np.mean(ms)) if len(ms) == 2 else (float(ms[0]) if ms else 0.0)
+
+
+def name_sides(lab, prof, ns, rule="tort", flip=False, layers=None):
+    """The two sides of a cut, numbered DS1 and DS2 exactly as dspca.fit
+    numbers each of its three (its `variants` loop)."""
+    from . import dspca
+    mus = {c: np.nanmean(prof[lab == c], axis=0) for c in (0, 1) if np.any(lab == c)}
+    live = sorted(mus)
+    if rule == "tort":
+        rows_, _up = dspca.tort_order([mus[c] for c in live])
+        mark = dict(zip(live, rows_))
+    elif rule == "anatomy" and layers is not None:
+        mark = dspca._anatomy_marker(mus, ns, layers)
+    else:
+        mark = {c: dspca.class_marker(mu, rule if rule != "anatomy" else "sink")[0]
+                for c, mu in mus.items()}
+    order = sorted((0, 1), key=lambda c: mark.get(c, 10 ** 6))
+    if flip:
+        order = order[::-1]
+    remap = {c: i + 1 for i, c in enumerate(order)}
+    return np.array([remap[int(x)] for x in lab], dtype=int)
+
+
+def split_types(A, method, cut=None, rule="tort", flip=False, layers=None):
+    """Each event's class under a method, and a cut when one is given."""
+    if method not in SPLIT_METHODS:
+        raise ValueError("A split is one of %s; not %r."
+                         % (", ".join(SPLIT_METHODS), method))
+    if np.asarray(A.get("types_" + method, [])).size == 0:
+        raise ValueError(str(A.get("why_" + method) or
+                             "That split is not worked out for this recording."))
+    if cut is None:
+        return np.asarray(A["types_" + method], dtype=int)
+    # An event with no place on the axis (no sink in that hump) is on the
+    # right, as the Bite line puts an event with no sink.
+    x = np.asarray(A["x_" + method], dtype=float)
+    lab = np.where(np.isfinite(x), x > float(cut), True).astype(int)
+    if lab.min() == lab.max():
+        raise ValueError("That cut leaves every event on one side.")
+    return name_sides(lab, np.asarray(A["prof"], dtype=float),
+                      [int(n) for n in A["nums_sel"]], rule, flip, layers)
+
+
+def split_classes(A, types, box, spacing=None, unit=None):
+    """A recording's classes under any split, in the shape extract_one gives
+    them: each class's mean CSD down the shank, its depth profile (mean and
+    SEM), its sink (the class mean's minimum in the box, as xraymany.sinks
+    finds it), its delta and its source. With X-ray's own split, the same
+    numbers the room was extracted with."""
+    types = np.asarray(types, dtype=int)
+    disp = np.asarray(A["disp"], dtype=float)
+    prof = np.asarray(A["prof"], dtype=float)
+    pall = np.asarray(A["prof_all"], dtype=float)
+    ns = [int(n) for n in A["nums_sel"]]
+    na = [int(n) for n in A["nums_all"]] or ns
+    gap = np.asarray(A["gap_contacts"], dtype=float)
+    band = [min(ns), max(ns)] if ns else None
+    out = []
+    for c in sorted(set(types.tolist())):
+        rr = np.where(types == c)[0]
+        mat = np.nanmean(disp[rr], axis=0)
+        mu_all = np.nanmean(pall[rr], axis=0)
+        sem_all = np.nanstd(pall[rr], axis=0) / np.sqrt(rr.size)
+        profile = {"contacts": na, "mean": [_sig(v) for v in mu_all],
+                   "sem": [_sig(v) for v in sem_all], "band": band}
+        mu = np.nanmean(prof[rr], axis=0)
+        j = int(np.nanargmin(mu)) if ns else None
+        sink = ({"csc": int(ns[j]), "value": _sig(mu[j]),
+                 "sem": _sig(float(np.nanstd(prof[rr, j]) / np.sqrt(rr.size))),
+                 "unit": unit} if j is not None else {"unit": unit})
+        g = gap[rr] if gap.size == types.size else np.array([])
+        out.append({
+            "c": int(c), "name": "DS%d" % c, "n": int(rr.size),
+            "csd": [[_sig(v, 3) for v in row] for row in mat],
+            "profile": profile, "sink": sink,
+            "delta": {"contacts": _sig(np.mean(g)) if g.size else None,
+                      "sem": _sig(_sem(g)) if g.size else None,
+                      "um": _sig(np.mean(g) * spacing) if g.size and spacing else None,
+                      "um_sem": (_sig(_sem(g) * spacing)
+                                 if g.size and spacing and _sem(g) is not None else None),
+                      "n": int(g.size)},
+            "source": source_of(profile, box or {}),
+        })
+    return out
+
+
+_AXIS = {"bite": "events in Bite line order", "pca": "PC1", "pca_gap": "PC1",
+         "delta": "sink gap (0 to 1)",
+         "delta_mid": "contacts between the two humps’ middles"}
+_AXIS_HUMP = {"delta": "where the %s hump’s sink is strongest (contact)",
+              "delta_mid": "the %s hump’s middle (contact)"}
+
+
+def split_view(A, choice=None):
+    """The fifteen splits for the page (five methods, each on both humps
+    and on each hump alone): each event's place and class in each, and
+    where its line starts. A split that cannot be made here has no events
+    and says why. `choice`: {method, cut} in use."""
+    out = {"n": int(np.asarray(A["types_delta"]).size), "methods": {},
+           "humps": humps_of(A)}
+    for m in SPLIT_METHODS:
+        b, row = split_base(m), split_row(m)
+        if "x_" + m not in A or np.asarray(A["types_" + m]).size == 0:
+            out["methods"][m] = {"name": SPLIT_WORDS[m], "base": b, "row": row,
+                                 "x": [], "y": [], "types": [],
+                                 "why": str(A.get("why_" + m) or
+                                            "Not worked out for this recording.")}
+            continue
+        x = np.asarray(A["x_" + m], dtype=float)
+        y = np.asarray(A["y_" + m], dtype=float)
+        axis = (_AXIS_HUMP[b] % row if row != "both" and b in _AXIS_HUMP
+                else _AXIS[b])
+        out["methods"][m] = {
+            "name": SPLIT_WORDS[m], "base": b, "row": row,
+            "x": [_sig(v, 4) for v in x], "y": [_sig(v, 4) for v in y],
+            "types": [int(v) for v in A["types_" + m]],
+            "cut": _sig(default_cut(A, m), 5),
+            "axis": axis,
+            "yaxis": (None if b in ("delta", "delta_mid") else
+                      "where its sink sits (contact)" if b == "bite" else "PC2")}
+    return out
+
+
+def humps_of(A):
+    """The recording's two humps as contact spans, {top: [first, last],
+    bottom: [...], at: the bottom one's first contact}, or None (one hump)."""
+    at = A.get("hump_at")
+    ns = [int(n) for n in A["nums_sel"]]
+    try:
+        c = int(at) if at is not None else -1
+    except (TypeError, ValueError):
+        c = -1
+    if c <= 0 or c >= len(ns):
+        return None
+    return {"top": [ns[0], ns[c - 1]], "bottom": [ns[c], ns[-1]], "at": ns[c]}
+
+
+def hump_marks(neg, a, b, level=MID_LEVEL):
+    """Each event's strongest row and middle row inside rows a..b-1 (one
+    hump) of its sink profile `neg` (events x rows, the sink as >= 0): the
+    deepest point, and halfway between the hump's edges at `level` of it,
+    each edge put between rows where the sink crosses that level. NaN for
+    an event with no sink in the hump."""
+    seg = np.asarray(neg, dtype=float)[:, a:b]
+    n, w = seg.shape
+    peak, mid = np.full(n, np.nan), np.full(n, np.nan)
+    for i in range(n):
+        r = seg[i]
+        pv = float(r.max()) if w else 0.0
+        if not pv > 0:
+            continue
+        peak[i] = a + int(np.argmax(r))
+        half = level * pv
+        on = np.flatnonzero(r >= half)
+        lo, hi = int(on[0]), int(on[-1])
+        left = (lo - (r[lo] - half) / (r[lo] - r[lo - 1])
+                if lo > 0 and r[lo] > r[lo - 1] else float(lo))
+        right = (hi + (r[hi] - half) / (r[hi] - r[hi + 1])
+                 if hi < w - 1 and r[hi] > r[hi + 1] else float(hi))
+        mid[i] = a + (left + right) / 2.0
+    return peak, mid
+
+
+def _line_1d(x, seed=0):
+    """Two classes on one number per event, as delta makes them: k-means'
+    two centres and the line halfway between. An event with no number goes
+    to the right. Returns (0/1 labels, the line)."""
+    from . import dspca
+    x = np.asarray(x, dtype=float)
+    ok = np.isfinite(x)
+    if np.unique(x[ok]).size < 2:
+        raise ValueError("Every event sits at the same place, so there is "
+                         "nothing to split.")
+    km = dspca.KMeans(n_clusters=2, n_init="auto", random_state=int(seed)).fit(
+        x[ok].reshape(-1, 1))
+    c = sorted(float(v) for v in km.cluster_centers_[:, 0])
+    cut = (c[0] + c[1]) / 2.0
+    return np.where(ok, x > cut, True).astype(int), cut
+
+
+def _pca_2(X, seed=0):
+    """PC1/PC2 of X and k-means' two classes on them, as X-ray's PCA."""
+    from . import dspca
+    coords = dspca.PCA(n_components=2).fit_transform(np.asarray(X, dtype=float))
+    lab = dspca.KMeans(n_clusters=2, n_init="auto",
+                       random_state=int(seed)).fit(coords).labels_
+    return coords, np.asarray(lab, dtype=int)
+
+
+def add_humps(A, rule="tort", flip=False, layers=None):
+    """Delta middle, and all five methods on each hump alone (2026-11-13),
+    into the arrays in their own shape (x_, y_, types_, bounds_ per split;
+    why_ where one cannot be made). The humps are the Bite line's: the two
+    biggest of the recording's mean stamp profile, parted at the source
+    between them (sinkcut.hump_cut), so every row means the same contacts.
+
+      delta_mid         contacts between the two humps' middles
+      bite_<h>          the Bite line on that hump's sink alone
+      pca_<h>           X-ray's PCA (its own features and scaling) on that
+                        hump's contacts
+      pca_gap_<h>       the same with that hump's strongest contact (0 at
+                        its top edge, 1 at its bottom) where the gap was
+      delta_<h>         where that hump's sink is strongest, a contact
+      delta_mid_<h>     that hump's middle, a contact
+    The 1-D ones are cut by k-means' line, as delta is."""
+    from . import dspca, sinkcut
+    prof_s, ns = sinkcut.stamp_profiles(A)
+    neg = np.maximum(0.0, -prof_s)
+    n, D = neg.shape
+    cut = sinkcut.hump_cut(prof_s.mean(axis=0)) if n else None
+    A["hump_at"] = np.array(-1 if cut is None else int(cut))
+    seed = int(np.asarray(A.get("seed", 0)))
+    prof = np.asarray(A["prof"], dtype=float)
+    feat = A.get("feat")
+    mode = str(A.get("features", "minmax"))
+    dead = float(np.asarray(A.get("dead", 0.1)))
+    gw = float(np.asarray(A.get("gap_weight", 1.0)))
+
+    def name(lab):
+        return name_sides(np.asarray(lab, dtype=int), prof, ns, rule, flip, layers)
+
+    def put(m, x, y, lab, bounds):
+        A["x_" + m] = np.asarray(x, dtype=np.float32)
+        A["y_" + m] = np.asarray(y, dtype=np.float32)
+        A["types_" + m] = np.asarray(name(lab), dtype=np.int16)
+        A["bounds_" + m] = np.asarray(bounds, dtype=float)
+        A.pop("why_" + m, None)
+
+    def fail(m, why):
+        A["x_" + m] = np.zeros(0, np.float32)
+        A["y_" + m] = np.zeros(0, np.float32)
+        A["types_" + m] = np.zeros(0, np.int16)
+        A["bounds_" + m] = np.zeros(0, float)
+        A["why_" + m] = np.array(str(why))
+
+    def at_contact(rows):
+        rows = np.asarray(rows, dtype=float)
+        return np.where(np.isfinite(rows),
+                        np.interp(np.nan_to_num(rows), np.arange(D), ns), np.nan)
+
+    hump_methods = ["%s_%s" % (m, h) for h in HUMP_SIDES for m in BASE_METHODS]
+    if cut is None:
+        for m in ["delta_mid"] + hump_methods:
+            fail(m, ONE_HUMP)
+        return A
+    spans = {"top": (0, cut), "bottom": (cut, D)}
+    marks = {h: hump_marks(neg, a, b) for h, (a, b) in spans.items()}
+    zero = np.zeros(n)
+    try:
+        lab, c = _line_1d(marks["bottom"][1] - marks["top"][1], seed)
+        put("delta_mid", marks["bottom"][1] - marks["top"][1], zero, lab, [c])
+    except Exception as exc:                             # noqa: BLE001
+        fail("delta_mid", exc)
+    for h, (a, b) in spans.items():
+        if b - a < 2:
+            for m in BASE_METHODS:
+                fail("%s_%s" % (m, h), "The %s hump is one contact wide." % h)
+            continue
+        peak, mid = marks[h]
+        try:
+            add_bite(A, rule, flip, layers, sink="one", sink_nums=ns[a:b],
+                     key="bite_" + h)
+        except Exception as exc:                         # noqa: BLE001
+            fail("bite_" + h, exc)
+        for m, rows in (("delta_" + h, peak), ("delta_mid_" + h, mid)):
+            try:
+                x = at_contact(rows)
+                lab, c = _line_1d(x, seed)
+                put(m, x, zero, lab, [c])
+            except Exception as exc:                     # noqa: BLE001
+                fail(m, exc)
+        if feat is None or np.asarray(feat).ndim != 3:
+            for m in ("pca_" + h, "pca_gap_" + h):
+                fail(m, "Its PCA features were not kept with this read; "
+                        "open it again to fit them.")
+            continue
+        try:
+            X = dspca.normalize_block(np.asarray(feat, dtype=float)[:, a:b, :],
+                                      mode, dead).reshape(n, -1)
+            coords, lab = _pca_2(X, seed)
+            put("pca_" + h, coords[:, 0], coords[:, 1], lab, [])
+            pos = (peak - a) / float(max(b - a - 1, 1))
+            pos = np.where(np.isfinite(pos), pos, 0.5)
+            coords, lab = _pca_2(np.hstack([X, pos[:, None] * gw]), seed)
+            put("pca_gap_" + h, coords[:, 0], coords[:, 1], lab, [])
+        except Exception as exc:                         # noqa: BLE001
+            fail("pca_" + h, exc)
+            fail("pca_gap_" + h, exc)
+    return A
+
+
+def keep_fit(A, p):
+    """The fit's own settings the hump rows need, kept with the arrays."""
+    A["features"] = np.array(str(getattr(p, "features", "minmax")))
+    A["dead"] = np.array(float(getattr(p, "dead", 0.1) or 0.0))
+    A["gap_weight"] = np.array(float(getattr(p, "gap_weight", 1.0)))
+    A["seed"] = np.array(int(getattr(p, "seed", 0) or 0))
+    return A
+
+
+def hump_bite_view(A, side, cut=None):
+    """The Bite line on one hump alone, slim (sinkcut.view slim): its order,
+    cost and sides, drawn on the whole box's raster by the page."""
+    from . import sinkcut
+    key = "bite_" + side
+    F = A.get("_" + key)
+    if F is None:
+        if np.asarray(A.get("types_" + key, [])).size == 0:
+            raise ValueError(str(A.get("why_" + key) or "Not worked out."))
+        hm = humps_of(A)
+        if not hm:
+            raise ValueError(ONE_HUMP)
+        lo, hi = hm[side]
+        ns = [int(n) for n in A["nums_sel"]]
+        add_bite(A, str(A.get("rule", "tort")), bool(A.get("flip", False)),
+                 sink="one", sink_nums=[c for c in ns if lo <= c <= hi], key=key)
+        F = A["_" + key]
+    k = None if cut is None else int(np.ceil(float(cut)))
+    return sinkcut.view(F, k=k, slim=True)
+
+
+# --------------------------------------------------------------------------
+# LOW CONTACTS (2026-11-13: "Have a toggle option to exclude the Low
+# contacts; just to see how it changes everything"). A contact whose signal
+# reads low against its neighbours' -- a gain the wire lost -- is found the
+# way it was found on 2026-11-12: each contact's voltage against a cubic
+# through the two good contacts either side, in the baseline (|t| > 30 ms,
+# no event), as the slope over every sample. The lowest under LOW_FRAC below
+# the recording's median gain is taken out and the rest measured again
+# without it (a low contact makes its neighbours read high and the ones two
+# away read a little low), until none is. A contact left out is made again
+# from its neighbours before the CSD -- by the cubic (rebuild_contacts), not
+# the straight line a bad contact gets, which would put a notch there itself.
+# --------------------------------------------------------------------------
+# Low: more than 2% under the median gain AND more than 5 of the
+# recording's own MADs (a clean recording's contacts sit within 0.2-0.5% of
+# it). 3% missed m28 s2's 44 and 52 (2.2%, 2.7% low) -- and those two were
+# its notches: taken out with 25 and 49, its notched events went from 150
+# to 1; without them, none.
+LOW_FRAC = 0.02
+LOW_MADS = 5.0
+LOW_MOST = 8
+
+
+def _lagrange_at(xs, x0):
+    """Weights of the polynomial through points xs, evaluated at x0."""
+    xs = [float(v) for v in xs]
+    w = []
+    for i, xi in enumerate(xs):
+        p = 1.0
+        for j, xj in enumerate(xs):
+            if j != i:
+                p *= (x0 - xj) / (xi - xj)
+        w.append(p)
+    return w
+
+
+def contact_gains(sur, nums, skip=(), surround_ms=50.0, base_ms=30.0):
+    """{contact: gain} -- each contact's baseline voltage against the cubic
+    through the two contacts either side, (-V[c-2] + 4V[c-1] + 4V[c+1] -
+    V[c+2]) / 6. Only where all four are kept (none in `skip`): a stencil
+    stretched over a left-out contact predicts more noisily, and a noisier
+    prediction pulls the slope down -- the contacts beside a bad one read
+    a few per cent low for that alone. `sur` is events x contacts x
+    samples, the contacts in shank order."""
+    sur = np.asarray(sur, dtype=float)
+    _E, C, T = sur.shape
+    t = np.linspace(-surround_ms, surround_ms, T)
+    base = np.abs(t) > base_ms
+    skip = {int(s) for s in skip}
+    out = {}
+    for c in range(2, C - 2):
+        nb = [c - 2, c - 1, c + 1, c + 2]
+        if any(int(nums[k]) in skip for k in nb + [c]):
+            continue
+        w = _lagrange_at(nb, c)
+        pred = sum(wk * sur[:, k][:, base] for wk, k in zip(w, nb)).ravel()
+        y = sur[:, c][:, base].ravel()
+        x = pred - pred.mean()
+        d = float((x * x).sum())
+        if d > 0:
+            out[int(nums[c])] = float((x * (y - y.mean())).sum() / d)
+    return out
+
+
+def rebuild_contacts(got, contacts):
+    """A copy of a read with `contacts` made again from their neighbours:
+    the cubic through the two nearest good contacts either side, at each
+    contact's own depth. For one contact with four good neighbours that is
+    (-V[c-2] + 4V[c-1] + 4V[c+1] - V[c+2]) / 6; for a run of them -- 38 and
+    39 together, say -- it is the one cubic through 36, 37, 40 and 41,
+    read off at 38 and at 39. A contact already marked bad is not used as a
+    neighbour, and may be rebuilt itself. NOT the straight line a bad
+    contact gets (braces.repair): that makes the second difference -- the
+    CSD -- zero at the contact, a notch of its own. On 2026-11-12 the cubic
+    took m28 s2's notched events from 150 to 1; filling in straight left 143
+    of 143. Where two good contacts are not found on a side, a straight
+    line between the nearest good ones. The read itself (shared, cached) is
+    not touched."""
+    nums = [int(n) for n in got.get("nums") or []]
+    want = [int(c) for c in contacts if int(c) in nums]
+    bad = {int(k) for k in (got.get("bad") or {})} | set(want)
+    out = dict(got)
+    out["sur"] = {}
+    for key, X in (got.get("sur") or {}).items():
+        X = np.array(X, dtype=float, copy=True)
+        for c in sorted(want):
+            i = nums.index(c)
+            below = [k for k in range(i - 1, -1, -1) if nums[k] not in bad][:2]
+            above = [k for k in range(i + 1, len(nums)) if nums[k] not in bad][:2]
+            if len(below) == 2 and len(above) == 2:
+                pts = [below[1], below[0], above[0], above[1]]
+                w = _lagrange_at(pts, i)
+                X[:, i] = sum(wk * X[:, p] for wk, p in zip(w, pts))
+            elif below and above:
+                lo, hi = below[0], above[0]
+                f = (i - lo) / float(hi - lo)
+                X[:, i] = (1 - f) * X[:, lo] + f * X[:, hi]
+            elif below or above:
+                X[:, i] = X[:, (below or above)[0]]
+        out["sur"][key] = X
+    return out
+
+
+# A TIME WINDOW (2026-11-13: "on the time scale add a 2 konbs that limits
+# how which DS spikes are included based on the time they appeared"). Only
+# the events between two times of the recording are taken: every split,
+# class and number is then worked out from those. The recording's, like its
+# interpolated contacts: kept per room and recording, used in every set.
+TWIN_KEY = "extraction_twin"
+TWIN_MIN = 8             # a window keeping fewer events than this is refused
+
+
+def clean_twin(t0, t1):
+    """[t0, t1] in seconds, in order, or a ValueError."""
+    try:
+        a, b = float(t0), float(t1)
+    except (TypeError, ValueError):
+        raise ValueError("A time window is two times, in seconds.")
+    a, b = min(a, b), max(a, b)
+    if not (b - a >= 1.0) or a < 0:
+        raise ValueError("A time window is at least a second long.")
+    return [round(a, 2), round(b, 2)]
+
+
+def subset_read(got, twin):
+    """A copy of a read with only the events stamped inside `twin`
+    ([t0, t1] s). The read itself (shared, cached) is not touched."""
+    t0, t1 = twin
+    rows = got.get("rows") or []
+    keep = np.array([t0 <= float(r.get("stamp_s") or 0.0) <= t1 for r in rows], dtype=bool)
+    if int(keep.sum()) < TWIN_MIN:
+        raise ValueError("Only %d event%s between %.1f and %.1f min: a window keeps "
+                         "at least %d." % (int(keep.sum()), "" if keep.sum() == 1 else "s",
+                                           t0 / 60.0, t1 / 60.0, TWIN_MIN))
+    out = dict(got)
+    out["rows"] = [r for r, k in zip(rows, keep) if k]
+    out["sur"] = {k: np.asarray(v)[keep] for k, v in (got.get("sur") or {}).items()}
+    return out
+
+
+# CONTACTS INTERPOLATED BY HAND (2026-11-13, m6 s4's 38 and 39: "we cant
+# just remove them because that messes with the profile of the CSD ... if
+# there's a way to interpolate two channels like that that would be the best
+# method"). A recording's bad wires are the recording's, not a set's: kept
+# per room and recording, `room|gid`, and used in every set of the room.
+INTERP_KEY = "extraction_interp"
+INTERP_MOST = 6
+
+
+def interp_key(room, gid):
+    return "%s|%s" % (room or "dentate_spike", gid)
+
+
+def clean_interp(contacts, nums, bad=()):
+    """The contacts to interpolate, checked: on this shank, at most
+    INTERP_MOST, and each with two good contacts above it and two below
+    (the others asked for and the ones marked bad do not count)."""
+    try:
+        want = sorted({int(round(float(c))) for c in contacts or []})
+    except (TypeError, ValueError):
+        raise ValueError("Contacts are numbers, like 38, 39.")
+    ns = [int(n) for n in nums]
+    off = [c for c in want if c not in ns]
+    if off:
+        raise ValueError("Contact%s %s %s not on this shank (%d-%d)." % (
+            "" if len(off) == 1 else "s", ", ".join(map(str, off)),
+            "is" if len(off) == 1 else "are", min(ns), max(ns)))
+    if len(want) > INTERP_MOST:
+        raise ValueError("At most %d contacts are interpolated on one recording; "
+                         "past that the cubic is guessing." % INTERP_MOST)
+    skip = set(want) | {int(b) for b in bad}
+    keep = [i for i, n in enumerate(ns) if n not in skip]
+    for c in want:
+        i = ns.index(c)
+        if sum(k < i for k in keep) < 2 or sum(k > i for k in keep) < 2:
+            raise ValueError("Contact %d needs two good contacts above it and two "
+                             "below to be interpolated." % c)
+    return want
+
+
+# THE TIMELINE (2026-11-13: "At the top of the separation have a line
+# showing when all the DS spikes happened. And then a theta power level in
+# middle of the region we highlighted on the same time course"). Theta is
+# Incisor's (and Toothy's) 6-10 Hz; its power is the squared Hilbert
+# envelope, averaged in bins of THETA_BIN_S seconds; a bin with no signal
+# (a hole in the recording) is None.
+THETA_BIN_S = 4.0
+THETA_FS = 250.0                 # the channel is read decimated to about this
+
+
+def theta_course(x, fs, band=None, bin_s=THETA_BIN_S):
+    """(bin starts in s, power per bin) of one channel `x` (NaN in holes)
+    sampled at `fs`, in the theta band (incisor.THETA_BAND by default)."""
+    from scipy import signal as sig
+    from . import incisor
+    lo, hi = band or incisor.THETA_BAND
+    x = np.asarray(x, dtype=np.float64)
+    good = np.isfinite(x)
+    if not good.any():
+        return np.zeros(0), np.zeros(0)
+    y = np.where(good, x - np.nanmean(x), 0.0)
+    sos = sig.butter(3, [lo / (fs / 2.0), hi / (fs / 2.0)], btype="band", output="sos")
+    env = np.abs(sig.hilbert(sig.sosfiltfilt(sos, y))) ** 2
+    env[~good] = np.nan
+    per = max(1, int(round(bin_s * fs)))
+    nb = int(np.ceil(x.size / float(per)))
+    pad = np.full(nb * per, np.nan)
+    pad[:x.size] = env
+    blk = pad.reshape(nb, per)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)   # an all-hole bin
+        m = np.nanmean(blk, axis=1)
+    cnt = np.isfinite(blk).sum(axis=1)
+    pw = np.where(cnt > per // 2, m, np.nan)
+    return np.arange(nb) * (per / float(fs)), pw
+
+
+def low_contacts(got, frac=LOW_FRAC, most=LOW_MOST):
+    """The contacts of one read whose gain is under the recording's median
+    by more than `frac`, found one at a time (see above). Returns (low,
+    first): low is [{c, off}] in the order taken out (off: a fraction, the
+    gain when it was found against the median), first the first pass's
+    gains {contact: off} for saying where every contact stood."""
+    nums = [int(n) for n in got.get("nums") or []]
+    sur = np.asarray(got["sur"]["band"], dtype=float)
+    sur_ms = float(got.get("surround_ms") or 50.0)
+    known = {int(b) for b in (got.get("bad") or {})}
+    low, first = [], None
+    for _ in range(int(most)):
+        g = contact_gains(sur, nums, known | {x["c"] for x in low}, sur_ms)
+        if not g:
+            break
+        med = float(np.median(list(g.values())))
+        off = {c: v - med for c, v in g.items()}
+        if first is None:
+            first = off
+        mad = float(np.median(np.abs(list(off.values()))))
+        c, o = min(off.items(), key=lambda kv: kv[1])
+        if o >= -max(float(frac), LOW_MADS * mad):
+            break
+        low.append({"c": int(c), "off": float(o)})
+    return low, first or {}
+
+
 def room_name(room):
     return dict(ROOMS).get(room, room)
 
@@ -214,7 +886,9 @@ def classes_shown(rec, flipped):
         d = dict(c)
         k = int(c.get("c") or 0)
         d["shown"] = (3 - k) if flipped and k in (1, 2) else k
-        d["name"] = "DS%d" % d["shown"]
+        if rec.get("no_ds1"):
+            d["shown"] = 2               # called "no DS1": all DS2, swapped or not
+        d["name"] = {3: "DS3", 4: "unsure"}.get(d["shown"], "DS%d" % d["shown"])
         out.append(d)
     return sorted(out, key=lambda d: d["shown"])
 
@@ -246,6 +920,9 @@ METRICS = (
      "How high DS2's strongest source in the box goes."),
     ("ds1_share", "Share that are DS1", "share",
      "Of the recording's dentate spikes, the share called DS1."),
+    ("ds3_share", "Share that are DS3 (hybrid)", "share",
+     "With DS3 on: of the recording's dentate spikes, the share whose OML and "
+     "MML sinks are balanced (Tarcsay et al. 2025). Empty otherwise."),
 )
 
 
@@ -277,6 +954,11 @@ def metrics_of(rec, flipped, min_n=MIN_N):
     out["sink_ratio"] = (s2 / s1) if (s1 and s2 is not None and s1 > 0) else None
     n1, n2 = a.get("n") or 0, b.get("n") or 0
     out["ds1_share"] = (n1 / float(n1 + n2)) if (n1 + n2) else None
+    mx = rec.get("mix") or {}
+    n3 = (cs.get(3) or {}).get("n") or 0
+    out["ds3_share"] = ((n3 / float(n1 + n2 + n3)) if (
+        mx.get("mode") == "ds3" and not (mx.get("ds3") or {}).get("why")
+        and (n1 + n2 + n3)) else None)
     return out
 
 
@@ -581,20 +1263,29 @@ def usual(ctl, pten, by, strict_two, strict_three):
 SEP_KEY = "extraction_sep"
 
 
+# NO DS1 (2026-11-13: "add an option to say no DS1"): a third call. The
+# recording's dentate spikes are all DS2 -- there is no DS1 in it -- so every
+# event is one class, DS2: DS2's numbers are taken from all of them, DS1's
+# are none, and the share that are DS1 is 0. In the separation rate it is
+# one kind, not separable.
+SEP_CALLS = ("yes", "no", "no_ds1")
+
+
 def sep_shown(rec, override):
-    """(verdict, by_hand): the person's call when there is one ('yes' or
-    'no'), else X-ray's."""
-    if override in ("yes", "no"):
+    """(verdict, by_hand): the person's call when there is one ('yes',
+    'no' or 'no_ds1'), else X-ray's."""
+    if override in SEP_CALLS:
         return override, True
     return (rec.get("separation") or {}).get("verdict"), False
 
 
 def sep_binary(verdict):
     """Separable (True), not (False), or not counted (None): 'weak' counts
-    as not separable; 'too few' is left out of the test, not guessed."""
+    as not separable, and so does 'no_ds1' (one kind, all DS2); 'too few'
+    is left out of the test, not guessed."""
     if verdict == "yes":
         return True
-    if verdict in ("no", "weak"):
+    if verdict in ("no", "weak", "no_ds1"):
         return False
     return None
 
@@ -925,3 +1616,196 @@ def round2(rows, split=KO_SPLIT):
                        "High KO": sum(1 for x in rows if x["ko_group"] == "High KO"),
                        "PTEN": sum(1 for x in rows
                                    if str(x["group"]).upper() != "CTL")}}
+
+
+# ==========================================================================
+# THE NEW ROUND (2026-11-12): no X-ray. "Since we are skipping x-ray add an
+# option for defining the range of depth profile with a simple click and
+# drag." A set is still an X-ray Many folder (its workflow run's kept
+# events, read once per recording), but the room fits each recording
+# itself, in a band the room draws -- by default over "the edges of the 2
+# bottom sinks" -- and splits it by the Bite line unless told otherwise.
+# The band, the split and the separable call are shared preferences over
+# the extracted version; the Impression locks them all in.
+# ==========================================================================
+BAND_KEY = "extraction_band"
+SET_ARCHIVE_KEY = "extraction_set_archive"
+BAND_MIN_FRAC = 0.15     # a sink smaller than this share of the largest is not one
+BAND_PAD = 1             # contacts past each outer edge, so the edge is in
+HALF_MS_BAND = 3.0
+
+
+def _stamp_rows(n_t, surround_ms=50.0, half_ms=HALF_MS_BAND):
+    """The time samples within half_ms of the stamp."""
+    t = np.linspace(-surround_ms, surround_ms, n_t)
+    return np.where(np.abs(t) <= half_ms + 1e-9)[0]
+
+
+def mean_profile(disp, surround_ms=50.0):
+    """Every event's CSD averaged, at the stamp (+-3 ms), down the shank."""
+    disp = np.asarray(disp, dtype=float)
+    rows = _stamp_rows(disp.shape[2], surround_ms)
+    return np.nanmean(disp[:, :, rows], axis=(0, 2))
+
+
+def default_band(disp, nums_all, surround_ms=50.0, min_frac=BAND_MIN_FRAC,
+                 pad=BAND_PAD):
+    """Where the band starts (2026-11-12: "it should cover the edges of the
+    2 bottom sinks generally"): the mean CSD at the stamp, its sinks found
+    as the Bite line finds an event's (each stretch below zero, ended by a
+    zero crossing), those under `min_frac` of the largest dropped as noise,
+    and of the rest the two deepest -- from the top edge of the upper one
+    to the bottom edge of the lower one, a contact past each. Time: the
+    stamp. One sink only: that sink and 4 contacts either side."""
+    from . import sinkcut
+    na = [int(n) for n in nums_all]
+    neg = np.clip(-mean_profile(disp, surround_ms), 0, None)
+    bb = sinkcut.bumps(np.nan_to_num(neg))
+    big = max((b[2] for b in bb), default=0.0)
+    keep = sorted([b for b in bb if big > 0 and b[2] >= min_frac * big],
+                  key=lambda b: b[0])
+    if not keep:
+        return {"sel_lo": na[0], "sel_hi": na[-1], "t_lo_ms": 0.0,
+                "t_hi_ms": 0.0, "auto": True,
+                "why": "no sink in the average: the whole shank"}
+    two = keep[-2:]
+    if len(two) == 1:
+        lo, hi = two[0][0] - 4, two[0][1] - 1 + 4
+        why = "one sink in the average: it and 4 contacts either side"
+    else:
+        lo, hi = two[0][0] - pad, two[-1][1] - 1 + pad
+        why = ("the two bottom sinks of the average, %d-%d and %d-%d, edge "
+               "to edge" % (na[two[0][0]], na[two[0][1] - 1],
+                            na[two[1][0]], na[two[1][1] - 1]))
+    lo, hi = max(0, lo), min(len(na) - 1, hi)
+    return {"sel_lo": na[lo], "sel_hi": na[hi], "t_lo_ms": 0.0,
+            "t_hi_ms": 0.0, "auto": True, "why": why}
+
+
+def clean_band(b, nums_all):
+    """A band as the room keeps it: contact numbers inside the shank, low
+    above high, at least 4 contacts; a time sample or span. None when it
+    is not one."""
+    if not isinstance(b, dict):
+        return None
+    na = [int(n) for n in nums_all]
+    try:
+        lo, hi = int(round(float(b["sel_lo"]))), int(round(float(b["sel_hi"])))
+    except (KeyError, TypeError, ValueError):
+        return None
+    lo, hi = min(lo, hi), max(lo, hi)
+    lo, hi = max(lo, min(na)), min(hi, max(na))
+    if hi - lo < 3:
+        return None
+    try:
+        t0 = float(b.get("t_lo_ms") or 0.0)
+        t1 = float(b.get("t_hi_ms") if b.get("t_hi_ms") is not None else t0)
+    except (TypeError, ValueError):
+        t0 = t1 = 0.0
+    t0, t1 = sorted((max(-50.0, min(50.0, t0)), max(-50.0, min(50.0, t1))))
+    return {"sel_lo": lo, "sel_hi": hi, "t_lo_ms": round(t0, 2),
+            "t_hi_ms": round(t1, 2), "auto": bool(b.get("auto"))}
+
+
+def add_bite(A, rule="tort", flip=False, layers=None, sink=None, key="bite",
+             **kw):
+    """The Bite line on a recording's split arrays, in their own shape:
+    x_bite is each event's place in the overlap order (0 = far left),
+    y_bite where its sink sits (contact), types_bite the default line's
+    classes and bounds_bite that line (between places k-1 and k). The fit
+    itself is kept as A['_bite'] for `bite_view`, and what its sink was
+    (sinkcut.SINKS) as A['bite_sink']: a line placed by hand is a place in
+    THIS order, and means nothing in an order made from another sink.
+    `key` "bite_top" / "bite_bottom" (with sink="one" and sink_nums): the
+    same on one hump alone, kept under its own names."""
+    from . import sinkcut
+    sink = str(sink or sinkcut.SINK_DEFAULT)
+    F = sinkcut.fit(A, rule=rule, flip=flip, layers=layers, sink=sink, **kw)
+    if key == "bite":
+        A["bite_sink"] = np.array(sink)
+    n = int(np.asarray(F["coord"]).size)
+    pos = np.full(n, np.nan)
+    live = np.asarray(F["live"], dtype=int)
+    pos[live] = np.arange(live.size, dtype=float)
+    # An event with no sink at all sits past the right end.
+    pos[~np.isfinite(pos)] = float(live.size)
+    # Where its sink sits: the sink's centre of mass down its contacts. (Up
+    # to 2026-11-13 this read the window's centre -- a TIME sample -- as a
+    # contact, so y_bite was empty and the delta plot spread its dots
+    # instead of drawing them at their sink's depth.)
+    sn = [int(c) for c in F.get("sink_nums") or A["nums_sel"]]
+    dd = np.asarray(F["info"]["depth"], dtype=float)
+    has = dd.sum(axis=1) > 0
+    rows = sinkcut.centroid(dd)
+    y = np.where(has, np.interp(rows, np.arange(len(sn)), sn), np.nan)
+    A["x_" + key] = pos.astype(np.float32)
+    A["y_" + key] = y.astype(np.float32)
+    A["types_" + key] = np.asarray(F["types"], dtype=np.int16)
+    A["bounds_" + key] = np.asarray([F["k"] - 0.5], dtype=float)
+    A.pop("why_" + key, None)
+    A["_" + key] = F
+    return A
+
+
+def bite_sink(A):
+    """The sink a set of arrays' Bite line was made with: arrays saved
+    before it was kept were made with each event's own bumps."""
+    s = A.get("bite_sink")
+    return str(s) if s is not None and str(s) else "bumps"
+
+
+def bite_view(A, cut=None):
+    """What the Compare panel draws for the Bite line (sinkcut.view): the
+    raster in order, the overlap matrix, the cost along the line, and the
+    classes at `cut` (a place in the order) or the default line."""
+    from . import sinkcut
+    F = A.get("_bite")
+    if F is None:
+        # Arrays from the disk keep the Bite line's classes, not its working:
+        # fitted again here, once, when its picture is asked for -- with the
+        # sink they were made with (before 2026-11-12's humps: "bumps").
+        add_bite(A, str(A.get("rule", "tort")), bool(A.get("flip", False)),
+                 sink=bite_sink(A))
+        F = A["_bite"]
+    k = None if cut is None else int(np.ceil(float(cut)))
+    return sinkcut.view(F, k=k)
+
+
+def csd_all(disp, digits=3):
+    """Every event's CSD averaged down the whole shank: the tile the band
+    is drawn on."""
+    mat = np.nanmean(np.asarray(disp, dtype=float), axis=0)
+    return [[_sig(v, digits) for v in row] for row in mat]
+
+
+def direct_record(subject, res, got, A, types, band, ko, sep=None,
+                  read=None, fit_params=None):
+    """One recording's part of a new-round room: what extract_one gives,
+    from the room's own fit in the room's band rather than an X-ray
+    bundle. Its classes are `types` (the Bite line's, by default)."""
+    disp = np.asarray(res["disp"], dtype=float)
+    nums = [int(n) for n in res.get("nums_all") or got.get("nums") or []]
+    sur_ms = float(got.get("surround_ms") or 50.0)
+    t_ms = np.linspace(-sur_ms, sur_ms, disp.shape[2])
+    spacing = float(res.get("spacing_um") or got.get("spacing_um") or 0) or None
+    unit = res.get("unit") or res.get("csd_unit")
+    classes = split_classes(A, types, band, spacing, unit)
+    counts = {str(c["c"]): int(c["n"]) for c in classes}
+    ko_pct, ko_said = ko_of(subject.get("mouse_key"), subject.get("group"), ko)
+    return {
+        "gid": subject.get("gid"), "entry_id": subject.get("entry_id"),
+        "session_label": subject.get("session_label"),
+        "mouse_key": subject.get("mouse_key"), "group": subject.get("group"),
+        "ko_pct": ko_pct, "ko_said": ko_said,
+        "ied": IED_SHEET.get(subject.get("mouse_key")),
+        "n": int(np.asarray(types).size), "counts": counts,
+        "separation": {k: (sep or {}).get(k)
+                       for k in ("verdict", "dbic", "min_share", "n", "words")},
+        "box": dict(band), "band": dict(band), "direct": True,
+        "read": read, "fit_params": fit_params or {},
+        "contacts": nums, "t_ms": [_sig(v, 5) for v in t_ms],
+        "spacing_um": spacing, "unit": unit,
+        "bad": [int(b) for b in (got.get("bad") or {})],
+        "csd_all": csd_all(disp),
+        "classes": classes,
+    }

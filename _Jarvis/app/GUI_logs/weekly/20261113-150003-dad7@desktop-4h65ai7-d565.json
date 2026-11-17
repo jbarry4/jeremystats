@@ -1,0 +1,429 @@
+{
+ "id": "20261113-150003-dad7",
+ "shard": "desktop-4h65ai7-d565",
+ "machine": "Bluebarry",
+ "who": "Shahriar Tafti",
+ "at": "2026-11-13T15:00:03-05:00",
+ "since": "2026-11-06T15:00:03-05:00",
+ "until": "2026-11-13T15:00:03-05:00",
+ "status": "printed",
+ "numbers": {
+  "versions": 28,
+  "commits": 10,
+  "lines_added": 26976,
+  "lines_removed": 787,
+  "files": 95,
+  "events_banked": 9025,
+  "entries_banked": 2,
+  "bank_versions": 13,
+  "calls_people": 0,
+  "calls_models": 5,
+  "recordings_new": 0,
+  "procedures": 10,
+  "people": 2,
+  "bench_people": 5
+ },
+ "code": {
+  "commits": 10,
+  "authors": {
+   "maliajaff": 4,
+   "Shahriar Akhavan Tafti": 4,
+   "Rain Younger": 2
+  },
+  "areas": {
+   "the interface": {
+    "added": 10809,
+    "removed": 463,
+    "files": 24
+   },
+   "the server": {
+    "added": 7281,
+    "removed": 125,
+    "files": 16
+   },
+   "the checks": {
+    "added": 3443,
+    "removed": 129,
+    "files": 15
+   },
+   "the notes and docs": {
+    "added": 2710,
+    "removed": 23,
+    "files": 20
+   },
+   "the scripts": {
+    "added": 2626,
+    "removed": 6,
+    "files": 17
+   },
+   "elsewhere": {
+    "added": 107,
+    "removed": 41,
+    "files": 3
+   }
+  },
+  "files": 95,
+  "added": 26976,
+  "removed": 787,
+  "records_changed": 554,
+  "uncommitted": 23
+ },
+ "versions": [
+  {
+   "v": "2026.11.06.1",
+   "day": "2026-11-06",
+   "title": "A check that Ambiguous borrows the run before an edit"
+  },
+  {
+   "v": "2026.11.06.2",
+   "day": "2026-11-06",
+   "title": "Hater of AI, a bug fixer anyone can ask"
+  },
+  {
+   "v": "2026.11.06.3",
+   "day": "2026-11-06",
+   "title": "Root Canal's Many reads on the VACC"
+  },
+  {
+   "v": "2026.11.06.4",
+   "day": "2026-11-06",
+   "title": "Tab 14, Joe Prompt: Joe's final round of Aim 2 follow-ups"
+  },
+  {
+   "v": "2026.11.07.1",
+   "day": "2026-11-07",
+   "title": "Pooled PCA, the v2 PTEN data, and Root Canal's pools tidied"
+  },
+  {
+   "v": "2026.11.07.2",
+   "day": "2026-11-07",
+   "title": "DS-PCA opens on a set it can read"
+  },
+  {
+   "v": "2026.11.07.3",
+   "day": "2026-11-07",
+   "title": "Setup once, then a first opening that gets everything ready"
+  },
+  {
+   "v": "2026.11.09.1",
+   "day": "2026-11-09",
+   "title": "X-ray Many: a grid of average CSDs, and every result kept"
+  },
+  {
+   "v": "2026.11.09.2",
+   "day": "2026-11-09",
+   "title": "Inside Jarvis, and a printout of the week for the PI"
+  },
+  {
+   "v": "2026.11.09.3",
+   "day": "2026-11-09",
+   "title": "A one-time optimisation update on computers already set up"
+  },
+  {
+   "v": "2026.11.09.4",
+   "day": "2026-11-09",
+   "title": "The week's printout, emailed to the lab every Friday"
+  },
+  {
+   "v": "2026.11.10.1",
+   "day": "2026-11-10",
+   "title": "The Extraction Room, the sixth and last step of The Dentist"
+  },
+  {
+   "v": "2026.11.11.1",
+   "day": "2026-11-11",
+   "title": "The Extraction Room: each card's state at a glance, and the usual tests"
+  },
+  {
+   "v": "2026.11.11.2",
+   "day": "2026-11-11",
+   "title": "The Extraction Room: a set per X-ray Many folder"
+  },
+  {
+   "v": "2026.11.11.3",
+   "day": "2026-11-11",
+   "title": "The Extraction Room: \"against %KO\" asks about the dose"
+  },
+  {
+   "v": "2026.11.11.4",
+   "day": "2026-11-11",
+   "title": "Root Canal: the Meta Workflow"
+  },
+  {
+   "v": "2026.11.11.5",
+   "day": "2026-11-11",
+   "title": "Root Canal workflows: three border shapes, in folders"
+  },
+  {
+   "v": "2026.11.11.6",
+   "day": "2026-11-11",
+   "title": "The Extraction Room: split DS1 and DS2 by hand"
+  },
+  {
+   "v": "2026.11.12.1",
+   "day": "2026-11-12",
+   "title": "Pressing Run on a meta workflow no longer files an error"
+  },
+  {
+   "v": "2026.11.12.2",
+   "day": "2026-11-12",
+   "title": "Root Canal's workflow builder: choose each input's version"
+  },
+  {
+   "v": "2026.11.12.3",
+   "day": "2026-11-12",
+   "title": "Root Canal workflows: a pool picker, Ambiguous's own target, the Scoop retired"
+  },
+  {
+   "v": "2026.11.12.4",
+   "day": "2026-11-12",
+   "title": "The Halo, zoom where you point, and a new round in the Extraction Room"
+  },
+  {
+   "v": "2026.11.12.5",
+   "day": "2026-11-12",
+   "title": "The camel hump: the Bite line and the blobs take the recording's two humps"
+  },
+  {
+   "v": "2026.11.13.1",
+   "day": "2026-11-13",
+   "title": "A cut dragged past the last event, and a workflow saved with no pool, no longer file errors; Floss finds git"
+  },
+  {
+   "v": "2026.11.13.2",
+   "day": "2026-11-13",
+   "title": "Compare splits: delta middle, each way on one hump alone, and the low contacts left out; the PTEN and CTL Baseline set"
+  },
+  {
+   "v": "2026.11.13.3",
+   "day": "2026-11-13",
+   "title": "Data: the PTEN and CTL Baseline set without P-spikes"
+  },
+  {
+   "v": "2026.11.13.4",
+   "day": "2026-11-13",
+   "title": "Extraction Room: interpolate bad contacts, a \"No DS1\" call, each recording's length and rates, and a timeline with theta"
+  },
+  {
+   "v": "2026.11.13.5",
+   "day": "2026-11-13",
+   "title": "Blob Analysis's cards follow the measure; interpolation on and off in Compare splits"
+  }
+ ],
+ "data": {
+  "bank": {
+   "entries": 2,
+   "events": {
+    "ds": 9025
+   },
+   "versions": 13,
+   "by": {
+    "Shahriar Tafti": 9,
+    "Isabella Piatek": 3,
+    "Prospector (AI)": 1
+   }
+  },
+  "calls": {
+   "people": {},
+   "models": {
+    "Prospector (AI)": 5
+   },
+   "labels": {
+    "likely_garbage": 3,
+    "spike": 2
+   },
+   "sets": 1
+  },
+  "recordings": {},
+  "activity": {
+   "people": {
+    "Shahriar Tafti": 1242
+   },
+   "areas": {
+    "rootcanal": 214,
+    "link": 195,
+    "extraction": 192,
+    "channels": 84,
+    "guides": 81,
+    "dspca": 72,
+    "window": 64,
+    "session": 61,
+    "events": 44,
+    "welcome": 37,
+    "dspcamany": 36,
+    "client": 28
+   },
+   "actions": 1242
+  },
+  "floss": {}
+ },
+ "bench": {
+  "events": [
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1652",
+    "cage": "CC-30817-1",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1658",
+    "cage": "CC-30818-1",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1663",
+    "cage": "CC-30796-2",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1652",
+    "cage": "CC-30817-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1658",
+    "cage": "CC-30818-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1663",
+    "cage": "CC-30796-2",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-12",
+    "what": "Active avoidance",
+    "mouse": "1653",
+    "cage": "CC-30817-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-12",
+    "what": "Active avoidance",
+    "mouse": "1659",
+    "cage": "CC-30819-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-13",
+    "what": "Active avoidance #2",
+    "mouse": "1653",
+    "cage": "CC-30817-1",
+    "lead": "Avery, Maddie, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-13",
+    "what": "Active avoidance #2",
+    "mouse": "1659",
+    "cage": "CC-30819-1",
+    "lead": "Avery, Maddie, Samara",
+    "sessions": ""
+   }
+  ],
+  "colony": {
+   "alive": 80,
+   "roles": {
+    "Stock": 76,
+    "Mating": 4
+   }
+  },
+  "procedures": [
+   "Tail Snip #1",
+   "Inject",
+   "Active avoidance",
+   "Active avoidance #2",
+   "Headplate",
+   "H3 probe (L)",
+   "H3 probe (R)",
+   "H10 probe (L)",
+   "H10 probe (R)",
+   "H10 opto (L)",
+   "H10 opto (R)",
+   "Perfuse",
+   "Euthanize",
+   "Tail Snip #2",
+   "Hippocampus Sectioning",
+   "M2 Sectioning"
+  ],
+  "url": "https://docs.google.com/spreadsheets/d/1SDXG1GpRhkjq2aKri3n06nOuR8TGio9QuQsyN656ERo/edit#gid=1444923131",
+  "counts": {
+   "Active avoidance": 5,
+   "Active avoidance #2": 5
+  },
+  "leads": {
+   "Angelina": 8,
+   "Avery": 5,
+   "Samara": 5,
+   "Daphne": 3,
+   "Maddie": 2
+  }
+ },
+ "note": {
+  "headline": "A productive week that made DS1/DS2 splitting more trustworthy, with active avoidance continuing at the bench.",
+  "summary": "The week's work centred on the dentate spike pipeline. The Extraction Room is now complete, and we found and fixed a splitting rule that was partly counting a notch inside a sink as a second sink. The PTEN and CTL Baseline event set was rebuilt without P-spike overlap, 4,177 events, and no recording's verdict changed. Joe's 23 Aim 2 follow-up requests are done. Active avoidance continued across five mice, and no new recordings arrived.",
+  "progress": [
+   "The Extraction Room is complete and compares DS1 and DS2 by recording, PTEN against control and by knockout dose.",
+   "The DS1/DS2 splitting rule now uses each recording's two main sink regions. This removes an artefact where a notch was counted as a second sink.",
+   "Root Canal gained a Meta Workflow, Box and Snap borders and an optional Halo step for events near both borders.",
+   "The PTEN and CTL Baseline set was rebuilt without P-spike overlap, 4,177 events, and no recording's verdict changed.",
+   "Root Canal can read many recordings at once on the VACC. A test on two took 5 min 10 s.",
+   "Joe's 23 Aim 2 follow-up requests are all in a new tab, and Setup is now one pass on a new computer."
+  ],
+  "bench": [
+   "Active avoidance ran on mice 1652, 1658 and 1663 on 11-06, with a second session on 11-07.",
+   "Active avoidance ran on mice 1653 and 1659 on 11-12, with a second session on 11-13.",
+   "Angelina led most sessions, and Avery, Maddie and Samara led the last two.",
+   "The colony stands at 80 animals alive (76 stock, 4 mating)."
+  ],
+  "data": [
+   "Two bank entries were updated across 13 versions, with 9,025 dentate spikes in total.",
+   "The automatic model Prospector made 5 calls, and no person made calls this week.",
+   "No new recordings arrived."
+  ],
+  "next": [
+   "Continue the Extraction Room work.",
+   "Continue refining the Root Canal event sets."
+  ],
+  "watch": [
+   "23 code files are changed but not yet committed. They are in hand with the next commits.",
+   "The daily error review found and fixed five small faults this week, none affecting data."
+  ]
+ },
+ "writer": "Hater of AI",
+ "run": {
+  "model": "sonnet",
+  "turns": 1,
+  "cost_usd": 0.121977,
+  "seconds": 15.4
+ },
+ "emailed": [
+  {
+   "at": "2026-11-13T15:00:31-05:00",
+   "list": "lab",
+   "n": 4,
+   "ok": true,
+   "error": null,
+   "by": "Shahriar Tafti"
+  }
+ ]
+}

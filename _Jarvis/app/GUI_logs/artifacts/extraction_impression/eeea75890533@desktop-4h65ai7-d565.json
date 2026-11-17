@@ -1,0 +1,132 @@
+{
+  "_at": {
+    "added": "2026-11-13T18:24:11.084998+00:00",
+    "deleted": "2026-11-13T22:21:38.423205+00:00",
+    "id": "2026-11-13T18:24:11.084998+00:00",
+    "kind": "2026-11-13T18:24:11.084998+00:00",
+    "name": "2026-11-13T18:24:11.084998+00:00",
+    "nickname": "2026-11-13T22:21:38.423205+00:00",
+    "schema": "2026-11-13T18:24:11.084998+00:00",
+    "subject": "2026-11-13T18:24:11.084998+00:00",
+    "subject_key": "2026-11-13T18:24:11.084998+00:00",
+    "version": "2026-11-13T22:21:38.368308+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "5a522d300448": [
+        "set",
+        "2026-11-13T22:21:38.423205+00:00"
+      ],
+      "9255112d7f7b": [
+        "set",
+        "2026-11-13T22:21:38.408394+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-13T22:21:38.423205+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-13T13:24:11-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "eeea75890533",
+  "kind": "extraction_impression",
+  "name": "Impression \u00b7 Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "folder": "xm-f6c45faefb",
+    "folder_name": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific",
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s14510e30e1bd",
+      "s37c7c8edfe10",
+      "s38b9e61c5684",
+      "s43b16cd74bcb",
+      "s45bae70722f2",
+      "s4a67210fc7ac",
+      "s500a5aec223e",
+      "s6cdd64d005c4",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sba57286bdee3",
+      "sc74c98b2495d",
+      "sd0d0bded958b",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "room": "dentate_spike"
+  },
+  "subject_key": "extraction_impression|dentate_spike|xm-f6c45faefb",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.13.2",
+      "at": "2026-11-13T13:24:11-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "20568988c525",
+      "id": "9255112d7f7b",
+      "inputs": [
+        {
+          "artifact_id": "980b57eab496",
+          "version": 6
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4824,
+        "folder": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific",
+        "recordings": 18,
+        "room": "dentate_spike",
+        "separable": 11
+      },
+      "nickname": "archived: superseded 11-13",
+      "nickname_at": "2026-11-13T17:21:38-05:00",
+      "note": "first pass",
+      "params": {
+        "from": 6
+      },
+      "params_hash": "05ba6a7196f5",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.13.7",
+      "at": "2026-11-13T17:21:38-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "f103bc02bc65",
+      "id": "5a522d300448",
+      "inputs": [
+        {
+          "artifact_id": "980b57eab496",
+          "version": 6
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4824,
+        "folder": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific",
+        "recordings": 18,
+        "room": "dentate_spike",
+        "separable": 11
+      },
+      "nickname": "Bite minimum + DS3",
+      "nickname_at": "2026-11-13T17:21:38-05:00",
+      "note": "2026-11-13: every recording on the Bite line at the lowest point of its cost curve; DS3 (hybrid, Tarcsay et al. 2025, relative-sink score within 0.5) laid over; only the events fed into the room.",
+      "params": {
+        "from": 6
+      },
+      "params_hash": "05ba6a7196f5",
+      "v": 2
+    }
+  ]
+}

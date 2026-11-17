@@ -14,7 +14,8 @@
   --bg: #f6f5f2; --surface: #ffffff; --surface-2: #faf9f6; --ink: #17181b; --ink-2: #464b53; --ink-3: #70757e;
   --line: #e3e1db; --line-2: #cfcdc6; --chip: #efede8; --focus: #b07a00;
   --ds1: #2d6cdf; --ds2: #d9791a; --ds1-soft: rgba(45, 108, 223, .16); --ds2-soft: rgba(217, 121, 26, .16);
-  --sink: #2459c9; --source: #c8402f; --ok: #2e7d4f; --warn: #a8620b; --bad: #b3372f;
+  --ds3: #1f9d5c; --ds3-soft: rgba(31, 157, 92, .16); --unsure: #8a8f98; --unsure-soft: rgba(138, 143, 152, .18);
+  --sink: #2459c9; --source: #c8402f; --ok: #2e7d4f; --warn: #a8620b; --bad: #b3372f; --peak: #d4206a;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace; --r: 8px; --gutter: 16px;
 }
@@ -23,14 +24,16 @@
     --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
     --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
     --ds1: #6fa2ff; --ds2: #f2a356; --ds1-soft: rgba(111, 162, 255, .18); --ds2-soft: rgba(242, 163, 86, .18);
-    --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80;
+  --ds3: #5fd39a; --ds3-soft: rgba(95, 211, 154, .18); --unsure: #9aa0a9; --unsure-soft: rgba(154, 160, 169, .2);
+    --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80; --peak: #ff6fae;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
   --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
   --ds1: #6fa2ff; --ds2: #f2a356; --ds1-soft: rgba(111, 162, 255, .18); --ds2-soft: rgba(242, 163, 86, .18);
-  --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80;
+  --ds3: #5fd39a; --ds3-soft: rgba(95, 211, 154, .18); --unsure: #9aa0a9; --unsure-soft: rgba(154, 160, 169, .2);
+  --sink: #6f9dff; --source: #ff8a78; --ok: #6fd39c; --warn: #f2b25e; --bad: #ff8a80; --peak: #ff6fae;
 }
 * { box-sizing: border-box; }
 html, body { overflow-x: hidden; }
@@ -40,6 +43,10 @@ h1 { font-size: 26px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em
 h2 { font-size: 15.5px; margin: 0; overflow-wrap: anywhere; }
 p { margin: 0 0 8px; }
 .lede { color: var(--ink-2); max-width: 95ch; }
+.er-todo { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0 0 14px; padding: 8px 12px;
+  border: 1px solid var(--warn); border-left-width: 4px; border-radius: 6px; font-size: 13px; overflow-wrap: anywhere; }
+.er-todo b { color: var(--warn); text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
+.er-todo span { flex: 1 1 40ch; }
 .muted { color: var(--ink-3); }
 .small { font-size: 12.5px; }
 .num { font-variant-numeric: tabular-nums; }
@@ -145,7 +152,11 @@ canvas.stat-cv.big { height: 280px; }
 .st-no { --wash: var(--st-no); --wink: var(--st-no-ink); }
 .st-few { --wash: var(--st-few); --wink: var(--st-few-ink); }
 .st-out { --wash: var(--st-out); --wink: var(--st-out-ink); }
-.rec.st-yes, .rec.st-no, .rec.st-few, .rec.st-out {
+/* Not called yet (the new round, 2026-11-12: "set in amber"). */
+.st-open { --wash: var(--st-few); --wink: var(--st-few-ink); }
+/* No DS1 (2026-11-13): every event DS2, so the card wears DS2's colour. */
+.st-nods1 { --wash: color-mix(in srgb, var(--ds2) 9%, transparent); --wink: var(--ds2); }
+.rec.st-yes, .rec.st-no, .rec.st-few, .rec.st-out, .rec.st-nods1 {
   background-image: linear-gradient(var(--wash), var(--wash));
   border-color: color-mix(in srgb, var(--wink) 40%, var(--line)); box-shadow: inset 4px 0 0 var(--wink); }
 .state-tag { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em;
@@ -154,8 +165,9 @@ canvas.stat-cv.big { height: 280px; }
 .rec.st-out .state-tag .dot { background: none; border: 2px solid var(--wink); }
 .rec.st-few .state-tag .dot { background: none; border: 2px dashed var(--wink); }
 .rec.st-out .pics, .rec.st-out > .pic, .rec.st-out .vals { opacity: .45; filter: grayscale(1); }
-tr.st-yes td, tr.st-no td, tr.st-few td, tr.st-out td { background-image: linear-gradient(var(--wash), var(--wash)); }
-tr.st-yes td:first-child, tr.st-no td:first-child, tr.st-few td:first-child, tr.st-out td:first-child {
+tr.st-yes td, tr.st-no td, tr.st-few td, tr.st-out td, tr.st-nods1 td { background-image: linear-gradient(var(--wash), var(--wash)); }
+tr.st-yes td:first-child, tr.st-no td:first-child, tr.st-few td:first-child, tr.st-out td:first-child,
+tr.st-nods1 td:first-child {
   box-shadow: inset 3px 0 0 var(--wink); }
 tr.st-out td { color: var(--ink-3); }
 .statekey { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
@@ -163,11 +175,78 @@ tr.st-out td { color: var(--ink-3); }
 .statekey .k { display: inline-flex; align-items: center; gap: 7px; }
 .statekey .sq { width: 26px; height: 16px; border-radius: 4px; background: linear-gradient(var(--wash), var(--wash)), var(--surface);
   border: 1px solid color-mix(in srgb, var(--wink) 40%, var(--line)); box-shadow: inset 4px 0 0 var(--wink); }
+/* The split by hand (2026-11-11). */
+.er-split { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: var(--surface-2); }
+.er-split > summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.er-split-in { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+canvas.er-split-cv { height: 220px; border-radius: 6px; background: var(--surface); cursor: ew-resize; touch-action: none; }
+.er-split-info { margin: 0; }
+/* The band, by hand (2026-11-12): drawn on the average CSD. */
+.er-stale { color: var(--warn); margin: 4px 0 0; overflow-wrap: anywhere; }
+canvas.er-band-cv { height: 230px; border-radius: 6px; background: var(--surface-2); cursor: crosshair; touch-action: none; }
+.er-band .cap { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.er-band-help { margin: 2px 0 0; }
+/* Contacts interpolated by hand (2026-11-13). */
+/* The corner banner of a card with interpolated contacts. */
+.rec.has-ip { position: relative; padding-top: 30px; }
+.er-ipflag { position: absolute; top: 0; right: 0; max-width: 100%; padding: 4px 12px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--accent, #2f6fdf);
+  border-radius: 0 var(--r, 8px) 0 10px; overflow-wrap: anywhere; }
+/* The room, tidied (2026-11-13: "Sleek and Chic"). */
+.er-acts2 { flex-direction: column; gap: 5px; padding: 6px 0 2px; border-top: 1px solid var(--line); }
+.acts-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; }
+.acts-row .lab { flex: none; width: 3.4em; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.acts-tools .btn { border-color: transparent; background: transparent; color: var(--ink-2); padding-left: 6px; padding-right: 6px; }
+.acts-tools .btn:hover { border-color: var(--line-2); background: var(--surface-2); color: var(--ink); }
+.rec { transition: box-shadow .15s ease, border-color .15s ease; }
+.rec:hover { box-shadow: 0 2px 14px rgba(0, 0, 0, .07); }
+.rec-head { gap: 5px 6px; }
+.rec-head .chip { font-size: 12px; }
+.card.bar { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface) 88%, transparent); }
+.er-band-help { font-size: 11.5px; }
+/* DS3, the trim and the mix-up. */
+.er-modectl { align-items: center; }
+.er-cutbox { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; }
+.er-cut { width: 110px; accent-color: var(--ink); }
+.er-cutval { font-size: 12.5px; font-weight: 600; min-width: 3.2em; }
+.er-mix { display: flex; flex-direction: column; gap: 3px; padding: 6px 0 0; border-top: 1px solid var(--line); }
+.er-mix p { margin: 0; overflow-wrap: anywhere; }
+.er-mixbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; }
+.er-mixbar > .lab { font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.er-mixbit { display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; }
+.er-mixbit .lab { color: var(--ink-3); }
+.er-mixbit.on { border-color: var(--ink-2); }
+.er-mixbit.mx-clean b { color: var(--st-yes-ink); }
+.er-mixbit.mx-within b { color: var(--warn); }
+.er-mixbit.mx-mixed b { color: var(--st-no-ink); }
+.er-mixbit.mx-clean { background: var(--st-yes); }
+.er-mixbit.mx-mixed { background: var(--st-no); }
+.er-mixwhy { color: var(--st-no-ink); }
+.er-ds3say { color: var(--ink-2); }
+.c3 { color: var(--ds3); } .c4 { color: var(--unsure); }
+.er-twflag { background: var(--ink-2); }
+.er-twflag.second { right: auto; left: 0; border-radius: var(--r, 8px) 0 10px 0; }
+.er-interp { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 0; }
+.er-interp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.er-interp-bar .lab { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.er-interp-in { width: 9em; max-width: 100%; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line-2);
+  border-radius: 5px; background: var(--surface); color: var(--ink); }
+.er-interp-words { margin: 0; overflow-wrap: anywhere; }
+.chip.er-rate { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 520px) { .grid { grid-template-columns: minmax(0, 1fr); } .pics { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
 <main id="er">
+  <!-- A reminder the user asked for on 2026-11-16; take it out when the PCA line is built. -->
+  <div class="er-todo" id="erTodo" role="note">
+    <b>To do</b>
+    <span>PCA split: let the line be drawn at any angle on PC1 and PC2, not only straight up and down, and add a two-Gaussian
+      mixture boundary (straight or curved) beside the automatic k-means one. Tried in the quality check of 2026-11-16
+      (round 3); not built here yet.</span>
+  </div>
   <h1>The Extraction Room</h1>
   <p class="lede">The sixth and last step of The Dentist. What X-ray split into DS1 and DS2, taken out of Jarvis into a room of its
     own: every number here was copied when it was extracted, so this room keeps showing what it was given however the sets
@@ -176,5 +255,7 @@ tr.st-out td { color: var(--ink-3); }
   <div id="erBody"><p class="empty">Opening the room…</p></div>
 </main>
 <script src="js/extraction.js"></script>
+<script src="js/extraction_compare.js"></script>
+<script src="js/extraction_blobs.js"></script>
 </body>
 </html>

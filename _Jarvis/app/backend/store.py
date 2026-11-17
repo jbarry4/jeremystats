@@ -125,6 +125,9 @@ PREFS_SPEC = {
     "extraction_flip": shards.MAPLWW,
     # ... and which are separable, or not, by a person's call.
     "extraction_sep": shards.MAPLWW,
+    # How a recording's DS1 and DS2 are split, by hand (2026-11-11):
+    # {room|folder|gid: {method, cut, by, at}}.
+    "extraction_split": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them

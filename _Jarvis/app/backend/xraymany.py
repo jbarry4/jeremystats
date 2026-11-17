@@ -122,10 +122,14 @@ def inside_by_gid(run):
     border, sorted. Times as the run rounded them (6 decimals)."""
     cols = run.get("cols") or {}
     gids = cols.get("gids") or []
+    # An Ambiguous run with a Halo (2026-11-12) gives its DS side: inside
+    # the DS border only, and what the DS halo captured.
+    keep = ({"ds", "halo_ds"} if run.get("kind") == "ambiguous"
+            else {"inside"})
     out = {}
     for cls, g, t in zip(cols.get("cls") or [], cols.get("g") or [],
                          cols.get("t") or []):
-        if cls != "inside" or g is None or t is None:
+        if cls not in keep or g is None or t is None:
             continue
         try:
             gid = gids[int(g)]

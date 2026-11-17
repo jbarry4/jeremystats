@@ -471,6 +471,58 @@ def _classify_level(X, lv, group, shape="box"):
     return out
 
 
+def gauge(X, border, grace):
+    """HOW FAR OUT, IN THE BORDER'S OWN SIZE (2026-11-12, the Halo): each
+    row of X measured against the border at a grace, about its centre --
+    below 1 inside, 1 on the border, 2 twice as far from the centre as the
+    border reaches in that direction. This is the border's gauge (its
+    Minkowski functional): growing the border k times about its centre
+    takes in exactly the events whose gauge is at most k.
+      box   the largest |x - c| / half-width over the three axes;
+      snap  the largest (n . z) / (-d) over its faces, z in the hull's own
+            scaled units about the mean of its corners (always inside it);
+      scoop the square root of its ellipsoid's form.
+    Returns (gauges, centre in the three numbers' own units); a row
+    missing a number is nan."""
+    if not is_envelope(border):
+        raise BorderError("Only a border drawn as an envelope has a size "
+                          "to measure from; this one is older.")
+    lv = level_of(border, grace)
+    shape = border.get("shape") or "box"
+    sh = lv.get("shape") if shape != "box" else None
+    X = np.asarray(X, dtype=float)
+    fin = np.isfinite(X).all(axis=1)
+    g = np.full(X.shape[0], np.nan)
+    if not sh:
+        ed = lv["edges"]
+        lo = np.array([np.nan if ed[k]["lo"] is None else ed[k]["lo"]
+                       for k, _l, _u in AXES], dtype=float)
+        hi = np.array([np.nan if ed[k]["hi"] is None else ed[k]["hi"]
+                       for k, _l, _u in AXES], dtype=float)
+        c = (lo + hi) / 2.0
+        half = np.maximum((hi - lo) / 2.0, 1e-12)
+        if fin.any():
+            g[fin] = np.max(np.abs(X[fin] - c) / half, axis=1)
+        return g, c
+    if sh["kind"] == "ellipsoid":
+        c = np.asarray(sh["center"], dtype=float)
+        Mi = np.linalg.inv(np.asarray(sh["M"], dtype=float))
+        if fin.any():
+            g[fin] = np.sqrt(np.maximum(_d2(X[fin], c, Mi), 0.0))
+        return g, c
+    sc = np.asarray(sh["center"], dtype=float)
+    ss = np.asarray(sh["scale"], dtype=float)
+    E = np.asarray(sh["eq"], dtype=float)
+    V = np.asarray(sh["vertices"], dtype=float)
+    cz = ((V - sc) / ss).mean(axis=0)
+    nrm = E[:, :3]
+    off = np.minimum(E[:, 3] + nrm @ cz, -1e-12)      # below 0: cz is inside
+    if fin.any():
+        Z = (X[fin] - sc) / ss - cz
+        g[fin] = np.maximum(np.max((Z @ nrm.T) / (-off), axis=1), 0.0)
+    return g, sc + ss * cz
+
+
 def shape_sweep(G, T, shape, graces):
     """At each grace: the share of G left outside and how many of T land
     inside, for any shape -- what the grace sweep draws."""
