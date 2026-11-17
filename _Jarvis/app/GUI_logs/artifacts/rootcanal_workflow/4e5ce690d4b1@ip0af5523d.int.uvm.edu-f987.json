@@ -1,0 +1,140 @@
+{
+  "_at": {
+    "added": "2026-11-12T19:01:41.167618+00:00",
+    "deleted": "2026-11-12T19:01:41.167618+00:00",
+    "id": "2026-11-12T19:01:41.167618+00:00",
+    "kind": "2026-11-12T19:01:41.167618+00:00",
+    "name": "2026-11-12T19:01:41.167618+00:00",
+    "nickname": "2026-11-12T19:01:41.167618+00:00",
+    "schema": "2026-11-12T19:01:41.167618+00:00",
+    "subject": "2026-11-12T19:01:41.167618+00:00",
+    "subject_key": "2026-11-12T19:01:41.167618+00:00",
+    "version": "2026-11-12T19:01:41.167618+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "4e5ce690d4b1:13e373cd586e>6028e667c3d4:2": [
+        "set",
+        "2026-11-12T19:01:41.167618+00:00"
+      ],
+      "4e5ce690d4b1:13e373cd586e>6fa7fef7b7a3:2": [
+        "set",
+        "2026-11-12T19:01:41.167618+00:00"
+      ]
+    },
+    "versions": {
+      "13e373cd586e": [
+        "set",
+        "2026-11-12T19:01:41.167618+00:00"
+      ],
+      "9267c6bcee91": [
+        "set",
+        "2026-11-12T19:01:41.167618+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:01:41.167618+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T12:02:05-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-12T17:08:53+00:00",
+      "by_id": "6028e667c3d4",
+      "by_version": 2,
+      "digest": "5a618cf45d2f",
+      "id": "4e5ce690d4b1:13e373cd586e>6028e667c3d4:2",
+      "version": 2,
+      "version_id": "13e373cd586e"
+    },
+    {
+      "at": "2026-11-12T17:31:14+00:00",
+      "by_id": "6fa7fef7b7a3",
+      "by_version": 2,
+      "digest": "5a618cf45d2f",
+      "id": "4e5ce690d4b1:13e373cd586e>6fa7fef7b7a3:2",
+      "version": 2,
+      "version_id": "13e373cd586e"
+    }
+  ],
+  "deleted": null,
+  "id": "4e5ce690d4b1",
+  "kind": "rootcanal_workflow",
+  "name": "Verified P-spikes \u00b7 PTEN Baseline (Optimized Parameters/Snap)",
+  "nickname": "PTEN Baseline (Optimized Parameters/Snap)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "pspike",
+    "name": "Verified P-spikes \u00b7 PTEN Baseline (Optimized Parameters/Snap)",
+    "workflow_key": "2fdce0e0b9814d43a5a6eaa355f79478"
+  },
+  "subject_key": "rootcanal_workflow|2fdce0e0b9814d43a5a6eaa355f79478",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T12:02:05-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "94958d6c09b2",
+      "id": "9267c6bcee91",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "pspike",
+        "ran": false,
+        "target": "PTEN Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-12T12:02:05-05:00",
+      "note": null,
+      "params": {
+        "kind": "pspike"
+      },
+      "params_hash": "c95d844db2c3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T12:02:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "5a618cf45d2f",
+      "id": "13e373cd586e",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3018,
+        "grace": 0.05,
+        "kept": 214,
+        "kind": "pspike",
+        "ran": true,
+        "target": "PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "pspike"
+      },
+      "params_hash": "63d2107536ad",
+      "v": 2
+    }
+  ]
+}

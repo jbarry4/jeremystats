@@ -19,8 +19,8 @@
     "schema": "2026-09-03T00:08:55.534236+00:00",
     "session": "2026-09-03T00:08:55.534236+00:00",
     "start": "2026-09-03T00:08:55.534236+00:00",
-    "updated": "2026-11-03T20:28:07.032670+00:00",
-    "view_state": "2026-10-30T15:28:00.396563+00:00"
+    "updated": "2026-11-16T16:43:54.777342+00:00",
+    "view_state": "2026-11-16T16:43:54.777342+00:00"
   },
   "_keys": {
     "paths": {
@@ -48,12 +48,12 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-11-03T20:27:54.455174+00:00"
+        "2026-11-16T15:53:54.268867+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-03T20:28:07.032670+00:00",
+    "at": "2026-11-16T16:43:54.777342+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -102,8 +102,8 @@
       "scan": "scan_94ff1eb81c"
     },
     "barrylab-d8e8": {
-      "at": "2026-11-03T15:27:53-05:00",
-      "by": "Rain Younger",
+      "at": "2026-11-16T10:53:53-05:00",
+      "by": "Avery Sullenberger",
       "copies": {
         "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\KCNT1_m1604_s2_062926\\2026-06-29_15-16-25": {
           "at": "2026-10-29T13:09:55-04:00",
@@ -121,14 +121,14 @@
   "session": 2,
   "start": "2026-06-29T15:16:25",
   "updated": {
-    "app_version": "2026.11.03.1",
-    "at": "2026-11-03T15:28:07-05:00",
-    "commit": "0aa32f2a",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.11.11.4",
+    "at": "2026-11-16T11:43:54-05:00",
+    "commit": "f9792b6e",
+    "email": "asullenb@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Avery Sullenberger"
   },
   "view_state": {
     "channels": [
@@ -167,8 +167,8 @@
     ],
     "climBy": null,
     "fdefault": null,
-    "flock": true,
-    "gain": 1.923076923076923,
+    "flock": false,
+    "gain": 2.5,
     "hp": 1,
     "invert": true,
     "lp": 70,
@@ -178,9 +178,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 20.664918,
+    "t0": 742.126738,
     "ylim": null
   }
 }
