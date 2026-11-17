@@ -1,0 +1,47 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-16
+computer    Blackbarry (lcom549913-e62b)
+person      Isabella Piatek
+build       2026.11.11.4 8c391def
+written     2026-11-16T18:00:30-05:00
+faults      1 error(s), 1 distinct
+activity    96 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    12:54:31-12:54:31  dspca/fit: That read is not on this machine any more. It is a cache, so nothing is lost -- read the set again.
+
+==========================================================================
+1/1  dspca/fit  x1
+==========================================================================
+first       2026-11-16T12:54:31-05:00
+latest      2026-11-16T12:54:31-05:00
+who         Isabella Piatek
+signature   dspca/fit||That read is not on this machine any more. It is a cache, so nothing is lost -- read the set again.
+
+message
+    That read is not on this machine any more. It is a cache, so nothing is lost -- read the set again.
+
+context
+    gid                sc74c98b2495d
+    read               75398bb10d0c
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\ipiatek\OneDrive - UVM Larner College of Medicine\Desktop\Actual Repo\jeremystats\_Jarvis\app\backend\app.py", line 9073, in api_dspca_fit
+        got = _dspca_load(gid, ph)
+              ^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\ipiatek\OneDrive - UVM Larner College of Medicine\Desktop\Actual Repo\jeremystats\_Jarvis\app\backend\app.py", line 8498, in _dspca_load
+        got = dspca.load_read(_dspca_npz(gid, ph))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\ipiatek\OneDrive - UVM Larner College of Medicine\Desktop\Actual Repo\jeremystats\_Jarvis\app\backend\dspca.py", line 1663, in load_read
+        raise DsPcaError(
+    backend.dspca.DsPcaError: That read is not on this machine any more. It is a cache, so nothing is lost -- read the set again.
+
+--- around 2026-11-16T12:54:31-05:00 ---
+    (nothing in this computer's activity log within 5 minutes before or 2 after)
