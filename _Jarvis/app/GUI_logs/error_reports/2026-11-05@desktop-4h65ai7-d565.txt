@@ -1,0 +1,98 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-05
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.11.05.6 f85d2b51
+written     2026-11-05T18:05:01-05:00
+faults      3 error(s), 2 distinct
+left out    78 test fault(s) (harness pages, the test client)
+activity    305 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x2    17:06:50-17:07:10  rootcanal/workflow-save: ‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+  2. x1    16:24:23-16:24:23  rootcanal/workflow-run: 5 of the hand-sorted set(s) could not be measured here: PTEN m28 s2 2024-06-18 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m34 s5 2024-06-10 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m3 s2 2023-09-20 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m5 s2 2023-11-16 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m13 s2 2023-08-01 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.). Prepare them first (Workflow · Prepare the hand-sorted sets): each has to be on the recording's own clock, aligned, and read on this machine.
+
+==========================================================================
+1/2  rootcanal/workflow-save  x2
+==========================================================================
+first       2026-11-05T17:06:50-05:00
+latest      2026-11-05T17:07:10-05:00
+who         Shahriar Tafti
+signature   rootcanal/workflow-save||‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+
+message
+    ‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+
+context
+    kind               ambiguous
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 14908, in api_rootcanal_workflow_save
+        defn = _wf_definition(body)
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 14494, in _wf_definition
+        raise rcworkflow.WorkflowError(
+            "‘%s’ has not been run yet, so it has no border to lend."
+            % (rec.get("nickname") or rec.get("name")))
+    backend.rcworkflow.WorkflowError: ‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+
+--- around 2026-11-05T17:06:50-05:00 ---
+    17:03:38   -191.7s  link.scope  [sessions]  {"scope":"session"}
+    17:03:47   -182.8s  session.open  [toolkit]  rec=m034_s008_2024-06-10_17-00-07  {"channels":64,"duration_s":1811.6608,"fs":30000,"path":"D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07","restored":["3 bad channel(s)","view restored"]}
+    17:03:50   -179.4s  events.import  [toolkit]  rec=m034_s008_2024-06-10_17-00-07  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    17:04:05   -165.0s  rootcanal.workflow.run  {"artifact":"abe99ac5d1b6","bank":null,"kept":1381,"version":2}
+    17:04:06   -164.0s  rootcanal.workflow_run  [toolkit]  {"artifact":"abe99ac5d1b6","banked":false,"version":2}
+    17:04:09   -161.0s  rootcanal.workflow.save  {"artifact":"abe99ac5d1b6","kind":"pspike"}
+    17:06:01    -48.1s  rootcanal.workflow_archive  [toolkit]  {"archived":true,"artifact":"abe99ac5d1b6"}
+    17:06:18    -31.2s  rootcanal.workflow_archive  [toolkit]  {"archived":false,"artifact":"abe99ac5d1b6"}
+    17:06:50     +0.0s  >>> rootcanal/workflow-save: ‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+
+--- around 2026-11-05T17:07:10-05:00 ---
+    17:03:38   -211.7s  link.scope  [sessions]  {"scope":"session"}
+    17:03:47   -202.8s  session.open  [toolkit]  rec=m034_s008_2024-06-10_17-00-07  {"channels":64,"duration_s":1811.6608,"fs":30000,"path":"D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07","restored":["3 bad channel(s)","view restored"]}
+    17:03:50   -199.4s  events.import  [toolkit]  rec=m034_s008_2024-06-10_17-00-07  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    17:04:05   -185.0s  rootcanal.workflow.run  {"artifact":"abe99ac5d1b6","bank":null,"kept":1381,"version":2}
+    17:04:06   -184.0s  rootcanal.workflow_run  [toolkit]  {"artifact":"abe99ac5d1b6","banked":false,"version":2}
+    17:04:09   -181.0s  rootcanal.workflow.save  {"artifact":"abe99ac5d1b6","kind":"pspike"}
+    17:06:01    -68.1s  rootcanal.workflow_archive  [toolkit]  {"archived":true,"artifact":"abe99ac5d1b6"}
+    17:06:18    -51.2s  rootcanal.workflow_archive  [toolkit]  {"archived":false,"artifact":"abe99ac5d1b6"}
+    17:07:10     +0.0s  >>> rootcanal/workflow-save: ‘Verified P-Spike’ has not been run yet, so it has no border to lend.
+
+==========================================================================
+2/2  rootcanal/workflow-run  x1
+==========================================================================
+first       2026-11-05T16:24:23-05:00
+latest      2026-11-05T16:24:23-05:00
+who         Shahriar Tafti
+signature   rootcanal/workflow-run||N of the hand-sorted set(s) could not be measured here: PTEN mN sN N-N-N (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes,
+
+message
+    5 of the hand-sorted set(s) could not be measured here: PTEN m28 s2 2024-06-18 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m34 s5 2024-06-10 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m3 s2 2023-09-20 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m5 s2 2023-11-16 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m13 s2 2023-08-01 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.). Prepare them first (Workflow · Prepare the hand-sorted sets): each has to be on the recording's own clock, aligned, and read on this machine.
+
+context
+    artifact_id        abe99ac5d1b6
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 14956, in api_rootcanal_workflow_run
+        run = _wf_compute(defn)
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 14568, in _wf_compute
+        src_events, src_members = _wf_set_events(src["entries"], measure)
+                                  ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 14433, in _wf_set_events
+        raise rcworkflow.WorkflowError(
+        ...<3 lines>...
+            "on this machine." % (len(stuck), "; ".join(stuck)))
+    backend.rcworkflow.WorkflowError: 5 of the hand-sorted set(s) could not be measured here: PTEN m28 s2 2024-06-18 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m34 s5 2024-06-10 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m3 s2 2023-09-20 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m5 s2 2023-11-16 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m13 s2 2023-08-01 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.). Prepare them first (Workflow · Prepare the hand-sorted sets): each has to be on the recording's own clock, aligned, and read on this machine.
+
+--- around 2026-11-05T16:24:23-05:00 ---
+    16:21:44   -158.9s  rootcanal.pool_open  [toolkit]  {"artifact":"f669e8c87dc9","version":1}
+    16:21:46   -156.4s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    16:24:10    -13.0s  rootcanal.workflow.save  {"artifact":"abe99ac5d1b6","kind":"pspike"}
+    16:24:23     +0.0s  >>> rootcanal/workflow-run: 5 of the hand-sorted set(s) could not be measured here: PTEN m28 s2 2024-06-18 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m34 s5 2024-06-10 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m3 s2 2023-09-20 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m5 s2 2023-11-16 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.); PTEN m13 s2 2023-08-01 (This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.). Prepare them first (Workflow · Prepare the hand-sorted sets): each has to be on the recording's own clock, aligned, and read on this machine.

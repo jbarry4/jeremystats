@@ -1,0 +1,70 @@
+{
+  "_at": {
+    "created": "2026-11-02T19:20:36.750262+00:00",
+    "gid": "2026-11-02T19:20:36.750262+00:00",
+    "group": "2026-11-02T19:20:36.750262+00:00",
+    "key": "2026-11-02T19:20:39.537422+00:00",
+    "label": "2026-11-02T19:20:39.537422+00:00",
+    "loose_key": "2026-11-02T19:20:39.537422+00:00",
+    "mouse": "2026-11-02T19:20:39.537422+00:00",
+    "project": "2026-11-02T19:20:39.537422+00:00",
+    "project_source": "2026-11-02T19:20:39.537422+00:00",
+    "retired": "2026-11-04T20:49:04.404675+00:00",
+    "retired_at": "2026-11-04T20:49:04.404675+00:00",
+    "retired_reason": "2026-11-04T20:49:04.404675+00:00",
+    "schema": "2026-11-02T19:20:39.537422+00:00",
+    "session": "2026-11-02T19:20:39.537422+00:00",
+    "start": "2026-11-02T19:20:39.537422+00:00",
+    "updated": "2026-11-04T20:49:04.404675+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M7_HF5_pten\\M7s3aug22\\2023-08-23_11-23-43": [
+        "set",
+        "2026-11-02T19:22:36.096363+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-04T20:49:04.404675+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:20:36-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s53804fac6910",
+  "group": null,
+  "key": "m007_s003_2023-08-23_11-23-55",
+  "label": "PTEN m7 s3 2023-08-23",
+  "loose_key": "m007_s003",
+  "mouse": 7,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M7_HF5_pten\\M7s3aug22\\2023-08-23_11-23-43"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": true,
+  "retired_at": "2026-11-04T20:49:04.376490+00:00",
+  "retired_reason": "every folder is headers only",
+  "schema": 1,
+  "session": 3,
+  "start": "2023-08-23T15:23:55+00:00",
+  "updated": {
+    "app_version": "2026.11.04.3",
+    "at": "2026-11-04T15:49:04-05:00",
+    "commit": "3dfef0c8",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -1,0 +1,63 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-04
+computer    Strawbarry (barrylab-d8e8)
+person      Rain Younger
+build       2026.11.04.3 ab65b008
+written     2026-11-04T18:08:38-05:00
+faults      1 error(s), 1 distinct
+activity    338 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    15:02:44-15:02:44  csc/window: [WinError 3] The system cannot find the path specified: "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_529_s1apr17\\2026-04-17_12-55-27\\CSC1.ncs"
+
+==========================================================================
+1/1  csc/window  x1
+==========================================================================
+first       2026-11-04T15:02:44-05:00
+latest      2026-11-04T15:02:44-05:00
+who         Rain Younger
+signature   csc/window||[WinError N] The system cannot find the path specified: "<path>'N<path>"
+
+message
+    [WinError 3] The system cannot find the path specified: "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_529_s1apr17\\2026-04-17_12-55-27\\CSC1.ncs"
+
+context
+    path               Y:\Jeremy3\KCNT1\Spring'26\KCNT1_529\KCNT1_529_s1apr17\2026-04-17_12-55-27
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 1109, in api_csc_window
+        win = csc.get_window(
+              ^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\_Jarvis\app\backend\csc.py", line 733, in get_window
+        seg, seg_t0, seg_fs = _read_channel_window(session, ch, t0, t1)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\_Jarvis\app\backend\csc.py", line 352, in _read_channel_window
+        return nlx.read_ncs_range(ch["file"], t0, t1, invert=session.get("invert", True))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\_Jarvis\app\backend\nlx.py", line 725, in read_ncs_range
+        size = os.path.getsize(path)
+               ^^^^^^^^^^^^^^^^^^^^^
+      File "<frozen genericpath>", line 62, in getsize
+    FileNotFoundError: [WinError 3] The system cannot find the path specified: "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_529_s1apr17\\2026-04-17_12-55-27\\CSC1.ncs"
+
+--- around 2026-11-04T15:02:44-05:00 ---
+    14:57:54   -290.0s  registry.scan  {"found":4,"new":4,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_529","scan":"scan_d4b51799a8"}
+    14:57:55   -288.1s  registry.confirmed  [sessions]  {"n":4,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_529","total":9}
+    14:57:55   -288.1s  sessions.scan  [sessions]  {"elapsed":4.9,"found":1622,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_529"}
+    15:00:29   -135.0s  registry.scan  {"found":5,"new":5,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_524","scan":"scan_f26d2a6cc5"}
+    15:00:31   -132.8s  registry.confirmed  [sessions]  {"n":5,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_524","total":14}
+    15:00:31   -132.8s  sessions.scan  [sessions]  {"elapsed":2.5,"found":1627,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_524"}
+    15:02:25    -19.0s  registry.scan  {"found":8,"new":8,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_521","scan":"scan_c5ee555d3d"}
+    15:02:27    -16.8s  registry.confirmed  [sessions]  {"n":8,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_521","total":22}
+    15:02:27    -16.8s  sessions.scan  [sessions]  {"elapsed":2.4,"found":1631,"root":"Y:/Jeremy3/KCNT1/Spring'26/KCNT1_521"}
+    15:02:44     +0.0s  >>> csc/window: [WinError 3] The system cannot find the path specified: "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_529_s1apr17\\2026-04-17_12-55-27\\CSC1.ncs"
+    15:03:26    +42.0s  bank.add  rec=m1619_s001_2026-08-18_13-08-00  {"id":"81938067ba49","mouse":1619,"n":886,"pipeline":"Incisor (dentate spike)","project":"KCNT1","session":1,"type":"ds"}
+    15:03:29    +45.0s  client.error  [toolkit]  {"detail":"{\"view\":\"toolkit\",\"lines\":[{\"at\":1793822540.8123062,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working on syncstate — saved results\",\"key\":\"req:2281-685\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822541.0679097,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working on syncstate — done in 1.6 s\",\"key\":\"req:2281-685\",\"progress\":null,\"done\":true,\"ms\":1608},{\"at\":1793822547.1456397,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Looking for recordings — done in 22.7 s\",\"key\":\"req:2281-681\",\"progress\":null,\"done\":true,\"ms\":22656},{\"at\":1793822548.2891335,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading the recording list — marking which ones this computer has met\",\"key\":\"req:2281-686\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822548.2891335,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading the recording list\",\"key\":\"req:2281-687\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822548.6339953,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading the recording list — done in 1.5 s\",\"key\":\"req:2281-686\",\"progress\":null,\"done\":true,\"ms\":1475},{\"at\":1793822548.8036895,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading the recording list — merging every computer's records\",\"key\":\"req:2281-687\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822549.8052697,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database\",\"key\":\"req:2281-688\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822550.305731,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading the recording list — arranging recordings 1,600 of 2,039\",\"key\":\"req:2281-687\",\"progress\":[1600,2039],\"done\":false,\"ms\":null},{\"at\":1793822550.305731,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database — saved results\",\"key\":\"req:2281-688\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822550.5562732,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading the recording list — marking which ones this computer has met\",\"key\":\"req:2281-687\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822550.7354803,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading the recording list — done in 3.6 s\",\"key\":\"req:2281-687\",\"progress\":null,\"done\":true,\"ms\":3576},{\"at\":1793822550.7795067,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 2.0 s\",\"key\":\"req:2281-688\",\"progress\":null,\"done\":true,\"ms\":2009},{\"at\":1793822563.161209,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 0 changes, received 4\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1793822571.6894665,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Incisor\",\"key\":\"req:2281-694\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822571.6894665,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Incisor\",\"key\":\"req:2281-696\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822593.7752125,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Incisor\",\"key\":\"req:2281-700\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822594.025496,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Incisor\",\"key\":\"req:2281-702\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822598.5360465,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Incisor\",\"key\":\"req:2281-706\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1793822603.272,\"lane\":\"jarvis\",\"kind\":\"info\",\"level\":\"warn\",\"text\":\"The ToolKit view has been waiting 33 s for the server; the server says: Working in Incisor.\",\"key\":\"page#2\",\"progress\":null,\"done\":true,\"ms\":null}],\"kind\":\"request\",\"route\":\"/api/incisor/batch/plan\",\"method\":\"POST\",\"ms\":32674}","message":"The ToolKit view has been waiting 33 s for the server; the server says: Working in Incisor.","where":"stuck"}
+    15:03:30    +46.0s  curation.from_bank  rec=m1619_s001_2026-08-18_13-08-00  {"decided":0,"entry":"81938067ba49","gid":"sdcedca6715fb","kind":"ds.e81938067ba49","n":886,"replaced":false,"version":0}

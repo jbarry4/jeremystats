@@ -1,0 +1,172 @@
+{
+  "_at": {
+    "added": "2026-11-12T19:01:41.186069+00:00",
+    "deleted": "2026-11-12T19:19:37.660864+00:00",
+    "id": "2026-11-12T19:01:41.186069+00:00",
+    "kind": "2026-11-12T19:01:41.186069+00:00",
+    "name": "2026-11-12T19:01:41.186069+00:00",
+    "nickname": "2026-11-12T19:01:41.186069+00:00",
+    "schema": "2026-11-12T19:01:41.186069+00:00",
+    "subject": "2026-11-12T19:01:41.186069+00:00",
+    "subject_key": "2026-11-12T19:01:41.186069+00:00",
+    "version": "2026-11-12T19:19:37.660864+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "3d2f33100659": [
+        "set",
+        "2026-11-12T19:19:37.660864+00:00"
+      ],
+      "c022253a32a8": [
+        "set",
+        "2026-11-12T19:01:41.186069+00:00"
+      ],
+      "d37e7e956fc7": [
+        "set",
+        "2026-11-12T19:01:41.186069+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:19:37.660864+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T12:30:57-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "6fa7fef7b7a3",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 Ambiguous Dataset (Optimized Parameters/Snap)",
+  "nickname": "Ambiguous Dataset (Optimized Parameters/Snap)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 Ambiguous Dataset (Optimized Parameters/Snap)",
+    "workflow_key": "8b948627084045ee92b5e9ca7220fb87"
+  },
+  "subject_key": "rootcanal_workflow|8b948627084045ee92b5e9ca7220fb87",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T12:30:57-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "273fb6b86c9b",
+      "id": "d37e7e956fc7",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-12T12:30:57-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T12:31:14-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "bff7a34375c8",
+      "id": "c022253a32a8",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "178daabb125c",
+          "kind": "rootcanal_workflow",
+          "version": 3
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": null,
+        "kept": 593,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T14:15:28-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "bd7ce885bd74",
+      "id": "3d2f33100659",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "178daabb125c",
+          "kind": "rootcanal_workflow",
+          "version": 3
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": null,
+        "kept": 219,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "Halo \u00b7 data rich, but less specific",
+      "nickname_at": "2026-11-12T14:15:28-05:00",
+      "note": "Halo applied (reach 2\u00d7, margin 1.5\u00d7) to the run of v2. Ambiguous Dataset (Optimized Parameters/Snap/Halo): the data-rich, less specific set. Its dentate spikes for the Extraction Room are the events inside the DS border only plus those outside both that the DS halo captured.",
+      "params": {
+        "halo": {
+          "margin": 1.5,
+          "reach": 2.0
+        },
+        "kind": "ambiguous"
+      },
+      "params_hash": "148ab3a4eff1",
+      "v": 3
+    }
+  ]
+}

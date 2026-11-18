@@ -1,0 +1,210 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the channel picker</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* BARRY.ui.channelPicker (js/chanpick.js), the one control every tool
+   chooses channels with since 2026-11-04 ("standardize channel picking ...
+   no ugly basic check boxes"). Built in the app's own page, in a box of its
+   own, with nothing sent anywhere: every change is caught by the
+   callbacks. Checks:
+
+   - no native checkbox, a tile per channel, banks of 32 with their heads
+   - mode 'bad': a click calls onToggle once, with the right number and
+     state, and the tile and the count answer at once
+   - shift-click sets the run between two tiles, in one onSet
+   - a drag paints every tile it passes the first tile's new state, one
+     onSet when the pointer lets go
+   - quick picks (Evens, a bank) set the tiles in place and call onSet once
+   - mode 'pick': bad channels are shown, struck, and cannot be picked;
+     a locked one says why and cannot be changed; an 'out' one is dimmed
+     but still on
+   - keyboard: Space toggles, arrows move focus
+   - nothing is cut short: no tile or count overflows its box */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c;
+                        d.textContent = (c === 'ok' ? 'ok    ' : c === 'bad'
+                                         ? 'FAIL  ' : '') + m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  for (let i = 0; i < 200; i++) {
+    try { if (W().eval('typeof BARRY !== "undefined" && !!BARRY.ui.channelPicker')) break; }
+    catch (e) { /* not yet */ }
+    await sleep(100);
+  }
+  const UI = W().eval('BARRY.ui');
+  check('BARRY.ui.channelPicker is there', !!(UI && UI.channelPicker));
+  check('and BARRY.ui.rowChannels', !!(UI && UI.rowChannels));
+
+  const host = D().createElement('div');
+  host.id = 'chpHarness';
+  host.style.cssText = 'position:fixed;left:10px;top:10px;width:520px;'
+    + 'z-index:99999;background:var(--bg);padding:8px;';
+  D().body.appendChild(host);
+  const chans = Array.from({ length: 64 }, (_, i) => ({
+    number: i + 1, label: 'CSC' + (i + 1), bad: i + 1 === 5 || i + 1 === 40 }));
+  const ptr = (t, type, extra) => t.dispatchEvent(new (W().PointerEvent)(type,
+    Object.assign({ bubbles: type !== 'pointerenter', button: 0, buttons: 1,
+                    pointerId: 1, isPrimary: true }, extra || {})));
+
+  head('1. Mode "bad": the look');
+  let toggles = [], sets = [];
+  let p = UI.channelPicker({
+    mode: 'bad', channels: chans,
+    onToggle: (n, on) => toggles.push([n, on]),
+    onSet: (nums) => sets.push(nums),
+    reset: { text: 'Put them all back', onclick: () => sets.push('reset') },
+  });
+  host.appendChild(p);
+  const tiles = () => Array.from(host.querySelectorAll('.chp-t'));
+  const tile = (n) => host.querySelector('.chp-t[data-ch="' + n + '"]');
+  check('no native checkbox anywhere in it',
+        host.querySelectorAll('input[type=checkbox]').length === 0);
+  check('a tile per channel', tiles().length === 64, tiles().length + '');
+  check('two banks, each with its head',
+        host.querySelectorAll('.chp-bank').length === 2
+        && /CSC 1.32/.test(host.querySelector('.chp-bank-h').textContent),
+        host.querySelector('.chp-bank-h') && host.querySelector('.chp-bank-h').textContent);
+  check('a bad channel is off and struck, the rest on',
+        tile(5).classList.contains('bad') && !tile(5).classList.contains('on')
+        && tile(6).classList.contains('on'));
+  check('tiles say role checkbox and aria-checked',
+        tile(6).getAttribute('role') === 'checkbox'
+        && tile(6).getAttribute('aria-checked') === 'true'
+        && tile(5).getAttribute('aria-checked') === 'false');
+  const count = () => host.querySelector('.chp-count').textContent;
+  check('the count says what is read and what is bad',
+        count() === '62 of 64 read · 2 marked bad', count());
+
+  head('2. One click');
+  ptr(tile(7), 'pointerdown');
+  ptr(D(), 'pointerup');
+  check('onToggle once, CSC7 off', JSON.stringify(toggles) === '[[7,false]]',
+        JSON.stringify(toggles));
+  check('the tile answers at once', !tile(7).classList.contains('on'));
+  check('and the count', count() === '61 of 64 read · 2 marked bad', count());
+  check('no onSet for one click', sets.length === 0, JSON.stringify(sets));
+
+  head('3. Shift-click, a run');
+  toggles = []; sets = [];
+  ptr(tile(10), 'pointerdown'); ptr(D(), 'pointerup');
+  ptr(tile(14), 'pointerdown', { shiftKey: true });
+  ptr(D(), 'pointerup');
+  const off = [10, 11, 12, 13, 14].every((n) => !tile(n).classList.contains('on'));
+  check('10 to 14 are all off', off);
+  check('one onSet with the whole on-list',
+        sets.length === 1 && sets[0].indexOf(12) < 0 && sets[0].indexOf(15) >= 0,
+        JSON.stringify(sets).slice(0, 120));
+
+  head('4. A drag paints');
+  toggles = []; sets = [];
+  ptr(tile(20), 'pointerdown');
+  for (const n of [21, 22, 23]) ptr(tile(n), 'pointerenter');
+  ptr(D(), 'pointerup');
+  check('20 to 23 took the first tile’s new state (off)',
+        [20, 21, 22, 23].every((n) => !tile(n).classList.contains('on')));
+  check('one onSet, not four toggles', sets.length === 1 && toggles.length === 0,
+        sets.length + ' sets, ' + toggles.length + ' toggles');
+
+  head('5. Quick picks');
+  sets = [];
+  const q = (txt) => Array.from(host.querySelectorAll('.chp-q'))
+    .find((b) => b.textContent === txt);
+  check('Read all, Evens, Odds, the banks and Put them all back are there',
+        !!q('Read all') && !!q('Evens') && !!q('Odds') && !!q('1–32')
+        && !!q('Put them all back'));
+  q('Evens').click();
+  check('Evens: the tiles in place, odd ones off',
+        tile(2).classList.contains('on') && !tile(3).classList.contains('on'));
+  check('one onSet, every even channel', sets.length === 1
+        && sets[0].length === 32 && sets[0].every((n) => n % 2 === 0),
+        JSON.stringify(sets[0]).slice(0, 80));
+  q('Put them all back').click();
+  check('Put them all back is the caller’s', sets[sets.length - 1] === 'reset');
+
+  head('6. Keyboard');
+  toggles = [];
+  tile(30).focus();
+  tile(30).dispatchEvent(new (W().KeyboardEvent)('keydown',
+    { key: ' ', bubbles: true }));
+  check('Space toggles the focused tile', toggles.length === 1
+        && toggles[0][0] === 30, JSON.stringify(toggles));
+  tile(30).dispatchEvent(new (W().KeyboardEvent)('keydown',
+    { key: 'ArrowRight', bubbles: true }));
+  check('an arrow moves the focus', D().activeElement === tile(31),
+        D().activeElement && D().activeElement.dataset.ch);
+  toggles = [];
+  tile(33).click();
+  check('a click with no pointer behind it toggles one (assistive tech)',
+        toggles.length === 1 && toggles[0][0] === 33, JSON.stringify(toggles));
+
+  head('7. Mode "pick": bad, locked, out');
+  host.innerHTML = '';
+  toggles = []; sets = [];
+  p = UI.channelPicker({
+    mode: 'pick', channels: chans, on: [1, 2, 3, 4, 6, 7],
+    locked: (c) => (c.number > 60 ? 'outside CSC1 to CSC60' : null),
+    out: (c) => (c.number === 2 ? 'not in the pick' : null),
+    onToggle: (n, on) => toggles.push([n, on]),
+    onSet: (nums) => sets.push(nums),
+    title: 'Channels in the average',
+  });
+  host.appendChild(p);
+  check('the count says the run', count() === '6 of 64 in this run · 2 marked bad, left out',
+        count());
+  check('a bad channel is shown, struck and cannot be picked',
+        tile(5).classList.contains('bad') && tile(5).disabled);
+  ptr(tile(5), 'pointerdown'); ptr(D(), 'pointerup');
+  check('pressing it does nothing', toggles.length === 0);
+  check('a locked one says why and is disabled',
+        tile(62).disabled && /outside CSC1 to CSC60/.test(tile(62).title),
+        tile(62).title);
+  check('an out one is dimmed and still on',
+        tile(2).classList.contains('out') && tile(2).classList.contains('on'));
+  sets = [];
+  q('Good ones').click();
+  check('Good ones leaves the bad and the locked as they were',
+        sets.length === 1 && sets[0].indexOf(5) < 0 && sets[0].indexOf(62) < 0
+        && sets[0].indexOf(60) >= 0, JSON.stringify(sets[0]).slice(0, 80));
+
+  head('8. Nothing cut short');
+  const clipped = tiles().filter((t) => t.scrollWidth > t.clientWidth + 1);
+  check('no tile overflows its box', clipped.length === 0,
+        clipped.length + ' clipped');
+  const c = host.querySelector('.chp-count');
+  check('the count is whole', c.scrollWidth <= c.clientWidth + 1);
+  const css = W().getComputedStyle(tile(1));
+  check('no ellipsis', css.textOverflow !== 'ellipsis');
+
+  host.remove();
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = 'chanpick: ' + (bad ? bad + ' FAILED' : 'passed');
+  f.src = 'about:blank';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'chanpick: THREW';
+} })();
+</script>

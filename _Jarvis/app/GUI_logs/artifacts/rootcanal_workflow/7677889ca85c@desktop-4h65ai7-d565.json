@@ -1,0 +1,257 @@
+{
+  "_at": {
+    "added": "2026-11-06T21:30:52.722757+00:00",
+    "deleted": "2026-11-07T18:03:05.358855+00:00",
+    "id": "2026-11-06T21:30:52.722757+00:00",
+    "kind": "2026-11-06T21:30:52.722757+00:00",
+    "name": "2026-11-06T21:30:52.722757+00:00",
+    "nickname": "2026-11-06T21:30:52.722757+00:00",
+    "schema": "2026-11-06T21:30:52.722757+00:00",
+    "subject": "2026-11-06T21:30:52.722757+00:00",
+    "subject_key": "2026-11-06T21:30:52.722757+00:00",
+    "version": "2026-11-07T18:03:05.358855+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "0320e1f4e52d": [
+        "set",
+        "2026-11-07T18:03:05.358855+00:00"
+      ],
+      "12d15e848625": [
+        "set",
+        "2026-11-06T21:45:56.492203+00:00"
+      ],
+      "14e5b41cc8a9": [
+        "set",
+        "2026-11-06T21:30:52.722757+00:00"
+      ],
+      "8a0cbf4cb0d2": [
+        "set",
+        "2026-11-06T21:30:58.935334+00:00"
+      ],
+      "fc6c5a7e4db0": [
+        "set",
+        "2026-11-06T21:45:54.663520+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-07T18:03:05.358855+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-06T16:30:52-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "7677889ca85c",
+  "kind": "rootcanal_workflow",
+  "name": "Pooled PCA \u00b7 PTEN + CTL Baseline PCA",
+  "nickname": "PTEN + CTL Baseline PCA",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "pca",
+    "name": "Pooled PCA \u00b7 PTEN + CTL Baseline PCA",
+    "workflow_key": "cd8818c3ebdf4b91851ffed322ff4cd4"
+  },
+  "subject_key": "rootcanal_workflow|cd8818c3ebdf4b91851ffed322ff4cd4",
+  "version": 5,
+  "versions": [
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:30:52-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "eb9c4af907d0",
+      "id": "14e5b41cc8a9",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "pca",
+        "ran": false,
+        "target": null
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-06T16:30:52-05:00",
+      "note": null,
+      "params": {
+        "kind": "pca"
+      },
+      "params_hash": "26636a80c5f4",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:30:58-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "860c561e978a",
+      "id": "8a0cbf4cb0d2",
+      "inputs": [
+        {
+          "artifact_id": "0fb7e710f1b9",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "3fcedd33613b",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "ab9613cbc7c2",
+          "kind": "rootcanal_workflow",
+          "version": 4
+        },
+        {
+          "artifact_id": "abe99ac5d1b6",
+          "kind": "rootcanal_workflow",
+          "version": 5
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3675,
+        "grace": null,
+        "kept": 3673,
+        "kind": "pca",
+        "ran": true,
+        "target": null
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "pca"
+      },
+      "params_hash": "e7a5c6b74d7c",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:45:54-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "54abb91e0b87",
+      "id": "fc6c5a7e4db0",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "pca",
+        "ran": false,
+        "target": null
+      },
+      "note": "Definition changed",
+      "params": {
+        "kind": "pca"
+      },
+      "params_hash": "26636a80c5f4",
+      "v": 3
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:45:56-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "a03ada7e00cf",
+      "id": "12d15e848625",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "ab9613cbc7c2",
+          "kind": "rootcanal_workflow",
+          "version": 6
+        },
+        {
+          "artifact_id": "abe99ac5d1b6",
+          "kind": "rootcanal_workflow",
+          "version": 7
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": null,
+        "kept": 5200,
+        "kind": "pca",
+        "ran": true,
+        "target": null
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "pca"
+      },
+      "params_hash": "e7a5c6b74d7c",
+      "v": 4
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-07T13:03:04-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "d474369689e4",
+      "id": "0320e1f4e52d",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "ab9613cbc7c2",
+          "kind": "rootcanal_workflow",
+          "version": 6
+        },
+        {
+          "artifact_id": "abe99ac5d1b6",
+          "kind": "rootcanal_workflow",
+          "version": 7
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": null,
+        "kept": 5200,
+        "kind": "pca",
+        "ran": true,
+        "target": null
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "pca"
+      },
+      "params_hash": "e7a5c6b74d7c",
+      "v": 5
+    }
+  ]
+}

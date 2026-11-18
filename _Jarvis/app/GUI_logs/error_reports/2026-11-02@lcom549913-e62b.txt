@@ -1,0 +1,36 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-02
+computer    Blackbarry (lcom549913-e62b)
+person      Isabella Piatek
+build       2026.10.27.1 d752a3b1
+written     2026-11-02T18:11:54-05:00
+faults      1 error(s), 1 distinct
+activity    446 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    11:54:53-11:54:53  cloud.sync: GET /rest/v1/barry_watermarks?select=*&limit=100&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+
+==========================================================================
+1/1  cloud.sync  x1
+==========================================================================
+first       2026-11-02T11:54:53-05:00
+latest      2026-11-02T11:54:53-05:00
+who         Isabella Piatek
+signature   cloud.sync||GET /rest/vN/barry_watermarks?select=*&limit=N&offset=N -> HTTP N {"code":"PGRSTN","details":null,"hint":null,"message":"JWT issued at future"}
+
+This machine's clock is ahead of Su
+
+message
+    GET /rest/v1/barry_watermarks?select=*&limit=100&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+    
+    This machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.
+
+--- around 2026-11-02T11:54:53-05:00 ---
+    11:54:53     +0.0s  >>> cloud.sync: GET /rest/v1/barry_watermarks?select=*&limit=100&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+    11:56:11    +78.6s  window.change  [xplore]  rec=m1604_s002_2026-06-29_15-16-25  {"scope":"session","span":0.4,"t0":38.5054}

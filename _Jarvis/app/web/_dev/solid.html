@@ -1,0 +1,475 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>solid: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0&menu=0"></iframe>
+<script>
+/* Solid ground (js/solid.js, js/feeddock.js, solid.css), 2026-11-03.
+
+   A click that feels like a click: the press drawn even when it is quicker
+   than a frame; a control busy at once, with a spinner on its corner after
+   300 ms (its text and width untouched), the server's words beside it after
+   3 s and Stop after 20 s; a second click on a busy control swallowed, and
+   one marked data-allow-repeat let through. Then a server that goes away:
+   the reconnecting banner, a POST held and sent once it is back with the
+   promise resolving to the real answer, a read that waits, "Back", and a
+   new boot id said in the feed. Then the dock: lines drawn, a keyed line
+   updated in place (same node, bar filled, a tick and the time it took),
+   the VACC lane apart, the VACC tab only in VACC Mode and opened when it
+   turns on, the Output tab still the job log.
+
+   Every request under test is answered in the page: the frame's `fetch` is
+   stood in for (apiPost is a const; stubbing it does nothing), and only
+   /api/solidtest/*, /api/ping and /api/activity are answered here, the rest
+   passing through. A harness frame starts with all of solid.js off except
+   the press; this arms it with `BARRY.solid._arm` and disarms it in the
+   finally. Nothing written: prefs.set and activity.log are stood in for, and
+   VACC Mode, the dock and fetch are put back. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note !== undefined && note !== '' ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  let B = null, realSet = null, realLog = null, realFetch = null, wasVacc = null;
+  let dockWasCollapsed = true;
+  const made = [];
+
+  /* The stand-in fetch. `mode` 'down' makes every request throw, as a
+     server that is not there does; /api/activity is answered even then, so
+     a stray unhandled rejection cannot report itself in a loop. */
+  let mode = 'pass';
+  let bootNow = 'harness-boot-1';
+  const got = [];
+  const acts = [];
+  const slowQ = [];
+  function json(W, obj, status) {
+    return new (W.Response)(JSON.stringify(obj), {
+      status: status || 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  try {
+    await until(() => ev('typeof BARRY === "object" && !!BARRY.solid && !!BARRY.feed'
+                         + ' && !!BARRY.state.catalog')
+                      && D().querySelector('#rail .nav-item'), 30000);
+    B = ev('BARRY');
+    wasVacc = !!B.state.vacc;
+    realSet = B.prefs.set;
+    B.prefs.set = () => {};
+    realLog = B.activity.log;
+    B.activity.log = () => {};
+    const dock = D().getElementById('logDock');
+    dockWasCollapsed = dock.classList.contains('collapsed');
+
+    realFetch = W().fetch;
+    const FW = W();
+    FW.fetch = function (url, init) {
+      const u = String((url && url.url) || url);
+      const i = init || {};
+      const h = i.headers || {};
+      const rec = { url: u, method: (i.method || 'GET').toUpperCase(),
+                    req: h['X-Jarvis-Req'] || null, body: i.body || null };
+      if (u.startsWith('/api/activity')) { acts.push(rec); return Promise.resolve(json(FW, { ok: true })); }
+      if (mode === 'down') return Promise.reject(new FW.TypeError('Failed to fetch'));
+      if (u.startsWith('/api/ping')) {
+        got.push(rec);
+        return Promise.resolve(json(FW, { ok: true, boot: bootNow }));
+      }
+      if (u.startsWith('/api/solidtest/slow')) {
+        got.push(rec);
+        return new Promise((resolve, reject) => {
+          slowQ.push({ rec, go: () => resolve(json(FW, { ok: true, slow: u })) });
+          if (i.signal) {
+            i.signal.addEventListener('abort', () =>
+              reject(new FW.DOMException('The user aborted a request.', 'AbortError')));
+          }
+        });
+      }
+      if (u.startsWith('/api/solidtest/')) {
+        got.push(rec);
+        let body = null;
+        try { body = i.body ? JSON.parse(i.body) : null; } catch (e) {}
+        return Promise.resolve(json(FW, { ok: true, echo: u, body }));
+      }
+      return realFetch.apply(this, arguments);
+    };
+    const armed = B.solid._arm({ busy: true, guard: true, offline: true,
+                                 stuck: false, scroll: false });
+    check('armed in the harness frame', armed.busy && armed.guard && armed.offline,
+          JSON.stringify(armed));
+
+    const mkBtn = (text, top, attrs) => {
+      const b = D().createElement('button');
+      b.className = 'btn';
+      b.textContent = text;
+      b.style.cssText = 'position:fixed;left:420px;top:' + top + 'px;z-index:50';
+      for (const k in (attrs || {})) b.setAttribute(k, attrs[k]);
+      D().body.appendChild(b);
+      made.push(b);
+      return b;
+    };
+    const spinOn = () => D().querySelector('.solid-spin:not([hidden])');
+    const bubbleOn = () => D().querySelector('.solid-bubble:not([hidden])');
+    const api = ev('api');
+
+    say('=== the press ===');
+    const pb = mkBtn('Press me', 140);
+    pb.dispatchEvent(new FW.PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    pb.dispatchEvent(new FW.PointerEvent('pointerup', { bubbles: true, button: 0 }));
+    check('a press quicker than a frame is still drawn', pb.classList.contains('is-pressed'));
+    await sleep(40);
+    check('and held for a moment', pb.classList.contains('is-pressed'));
+    await until(() => !pb.classList.contains('is-pressed'), 1500);
+    check('then let go', !pb.classList.contains('is-pressed'));
+
+    say('');
+    say('=== a busy control ===');
+    let presses = 0, done1 = null;
+    const b1 = mkBtn('Read the slow list', 200);
+    b1.addEventListener('click', () => {
+      presses++;
+      api('/api/solidtest/slow?n=' + presses).then((r) => { done1 = r; }, (e) => { done1 = e; });
+    });
+    const w0 = b1.getBoundingClientRect().width;
+    const text0 = b1.textContent;
+    b1.click();
+    check('busy at once', b1.classList.contains('is-busy'));
+    check('and says so to a screen reader', b1.getAttribute('aria-busy') === 'true');
+    check('one request went, carrying its id', slowQ.length === 1 && !!slowQ[0].rec.req,
+          slowQ[0] && slowQ[0].rec.req);
+    await sleep(120);
+    check('no spinner before 300 ms', !spinOn());
+    const sp = await until(spinOn, 3000);
+    check('a spinner after 300 ms', !!sp);
+    if (sp) {
+      const r = b1.getBoundingClientRect();
+      const s = sp.getBoundingClientRect();
+      check('on the control\'s top-right corner',
+            Math.abs(s.left + s.width / 2 - r.right) < 14 && Math.abs(s.top + s.height / 2 - r.top) < 14,
+            JSON.stringify({ s: [s.left, s.top], r: [r.right, r.top] }));
+      check('outside the control (not one of its children)', !b1.contains(sp));
+      check('and takes no click', FW.getComputedStyle(sp).pointerEvents === 'none');
+    }
+    check('its width is unchanged', Math.abs(b1.getBoundingClientRect().width - w0) < 0.5,
+          w0 + ' -> ' + b1.getBoundingClientRect().width);
+    check('its text is unchanged', b1.textContent === text0, b1.textContent);
+    b1.click();
+    b1.click();
+    check('a second and third click are swallowed', presses === 1, presses + ' presses');
+    check('and no second request was sent', slowQ.length === 1, slowQ.length);
+    slowQ.shift().go();
+    await until(() => done1, 3000);
+    check('the answer came back to its caller', done1 && done1.slow, JSON.stringify(done1));
+    await until(() => !b1.classList.contains('is-busy'), 2000);
+    check('not busy once it is answered', !b1.classList.contains('is-busy')
+          && !b1.hasAttribute('aria-busy'));
+    check('and the spinner has gone', !spinOn());
+    b1.click();
+    check('clickable again', presses === 2, presses + ' presses');
+    if (slowQ.length) slowQ.shift().go();
+    await until(() => !b1.classList.contains('is-busy'), 2000);
+
+    say('');
+    say('=== repeat allowed ===');
+    let rp = 0;
+    const b3 = mkBtn('Again and again', 260, { 'data-allow-repeat': '' });
+    b3.addEventListener('click', () => { rp++; api('/api/solidtest/slow?r=' + rp).catch(() => {}); });
+    b3.click();
+    b3.click();
+    check('data-allow-repeat lets the second click through', rp === 2, rp);
+    while (slowQ.length) slowQ.shift().go();
+    await until(() => !b3.classList.contains('is-busy'), 2000);
+
+    say('');
+    say('=== the server\'s words, then Stop ===');
+    let done2 = null;
+    const b2 = mkBtn('Read the long list', 320);
+    b2.addEventListener('click', () => {
+      api('/api/solidtest/slow?long=1').then((r) => { done2 = r; }, (e) => { done2 = e; });
+    });
+    b2.click();
+    const rid = slowQ.length ? slowQ[slowQ.length - 1].rec.req : null;
+    B.feed._ingest([{ id: 990001, at: Date.now() / 1000, lane: 'jarvis', kind: 'request',
+                      level: 'info', text: 'Reading the harness list', key: 'req:' + rid,
+                      progress: [3, 10], done: false, ms: null }]);
+    const bub = await until(bubbleOn, 8000);
+    check('after 3 s a bubble beside it', !!bub);
+    check('saying what the server said, with its count',
+          !!bub && /Reading the harness list/.test(bub.textContent) && /3 of 10/.test(bub.textContent),
+          bub && bub.textContent);
+    check('no Stop yet', !!bub && !bub.querySelector('.sb-acts:not([hidden]) button'));
+    const stop = await until(() => {
+      const b = bubbleOn();
+      return b && Array.from(b.querySelectorAll('.sb-acts:not([hidden]) button'))
+        .find((x) => x.textContent === 'Stop');
+    }, 30000);
+    check('after 20 s it offers Stop', !!stop);
+    check('and Keep waiting', !!bubbleOn() && /Keep waiting/.test(bubbleOn().textContent));
+    if (stop) stop.click();
+    await until(() => done2, 3000);
+    check('Stop aborts the request', !!done2 && done2.name === 'AbortError',
+          done2 && (done2.name + ': ' + done2.message));
+    check('and says it was stopped', !!done2 && /Stopped/.test(done2.message || ''));
+    check('the control is let go', !b2.classList.contains('is-busy') && !bubbleOn());
+    slowQ.length = 0;
+
+    say('');
+    say('=== the server goes away ===');
+    B.solid.sawBoot('harness-boot-1');
+    bootNow = 'harness-boot-2';
+    mode = 'down';
+    /* Since the review of 2026-11-03: a write whose own fetch threw may
+       already have been done, so it is refused in words and never replayed;
+       a timer's request fails at once; only what a PERSON does after the
+       page knows the server is away is held, then sent once, in order. */
+    let saved = null, savedErr = null, read = null, first = null, timerErr = null;
+    const bw = mkBtn('Save while it dies', 380);
+    bw.onclick = () => { ev("apiPost('/api/solidtest/save', { n: 6 })")
+      .then((r) => { first = r; }, (e) => { first = e; }); };
+    bw.click();
+    await until(() => first, 6000);
+    check('a write that was in flight when the server went is refused, not held',
+          !!first && first instanceof FW.Error,
+          first && (first.message || JSON.stringify(first)));
+    check('and the refusal says it may or may not have been done',
+          !!first && /may or may not have been done/.test(first.message || ''),
+          first && first.message);
+    const banner = await until(() => D().querySelector('.solid-offline'), 8000);
+    check('a reconnecting banner appears', !!banner && /Reconnecting/.test(banner.textContent),
+          banner && banner.textContent);
+    // Not in a click's task: a poll. It fails at once, as polls always did.
+    await sleep(50);
+    api('/api/solidtest/poll').then(() => {}, (e) => { timerErr = e; });
+    await until(() => timerErr, 3000);
+    check('a poll fails at once instead of piling up', !!timerErr, timerErr && timerErr.message);
+    const bs = mkBtn('Save while away', 420);
+    bs.onclick = () => { ev("apiPost('/api/solidtest/save', { n: 7 })")
+      .then((r) => { saved = r; }, (e) => { savedErr = e; }); };
+    bs.click();
+    check('it says a change is waiting to be sent',
+          !!(await until(() => /\d+ changes? waiting to be sent/.test(banner.textContent), 3000)),
+          banner && banner.textContent);
+    const br = mkBtn('Read while away', 460);
+    br.onclick = () => { api('/api/solidtest/read').then((r) => { read = r; }, (e) => { read = e; }); };
+    br.click();
+    await until(() => /tried [1-9]\d* times?, next try in \d+ s/.test(banner.textContent), 4000);
+    check('and how often it has tried', /tried [1-9]\d* times?, next try in \d+ s/.test(banner.textContent),
+          banner.textContent);
+    check('the POST is held, not failed', saved === null && savedErr === null,
+          savedErr && savedErr.message);
+    check('and has not been sent', !got.some((g) => g.url.startsWith('/api/solidtest/save')));
+    const probe = D().createElement('i');
+    probe.style.color = 'var(--warn)';
+    D().body.appendChild(probe);
+    const warnRgb = FW.getComputedStyle(probe).color;
+    probe.remove();
+    check('the banner is calm (an amber edge, not red)',
+          FW.getComputedStyle(banner).borderTopColor === warnRgb,
+          FW.getComputedStyle(banner).borderTopColor + ' vs ' + warnRgb);
+    mode = 'pass';
+    await until(() => saved || savedErr, 15000);
+    check('back: the held POST was sent and its promise resolved',
+          !!saved && saved.body && saved.body.n === 7,
+          JSON.stringify(saved) + (savedErr ? ' ' + savedErr.message : ''));
+    check('sent exactly once', got.filter((g) => g.url.startsWith('/api/solidtest/save')).length === 1);
+    await until(() => read, 5000);
+    check('the waiting read was asked again and answered', !!read && read.ok === true,
+          read && (read.message || JSON.stringify(read)));
+    check('the banner says Back', /Back/.test(banner.textContent) || !banner.isConnected,
+          banner.textContent);
+    check('and leaves', !!(await until(() => !D().querySelector('.solid-offline'), 6000)));
+    const jl = D().querySelector('.fd-list[data-lane="jarvis"]');
+    check('a new boot id is said in the feed', /Server restarted/.test(jl.textContent)
+          && /may have stopped/.test(jl.textContent));
+
+    say('');
+    say('=== a held poll is not stuck ===');
+    /* 11-03/04: xplore's GET /api/link long poll (held 25 s by the server)
+       was filed as 'waiting for the server' every ten minutes per window,
+       all night. A plain request 40 s old is the control: it must still
+       be filed, or the scan proves nothing. */
+    acts.length = 0;
+    const tHeld = B.solid.begin('/api/link', {}, false);
+    const tPub = B.solid.begin('/api/link', { method: 'POST' }, false);
+    const tSlow = B.solid.begin('/api/solidtest/stuckctl', {}, false);
+    check('the link GET is a held poll, its POST is not',
+          !!tHeld && tHeld.f.held === true && !!tPub && tPub.f.held === false);
+    tHeld.f.t0 -= 40000; tSlow.f.t0 -= 40000;
+    B.solid._arm({ stuck: true });
+    B.solid._scan();
+    B.solid._arm({ stuck: false });
+    B.solid.end(tHeld); B.solid.end(tPub); B.solid.end(tSlow);
+    /* The record's detail is cut at 4000 characters, so it is searched, not
+       parsed; the route comes before the feed lines so the cut keeps it. */
+    const stuckOf = (route) => acts.filter((a) => {
+      try {
+        const d = JSON.parse(a.body).entries[0].detail;
+        return d.where === 'stuck'
+          && d.detail.indexOf('"route":' + JSON.stringify(route)) >= 0
+          && d.detail.indexOf('"route"') < d.detail.indexOf('"lines"');
+      } catch (e) { return false; }
+    }).length;
+    check('a plain request 40 s old is filed as stuck', stuckOf('/api/solidtest/stuckctl') === 1,
+          acts.length + ' activity posts');
+    check('the held poll 40 s old is not', stuckOf('/api/link') === 0, stuckOf('/api/link'));
+    check('and the post went no further than the stand-in',
+          acts.every((a) => a.url.startsWith('/api/activity')));
+
+    say('');
+    say('=== the dock ===');
+    /* VACC Mode off first: with it on, the dock opens on the VACC tab, so
+       on a machine that keeps VACC Mode on every Activity check below read
+       the wrong tab. Put back at the end (wasVacc). */
+    if (B.state.vacc) W().applyVacc(false, false);
+    B.feed._show(true);
+    dock.classList.remove('collapsed');
+    await sleep(350);
+    const tabs = D().getElementById('feedTabs');
+    check('feed mode shows the tabs', FW.getComputedStyle(tabs).display !== 'none');
+    check('and hides the old title', FW.getComputedStyle(D().getElementById('logTitle')).display === 'none');
+    check('Activity is the tab', dock.dataset.tab === 'activity');
+    check('its list shows, the job log does not',
+          FW.getComputedStyle(jl).display !== 'none'
+          && FW.getComputedStyle(D().getElementById('logBody')).display === 'none');
+    const now = Date.now() / 1000;
+    B.feed._ingest([{ id: 990101, at: now, lane: 'jarvis', kind: 'job', level: 'info',
+                      text: 'Reading the recording list', key: 'job:h1',
+                      progress: [10, 100], done: false, ms: null }]);
+    const n1 = jl.querySelector('[data-key="job:h1"]');
+    check('a line is drawn', !!n1 && /Reading the recording list/.test(n1.textContent));
+    check('with its bar a tenth full', !!n1 && parseFloat(n1.querySelector('.fd-bar > i').style.width) === 10,
+          n1 && n1.querySelector('.fd-bar > i').style.width);
+    check('and its count', !!n1 && /10 of 100/.test(n1.textContent), n1 && n1.textContent);
+    check('and a local time', !!n1 && /^\d\d:\d\d:\d\d$/.test(n1.querySelector('.fd-t').textContent));
+    B.feed._ingest([{ id: 990102, at: now + 2, lane: 'jarvis', kind: 'job', level: 'ok',
+                      text: 'Read the recording list', key: 'job:h1',
+                      progress: [100, 100], done: true, ms: 2400 }]);
+    const n2 = jl.querySelector('[data-key="job:h1"]');
+    check('the same key updates the same line', n1 === n2
+          && jl.querySelectorAll('[data-key="job:h1"]').length === 1);
+    check('its words are the new ones', !!n2 && /Read the recording list/.test(n2.textContent)
+          && !/Reading/.test(n2.textContent));
+    check('the bar is full', !!n2 && parseFloat(n2.querySelector('.fd-bar > i').style.width) === 100);
+    check('it settles with a tick and the time it took', !!n2 && n2.classList.contains('done')
+          && n2.querySelector('.fd-mark').textContent === '\u2713'
+          && /2\.4 s/.test(n2.querySelector('.fd-meta').textContent),
+          n2 && n2.textContent);
+    B.feed._ingest([{ id: 990103, at: now, lane: 'jarvis', kind: 'job', level: 'err',
+                      text: 'Could not read the bank', key: 'job:h2', done: true, ms: 800 }]);
+    const n3 = jl.querySelector('[data-key="job:h2"]');
+    check('a failure settles with a cross', !!n3 && n3.querySelector('.fd-mark').textContent === '\u2715'
+          && n3.classList.contains('lv-err'));
+    B.feed._ingest([{ id: 990104, at: now, lane: 'vacc', kind: 'vacc', level: 'info',
+                      text: 'Copying to the cluster', key: 'vacc:h3', progress: [1, 4], done: false }]);
+    const vl = D().querySelector('.fd-list[data-lane="vacc"]');
+    check('a VACC line goes to the VACC lane only', !!vl.querySelector('[data-key="vacc:h3"]')
+          && !jl.querySelector('[data-key="vacc:h3"]'));
+    B.feed.say('Harness narration', { key: 'hn', progress: [1, 2] });
+    check('the page can narrate (BARRY.feed.say)', !!jl.querySelector('[data-key="page:hn"]'));
+    B.feed.say('Harness narration done', { key: 'hn', done: true, level: 'ok' });
+    check('and update its own line', jl.querySelectorAll('[data-key="page:hn"]').length === 1
+          && /done/.test(jl.querySelector('[data-key="page:hn"]').textContent));
+    check('it follows the newest line', jl.scrollTop + jl.clientHeight >= jl.scrollHeight - 30
+          || jl.scrollHeight <= jl.clientHeight);
+
+    dock.classList.add('collapsed');
+    await sleep(350);
+    const lat = D().getElementById('feedLatest');
+    check('folded, one strip shows the newest line', FW.getComputedStyle(lat).display === 'flex'
+          && /Harness narration done/.test(lat.textContent), lat.textContent);
+    check('and the tabs are put away', FW.getComputedStyle(tabs).display === 'none');
+    check('the strip\'s words fit it', lat.scrollHeight <= lat.clientHeight + 1,
+          lat.scrollHeight + ' > ' + lat.clientHeight);
+    dock.classList.remove('collapsed');
+    await sleep(350);
+
+    say('');
+    say('=== VACC tab only in VACC Mode ===');
+    const vt = tabs.querySelector('[data-tab="vacc"]');
+    W().applyVacc(false, false);
+    await sleep(200);
+    check('VACC Mode off: no VACC tab', FW.getComputedStyle(vt).display === 'none');
+    check('and not chosen', dock.dataset.tab !== 'vacc');
+    W().applyVacc(true, false);
+    await sleep(300);
+    check('VACC Mode on: the tab is there', FW.getComputedStyle(vt).display !== 'none');
+    check('and the dock opens on it', dock.dataset.tab === 'vacc');
+    check('showing the VACC lane', FW.getComputedStyle(vl).display !== 'none'
+          && FW.getComputedStyle(jl).display === 'none');
+    W().applyVacc(false, false);
+    await sleep(300);
+    check('VACC Mode off again: back to Activity', dock.dataset.tab === 'activity'
+          && FW.getComputedStyle(vt).display === 'none');
+
+    say('');
+    say('=== Output is still the job log ===');
+    tabs.querySelector('[data-tab="output"]').click();
+    await sleep(100);
+    check('Output shows the job log', dock.dataset.tab === 'output'
+          && FW.getComputedStyle(D().getElementById('logBody')).display !== 'none'
+          && FW.getComputedStyle(jl).display === 'none');
+    check('with its run picker and Stop', FW.getComputedStyle(D().getElementById('jobSelect')).display !== 'none'
+          && FW.getComputedStyle(D().getElementById('jobCancel')).display !== 'none');
+    tabs.querySelector('[data-tab="activity"]').click();
+    await sleep(100);
+    check('and back to Activity', dock.dataset.tab === 'activity');
+
+    say('');
+    say('=== an old server ===');
+    B.feed._show(false);
+    await sleep(100);
+    check('without the feed the dock is the old Output dock',
+          FW.getComputedStyle(tabs).display === 'none'
+          && FW.getComputedStyle(D().getElementById('logTitle')).display !== 'none'
+          && FW.getComputedStyle(D().getElementById('logBody')).display !== 'none');
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      if (B && B.solid) B.solid._arm({ busy: false, guard: false, offline: false,
+                                       stuck: false, scroll: false });
+      if (B && B.feed) B.feed._show(false);
+      if (realFetch) W().fetch = realFetch;
+      mode = 'pass';
+      slowQ.forEach((q) => { try { q.go(); } catch (e) {} });
+      made.forEach((b) => b.remove());
+      D().querySelectorAll('.solid-spin, .solid-bubble, .solid-offline').forEach((n) => n.remove());
+      const dock = D().getElementById('logDock');
+      if (dock) {
+        dock.classList.toggle('collapsed', dockWasCollapsed);
+        dock.dataset.tab = 'activity';
+      }
+      if (wasVacc !== null) W().applyVacc(wasVacc, false);
+      if (B && realSet) B.prefs.set = realSet;
+      if (B && realLog) B.activity.log = realLog;
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'solid: ' + fails + ' FAILED' : 'solid: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

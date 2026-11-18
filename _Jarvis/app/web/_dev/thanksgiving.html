@@ -1,0 +1,373 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>thanksgiving: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:520px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:520px;top:0;right:0;bottom:0;width:calc(100vw - 520px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Thanksgiving (js/thanksgiving.js): the palette is a theme like the others,
+   and the layer comes and goes with it.
+
+   Every one of the fourteen Easter eggs is found here the way a person would
+   find it -- a click on the thing, a click at the harvest table, a word
+   typed at the page, the Konami code, a mouse waved along the leaf pile.
+   The things that get in the way are checked for getting out of it: the
+   turkey on a button takes the click and the button never hears it, the
+   Seconds card goes with Escape or either answer.
+
+   The November switch is checked as a plan (`_plan`, a pure function) and
+   checked NOT to happen here: this is a harness frame, which must never
+   change the machine's theme or write its preferences.
+
+   Applied with remember=false; the found list, the hint and the season
+   record are put back afterwards, along with the theme. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); L.scrollTop = L.scrollHeight; };
+const check = (what, ok, note) => { if (ok) pass++; else fail++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (!ok && note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+const KEYS = ['barry.gobble.eggs', 'barry.gobble.hinted', 'barry.gobble.season'];
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  const saved = {};
+  let liteWas = null;
+  try {
+    await until(() => W().BARRY && W().BARRY.thanksgiving && typeof W().applyTheme === 'function',
+                30000);
+    await until(() => D().querySelector('#rail .rail-scroll .nav-item'), 20000);
+    const B = ev('BARRY');
+    for (const k of KEYS) saved[k] = W().localStorage.getItem(k);
+    for (const k of KEYS) W().localStorage.removeItem(k);
+    if (B.lite) { liteWas = B.lite.on(); B.lite.set(false, { remember: false }); }
+    const T = B.thanksgiving;
+    const $ = (s) => D().querySelector(s);
+    const $$ = (s) => Array.from(D().querySelectorAll(s));
+    const bubbles = () => $$('.gb-say').map((b) => b.textContent);
+    const center = (n) => { const r = n.getBoundingClientRect();
+                            return [r.left + r.width / 2, r.top + r.height / 2]; };
+    const eggs = () => T.state().eggs;
+    const click = (n) => n.dispatchEvent(new (W().MouseEvent)('click', { bubbles: true }));
+    const key = (k, at) => (at || D().body).dispatchEvent(
+      new (W().KeyboardEvent)('keydown', { key: k, bubbles: true }));
+    const type = (s, at) => { for (const k of s) key(k, at); };
+
+    say('=== the November switch never happens in a harness frame ===');
+    const themeBefore = B.state.theme;
+    const prefsBefore = JSON.stringify(B.prefs.get('gobble', null));
+    check('season() does nothing here', T.season(new Date(2026, 10, 2)) === null);
+    check('the theme is as it was', B.state.theme === themeBefore, B.state.theme);
+    check('no season record in preferences',
+          JSON.stringify(B.prefs.get('gobble', null)) === prefsBefore);
+
+    say('');
+    say('=== the plan, for any day ===');
+    const P = T._plan;
+    let p = P(new Date(2026, 10, 2), null, 'dark');
+    check('first November boot: switch, remembering the old theme',
+          p.act === 'switch' && p.save.from === 'dark' && p.save.year === 2026
+          && p.save.chosen === false, JSON.stringify(p));
+    p = P(new Date(2026, 10, 15), { year: 2026, from: 'dark', chosen: false }, 'thanksgiving');
+    check('second boot that November: nothing', p.act === null && !p.save, JSON.stringify(p));
+    p = P(new Date(2026, 10, 15), { year: 2026, from: 'dark', chosen: true }, 'slate');
+    check('a theme picked by hand in November stays', p.act === null, JSON.stringify(p));
+    p = P(new Date(2026, 11, 1), { year: 2026, from: 'dark', chosen: false }, 'thanksgiving');
+    check('December 1, never chosen: the old theme comes back',
+          p.act === 'restore' && p.save.restored === true, JSON.stringify(p));
+    p = P(new Date(2026, 11, 1), { year: 2026, from: 'dark', chosen: true }, 'thanksgiving');
+    check('December 1, chosen by hand: left alone', p.act === null, JSON.stringify(p));
+    p = P(new Date(2026, 11, 3), { year: 2026, from: 'dark', chosen: false, restored: true },
+          'dark');
+    check('and only once', p.act === null && !p.save, JSON.stringify(p));
+    p = P(new Date(2027, 0, 5), { year: 2026, from: 'light', chosen: false }, 'thanksgiving');
+    check('a machine first opened in January still goes back', p.act === 'restore',
+          JSON.stringify(p));
+    p = P(new Date(2027, 10, 1), { year: 2026, from: 'dark', chosen: false, restored: true },
+          'dark');
+    check('next November it comes round again', p.act === 'switch', JSON.stringify(p));
+    p = P(new Date(2026, 6, 4), null, 'dark');
+    check('July: nothing at all', p.act === null && !p.save, JSON.stringify(p));
+    const C = T._countdown;
+    check('the countdown: 24 days on Nov 2, 2026',
+          C(new Date(2026, 10, 2, 15)) === '24 days to Thanksgiving', C(new Date(2026, 10, 2, 15)));
+    check('the fourth Thursday is the day', /It’s Thanksgiving/.test(C(new Date(2026, 10, 26))),
+          C(new Date(2026, 10, 26)));
+    check('and the day after is leftovers', C(new Date(2026, 10, 27)) === 'Leftovers, day 1',
+          C(new Date(2026, 10, 27)));
+    check('2027 has its own Thursday', /It’s Thanksgiving/.test(C(new Date(2027, 10, 25))),
+          C(new Date(2027, 10, 25)));
+
+    say('');
+    say('=== the palette ===');
+    const ids = ev('THEMES').map((t) => t.id);
+    check('Thanksgiving is in the picker', ids.includes('thanksgiving'), ids.join(' '));
+    W().applyTheme('thanksgiving', false);
+    await sleep(200);
+    const tok = (n) => getComputedStyle(D().documentElement).getPropertyValue(n).trim();
+    check('pumpkin accent, gold trace', tok('--accent') === '#e8862a'
+          && tok('--trace') === '#f2c14e', tok('--accent') + ' ' + tok('--trace'));
+    const ramp = ['--c1', '--c2', '--c3', '--c4', '--c5'].map(tok);
+    check('five distinct chart colours', new Set(ramp).size === 5, ramp.join(' '));
+    check('dark controls', getComputedStyle(D().documentElement).colorScheme === 'dark');
+
+    say('');
+    say('=== the layer ===');
+    const layer = $('#gobble');
+    check('the layer is up', !!layer && T.state().on);
+    const cs = layer && getComputedStyle(layer);
+    check('it takes no clicks itself', cs && cs.pointerEvents === 'none');
+    check('it sits under toasts and dialogs', cs && +cs.zIndex < 60, cs && cs.zIndex);
+    check('the root says so', D().documentElement.classList.contains('gb-on'));
+    check('nothing is scheduled in a harness frame',
+          T.state().timers === 0 && T.state().live === 0, JSON.stringify(T.state()));
+    check('a plaid tablecloth along the top', !!$('#gobble .gb-cloth'));
+    check('and a seam down the rail', !!$('#gobble .gb-seam'));
+    check('a garland with leaves on it', $$('#gobble .gb-garland .gb-gl').length >= 5,
+          $$('#gobble .gb-garland .gb-gl').length);
+    const yard = $('#rail .rail-foot .gb-yard');
+    check('the harvest table is in the rail foot: cornucopia, pie, gravy',
+          !!yard && !!yard.querySelector('.gb-horn') && !!yard.querySelector('.gb-pie')
+          && !!yard.querySelector('.gb-gravy-boat'));
+    check('with the days to go', /Thanksgiving|Leftovers/.test((yard.querySelector('.gb-count')
+                                                               || {}).textContent || ''),
+          yard.querySelector('.gb-count') && yard.querySelector('.gb-count').textContent);
+    check('and what Jarvis is thankful for',
+          /^Thankful for: ./.test(yard.querySelector('.gb-tick').textContent));
+    const mark = $('#rail .brand-mark');
+    const hat = mark && getComputedStyle(mark, '::after').backgroundImage;
+    check('a pilgrim hat on the mark', /svg/.test(hat || ''), hat);
+    check('a drumstick for a pointer', /url\(/.test(getComputedStyle(D().body).cursor),
+          getComputedStyle(D().body).cursor);
+    W().toast('harness: a toast');
+    const tn = $$('#toasts .toast').pop();
+    const tail = tn && getComputedStyle(tn, '::after').content;
+    check('toasts sign off', /🦃|🥧|Gobble/.test(tail || ''), tail);
+    check('without changing what they say', tn && tn.textContent === 'harness: a toast',
+          tn && tn.textContent);
+    const nav = $('#rail .nav-item');
+    const [nx, ny] = center(nav);
+    const hit = D().elementFromPoint(nx, ny);
+    check('a nav button is still the thing under the pointer',
+          hit && (hit === nav || nav.contains(hit)), hit && hit.className);
+
+    say('');
+    say('=== the fourteen things to find ===');
+    T.spawn('leaf', { y: 200 });
+    const lf = await until(() => $('#gobble .gb-leaf'));
+    check('a leaf falls', !!lf && lf.getAnimations().length > 0);
+    click(lf);
+    check('clicking it crunches it', !lf.isConnected && !!$('#gobble .gb-crumb'));
+    check('and it counts', eggs().includes('leaf'), eggs().join(','));
+    const told = await until(() => bubbles().find((b) => /1 of 14 Thanksgiving things found/.test(b)),
+                             4000);
+    check('and says how many of fourteen', !!told, bubbles().join(' | '));
+
+    T.spawn('addToPile', 14);
+    check('the pile grows', T.state().pile >= 14 && $$('#gobble .gb-pile .gb-pl').length >= 14,
+          T.state().pile);
+    const pileBox = $('#gobble .gb-pile').getBoundingClientRect();
+    check('it lies along the bottom, taking no clicks',
+          pileBox.bottom >= W().innerHeight - 1
+          && getComputedStyle($('#gobble .gb-pile')).pointerEvents === 'none');
+    const PE = W().PointerEvent;
+    const yy = W().innerHeight - 4;
+    for (let i = 0; i < 14; i++) {
+      const x = pileBox.left + 20 + (i % 2 ? 300 : 0);
+      D().body.dispatchEvent(new PE('pointermove', { clientX: x, clientY: yy, bubbles: true }));
+    }
+    check('waving along it rakes it', T.state().pile === 0
+          && $$('#gobble .gb-pile .gb-pl').length === 0, T.state().pile);
+    check('and counts', eggs().includes('rake'));
+
+    T.spawn('strut', { ltr: true, speed: 60 });
+    const tk = await until(() => $('#gobble .gb-turkey:not(.perched)'));
+    check('Sir Gobbles struts', !!tk && tk.getAnimations().length > 0);
+    click(tk);
+    check('clicked, he gobbles', bubbles().some((b) => /GOBBLE|Gobble|gobble/.test(b)),
+          bubbles().join(' | '));
+    check('fans his tail', tk.classList.contains('fan'));
+    check('drops a feather', !!$('#gobble .gb-feather'));
+    check('and counts', eggs().includes('turkey'));
+
+    // A button somewhere in the view, for him to sit on.
+    const seat = $$('#app button').find((b) => !b.closest('#rail')
+      && b.getBoundingClientRect().width > 30 && b.getBoundingClientRect().height > 14
+      && b.getBoundingClientRect().top > 0);
+    check('precondition: a button to sit on', !!seat);
+    let heard = 0;
+    const hear = () => { heard += 1; };
+    seat.addEventListener('click', hear, true);
+    T.spawn('perch', seat);
+    const perched = await until(() => $('#gobble .gb-turkey.perched'));
+    check('he lands on a button', !!perched && T.state().sitting);
+    await sleep(1700);
+    const [sx, sy] = center(seat);
+    const onTop = D().elementFromPoint(sx, sy);
+    check('and is what is under the pointer there',
+          !!onTop && !!onTop.closest && !!onTop.closest('.gb-turkey'),
+          onTop && (onTop.className && onTop.className.baseVal || onTop.className));
+    click(onTop);
+    check('a click shoos him', eggs().includes('shoo'));
+    check('and the button never hears it', heard === 0, heard);
+    seat.removeEventListener('click', hear, true);
+    await sleep(1100);
+    check('he is gone', !T.state().sitting && !$('#gobble .gb-turkey.perched'));
+
+    yard.querySelector('.gb-horn').click();
+    check('the cornucopia spills the harvest', $$('#gobble .gb-food').length >= 10,
+          $$('#gobble .gb-food').length);
+    check('and counts', eggs().includes('cornucopia'));
+
+    const pie = yard.querySelector('.gb-pie');
+    for (let i = 0; i < 5; i++) pie.click();
+    check('five slices eaten, one left', T.state().pie === 1, T.state().pie);
+    check('not yet', !eggs().includes('pie'));
+    pie.click();
+    check('the last slice: someone ate ALL the pie',
+          bubbles().includes('Someone ate ALL the pie.') && T.state().pie === 0);
+    check('and counts', eggs().includes('pie'));
+    pie.click();
+    check('there is no pie', bubbles().some((b) => /There is no pie/.test(b)));
+
+    yard.querySelector('.gb-gravy-boat').click();
+    check('the gravy runs down the window', !!$('#gobble .gb-gravy'));
+    check('and counts', eggs().includes('gravy'));
+
+    T.spawn('uncle');
+    const un = await until(() => $('#gobble .gb-uncle'));
+    check('Uncle Dave arrives with an opinion', !!un && un.textContent.length > 20);
+    const first = un.querySelector('.gb-uncle-say').textContent;
+    click(un);
+    const second = un.querySelector('.gb-uncle-say').textContent;
+    check('clicked, he has another, and then he is done',
+          second !== first && /Anyway\.$/.test(second), second);
+    check('and counts', eggs().includes('uncle'));
+
+    T.spawn('wishbone');
+    const wb = await until(() => $('#gobble .gb-wish'));
+    click(wb);
+    check('the wishbone snaps', wb.classList.contains('snap'));
+    check('and tells your fortune', bubbles().some((b) => /half/.test(b)), bubbles().join(' | '));
+    check('and counts', eggs().includes('wishbone'));
+
+    T.spawn('cranberry');
+    const cr = await until(() => $('#gobble .gb-cran'));
+    click(cr);
+    check('the cranberry sauce wobbles hard', !!cr.querySelector('.jiggle.hard'));
+    check('and counts', eggs().includes('cranberry'));
+
+    // Typed into a text box, a word is just a word.
+    const input = D().createElement('input');
+    D().body.appendChild(input);
+    input.focus();
+    type('pie', input);
+    check('typing pie in a text box does nothing',
+          !eggs().includes('piefly') && !$('#gobble .gb-pieface'));
+    input.remove();
+    type('pie');
+    check('typing pie at the page: a pie to the face', !!$('#gobble .gb-pieface'));
+    check('and counts', eggs().includes('piefly'));
+    type('gobble');
+    const herd = await until(() => $$('#gobble .gb-turkey.small').length >= 4, 4000);
+    check('typing gobble: a stampede', !!herd, $$('#gobble .gb-turkey').length);
+    check('and counts', eggs().includes('gobble'));
+    type('thanks');
+    check('typing thanks: a burst of leaves and gratitude',
+          bubbles().some((b) => /^Thankful for: .+ And you\.$/.test(b)), bubbles().join(' | '));
+    check('and counts', eggs().includes('thanks'));
+
+    for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                     'ArrowLeft', 'ArrowRight', 'b', 'a']) key(k);
+    check('the Konami code: a parade', !!$('#gobble .gb-balloon'));
+    const banner = await until(() => $('#gobble .gb-banner'), 2000);
+    check('with a banner', !!banner && /HAPPY THANKSGIVING/.test(banner.textContent));
+    check('and that is the fourteenth', eggs().length === 14, eggs().join(','));
+    const all = await until(() => bubbles().find((b) => /You found all 14/.test(b)), 4000);
+    check('finding all fourteen is celebrated', !!all, bubbles().join(' | '));
+    check('the pie keeps count in its tooltip', /14 of 14 Thanksgiving things found/.test(pie.title),
+          pie.title);
+
+    say('');
+    say('=== the things that get in the way, get out of it ===');
+    T.spawn('seconds');
+    const sc = await until(() => $('#gobble .gb-seconds'));
+    check('Seconds? asks', !!sc && /\?/.test(sc.textContent));
+    check('and takes the pointer', getComputedStyle(sc).pointerEvents === 'auto');
+    key('Escape');
+    check('Escape says no', !$('#gobble .gb-seconds') && !T.state().seconds);
+    T.spawn('seconds');
+    const sc2 = await until(() => $('#gobble .gb-seconds'));
+    const no = Array.from(sc2.querySelectorAll('button')).find((b) => /stuffed/.test(b.textContent));
+    no.click();
+    check('so does "I’m stuffed"', !$('#gobble .gb-seconds'));
+    T.spawn('seconds');
+    const sc3 = await until(() => $('#gobble .gb-seconds'));
+    const yes = Array.from(sc3.querySelectorAll('button')).find((b) => /Yes/.test(b.textContent));
+    const foodBefore = $$('#gobble .gb-food').length;
+    yes.click();
+    check('and "Yes please" brings more food', !$('#gobble .gb-seconds')
+          && $$('#gobble .gb-food').length > foodBefore);
+    T.spawn('coma');
+    const cm = await until(() => $('#gobble .gb-coma'));
+    check('food coma dims the window', !!cm);
+    check('without taking a click', cm && getComputedStyle(cm).pointerEvents === 'none');
+
+    say('');
+    say('=== Jarvis Light keeps the palette and sends the turkey home ===');
+    if (B.lite) {
+      B.lite.set(true, { remember: false });
+      await sleep(200);
+      check('no layer under Light', !$('#gobble') && !$('.gb-yard')
+            && D().documentElement.dataset.theme === 'thanksgiving');
+      B.lite.set(false, { remember: false });
+      await sleep(200);
+      check('and it is back when Light goes off', !!$('#gobble'));
+    }
+
+    say('');
+    say('=== and gone ===');
+    W().applyTheme('dark', false);
+    await sleep(100);
+    const st = T.state();
+    check('switching away removes every visitor, timer and node',
+          !st.on && st.live === 0 && st.timers === 0 && !$('#gobble') && !$('.gb-yard')
+          && !D().documentElement.classList.contains('gb-on'), JSON.stringify(st));
+    check('the pointer is a pointer again', !/url\(/.test(getComputedStyle(D().body).cursor));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      for (const k of KEYS) {
+        if (saved[k] == null) W().localStorage.removeItem(k);
+        else W().localStorage.setItem(k, saved[k]);
+      }
+      if (liteWas !== null) W().BARRY.lite.set(liteWas, { remember: false });
+      W().applyTheme(W().themeForThisMachine() || 'dark', false);
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'good');
+  document.title = 'thanksgiving: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script>
+</body></html>

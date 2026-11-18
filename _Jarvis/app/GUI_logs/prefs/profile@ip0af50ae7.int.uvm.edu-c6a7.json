@@ -1,0 +1,17 @@
+{
+  "_at": {
+    "email": "2026-10-19T16:43:21.432238+00:00",
+    "initials": "2026-10-19T16:43:21.432238+00:00",
+    "name": "2026-10-19T16:43:21.432238+00:00",
+    "role": "2026-10-19T16:43:21.432238+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-19T16:43:21.432238+00:00",
+    "machine": "ip0af50ae7.int.uvm.edu-c6a7",
+    "schema": 1
+  },
+  "email": "Isabella.Piatek@uvm.edu",
+  "initials": "IP",
+  "name": "Isabella Piatek",
+  "role": "Graduate Student"
+}
