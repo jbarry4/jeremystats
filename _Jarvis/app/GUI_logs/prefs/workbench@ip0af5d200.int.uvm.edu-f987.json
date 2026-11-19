@@ -3,22 +3,22 @@
     "braces_curve": "2026-10-19T16:52:32.986134+00:00",
     "curate_at": "2026-11-13T17:37:00.354148+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
-    "extraction_band": "2026-11-13T17:38:34.768725+00:00",
+    "extraction_band": "2026-11-19T20:46:46.926018+00:00",
     "extraction_interp": "2026-11-13T20:39:39.291856+00:00",
-    "extraction_mode": "2026-11-13T22:21:36.370343+00:00",
-    "extraction_set_archive": "2026-11-13T17:41:03.416822+00:00",
+    "extraction_mode": "2026-11-19T20:46:46.926018+00:00",
+    "extraction_set_archive": "2026-11-19T20:49:16.823200+00:00",
     "figure_profile": "2026-10-23T19:05:47.379192+00:00",
     "gobble": "2026-11-19T21:46:13.877215+00:00",
     "lock_hold": "2026-10-28T18:42:51.201738+00:00",
     "lock_trace_band": "2026-10-29T13:02:43.123053+00:00",
-    "panning_at": "2026-11-19T21:32:11.669043+00:00",
+    "panning_at": "2026-11-19T22:35:10.481731+00:00",
     "panning_span": "2026-11-19T22:01:57.688791+00:00",
     "radio": "2026-11-03T17:14:34.233062+00:00",
     "result_group": "2026-11-03T17:41:08.664832+00:00",
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-11-19T22:19:14.377445+00:00",
-    "updated": "2026-11-19T22:19:41.271460+00:00",
+    "updated": "2026-11-19T22:35:10.481731+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
     "xf_simplify_lock": "2026-10-29T12:30:13.790961+00:00",
     "xf_simplify_panning": "2026-11-17T14:49:42.953143+00:00",
@@ -180,6 +180,10 @@
         "set",
         "2026-11-13T17:24:24.082187+00:00"
       ],
+      "xm-320ab6681b": [
+        "set",
+        "2026-11-19T20:05:35.207687+00:00"
+      ],
       "xm-500fa6c3c5": [
         "set",
         "2026-11-12T19:17:22.504359+00:00"
@@ -195,12 +199,20 @@
       "xm-f7e3cb9cee38-v2": [
         "set",
         "2026-11-09T19:49:23.147999+00:00"
+      ],
+      "xm-f9ba0085e4": [
+        "set",
+        "2026-11-19T20:05:33.858062+00:00"
       ]
     },
     "extraction_flip": {
       "dentate_spike|xm-f6c45faefb|sd42a6992b76c": [
         "set",
         "2026-11-13T21:51:11.366737+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
       ]
     },
     "extraction_ko": {
@@ -365,6 +377,74 @@
       "dentate_spike|xm-f6c45faefb|sd94396e874c7": [
         "set",
         "2026-11-13T21:50:37.631799+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s016e132432c8": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s0a9e96cf1739": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s14510e30e1bd": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s37c7c8edfe10": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s38b9e61c5684": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s43b16cd74bcb": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s45bae70722f2": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s4a67210fc7ac": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s500a5aec223e": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s6cdd64d005c4": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s79ba9ba163c4": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s8d7f397b9708": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sba57286bdee3": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sc74c98b2495d": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd0d0bded958b": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd94396e874c7": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
       ]
     },
     "extraction_split": {
@@ -451,6 +531,34 @@
       "dentate_spike|xm-f7e3cb9cee38-v2|sd94396e874c7": [
         "set",
         "2026-11-12T17:43:46.196431+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s14510e30e1bd": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s38b9e61c5684": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s79ba9ba163c4": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|s9eb56573e0b4": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sba57286bdee3": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd0d0bded958b": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
+      ],
+      "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": [
+        "set",
+        "2026-11-19T20:46:46.926018+00:00"
       ]
     },
     "jarvis": {
@@ -476,13 +584,45 @@
         "set",
         "2026-11-06T21:45:56.664707+00:00"
       ],
+      "1286f88a85cb": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "15226fe7fabc": [
         "set",
         "2026-10-20T15:12:56.671308+00:00"
       ],
+      "1dd11d0c47bd": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "2538fc506e9b": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "25f64ed9e32c": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "3c5b39973fb1": [
         "set",
         "2026-10-20T15:12:55.810540+00:00"
+      ],
+      "49e4561bcf7f": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "4ae148ee2aae": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "4e59558a9b7d": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "53e35ab6528f": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
       ],
       "568cf6685aa5": [
         "set",
@@ -496,13 +636,33 @@
         "set",
         "2026-11-06T21:45:56.664707+00:00"
       ],
+      "989cf38ca432": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "ace6b5cb70e4": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "c69c6261e926": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
       ],
+      "c6ebb412482c": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "de41d8464e50": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
+      ],
+      "e015af4c07d4": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "ef48420ad3ed": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
       ]
     },
     "rootcanal_pool_archive": {
@@ -726,13 +886,45 @@
       ]
     },
     "rootcanal_workflow_archive": {
+      "0279e766eebf": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "131a89e858e0": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "2787e887bb46": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "2ba64f7dec44": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "32e8b3a15f9f": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "3e1abd34c70c": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
       ],
+      "43a9e86c6520": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "52c981f18afd": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "52d6fcf5f889": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
+      ],
+      "5a92ae19610b": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
       ],
       "5d52cf9cd610": [
         "set",
@@ -742,17 +934,61 @@
         "set",
         "2026-11-12T17:11:24.201380+00:00"
       ],
+      "6d208800346c": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "6d6737df45ff": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
+      ],
+      "701268917b3c": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "7677889ca85c": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "79205f0ac672": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
       ],
       "93a828038bba": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
       ],
+      "ab9613cbc7c2": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "abe99ac5d1b6": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "bac8eaf5dfa8": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
       "bc0fbf8e4569": [
         "set",
         "2026-11-12T17:21:14.309960+00:00"
+      ],
+      "bff8c4363fc4": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "d65a543857e3": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "df8f89c45c34": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
+      ],
+      "f7e3cb9cee38": [
+        "set",
+        "2026-11-19T17:19:46.046221+00:00"
       ]
     },
     "themes": {
@@ -853,7 +1089,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-19T22:19:41.271460+00:00",
+    "at": "2026-11-19T22:35:10.481731+00:00",
     "machine": "ip0af5d200.int.uvm.edu-f987",
     "schema": 1
   },
@@ -1596,6 +1832,18 @@
         "version": 2
       }
     },
+    "xm-320ab6681b": {
+      "at": "2026-11-19T15:05:35-05:00",
+      "by": "Shahriar Tafti",
+      "name": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room; No P-spikes])) \u00b7 fixed 2026-11-19",
+      "source": {
+        "artifact_id": "a7eee6a6ca9f",
+        "grace": null,
+        "kind": "ambiguous",
+        "nickname": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room; No P-spikes]))",
+        "version": 4
+      }
+    },
     "xm-500fa6c3c5": {
       "at": "2026-11-12T14:17:22-05:00",
       "by": "Shahriar Tafti",
@@ -1642,6 +1890,18 @@
         "kind": "ds",
         "nickname": "Verified DS 10% \u00b7 CTL & PTEN v2",
         "version": 2
+      }
+    },
+    "xm-f9ba0085e4": {
+      "at": "2026-11-19T15:05:33-05:00",
+      "by": "Shahriar Tafti",
+      "name": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific \u00b7 fixed 2026-11-19",
+      "source": {
+        "artifact_id": "6fa7fef7b7a3",
+        "grace": null,
+        "kind": "ambiguous",
+        "nickname": "Ambiguous Dataset (Optimized Parameters/Snap)",
+        "version": 5
       }
     }
   },
@@ -1739,10 +1999,51 @@
       "sel_lo": 35,
       "t_hi_ms": 0.0,
       "t_lo_ms": 0.0
+    },
+    "dentate_spike|xm-f9ba0085e4|s43b16cd74bcb": {
+      "at": "2026-11-12T21:35:29+00:00",
+      "auto": false,
+      "by": "Shahriar Tafti",
+      "sel_hi": 54,
+      "sel_lo": 23,
+      "t_hi_ms": 0.0,
+      "t_lo_ms": 0.0
+    },
+    "dentate_spike|xm-f9ba0085e4|s79ba9ba163c4": {
+      "at": "2026-11-12T20:59:52+00:00",
+      "auto": false,
+      "by": "Shahriar Tafti",
+      "sel_hi": 47,
+      "sel_lo": 26,
+      "t_hi_ms": 0.0,
+      "t_lo_ms": 0.0
+    },
+    "dentate_spike|xm-f9ba0085e4|s8d7f397b9708": {
+      "at": "2026-11-12T21:35:01+00:00",
+      "auto": false,
+      "by": "Shahriar Tafti",
+      "sel_hi": 59,
+      "sel_lo": 28,
+      "t_hi_ms": 0.0,
+      "t_lo_ms": 0.0
+    },
+    "dentate_spike|xm-f9ba0085e4|sba57286bdee3": {
+      "at": "2026-11-12T21:36:17+00:00",
+      "auto": false,
+      "by": "Shahriar Tafti",
+      "sel_hi": 64,
+      "sel_lo": 35,
+      "t_hi_ms": 0.0,
+      "t_lo_ms": 0.0
     }
   },
   "extraction_flip": {
     "dentate_spike|xm-f6c45faefb|sd42a6992b76c": {
+      "at": "2026-11-13T21:51:11+00:00",
+      "by": "Shahriar Tafti",
+      "flip": true
+    },
+    "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": {
       "at": "2026-11-13T21:51:11+00:00",
       "by": "Shahriar Tafti",
       "flip": true
@@ -1781,6 +2082,13 @@
       "trim_cut": 0.99
     },
     "dentate_spike|xm-f6c45faefb": {
+      "at": "2026-11-13T22:21:36+00:00",
+      "by": "Shahriar Tafti",
+      "ds3_cut": 0.5,
+      "mode": "ds3",
+      "trim_cut": 0.8
+    },
+    "dentate_spike|xm-f9ba0085e4": {
       "at": "2026-11-13T22:21:36+00:00",
       "by": "Shahriar Tafti",
       "ds3_cut": 0.5,
@@ -1933,6 +2241,91 @@
       "at": "2026-11-13T21:50:37+00:00",
       "by": "Shahriar Tafti",
       "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|s016e132432c8": {
+      "at": "2026-11-12T22:18:55+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s0a9e96cf1739": {
+      "at": "2026-11-12T21:38:12+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s14510e30e1bd": {
+      "at": "2026-11-13T18:17:12+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s37c7c8edfe10": {
+      "at": "2026-11-12T21:33:36+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|s38b9e61c5684": {
+      "at": "2026-11-13T18:13:36+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|s43b16cd74bcb": {
+      "at": "2026-11-12T21:35:46+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s45bae70722f2": {
+      "at": "2026-11-13T18:12:30+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s4a67210fc7ac": {
+      "at": "2026-11-13T18:14:11+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s500a5aec223e": {
+      "at": "2026-11-13T18:14:40+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s6cdd64d005c4": {
+      "at": "2026-11-13T18:11:55+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s79ba9ba163c4": {
+      "at": "2026-11-12T21:22:11+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|s8d7f397b9708": {
+      "at": "2026-11-12T21:35:06+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|sba57286bdee3": {
+      "at": "2026-11-13T18:10:59+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|sc74c98b2495d": {
+      "at": "2026-11-13T18:16:35+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|sd0d0bded958b": {
+      "at": "2026-11-13T18:15:07+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
+    },
+    "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": {
+      "at": "2026-11-12T21:34:48+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "yes"
+    },
+    "dentate_spike|xm-f9ba0085e4|sd94396e874c7": {
+      "at": "2026-11-13T21:50:37+00:00",
+      "by": "Shahriar Tafti",
+      "verdict": "no"
     }
   },
   "extraction_set_archive": {
@@ -1946,6 +2339,10 @@
     },
     "xm-df8f89c45c34-v2": {
       "at": "2026-11-12T19:56:40+00:00",
+      "by": "Shahriar Tafti"
+    },
+    "xm-f6c45faefb": {
+      "at": "2026-11-19T20:49:16+00:00",
       "by": "Shahriar Tafti"
     },
     "xm-f7e3cb9cee38-v2": {
@@ -2088,6 +2485,55 @@
       "by": "Shahriar Tafti",
       "cut": 0.15661755244995118,
       "method": "delta"
+    },
+    "dentate_spike|xm-f9ba0085e4|s14510e30e1bd": {
+      "at": "2026-11-13T18:17:05+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 2.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|s38b9e61c5684": {
+      "at": "2026-11-13T18:13:04+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 3.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|s79ba9ba163c4": {
+      "at": "2026-11-13T21:49:13+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 1.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|s9eb56573e0b4": {
+      "at": "2026-11-13T22:21:34+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 1.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|sba57286bdee3": {
+      "at": "2026-11-13T18:10:47+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 1.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|sd0d0bded958b": {
+      "at": "2026-11-13T18:15:00+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 2.5,
+      "method": "bite",
+      "sink": "humps"
+    },
+    "dentate_spike|xm-f9ba0085e4|sd42a6992b76c": {
+      "at": "2026-11-13T18:08:03+00:00",
+      "by": "Shahriar Tafti",
+      "cut": 504.5,
+      "method": "bite",
+      "sink": "humps"
     }
   },
   "fav_scripts": [],
@@ -2129,7 +2575,7 @@
     "both"
   ],
   "lock_trace_band": "ds",
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1793115588967},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792776841481},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":7,\"id\":\"e89e2ad1232\",\"t\":202.664174,\"at\":1792776740753},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"all\",\"index\":788,\"id\":\"e413f3d1154\",\"t\":3008.4926,\"at\":1792691744286},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":198,\"id\":\"e27e7cf868e\",\"t\":1976.560206,\"at\":1792683443922},\"s6cdd64d005c4:pooled.ea62d1b78448b\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":333,\"id\":\"e96f39238ed\",\"t\":1929.003175,\"at\":1792691023965},\"sd94396e874c7:pooled.e8aad148bd6f6\":{\"review\":\"left\",\"origin\":\"all\",\"index\":31,\"id\":\"ec6da953380\",\"t\":618.017395,\"at\":1792692159046},\"sd42a6992b76c:pooled.e1429bf1f239f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e528cae5121\",\"t\":25.092916,\"at\":1792698749464},\"s9eb56573e0b4:pooled.ecb139fb2ea29\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":247,\"id\":\"ec09dc6a831\",\"t\":1002.679098,\"at\":1792699766696},\"s8d7f397b9708:pooled.ed4a4bcb4e47f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":629,\"id\":\"e5ce8cc2c8d\",\"t\":2414.162023,\"at\":1792701083177},\"s14510e30e1bd:pooled.eeaecc4a5e194\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":235,\"id\":\"e6aaa4ef3cf\",\"t\":1216.178138,\"at\":1792757382345},\"sba57286bdee3:pooled.e2a8e47760eea\":{\"review\":\"left\",\"origin\":\"all\",\"index\":440,\"id\":\"e71c84d7913\",\"t\":1800.565504,\"at\":1792769426438},\"s43b16cd74bcb:pooled.eab69363ee622\":{\"review\":\"left\",\"origin\":\"all\",\"index\":44,\"id\":\"ee571131c2f\",\"t\":658.884313,\"at\":1792759992226},\"s500a5aec223e:pooled.eece9a84acdea\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":231,\"id\":\"eda7ba87c5a\",\"t\":1402.676437,\"at\":1792767185542},\"s4187bdd4a184:pooled.e86e4fcb4748a\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1005,\"id\":\"e32cba0dcb0\",\"t\":3202.779905,\"at\":1793287292447},\"sddf3e5010ff2:pooled.ecb74d97dac17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":170,\"id\":\"e6794d90372\",\"t\":211.594111,\"at\":1793129265333},\"s83ce541881d3:pooled.eff963f6c4f30\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1131,\"id\":\"e81f3f60bab\",\"t\":1815.941574,\"at\":1793129418189},\"s838980579a4b:pooled.e05bf008c6ec3\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":984,\"id\":\"e40ad8af378\",\"t\":5672.387223,\"at\":1793136142128},\"s0d29c92fef19:pooled.e4acbac930c91\":{\"review\":\"left\",\"origin\":\"all\",\"index\":675,\"id\":\"e41ba04001f\",\"t\":1898.04522,\"at\":1793137520057},\"s1563f9c932bc:pooled.e0d93df89cafd\":{\"review\":\"left\",\"origin\":\"all\",\"index\":466,\"id\":\"e02326eb808\",\"t\":2185.903305,\"at\":1793139237657},\"s0a1cd99454b9:pooled.e7a1fb57293ae\":{\"review\":\"left\",\"origin\":\"all\",\"index\":461,\"id\":\"e06cfa96434\",\"t\":1854.602508,\"at\":1793197225433},\"s8d50a361b096:pooled.eb6dad0cf157b\":{\"review\":\"left\",\"origin\":\"all\",\"index\":334,\"id\":\"eab50f71f9f\",\"t\":1809.153345,\"at\":1793198988138},\"sef04f3b4eb4d:pooled.e7bf60917e493\":{\"review\":\"left\",\"origin\":\"all\",\"index\":450,\"id\":\"ed576eda74d\",\"t\":1744.895202,\"at\":1793200833531},\"se942a3f42a33:pooled.e6d30e61d8ef3\":{\"review\":\"left\",\"origin\":\"all\",\"index\":678,\"id\":\"e2c7dd87118\",\"t\":2459.552379,\"at\":1793201817187},\"se0695d94e768:pooled.e6f26e207fd03\":{\"review\":\"left\",\"origin\":\"all\",\"index\":464,\"id\":\"e0062f040ac\",\"t\":1760.461476,\"at\":1793211552688},\"s08c93e795383:pooled.e7288d9478f30\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":37,\"id\":\"eecf23ac384\",\"t\":137.763445,\"at\":1793211876152},\"s110a7941c417:pooled.ea7369cdf5fe8\":{\"review\":\"left\",\"origin\":\"all\",\"index\":519,\"id\":\"e064bbcd360\",\"t\":2203.241353,\"at\":1793217831931},\"sf357f48d27eb:pooled.ea4eeaa794729\":{\"review\":\"left\",\"origin\":\"all\",\"index\":397,\"id\":\"edb33157b0d\",\"t\":1885.087593,\"at\":1793218777763},\"se4e5efda72ba:pooled.e49d60f323885\":{\"review\":\"left\",\"origin\":\"all\",\"index\":815,\"id\":\"e89ec3e3e39\",\"t\":1840.119113,\"at\":1793288088295},\"s844b9d764f72:pooled.e8129819fc559\":{\"review\":\"left\",\"origin\":\"all\",\"index\":256,\"id\":\"e17a0da7a46\",\"t\":1648.650077,\"at\":1793294649417},\"s503339c95a67:pooled.eec08fbcc2292\":{\"review\":\"left\",\"origin\":\"all\",\"index\":412,\"id\":\"e3a6fd7b004\",\"t\":1793.535477,\"at\":1793294999350},\"se7d688078e3b:pooled.e8d0f56b8ca44\":{\"review\":\"left\",\"origin\":\"all\",\"index\":255,\"id\":\"ec081fa5dc3\",\"t\":1820.397928,\"at\":1793295818348},\"sb5b24f9f8e93:pooled.e9ac28fb03357\":{\"review\":\"left\",\"origin\":\"all\",\"index\":313,\"id\":\"e75bafe7854\",\"t\":1773.14422,\"at\":1793300420021},\"s7581e004cecd:pooled.e8cc894d8c161\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":964,\"id\":\"ee804871d10\",\"t\":1255.555744,\"at\":1794949234401},\"s9a8f6138b49e:pooled.eeda040008abc\":{\"review\":\"left\",\"origin\":\"all\",\"index\":517,\"id\":\"e76fbecf85a\",\"t\":1799.86866,\"at\":1793987582898},\"s3a4ed0d68331:pooled.e6fa7bc1f554e\":{\"review\":\"all\",\"origin\":\"all\",\"index\":6,\"id\":\"e4b39e32e67\",\"t\":69.711758,\"at\":1793833340833},\"s979147ba0040:pooled.ea404384504e0\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":222,\"id\":\"e51c1f11ef3\",\"t\":694.004292,\"at\":1793908693481},\"s2fb7f4c1f676:pooled.e09b102299ef7\":{\"review\":\"left\",\"origin\":\"all\",\"index\":48,\"id\":\"eac0553d0fa\",\"t\":375.108763,\"at\":1793988111370},\"s69cf561a98cf:pooled.e41ef63b03da9\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":646,\"id\":\"e68d352836f\",\"t\":1595.660346,\"at\":1795027997643},\"s655a06b22296:pooled.e9a12a5c1afaa\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":25,\"id\":\"e44d02ef954\",\"t\":56.034229,\"at\":1794238328979},\"sdcedca6715fb:pooled.eac407abaa569\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":55,\"id\":\"e7534f06d4d\",\"t\":185.926039,\"at\":1794243700255},\"sd8526842fb00:pooled.e43d7cc18bbde\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2638,\"id\":\"e20f88a6a48\",\"t\":2220.382818,\"at\":1795123931654}}",
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1793115588967},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792776841481},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":7,\"id\":\"e89e2ad1232\",\"t\":202.664174,\"at\":1792776740753},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"all\",\"index\":788,\"id\":\"e413f3d1154\",\"t\":3008.4926,\"at\":1792691744286},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":198,\"id\":\"e27e7cf868e\",\"t\":1976.560206,\"at\":1792683443922},\"s6cdd64d005c4:pooled.ea62d1b78448b\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":333,\"id\":\"e96f39238ed\",\"t\":1929.003175,\"at\":1792691023965},\"sd94396e874c7:pooled.e8aad148bd6f6\":{\"review\":\"left\",\"origin\":\"all\",\"index\":31,\"id\":\"ec6da953380\",\"t\":618.017395,\"at\":1792692159046},\"sd42a6992b76c:pooled.e1429bf1f239f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e528cae5121\",\"t\":25.092916,\"at\":1792698749464},\"s9eb56573e0b4:pooled.ecb139fb2ea29\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":247,\"id\":\"ec09dc6a831\",\"t\":1002.679098,\"at\":1792699766696},\"s8d7f397b9708:pooled.ed4a4bcb4e47f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":629,\"id\":\"e5ce8cc2c8d\",\"t\":2414.162023,\"at\":1792701083177},\"s14510e30e1bd:pooled.eeaecc4a5e194\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":235,\"id\":\"e6aaa4ef3cf\",\"t\":1216.178138,\"at\":1792757382345},\"sba57286bdee3:pooled.e2a8e47760eea\":{\"review\":\"left\",\"origin\":\"all\",\"index\":440,\"id\":\"e71c84d7913\",\"t\":1800.565504,\"at\":1792769426438},\"s43b16cd74bcb:pooled.eab69363ee622\":{\"review\":\"left\",\"origin\":\"all\",\"index\":44,\"id\":\"ee571131c2f\",\"t\":658.884313,\"at\":1792759992226},\"s500a5aec223e:pooled.eece9a84acdea\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":231,\"id\":\"eda7ba87c5a\",\"t\":1402.676437,\"at\":1792767185542},\"s4187bdd4a184:pooled.e86e4fcb4748a\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1005,\"id\":\"e32cba0dcb0\",\"t\":3202.779905,\"at\":1793287292447},\"sddf3e5010ff2:pooled.ecb74d97dac17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":170,\"id\":\"e6794d90372\",\"t\":211.594111,\"at\":1793129265333},\"s83ce541881d3:pooled.eff963f6c4f30\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1131,\"id\":\"e81f3f60bab\",\"t\":1815.941574,\"at\":1793129418189},\"s838980579a4b:pooled.e05bf008c6ec3\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":984,\"id\":\"e40ad8af378\",\"t\":5672.387223,\"at\":1793136142128},\"s0d29c92fef19:pooled.e4acbac930c91\":{\"review\":\"left\",\"origin\":\"all\",\"index\":675,\"id\":\"e41ba04001f\",\"t\":1898.04522,\"at\":1793137520057},\"s1563f9c932bc:pooled.e0d93df89cafd\":{\"review\":\"left\",\"origin\":\"all\",\"index\":466,\"id\":\"e02326eb808\",\"t\":2185.903305,\"at\":1793139237657},\"s0a1cd99454b9:pooled.e7a1fb57293ae\":{\"review\":\"left\",\"origin\":\"all\",\"index\":461,\"id\":\"e06cfa96434\",\"t\":1854.602508,\"at\":1793197225433},\"s8d50a361b096:pooled.eb6dad0cf157b\":{\"review\":\"left\",\"origin\":\"all\",\"index\":334,\"id\":\"eab50f71f9f\",\"t\":1809.153345,\"at\":1793198988138},\"sef04f3b4eb4d:pooled.e7bf60917e493\":{\"review\":\"left\",\"origin\":\"all\",\"index\":450,\"id\":\"ed576eda74d\",\"t\":1744.895202,\"at\":1793200833531},\"se942a3f42a33:pooled.e6d30e61d8ef3\":{\"review\":\"left\",\"origin\":\"all\",\"index\":678,\"id\":\"e2c7dd87118\",\"t\":2459.552379,\"at\":1793201817187},\"se0695d94e768:pooled.e6f26e207fd03\":{\"review\":\"left\",\"origin\":\"all\",\"index\":464,\"id\":\"e0062f040ac\",\"t\":1760.461476,\"at\":1793211552688},\"s08c93e795383:pooled.e7288d9478f30\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":37,\"id\":\"eecf23ac384\",\"t\":137.763445,\"at\":1793211876152},\"s110a7941c417:pooled.ea7369cdf5fe8\":{\"review\":\"left\",\"origin\":\"all\",\"index\":519,\"id\":\"e064bbcd360\",\"t\":2203.241353,\"at\":1793217831931},\"sf357f48d27eb:pooled.ea4eeaa794729\":{\"review\":\"left\",\"origin\":\"all\",\"index\":397,\"id\":\"edb33157b0d\",\"t\":1885.087593,\"at\":1793218777763},\"se4e5efda72ba:pooled.e49d60f323885\":{\"review\":\"left\",\"origin\":\"all\",\"index\":815,\"id\":\"e89ec3e3e39\",\"t\":1840.119113,\"at\":1793288088295},\"s844b9d764f72:pooled.e8129819fc559\":{\"review\":\"left\",\"origin\":\"all\",\"index\":256,\"id\":\"e17a0da7a46\",\"t\":1648.650077,\"at\":1793294649417},\"s503339c95a67:pooled.eec08fbcc2292\":{\"review\":\"left\",\"origin\":\"all\",\"index\":412,\"id\":\"e3a6fd7b004\",\"t\":1793.535477,\"at\":1793294999350},\"se7d688078e3b:pooled.e8d0f56b8ca44\":{\"review\":\"left\",\"origin\":\"all\",\"index\":255,\"id\":\"ec081fa5dc3\",\"t\":1820.397928,\"at\":1793295818348},\"sb5b24f9f8e93:pooled.e9ac28fb03357\":{\"review\":\"left\",\"origin\":\"all\",\"index\":313,\"id\":\"e75bafe7854\",\"t\":1773.14422,\"at\":1793300420021},\"s7581e004cecd:pooled.e8cc894d8c161\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":964,\"id\":\"ee804871d10\",\"t\":1255.555744,\"at\":1794949234401},\"s9a8f6138b49e:pooled.eeda040008abc\":{\"review\":\"left\",\"origin\":\"all\",\"index\":517,\"id\":\"e76fbecf85a\",\"t\":1799.86866,\"at\":1793987582898},\"s3a4ed0d68331:pooled.e6fa7bc1f554e\":{\"review\":\"all\",\"origin\":\"all\",\"index\":6,\"id\":\"e4b39e32e67\",\"t\":69.711758,\"at\":1793833340833},\"s979147ba0040:pooled.ea404384504e0\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":222,\"id\":\"e51c1f11ef3\",\"t\":694.004292,\"at\":1793908693481},\"s2fb7f4c1f676:pooled.e09b102299ef7\":{\"review\":\"left\",\"origin\":\"all\",\"index\":48,\"id\":\"eac0553d0fa\",\"t\":375.108763,\"at\":1793988111370},\"s69cf561a98cf:pooled.e41ef63b03da9\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":646,\"id\":\"e68d352836f\",\"t\":1595.660346,\"at\":1795027997643},\"s655a06b22296:pooled.e9a12a5c1afaa\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":25,\"id\":\"e44d02ef954\",\"t\":56.034229,\"at\":1794238328979},\"sdcedca6715fb:pooled.eac407abaa569\":{\"review\":\"flag\",\"origin\":\"all\",\"index\":55,\"id\":\"e7534f06d4d\",\"t\":185.926039,\"at\":1794243700255},\"sd8526842fb00:pooled.e43d7cc18bbde\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2638,\"id\":\"e20f88a6a48\",\"t\":2220.382818,\"at\":1795127710452}}",
   "panning_span": 0.5436106699361455,
   "radio": {
     "agreed": true,
@@ -2145,11 +2591,35 @@
     "11a8e9ce8aa5": {
       "at": "2026-11-06T21:44:58.993Z"
     },
+    "1286f88a85cb": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "15226fe7fabc": {
       "at": "2026-10-20T15:12:56.308Z"
     },
+    "1dd11d0c47bd": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "2538fc506e9b": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "25f64ed9e32c": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "3c5b39973fb1": {
       "at": "2026-10-20T15:12:55.447Z"
+    },
+    "49e4561bcf7f": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "4ae148ee2aae": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "4e59558a9b7d": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "53e35ab6528f": {
+      "at": "2026-11-19T17:19:02+00:00"
     },
     "568cf6685aa5": {
       "at": "2026-10-20T15:12:57.392Z"
@@ -2160,11 +2630,26 @@
     "959031444962": {
       "at": "2026-11-06T21:44:58.993Z"
     },
+    "989cf38ca432": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "ace6b5cb70e4": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "c69c6261e926": {
       "at": "2026-11-12T12:21:14-05:00"
     },
+    "c6ebb412482c": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "de41d8464e50": {
       "at": "2026-11-12T12:21:14-05:00"
+    },
+    "e015af4c07d4": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "ef48420ad3ed": {
+      "at": "2026-11-19T17:19:02+00:00"
     }
   },
   "rootcanal_pool_archive": {
@@ -2377,11 +2862,35 @@
     }
   },
   "rootcanal_workflow_archive": {
+    "0279e766eebf": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "131a89e858e0": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "2787e887bb46": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "2ba64f7dec44": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "32e8b3a15f9f": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "3e1abd34c70c": {
       "at": "2026-11-12T12:21:14-05:00"
     },
+    "43a9e86c6520": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "52c981f18afd": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "52d6fcf5f889": {
       "at": "2026-11-12T12:21:14-05:00"
+    },
+    "5a92ae19610b": {
+      "at": "2026-11-19T17:19:02+00:00"
     },
     "5d52cf9cd610": {
       "at": "2026-11-12T12:21:14-05:00"
@@ -2389,14 +2898,47 @@
     "6028e667c3d4": {
       "at": "2026-11-12T17:11:22.643Z"
     },
+    "6d208800346c": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "6d6737df45ff": {
       "at": "2026-11-12T12:21:14-05:00"
+    },
+    "701268917b3c": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "7677889ca85c": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "79205f0ac672": {
+      "at": "2026-11-19T17:19:02+00:00"
     },
     "93a828038bba": {
       "at": "2026-11-12T12:21:14-05:00"
     },
+    "ab9613cbc7c2": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "abe99ac5d1b6": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "bac8eaf5dfa8": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
     "bc0fbf8e4569": {
       "at": "2026-11-12T12:21:14-05:00"
+    },
+    "bff8c4363fc4": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "d65a543857e3": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "df8f89c45c34": {
+      "at": "2026-11-19T17:19:02+00:00"
+    },
+    "f7e3cb9cee38": {
+      "at": "2026-11-19T17:19:02+00:00"
     }
   },
   "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":47,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792594113036},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied.e416ca89864b7\":{\"review\":\"left\",\"index\":2,\"id\":\"eed47a8fc9a\",\"t\":28.9797,\"at\":1792529201623},\"s96884739a6ff:ied.eb24519453878\":{\"review\":\"left\",\"index\":2,\"id\":\"e1fee148c8a\",\"t\":28.9797,\"at\":1792529475731},\"s96884739a6ff:ied.e4f29a49cd91b\":{\"review\":\"left\",\"index\":2,\"id\":\"eaa245ff8f4\",\"t\":28.9797,\"at\":1792529897037},\"s96884739a6ff:ied.e03354d2f1624\":{\"review\":\"left\",\"index\":2,\"id\":\"e6a7153f152\",\"t\":28.9797,\"at\":1792533155695},\"s96884739a6ff:ied.e559a3bcfc28e\":{\"review\":\"left\",\"index\":2,\"id\":\"ea750f67c19\",\"t\":28.9797,\"at\":1792682740249},\"s96884739a6ff:ied.eb80419a5ec93\":{\"review\":\"left\",\"index\":2,\"id\":\"ebe581b6994\",\"t\":28.9797,\"at\":1792684532212}}",
@@ -2575,7 +3117,7 @@
     "ip0af5d200.int.uvm.edu": "thanksgiving",
     "samarasahagia": "halloween"
   },
-  "updated": "2026-11-19T17:19:41-05:00",
+  "updated": "2026-11-19T17:35:10-05:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": false,
