@@ -160,6 +160,7 @@ BARRY.strataSteps = (function () {
     }
     H.render();
     watchElsewhere();
+    if (BARRY.strataConsult) BARRY.strataConsult.enter(H.gid);
   }
 
   /* A read or ICA of this recording still running -- started before
@@ -218,6 +219,7 @@ BARRY.strataSteps = (function () {
   }
 
   function leave() {
+    if (BARRY.strataConsult) BARRY.strataConsult.leave();
     if (saveTimer) { clearTimeout(saveTimer); flushStates(); }
     publish({ off: true });
     const body = document.getElementById('xfBody');
@@ -450,8 +452,11 @@ BARRY.strataSteps = (function () {
     const body = document.getElementById('xfBody');
     if (!body) return;
     let d = body.querySelector('.ss-drawer');
-    const want = !!(H && status && status.scanned && status.current
-                    && open && open !== '0' && jobKind !== 'scan');
+    const stepWant = !!(H && status && status.scanned && status.current
+                        && open && open !== '0' && jobKind !== 'scan');
+    // In Beta the drawer also holds the Consult card, step or no step.
+    const consult = !!(H && BARRY.strataConsult && BARRY.strataConsult.wantsDrawer());
+    const want = stepWant || consult;
     if (!want) {
       if (d) d.remove();
       body.classList.remove('ss-drawer-on');
@@ -463,7 +468,8 @@ BARRY.strataSteps = (function () {
     }
     const keep = d.scrollTop;
     d.innerHTML = '';
-    d.appendChild(open === '4' ? stepFour() : stepAnchors(open));
+    if (consult) d.appendChild(BARRY.strataConsult.card());
+    if (stepWant) d.appendChild(open === '4' ? stepFour() : stepAnchors(open));
     d.scrollTop = keep;
     body.classList.add('ss-drawer-on');
     document.documentElement.style.setProperty('--ss-drawer-w',
@@ -507,6 +513,10 @@ BARRY.strataSteps = (function () {
       row.appendChild(readCard());
     } else if (busy) {
       row.appendChild(el('span', { class: 'ss-say', text: busy }));
+    }
+    // StrataScope Beta: [Steps | Beta] and, in Beta, Consult (strataconsult.js).
+    if (BARRY.strataConsult) {
+      for (const b of BARRY.strataConsult.rowBits()) row.appendChild(b);
     }
     if (status && status.scanned && status.current) {
       row.appendChild(el('button', {
@@ -1763,7 +1773,13 @@ BARRY.strataSteps = (function () {
             const k = confirming;
             confirming = null;
             await accept(k.id, k.labels, k.confidence, k.anchors);
-            openStep(String(+k.id + 1));
+            await openStep(String(+k.id + 1));
+            /* The next step is cut from what was just accepted, so its
+               proposal has to be asked for again. Without this, Step 3
+               opened on lines worked out before Steps 1 and 2 were
+               accepted (seen 2026-11-19 on PTEN m1 s2: the fissure and
+               hilus it was cut between were the old proposals). */
+            await load();
           },
         }),
       ]),
@@ -2371,6 +2387,8 @@ BARRY.strataSteps = (function () {
      only one newer than this visit, and only once. */
   function fromLink(channels) {
     if (!H || !channels) return;
+    // A consult reply from Claude Code (strataconsult.js).
+    if (BARRY.strataConsult) BARRY.strataConsult.fromLink(channels, H.gid);
     const slot = channels['strata-cmd:' + H.gid];
     const v = slot && slot.value;
     if (!v || !v.at || v.at <= cmdSeen) return;
@@ -2488,5 +2506,37 @@ BARRY.strataSteps = (function () {
     _icaCompare: (c) => icaCompare(c),
     fromLink,
     _jobs: () => ({ jobId, jobKind, jobsNow }),
+    /* What StrataScope Beta's Consult (strataconsult.js) reads and moves.
+       It moves lines and curves the way a hand on this page would, so a
+       consult's change is the same proposal-until-Accept as anyone's. */
+    _consult: {
+      host: () => H,
+      sug: () => sug,
+      ghost: () => ghost,
+      open: () => open,
+      status: () => status,
+      checks: () => checks,
+      ica: () => ica,
+      overrides: () => overrides,
+      strata: () => strata(),
+      shown: () => Array.from(shown),
+      stepStates: () => Object.fromEntries(STEPS.map((s) => [s.id, stepState(s.id)])),
+      stripCanvas: () => (stripCanvas && stripCanvas.isConnected ? stripCanvas : null),
+      chName, regionName,
+      curves: () => CURVES.map((c) => ({ id: c.id, name: c.name, why: c.why })),
+      openStep: async (id) => { if (open !== id) await openStep(id); },
+      setLine: (ln, at) => {
+        ln.at = Math.max(0, Math.min(sug.channels.length, Number(at)));
+        confirming = null;
+        H.render(); drawStrip(); H.redraw(); publish();
+      },
+      setConfidence: (ln, c) => { ln.confidence = c; H.render(); publish(); },
+      setShown: (ids) => {
+        shown = new Set(ids);
+        H.render(); drawStrip(); H.redraw();
+      },
+      saveParams: async (patch) => { await saveStrata({ params: patch }, true); await load(true); },
+      loadChecks: async () => { await loadChecks(); },
+    },
   };
 })();

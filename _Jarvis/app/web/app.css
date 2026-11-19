@@ -8977,6 +8977,64 @@ body.aid-window .xf-tabs { display: none !important; }
 #xfBody.strata-on.ss-drawer-on .pane-grid {
   margin-right: var(--ss-drawer-w, 420px);
 }
+/* StrataScope Beta: the Consult card (strataconsult.js), top of the drawer. */
+.ss-beta-seg { margin-left: 8px; }
+.ss-consult-btn.busy { opacity: .7; }
+.ssc { display: flex; flex-direction: column; gap: 7px; padding: 8px 9px 10px;
+       margin: 0 0 12px; border: 1px solid var(--accent-line, var(--line));
+       border-radius: var(--radius-sm); background: var(--bg);
+       transition: box-shadow .4s ease; }
+.ssc.fresh { box-shadow: 0 0 0 2px var(--accent); }
+.ssc-head { display: flex; align-items: center; gap: 8px; }
+.ssc-beta { font-size: var(--fs-10); font-weight: 700; letter-spacing: .06em;
+            text-transform: uppercase; color: var(--accent);
+            border: 1px solid var(--accent-line, var(--accent)); border-radius: 999px;
+            padding: 0 7px; }
+.ssc-note { width: 100%; box-sizing: border-box; resize: vertical; min-height: 34px;
+            font: inherit; font-size: var(--fs-115); color: var(--text);
+            background: var(--bg-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); padding: 4px 6px; }
+.ssc-wait { display: flex; align-items: center; gap: 9px; color: var(--text-2);
+            font-size: var(--fs-115); }
+.ssc-radar { flex: none; width: 14px; height: 14px; border-radius: 50%;
+             border: 2px solid var(--accent); animation: ssc-ping 1.6s ease-out infinite; }
+@keyframes ssc-ping { 0% { transform: scale(.5); opacity: 1; }
+                      100% { transform: scale(1.4); opacity: 0; } }
+.ssc-meta { color: var(--text-3); font-size: var(--fs-105); }
+.ssc-summary { margin: 0; color: var(--text); font-size: var(--fs-115); line-height: 1.45; }
+.ssc-walk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ssc-walk .ss-say { flex: 1 1 200px; font-size: var(--fs-105); }
+.ssc-items { display: flex; flex-direction: column; gap: 5px; }
+.ssc-item { padding: 6px 8px; border-radius: var(--radius-sm); background: var(--bg-hover);
+            border-left: 3px solid var(--line); font-size: var(--fs-115);
+            transition: background .3s ease, border-color .3s ease, opacity .3s ease; }
+/* The drawer is rebuilt on every render; only a reply that just arrived
+   plays in, or every drag would replay it. */
+.ssc.fresh .ssc-item { animation: ssc-in .35s ease-out both; }
+.ssc-item.move, .ssc-item.label { border-left-color: var(--warn); }
+.ssc-item.param { border-left-color: var(--c4, var(--accent)); }
+.ssc-item.applied, .ssc-item.read { border-left-color: var(--ok); }
+.ssc-item.skipped { opacity: .55; }
+.ssc-item.now { background: var(--accent-soft, var(--bg-hover));
+                box-shadow: 0 0 0 1px var(--accent); }
+@keyframes ssc-in { from { opacity: 0; transform: translateY(6px); } }
+.ssc-item-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ssc-n { width: 18px; height: 18px; border-radius: 50%; flex: none; display: inline-flex;
+         align-items: center; justify-content: center; font-size: var(--fs-10);
+         background: var(--bg-2); color: var(--text-2); }
+.ssc-kind { font-weight: 600; }
+.ssc-step { color: var(--text-3); font-size: var(--fs-105); }
+.ssc-tag { margin-left: auto; color: var(--text-3); font-size: var(--fs-105); }
+.ssc-item.applied .ssc-tag, .ssc-item.read .ssc-tag { color: var(--ok); }
+.ssc-title { margin-top: 3px; color: var(--text); font-weight: 600; }
+.ssc-what { margin-top: 2px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ssc-why, .ssc-look { margin-top: 3px; color: var(--text-2); line-height: 1.45;
+                      white-space: normal; overflow-wrap: anywhere; }
+.ssc-refs { margin-top: 3px; color: var(--text-3); font-size: var(--fs-105); }
+.ssc-btns { display: flex; gap: 6px; margin-top: 5px; }
+@media (prefers-reduced-motion: reduce) {
+  .ssc-radar, .ssc-item { animation: none; }
+}
 .ss { display: flex; flex-direction: column; gap: 7px; }
 .ss-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .ss-step {
@@ -18095,6 +18153,19 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   border: 2px solid var(--accent-line, var(--accent)); }
 .wf-bankcard.done { border-color: var(--ok); }
 .wf-bankcard-btns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+/* Bank by label (2026-11-19): the labels as pills in the bank dialog, each
+   with its dot, its count and what the Halo put in it; the line under them
+   says what Bank would make. Scoped, as .tk-pills .pill is. */
+.wf-bank-labels { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+.wf-bank-labels .pill.wf-bank-l { display: inline-flex; align-items: center; gap: 6px; }
+.wf-bank-labels .pill.wf-bank-l:not(.active) { opacity: .6; }
+.wf-bank-labels .pill.wf-bank-l:disabled { opacity: .35; cursor: default; }
+.wf-bank-labels .pill.wf-bank-l i.wf-lg-dot { width: 10px; height: 10px;
+  border-radius: 50%; flex: none; }
+.wf-bank-labels .pill.wf-bank-l b { font-weight: 600; }
+.wf-bank-halo { font-size: var(--fs-105); color: var(--text-3); }
+.wf-bank-labels .pill.wf-bank-l.active .wf-bank-halo { color: inherit; opacity: .8; }
+.wf-bank-say { margin: 0; }
 .wf-insp-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: var(--sp-12); }
 .wf-insp-hist ol { margin: var(--sp-4) 0 0; }
