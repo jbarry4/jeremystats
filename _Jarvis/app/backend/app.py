@@ -31117,6 +31117,10 @@ GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
 # recording a figure, versions kept frozen. Its routes live in figroutes.py.
 from . import figroutes as figroutesmod                       # noqa: E402
 FIGURES = figroutesmod.install(app, sys.modules[__name__])
+# Extraction Room 2.0 (2026-11-18): models over the frozen DS sets, run here
+# or on the VACC. Its routes live in er2routes.py.
+from . import er2routes as er2routesmod                       # noqa: E402
+er2routesmod.install(app, sys.modules[__name__])
 
 # VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
 # its Chrome and its routes live in vos.py.

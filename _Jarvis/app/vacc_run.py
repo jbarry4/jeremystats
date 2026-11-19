@@ -209,6 +209,13 @@ def run_tool(tool, spec, bundle, job, csc):
         from backend import driftrun
         return driftrun.run_node(spec, job)
 
+    if tool == "er2":
+        # Extraction Room 2.0 (backend/er2run.py): one leaderboard task --
+        # target x view x model over the frozen amber bundle that travelled
+        # with the run. No recording is opened.
+        from backend.er2 import engine as er2engine
+        return er2engine.run_task(spec, log=lambda *a: None)
+
     if tool == "sweep":
         # The Monolith (backend/monolith.py). One rat-day, one kind, some
         # bands: `sweep.run_node` reads every cue pair or rest epoch the

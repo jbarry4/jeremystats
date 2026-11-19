@@ -384,6 +384,9 @@
     } else if (S.sub === 'round2') {
       body.appendChild(el('div', { id: 'erRound2' }, [round2Card()]));
       if (!S.r2 && !S.r2Err) loadRound2();
+    } else if (S.sub === 'er2') {
+      body.appendChild(ext().er2 ? ext().er2.render()
+        : el('p', { class: 'empty', text: 'Extraction Room 2.0 did not load.' }));
     } else if (S.sub === 'blobs') {
       body.appendChild(ext().blobs ? ext().blobs.render()
         : el('p', { class: 'empty', text: 'Blob Analysis is being built.' }));
@@ -396,7 +399,7 @@
 
   const SUBS = [['recordings', 'Recordings'], ['stats', 'Round I · does it differ?'],
                 ['seprate', 'Separation rate'], ['round2', 'Round II'], ['numbers', 'The numbers'],
-                ['blobs', 'Blob Analysis']];
+                ['blobs', 'Blob Analysis'], ['er2', 'Room 2.0 · models']];
   function subTabs() {
     return el('div', { class: 'subtabs', role: 'tablist', id: 'erSubs' }, SUBS.map(([id, name]) => el('button', {
       role: 'tab', 'aria-selected': String(id === S.sub), text: name, 'data-sub': id,

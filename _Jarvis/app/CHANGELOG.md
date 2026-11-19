@@ -15,6 +15,54 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.18.2 - Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes
+
+Restart Jarvis (new backend modules and routes), then reload the page.
+
+- **A new Extraction Room tab, "Room 2.0 · models"** (`web/js/extraction_er2.js`).
+  It trains models on the dentate spikes alone. They try to tell PTEN from
+  control, low from high knockout, and control / IED− / IED+, and to guess
+  the knockout %.
+- **The frozen inputs.** Every Halo-set event, with its winning
+  classifier's DS1 / DS2 / DS3 call held fixed, is frozen into a versioned
+  "amber" bundle (`backend/er2/amber.py`, kept in `%LOCALAPPDATA%\Jarvis\er2`,
+  never in the repository). The bundle holds:
+  - everything measured about each event: the waveform, depth profile and
+    context, the same measures under six other filters, and the power
+    before and after the DS;
+  - per-mouse tables;
+  - nuisance values (placement, year, event count).
+- **The models** (`backend/er2/engine.py`, `backend/er2/nets.py`):
+  - pooled models: linear, lasso, random forest, boosting and a small
+    neural net, each on every mouse's event distributions;
+  - two set networks, deep sets and attention, that read the events
+    themselves. They are written in numpy, so they need no GPU.
+- **How a mouse is called.** Every call is made on a mouse the model never
+  saw. PTEN against control leaves one control and one PTEN mouse out at a
+  time; every other target leaves one mouse out.
+- **Opening a model** (`backend/er2/explain.py`) uses permutation
+  importance, Shapley values, retraining without a family, and attention
+  weights. The four are consolidated into a MOST IMPORTANT list per target.
+- **Where runs go** (`backend/er2run.py`, `backend/er2routes.py`). A run
+  goes here or to the VACC, as one slurm array through `vacc_run.py`'s new
+  tool "er2". `vacc.push_code` now also sends `backend/er2/`.
+- **What is kept.** Each run is numbered and kept. Its leaderboard is filed
+  as an `er2_leaderboard` artifact, so it syncs to the lab.
+
+## 2026.11.18.1 - A second window that will not open no longer stops the mode
+
+Reload the page; no restart needed.
+
+- **Panning, Spotter, Curate, Braces, the CFC scope and StrataScope** open
+  their aid window through one function (`popOutPanes` in
+  `web/js/xplore.js`). It handled a blocked window but not one where the
+  browser throws. Firefox threw there on Strawbarry on 11-16 while Panning
+  was opening, and Panning was left half open: no event was drawn, and the
+  presence beat that tells other machines the pool is in use never started. Now the mode
+  opens without the second window and says so: "The browser would not open
+  the second window. Leave and re-enter this mode to try again." Checked by
+  `web/_dev/popoutthrow.html`.
+
 ## 2026.11.16.1 - Extraction Room: a to-do banner for the PCA line
 
 Reload the Extraction Room; no restart needed.
