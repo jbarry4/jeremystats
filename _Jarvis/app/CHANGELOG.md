@@ -15,6 +15,26 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.19.3 - Support panels: a lab default, and a copy shows at once
+
+Needs a restart and a reload.
+
+- **Copying someone's support panels now changes what is on screen.** They
+  were read only when an add-on opened. Copying Rain's while Panning was
+  open changed nothing until Panning was left and opened again, and a copy
+  made from the support window never reached the main window at all,
+  because each window of the app keeps its own copy of the preferences.
+  Now any change (a copy, an edit, a reset) lays out the open add-on's main
+  window again and moves its second window to the new arrangement, in
+  whichever window it was made.
+- **A lab default.** Anyone who has not set an add-on up gets the lab's
+  default before the add-on's own, a new computer included. The editor
+  says "the lab's default" on those. Changing one window of such an add-on
+  makes it your own and keeps the other window as the lab has it, and
+  Defaults goes back to the lab's. "Make mine the lab default" in the
+  sharing bar sets it. Seeded today with Shahriar's current setup (the
+  same as Rain's).
+
 ## 2026.11.19.2 - Root Canal: bank by label (Project Evolve, phase 1)
 
 Restart Jarvis (backend changes), then reload the page.

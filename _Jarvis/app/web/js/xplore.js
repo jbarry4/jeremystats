@@ -3697,6 +3697,13 @@ BARRY.views.xplore = (function () {
       return null;
     }
     try { w.focus(); } catch (e) { /* not important */ }
+    // So a support panel change while the add-on is open reaches this
+    // window too (supportpanels.js refreshLive).
+    try {
+      if (BARRY.supportPanels && BARRY.supportPanels.noteWindow) {
+        BARRY.supportPanels.noteWindow(w, o);
+      }
+    } catch (e) { /* not important */ }
     return w;
   }
 
