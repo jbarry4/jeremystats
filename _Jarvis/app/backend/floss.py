@@ -161,7 +161,11 @@ def _say(text, tid=None, level="info", done=False):
 
 
 def _git(args, cwd, check=True, inp=None):
-    r = subprocess.run(["git", "-c", "core.longpaths=true"] + list(args), cwd=cwd,
+    # The git the rest of Jarvis runs (2026-11-13): plain "git" is not on
+    # PATH where only GitHub Desktop has one, and Strawbarry's first ticket
+    # failed with "[WinError 2] The system cannot find the file specified".
+    from . import store
+    r = subprocess.run([store.git_exe() or "git", "-c", "core.longpaths=true"] + list(args), cwd=cwd,
                        input=inp, capture_output=True,
                        creationflags=_NO_WINDOW)
     if check and r.returncode:

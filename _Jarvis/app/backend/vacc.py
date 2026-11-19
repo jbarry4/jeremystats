@@ -1832,6 +1832,13 @@ def _code_files(app_dir):
     for name in sorted(os.listdir(os.path.join(app_dir, "backend"))):
         if name.endswith(".py"):
             out.append(os.path.join("backend", name))
+    # Packages under backend/ the cluster needs too (Extraction Room 2.0).
+    for pkg in ("er2",):
+        d = os.path.join(app_dir, "backend", pkg)
+        if os.path.isdir(d):
+            for name in sorted(os.listdir(d)):
+                if name.endswith(".py"):
+                    out.append(os.path.join("backend", pkg, name))
     for name in ("requirements.txt", "vacc_run.py"):
         if os.path.isfile(os.path.join(app_dir, name)):
             out.append(name)

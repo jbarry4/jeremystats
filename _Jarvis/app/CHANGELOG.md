@@ -15,6 +15,631 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.18.2 - Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes
+
+Restart Jarvis (new backend modules and routes), then reload the page.
+
+- **A new Extraction Room tab, "Room 2.0 · models"** (`web/js/extraction_er2.js`).
+  It trains models on the dentate spikes alone. They try to tell PTEN from
+  control, low from high knockout, and control / IED− / IED+, and to guess
+  the knockout %.
+- **The frozen inputs.** Every Halo-set event, with its winning
+  classifier's DS1 / DS2 / DS3 call held fixed, is frozen into a versioned
+  "amber" bundle (`backend/er2/amber.py`, kept in `%LOCALAPPDATA%\Jarvis\er2`,
+  never in the repository). The bundle holds:
+  - everything measured about each event: the waveform, depth profile and
+    context, the same measures under six other filters, and the power
+    before and after the DS;
+  - per-mouse tables;
+  - nuisance values (placement, year, event count).
+- **The models** (`backend/er2/engine.py`, `backend/er2/nets.py`):
+  - pooled models: linear, lasso, random forest, boosting and a small
+    neural net, each on every mouse's event distributions;
+  - two set networks, deep sets and attention, that read the events
+    themselves. They are written in numpy, so they need no GPU.
+- **How a mouse is called.** Every call is made on a mouse the model never
+  saw. PTEN against control leaves one control and one PTEN mouse out at a
+  time; every other target leaves one mouse out.
+- **Opening a model** (`backend/er2/explain.py`) uses permutation
+  importance, Shapley values, retraining without a family, and attention
+  weights. The four are consolidated into a MOST IMPORTANT list per target.
+- **Where runs go** (`backend/er2run.py`, `backend/er2routes.py`). A run
+  goes here or to the VACC, as one slurm array through `vacc_run.py`'s new
+  tool "er2". `vacc.push_code` now also sends `backend/er2/`.
+- **What is kept.** Each run is numbered and kept. Its leaderboard is filed
+  as an `er2_leaderboard` artifact, so it syncs to the lab.
+
+## 2026.11.18.1 - A second window that will not open no longer stops the mode
+
+Reload the page; no restart needed.
+
+- **Panning, Spotter, Curate, Braces, the CFC scope and StrataScope** open
+  their aid window through one function (`popOutPanes` in
+  `web/js/xplore.js`). It handled a blocked window but not one where the
+  browser throws. Firefox threw there on Strawbarry on 11-16 while Panning
+  was opening, and Panning was left half open: no event was drawn, and the
+  presence beat that tells other machines the pool is in use never started. Now the mode
+  opens without the second window and says so: "The browser would not open
+  the second window. Leave and re-enter this mode to try again." Checked by
+  `web/_dev/popoutthrow.html`.
+
+## 2026.11.16.1 - Extraction Room: a to-do banner for the PCA line
+
+Reload the Extraction Room; no restart needed.
+
+- **A reminder at the top of the room.** The PCA split's line should be
+  drawable at any angle on PC1 and PC2, and a two-Gaussian mixture boundary
+  (straight or curved) should sit beside the automatic k-means one. Not built
+  yet; the banner comes out when it is.
+
+## 2026.11.13.7 - Extraction Room: DS3 (hybrid), the probability trim, the mix-up check, a time window, and a tidier room
+
+Restart Jarvis, then reload the Extraction Room. New code: `backend/dsmix.py`.
+
+- **Events: as split / with DS3 (hybrid) / unsure trimmed.** One switch for
+  the set, shared, in the room's bar, with a slider for the cut. DS3 and the
+  trim are used one at a time.
+- **DS3 (hybrid), after Tarcsay et al. 2025** (bioRxiv
+  10.1101/2025.10.27.684857).
+  - For every event: score = (OML − MML) / (OML + MML), each the sink
+    (max(0, −CSD)) at one contact, averaged over the same ±3 ms as the Bite
+    line. A score within ±0.5 is DS3. No neighbour averaging, no timing
+    rule, no "both sinks large" rule.
+  - OML is where the split's DS1 mean sink is deepest and MML where its
+    DS2 mean sink is, in the blade where the two sit apart.
+  - An event whose OML + MML sink is under the 99th percentile of the same
+    measure 40 ms before and after the events is "unscorable": counted
+    apart, never DS3.
+  - DS3 is laid over whichever split the card uses: balanced events leave
+    DS1 and DS2, the rest keep their class. Green on the cards, with its
+    rate, the contacts used and the citation.
+  - A card says when OML and MML are under 3 contacts apart: there the
+    balance is one sink seen twice.
+  - Round I gains "Share that are DS3". The Impression locks DS3 in, and
+    Blob Analysis has a DS3 class.
+- **The probability trim.** A two-Gaussian fit on each split's own axis. An
+  event whose more probable Gaussian is under 80% is "unsure": grey, kept
+  in view, out of DS1's and DS2's numbers. The split still decides every
+  class. If a class would be left under 5 events, that card is not trimmed
+  and says so. Each Compare panel draws every event's probability with the
+  cut-off line, which can be dragged to change the set's cut.
+- **The mix-up, the check on the other two.** From the same fit: the share
+  of events expected to be in the wrong class, with a bootstrap interval.
+  Shown three ways on every card and every Compare panel: as split, with
+  DS3 out, with the unsure trimmed. Up to 10% is clean (green), 10–15% is
+  what waveform-only classification accepts (amber), over 15% is mixed
+  (red).
+- **A time window: two knobs on the timeline.** Drag either knob in Compare
+  splits and every split is worked out from only the events between them.
+  It is a look until "Save this window on the card", which keeps it for the
+  recording in every set. The card then wears "Only 5.0–20.0 min" and its
+  rates are the window's. A window with fewer than 8 events is refused.
+- **Compare splits is a 5 × 3 score grid with one panel open.** Each cell
+  shows a split's counts, SI and mix-up; click one to open it. "Open all
+  15" shows them all.
+- **Cards tidied.** The call buttons on one row and the tools on a quieter
+  one; the control bar stays at the top while scrolling.
+- **Checks:** `web/_dev/extraction.html` has 196 checks (12 new).
+  `tools/check_dsmix.py` is new: made-up recordings with a known answer for
+  the score, the floor, the trim and the mix-up. It caught OML and MML
+  landing on the other blade's sink; they are now found in the blade where
+  the two classes differ.
+
+## 2026.11.13.6 - Compare splits: try any contacts, and flip between views at once
+
+Restart Jarvis, then reload the Extraction Room.
+
+- **Try any set of contacts.** Beside the interpolation switch is "Try
+  interpolating: [ ] Show". Type "37-39" or "37, 38, 39" and every split is
+  worked out with those contacts interpolated. It is a look: nothing is
+  kept and Use this is off. "Save this set on the card" keeps it for
+  everybody, and asks first. A contact that cannot be interpolated is
+  refused with the reason, and the view goes back to where it was.
+- **Flipping is instant.** Each view (the card's contacts, as recorded, the
+  set tried, low contacts in or out) is asked for and built once, then kept
+  hidden. Going back to a view already seen asks the server for nothing and
+  builds nothing: the same panels come back, lines you moved included. Up
+  to six views are kept.
+- The switch now has up to three states: Interpolated (the card's), As
+  recorded, and Trying … (the last set tried).
+- **A corner banner on an interpolated card.** A card whose recording has
+  contacts interpolated wears "INTERPOLATED · 37, 38, 39" across its top
+  right corner; hover says how and by whom.
+- **m6 s4 now interpolates 37, 38 and 39** (it was 38 and 39), in every
+  set.
+- **Checks:** `web/_dev/extraction.html` has 184 checks (4 new).
+
+## 2026.11.13.5 - Blob Analysis's cards follow the measure; interpolation on and off in Compare splits
+
+Reload the Extraction Room. Restart Jarvis for the interpolation switch.
+
+- **Blob Analysis: picking a measure changed nothing you could see under
+  it.** The comparison further down did change: its heading, its counts,
+  its tests and four of its five pictures. The first thing under the picker,
+  though, is "Each recording", and every card there drew the same activity
+  curve and the same table whatever was picked. Now each card:
+  - says the measure's median and middle half, for each class and blob it
+    draws ("How long the sink lasts (ms): DS1, top blob 12.3 [10.7 – 14.9]
+    · DS2, …");
+  - highlights that measure's row in its table;
+  - marks it on its curve, from the per-event medians:
+    - Peak sink: a level.
+    - When it peaks: a line.
+    - How long it lasts: a bar at half the peak, centred on the peak.
+    - Rise and decay: a bar before and after the peak.
+    - The measures that are not times (sharpness, the areas, depth spread)
+      get the words only.
+  - The cards change in place; nothing is built again.
+  - The group's activity-curve panel is the same for every measure, as
+    before. It is the blob's curve, not a measure.
+- **Interpolation on and off in Compare splits.** A recording with
+  contacts interpolated gets a two-way switch beside "Leave out low
+  contacts": "Contacts 38, 39: [Interpolated] [As recorded]". The pressed
+  one is what shows, and the words say it in capitals.
+  - As recorded shows the recording as read: every one of the 15 splits,
+    its raster, plot, CSDs and profiles, and the timeline's colours, worked
+    out again.
+  - A line in bold says what changed from the other state, e.g. "Changed
+    from interpolated: events with a notch in a hump 9 → 21; Bite line
+    97/95 → 98/94; PCA + gap 109/83 → 146/46; …".
+  - It is a look: Use this is off while As recorded shows.
+  - "Save 'as recorded' for good" stops interpolating them on the card, for
+    everybody, and asks first.
+  - The first version was a single "Interpolate 38, 39" button. It started
+    on, so pressing it turned the interpolation off, and "Keep it off" then
+    removed it from m6 s4 at 14:08. Both views were then the recording as
+    read, so they looked the same. 38 and 39 are interpolated on m6 s4
+    again.
+  - On m6 s4 (the Halo set) the difference is real but small:
+    - notched events: 11 with the interpolation, 23 without;
+    - the top-hump Bite line: 121/85 with, 100/106 without;
+    - every split is "one family" either way;
+    - the bottom-hump row is the same in both, since 38 and 39 are in the
+      top hump.
+- **Checks:** `web/_dev/extraction.html` has 180 checks (7 new).
+
+## 2026.11.13.4 - Extraction Room: interpolate bad contacts, a "No DS1" call, each recording's length and rates, and a timeline with theta
+
+Restart Jarvis, then reload the Extraction Room.
+
+- **Interpolate contacts.** Each new-round card has an "Interpolate
+  contacts" box under its band, which takes "38, 39" or "38-39". Each
+  contact named is rebuilt from the two good contacts above it and the two
+  below, one cubic through all four, before the CSD.
+  - Removing a contact, or the straight-line fill a bad contact gets,
+    flattens the CSD there to zero and puts a notch of its own in it.
+  - It is kept per recording, not per set, because a bad wire belongs to
+    the recording. It is shared.
+  - The card, Compare splits, the Impression and Blob Analysis all use it.
+  - A Bite line placed by hand goes back to its default, because the order
+    is made again.
+  - The server refuses a contact that is not on the shank, or that lacks
+    two good contacts on each side, and says why.
+  - **m6 s4:** 38 and 39 are interpolated. Its notched events go from 21 to
+    9 (v8) and from 23 to 11 (the Halo set). It stays one family: 97/95 at
+    SI 0.04.
+  - The low-contacts look in Compare splits uses the same rebuild, which
+    now handles adjacent contacts with one cubic. Before, it fell back to a
+    straight line for them.
+- **"Call it no DS1".** A third call, beside separable and not separable,
+  for a recording with no DS1 in it.
+  - Every event becomes one class, DS2. DS2's numbers are taken from all
+    of them, DS1 has none, and the share that are DS1 is 0. The stats count
+    it that way.
+  - In the separation rate it counts as not separable.
+  - The Impression locks every event in as DS2. Blob Analysis takes it into
+    DS2 and All DS, and leaves it out of DS1.
+  - Its card is washed in DS2's colour and counted apart in the key.
+- **Each recording's length and its DS1 and DS2 rates** show on its card,
+  e.g. "16.8 min · DS1 5.77 a min · DS2 5.65 a min". The length comes from
+  the registry. The rates count this set's events (those inside its border)
+  as the card splits them.
+- **A timeline at the top of Compare splits.**
+  - It shows when every event happened, a tick each, DS1 above and DS2
+    below.
+  - The ticks are coloured by the split in use, or by whichever line was
+    moved last.
+  - Under them, on the same minutes, is theta power (6–10 Hz, Incisor's
+    band) in 4 s bins. It is read on the contact in the middle of the card's
+    band, or the nearest good one if that contact is bad or interpolated.
+  - Words say the length and the rates.
+  - The whole channel is read once (about 8 s for m6 s4's 17 minutes) and
+    then kept on the disk.
+- **Checks:** `web/_dev/extraction.html` has 173 checks (11 new): the rates,
+  interpolation (asked, refused, put back), No DS1 there and back, and the
+  timeline following a moved line.
+
+## 2026.11.13.3 - Data: the PTEN and CTL Baseline set without P-spikes
+
+No restart needed: this is data only. Reload the Extraction Room.
+
+- **"PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction
+  Room; No P-spikes]))"**, the room's v8, takes the place of v7.
+  - **Why.** v7's events came from a DS workflow, which never checks the
+    P-spike border. 24 of its 4,201 events sat inside the P-spike border
+    as well: 22 PTEN and 2 CTL. 10 were on m28 s2, 5 on m5 s2, 4 on m13 s2,
+    2 on m34 s5, and 1 each on m1 s2, m2 s3 and m6 s4.
+  - **How it was built.** It is an Ambiguous workflow (a7eee6a6ca9f) with
+    no halo. It uses v7's 10% DS border and the P-spike border of "PTEN
+    Baseline (Optimized Parameters/Snap)", 5% Snap, both applied to the
+    CTL & PTEN Baseline v2 pool. Its DS side is the events inside the DS
+    border only.
+  - **What it holds.** 4,177 events: 1,963 CTL and 2,236 − 22 = 2,214 PTEN.
+    That is exactly v7's events less those 24, with none added.
+  - **Checked card by card.** Each card's read holds exactly the run's
+    events, every one of them "inside the DS border only".
+  - **Reads and folder.** The seven recordings that lost events were read
+    again; the other eleven kept their reads. Its X-ray Many folder is
+    xm-1d6cfcdd3d.
+  - **Carried over.** Shahriar's two hand-drawn bands, on m2 s3 and m26 s2,
+    came across.
+  - **v7 is archived in the room.** Nothing was deleted.
+  - **No card's verdict changed.** m28 s2 lost 10 events, all from its large
+    side: 11/286 became 11/276, SI 0.85.
+
+## 2026.11.13.2 - Compare splits: delta middle, each way on one hump alone, and the low contacts left out; the PTEN and CTL Baseline set
+
+Restart Jarvis, then reload the Extraction Room.
+
+- **Delta middle.** A fifth way to split DS1 from DS2. Delta measures the
+  distance between each event's two deepest sink points. Delta middle
+  measures the distance between the middles of its two humps instead. A
+  hump's middle is halfway between its edges at half its depth, so a notch
+  inside the hump does not move it. k-means places the line, as for delta.
+  It is on each card's split panel and in "Split every recording by".
+- **Two more rows in Compare splits: the top hump only, and the bottom hump
+  only.** All five ways again on one hump, so 15 panels. The humps are the
+  Bite line's: the two biggest of the recording's average, parted at the
+  source between them.
+  - **Bite line:** that hump's sink alone, with its own order, cost curve
+    and line.
+  - **PCA:** X-ray's PCA, with its own features and scaling, on that hump's
+    contacts.
+  - **PCA + position:** the same, with the contact where that hump's sink is
+    strongest in place of the gap.
+  - **delta and delta middle:** where that hump's sink is strongest, or its
+    middle, as a contact, sorted shallow to deep with k-means' line between.
+  - On a one-hump row the other hump is dimmed on the rasters, and a dashed
+    line marks where the humps part.
+  - Every split is scored on the usual yardstick (both humps), and the
+    one-hump rows also on their own hump ("On the top hump alone: SI …").
+  - An event with no sink in that hump is off the axis, goes to the right
+    side, and is said.
+  - Use this keeps any of the 15. The card names it.
+- **Leave out low contacts** is a toggle in Compare splits, and a look
+  only: nothing is kept, and Use this is off while it is on.
+  - Each contact's voltage is checked against a cubic through the two
+    contacts on either side, in the baseline.
+  - A contact counts as low when it reads more than 2% below the
+    recording's median, and more than 5 times the recording's own spread
+    (MAD). It is made again from the two contacts on either side, and every
+    split is worked out again.
+  - The rebuild is a cubic, not the straight line a bad contact gets. A
+    straight line makes the CSD zero at that contact, a notch of its own.
+  - A 3% cut missed m28 s2's 44 and 52, which read 2.2% and 2.7% low, and
+    those two were its notches. With all five of its low contacts out, its
+    notched events go from 143 to 1.
+  - Contacts are taken out one at a time, because a low contact makes its
+    neighbours read high.
+  - Contacts beside one already marked bad are not judged: the stretched
+    prediction there reads a few per cent low by itself.
+  - It finds low contacts on five recordings:
+    - m21 s2: 49, 62, 25
+    - m22 s3: 25, 62, 49
+    - m28 s2: 25, 49, 5, 52, 44
+    - m13 s2: 62, outside its band
+    - m7 s2: 22, outside its band
+  - It finds none on the other thirteen.
+  - **The Bite line hardly moves without them.** m22 s3 goes from 183/19 to
+    182/20 at SI 0.24, m28 s2 stays 11/286 (0.85 to 0.86), and m21 s2 stays
+    one family. PCA and delta move more: on m28 s2, PCA drops from SI 0.80
+    to 0.47, and delta on the top hump finds the same 11 events (0.07 to
+    0.86).
+- **The delta plots draw each event at its sink's depth.** The Bite line's
+  "where its sink sits" read the window's centre, a time sample, as a
+  contact. It was always empty, so the dots were spread at random instead.
+- **Data: the PTEN and CTL Baseline set.** Root Canal has a new workflow,
+  "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction
+  Room]))" (4a29af93e601). Its border is drawn around the CTL Baseline v2
+  pool, a Snap at 10% grace, and applied to the CTL & PTEN Baseline v2 pool,
+  both at their newest versions. It was run without banking.
+  - It keeps the same 4,201 events, in the same classes, as "CTL Baseline
+    (Optimized Paramters/Snap/10% Grace))": 1,965 CTL and 2,236 PTEN.
+  - Its X-ray Many folder is xm-12427c99f8.
+  - It is the room's v7, with Shahriar's two hand-drawn bands carried over.
+  - The CTL Baseline set is archived in the room. Nothing was deleted.
+- **Checks:** `web/_dev/extraction.html` has 162 checks (13 new): 15 panels
+  in three rows, delta middle, a Bite line on one hump, the hump scores,
+  the low-contacts look on and off, and the card's five methods.
+
+## 2026.11.13.1 - A cut dragged past the last event, and a workflow saved with no pool, no longer file errors; Floss finds git
+
+From the daily error triage (pass 18). Reload the page for the first two.
+Restart Jarvis for the server's new words and for Floss.
+
+- **Floss (Hater of AI) could not start on a computer whose git is not on
+  PATH.** Rain's ticket on Strawbarry (11-09) failed at once with "[WinError
+  2] The system cannot find the file specified", before Floss had copied
+  the code. That copy runs git, and Floss asked for plain "git". Where only
+  GitHub Desktop has a git, it is not on PATH. The rest of Jarvis already
+  looks where Git for Windows and GitHub Desktop put theirs (2026.10.07.6),
+  and Floss now uses the same lookup. Checked by
+  `tools/check_floss_git.py`, which hides git from PATH. Before the fix it
+  gives the ticket's own error.
+
+- **Extraction Room: a cut dragged past the last event.** The plot runs a
+  little past the events. A drag to its edge asked for a cut with every
+  event on one side. The server refused it and filed an error each time:
+  five on Bluebarry on 11-12. On letting go, the page said "Not cut there".
+  Now the cut on a card stops inside the events, with at least one on each
+  side, as Compare splits already did.
+- **Root Canal: Save or Preview with no pool picked.** A new workflow's
+  pools are found by name ("PTEN Baseline", "CTL Baseline"). The pools on
+  show are named otherwise now ("PTEN Baseline v2 (Optimized parameters)"),
+  so a new workflow can open on "Select pool". Saved like that, the server
+  said "There is no saved pool None to use as the target" and filed an
+  error (twice on 11-12). Now the page says "Pick the pool it is applied to
+  first." (or the pool the DS border is drawn around), and sends nothing.
+  The server says the same words, never "None", if anything else sends a
+  workflow with no pool.
+- Checks: `web/_dev/extraction.html` drags past the last event.
+  `web/_dev/rcworkflow.html` has "A POOL NOT YET PICKED".
+  `tools/check_wf_pool_unpicked.py` checks the server's words (`--head`
+  shows HEAD's "None").
+
+## 2026.11.12.5 - The camel hump: the Bite line and the blobs take the recording's two humps
+
+Restart the server and reload the Extraction Room.
+
+- **What was wrong.** The Bite line took each event's own two biggest sink
+  bumps. Where a hump has a notch inside it (two sub-sinks, as m6 s4's top
+  hump has at contacts 35 and 40), the events whose notch touched zero had
+  three bumps, and "the two biggest" became half a hump. The line split the
+  events by that bookkeeping. On m6 s4, 20 of the 26 events on the small
+  side were the 22 whose notch reached zero. The blobs had the same fault.
+- **The channels are not the cause.** Each contact was predicted from two
+  good neighbours on each side. On m6 s4 every contact is within 0.3% of
+  its prediction, steady through the recording. Removing the notch at
+  contact 38 would need a gain change that varies from event to event,
+  which a bad channel cannot do. A filter applied alike to every channel
+  cannot put a notch at one contact.
+- **Now (sinkcut `sink="humps"`, the default).** The two humps are the
+  recording's: the two biggest sinks of its mean profile, parted at the
+  source between them. Each event's sink is taken whole in each hump, and
+  the two humps weigh the same. The Compare panel says where the humps
+  part and how many events had a notch.
+  - m6 s4 now reads one family (SI 0.04), and so do all four methods.
+  - m13 s2's 8-event "family" was the same bookkeeping and is gone.
+  - m60, m61, m28, m33, m1, m7 and m26 keep their small separate families.
+- **Blob Analysis** takes the same two humps. A notched hump is one blob.
+- **New room versions** (both sets fitted again): v5 is the 10% set and v6
+  the Halo set. Bands drawn by hand and the calls carry over. v3 and v4
+  keep the old sink, and the lines placed on them.
+- **A Bite line placed by hand on the old sink** points at other events in
+  the new order. It is not used, and its card says so with who placed it.
+  Lines placed from now on carry their sink.
+- **Fixed: Compare splits ignored a band drawn by hand.** It worked in the
+  version's own band while the card had moved on. A line placed there was
+  checked in the wrong band too. Both now use the card's band.
+- `tools/check_sinkcut.py`: made-up recordings with a known answer. The
+  old sink splits by the notch, and the humps do not. Two real families
+  are still found, and a notched hump stays one blob.
+
+## 2026.11.12.4 - The Halo, zoom where you point, and a new round in the Extraction Room
+
+Restart the server and reload both pages.
+
+- **The Halo (Root Canal, an Ambiguous run's Apply stage).** The user:
+  "capture outside both ... some of them clearly fall on the P-spike side,
+  and some clearly on the DS side". It is an option of the Apply stage,
+  not of the builder.
+  - Each border is grown about its own centre into a dotted halo. An event
+    outside both borders goes to a side when it sits inside that side's
+    halo and is clearly nearer that border. Nearness is measured in each
+    border's own size (the border's gauge: 1 on the border, 2 twice as far
+    from its centre).
+  - An event inside a halo but near both is in the extended ambiguous zone.
+    One beyond both halos is far out. An event inside a border, or inside
+    both, is left as it was.
+  - Reach and Margin are sliders, set Balanced to start (2× and 1.5×). The
+    counts change while a slider moves; the pictures follow when it is let
+    go.
+  - "Save with this halo" makes the workflow's next version. Its note and
+    its metadata say what was applied.
+  - "Bank the DS side…" banks the events inside the DS border alone plus
+    the ones its halo captured, as one entry.
+  - Applied to "Ambiguous Dataset (Optimized Parameters/Snap)" v2: v3
+    captures 357 events for DS and 17 for P-spike, with 112 extended and 26
+    far out. Its DS side was banked as 4,824 events.
+- **2D and 3D pictures.**
+  - The 2D frame now holds every border, and nothing is drawn over the
+    axes.
+  - The 3D wheel zooms toward the point under the pointer, up to 20×.
+    Shift+drag or right-drag moves the picture, and a double-click puts it
+    back.
+- **The Extraction Room's new round: no X-ray.** A set whose folder has no
+  X-ray results is taken in "fitted here". Each recording is read at its
+  kept events and fitted in a band that covers the two bottom sinks of its
+  average CSD.
+  - The band is drawn on each card's average CSD. Drag for a new one, drag
+    an edge to move it, click to centre it, double-click for the automatic
+    one.
+  - The cards stay amber until called.
+  - The default split is the **Bite line** (backend/sinkcut.py). It keeps
+    each event's two largest sink bumps and scores the overlap between
+    events. A normalised cut then puts the line where DS1–DS2 overlap is
+    smallest against within-class overlap.
+  - **Take the impression** locks the whole set in as one artifact (kind
+    `extraction_impression`).
+  - Sets can be archived. The Verified DS 5% and 10% sets are archived.
+    "CTL Baseline (Optimized Paramters/Snap/10% Grace))" is in as v3 of the
+    room.
+- **Compare splits** (a button on each card): the Bite line, PCA with no
+  gap, PCA + gap and delta, in four full panels.
+  - Each panel has its own line to move, its sink raster, its DS1/DS2 CSDs
+    and profile, its counts, and its overlap score. The score is on one
+    yardstick for all four (SI = 1 − between ÷ the mean within).
+  - "Use this" keeps a panel's split.
+  - The sink rasters mark where each event's top and bottom sink is
+    strongest: a pink dot per sink on every event, the median of each
+    ticked on the contact axis, and under it the medians in words, overall
+    and for DS1 and DS2 at the line as it stands (sinkcut's bumps.peaks).
+- **Compare across sets**: a recording in two sets side by side, on one
+  scale, with the differences said under them.
+- **Blob Analysis** (a new sub-tab, cast from an Impression;
+  backend/blobs.py).
+  - Each event's two sink bumps are its top and bottom blobs.
+  - Each blob is measured for its peak and when it comes, how long it lasts
+    (time below half its peak), its rise and decay, its sharpness (fast and
+    strong against slow and diffuse), its total sink and its depth spread.
+  - Measures are summarised per recording and compared CTL against PTEN,
+    separable against not, or picked against the rest.
+  - The figures are chosen to show what averages hide: histograms and ECDFs
+    with every recording weighted the same, a shift function, and recording
+    medians.
+  - The tests are said in words with q across every measure. A p-only
+    result is a lead, never a finding.
+  - The filter stays 5–100 Hz, with a note that the timing might be worth
+    redoing with other filters.
+
+## 2026.11.12.3 - Root Canal workflows: a pool picker, Ambiguous's own target, the Scoop retired
+
+Three asks from the user, built together. Reload the page for the picker
+and the Ambiguous target. Restart for the server to refuse a new Scoop.
+
+- **No drop-downs in the workflow builder.** The user: "I dont like that I
+  have to click from a drop down. Have it say select Pool and then shows
+  all pools and then click on that to see the versions." Each input is now
+  one button. It says the pool, or the workflow, and its version, or
+  "Select pool" before one is chosen. Pressing it opens a picker shaped
+  like Add a set's dialog:
+  - On the left is every pool from the Pooled tab, grouped in the Pooled
+    tab's folders. There is a box to find one by name or folder.
+    Archived pools are in a drawer underneath.
+  - On the right is the whole version tree of the pool picked. Its notes
+    and its recordings and mice are on each row.
+  - "Use this version" takes the version lit in the tree.
+  The DS and P-spike workflows that Ambiguous and Pooled PCA borrow are
+  picked the same way, from the Workflow tab's folders. A version that
+  holds no run cannot be picked.
+- **An Ambiguous workflow chooses where it is applied.** The user: "We get
+  to choose p-spike border, ds border... but not where to apply it to."
+  "Applied to" starts as the DS workflow's own target, and says so, until
+  another pool is picked. The server already took a target. The Meta
+  Workflow already reads it.
+- **The Scoop is retired.** The user: "retire and archive all the scoop
+  stuff... like the data and the option in the workflow."
+  - Shape offers Box and Snap only.
+  - The server refuses a new Scoop definition or preview. A saved one
+    still runs, so an archived run can be rebuilt exactly.
+  - The six Scoop workflows and their four borders are archived, not
+    deleted. Show archived brings them back. They banked nothing.
+- "Show archived pools" in the builder is now only for Pooled PCA's list.
+  Each picker keeps its archived pools in its own drawer.
+
+## 2026.11.12.2 - Root Canal's workflow builder: choose each input's version
+
+The user: "No version select here. Use the same git like branching select
+thing." Needs a restart, because the server now sends each input's versions.
+
+- **Every input in the builder has its version button.** This is the same
+  button every other version choice in Jarvis uses. It shows the version
+  chosen and its count. Pressed, it opens the whole tree: who made each
+  version, when, its note, and how many recordings and mice it holds. It
+  sits beside:
+  - "Border around DS, from" and "Applied to";
+  - each pool in Pooled PCA;
+  - the DS and P-spike workflows that Ambiguous and Pooled PCA borrow.
+    For these, a version that holds no run is shown, but it cannot be
+    picked, and the tree says why.
+- **The workflow is pinned to the version picked.** A new workflow starts
+  on each pool's newest version, and on each borrowed workflow's last run.
+  An edit keeps what it was pinned to, and that version is marked in the
+  tree. Picking an older version says "v2 is newer" beside the button.
+  Choosing a different pool starts from that pool's newest.
+- The pool drop-downs no longer carry "· v1 · 5,203 events". The version
+  and its count are on the button now.
+- The Folder box is wide enough to show its whole hint.
+
+## 2026.11.12.1 - Pressing Run on a meta workflow no longer files an error
+
+From the daily error pass (TRIAGE.md, pass 17). Needs a restart. A page
+reload is not enough, because the change is in the server.
+
+- **Root Canal's Meta Workflow writes its progress file one writer at a
+  time.** When you press Run, the request and the run's own thread both
+  write `GUI_logs/.cache/rcmeta/runs.json` at the same moment. Both wrote
+  through the same scratch file, `runs.json.part`. On Windows one of them
+  then failed with "[WinError 32] The process cannot access the file
+  because it is being used by another process", which was filed as an
+  error (Bluebarry, 11-11 15:29:16). The run itself went on. Only that one
+  write of its progress was lost, and the next one put it right. Now the
+  writes take turns, and each is a
+  copy of the runs taken whole. They go through the store's own atomic
+  write, which uses a private scratch name and retries a rename that
+  something is briefly holding up. The change is `_meta_persist` in
+  `backend/app.py`. The new check, `tools/check_rcmeta_persist.py`, passes
+  7 of 7. With `--head` it runs HEAD's own `_meta_persist` and fails 2 of
+  7, with the same message.
+
+## 2026.11.11.6 - The Extraction Room: split DS1 and DS2 by hand
+
+Needs a restart and a reload.
+
+- **Under each recording's depth profile, "How DS1 and DS2 are split"**
+  (closed until opened). It holds X-ray's three ways to split, worked out
+  ahead, to flip through: PCA with no gap, PCA + gap, and delta only (X-ray's
+  own is marked). A plot shows each event where that method puts it (the
+  sink gap along a line, or PC1 against PC2), coloured DS1 or DS2, with the
+  line that splits them.
+- **Drag across the plot to cut it by hand.** The dots recolour at once. The
+  card's CSDs, depth profile, sinks and deltas redraw from the server's
+  numbers a moment later. The cut you let go of is saved for everybody, per
+  set, and the stats count it. "Back to k-means" and "Back to X-ray's split"
+  undo it.
+- **Split every recording by** X-ray's own, PCA no gap, PCA + gap or delta
+  only, in one press, above the cards.
+- The first time a recording's panel opens, its read is fitted once more (a
+  few seconds); after that every method and cut takes a fraction of a
+  second. X-ray's own split, worked out this way, gives exactly the numbers
+  the room was extracted with (checked on three recordings: counts, CSDs,
+  profiles, sinks, deltas and sources).
+
+## 2026.11.11.5 - Root Canal workflows: three border shapes, in folders
+
+Needs a restart and a reload.
+
+- **A border can now be a Box, a Scoop or a Snap.** Pick one in the
+  builder for a Verified DS or Verified P-spike workflow.
+  - **Box:** today's border, the range on each axis.
+  - **Scoop:** an ellipsoid fitted robustly (minimum covariance
+    determinant), so a few odd events don't stretch it. Its grace leaves out
+    the events furthest from its centre.
+  - **Snap:** the convex hull, the tightest border with no dents. Its
+    grace peels the outermost corners off one at a time.
+
+  Every shape leaves exactly the grace's share of its own events outside.
+  The scoop and the snap don't depend on how the three axes are scaled.
+  The 3D view draws the scoop's ellipses and every edge of the snap; each
+  2D view draws the scoop's shadow ellipse or the outline of the snap's
+  corners. The grace sweep and the rule in words follow the shape.
+- **Workflows in folders.** The Workflow tab lists folders inside folders,
+  then the unfiled workflows. Each folder opens and closes, remembered per
+  viewer. A workflow is saved with a folder (Folder in the builder), and
+  "Move…" files it elsewhere for everybody.
+- **The 18 shape workflows**, filed Shape › Grace (Box, Scoop, Snap › 5%,
+  10%), each a Verified DS (CTL Baseline v2), a Verified P-spike (the 5
+  hand-sorted sets) and an Ambiguous, on PTEN Baseline v2, run without
+  banking. Purple (inside both) of 3,017:
+
+  | | 5% | 10% |
+  |---|---|---|
+  | Box | 1,334 | 1,225 |
+  | Scoop | 2,198 | 1,935 |
+  | Snap | 671 | 538 |
+
+  Box 5% is the Ambiguous Dataset exactly.
+
 ## 2026.11.11.4 - Root Canal: the Meta Workflow
 
 Needs a restart and a reload.

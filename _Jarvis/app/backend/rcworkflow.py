@@ -166,6 +166,89 @@ def classes_two(events, b_ds, g_ds, b_p, g_p):
     return out
 
 
+# --------------------------------------------------------------------------
+# THE HALO (2026-11-12: "add an option to capture outside both ... some of
+# them clearly fall on the P-spike side, and some clearly on the DS side.
+# Capture ones clearly on one side ... and have ones that once again fall on
+# the extended ambiguous zone"). An option of an Ambiguous run's Apply
+# stage, not of its definition. Each border's gauge says how far out an
+# event is in that border's own size (rcborder.gauge: 1 on the border, 2
+# twice as far from its centre as it reaches). Of the events OUTSIDE BOTH:
+#   captured by a side  within its halo (gauge <= reach) AND `margin` times
+#                       nearer it than the other border (in their own sizes);
+#   extended ambiguous  within a halo, but near both;
+#   far out             beyond both halos: still outside both.
+# Inside one border, or inside both, is left exactly as it was. Balanced is
+# the default the user picked: reach 2, margin 1.5.
+# --------------------------------------------------------------------------
+HALO_DEFAULT = {"reach": 2.0, "margin": 1.5}
+HALO_CLASSES = ("halo_ds", "halo_pspike", "halo_amb")
+CLASS_WORDS.update({
+    "halo_ds": "outside both, captured by the DS halo",
+    "halo_pspike": "outside both, captured by the P-spike halo",
+    "halo_amb": "outside both, in the extended ambiguous zone",
+})
+
+
+def halo_params(h):
+    """{reach, margin}, checked: reach above 1, margin at least 1."""
+    h = h or {}
+    try:
+        reach = float(h.get("reach", HALO_DEFAULT["reach"]))
+        margin = float(h.get("margin", HALO_DEFAULT["margin"]))
+    except (TypeError, ValueError):
+        raise WorkflowError("The halo's reach and margin are numbers.")
+    if not (1.0 < reach <= 10.0):
+        raise WorkflowError("The halo's reach is more than 1 (the border "
+                            "itself) and at most 10.")
+    if not (1.0 <= margin <= 10.0):
+        raise WorkflowError("The halo's margin is at least 1 and at most 10.")
+    return {"reach": round(reach, 3), "margin": round(margin, 3)}
+
+
+def halo_gauges(cols, b_ds, g_ds, b_p, g_p):
+    """Each event's gauge against both borders, from a run's columns, and
+    the two centres the halos grow about."""
+    X = np.array([[np.nan if v is None else v for v in cols.get(k) or []]
+                  for k in ("amp", "hf", "hw")], dtype=float).T
+    if X.size == 0:
+        X = X.reshape(0, 3)
+    ga, ca = rcborder.gauge(X, b_ds, g_ds)
+    gb, cb = rcborder.gauge(X, b_p, g_p)
+    r = lambda a: [None if not np.isfinite(v) else round(float(v), 4)
+                   for v in a]
+    return r(ga), r(gb), {"ds": [_f(v) for v in ca],
+                          "pspike": [_f(v) for v in cb]}
+
+
+def halo_class(c, ga, gb, reach, margin):
+    if c != "neither" or ga is None or gb is None:
+        return c
+    if ga <= reach and gb >= margin * ga:
+        return "halo_ds"
+    if gb <= reach and ga >= margin * gb:
+        return "halo_pspike"
+    if min(ga, gb) <= reach:
+        return "halo_amb"
+    return "neither"
+
+
+def halo_classes(cls, ga, gb, h):
+    h = halo_params(h)
+    return [halo_class(c, a, b, h["reach"], h["margin"])
+            for c, a, b in zip(cls, ga, gb)]
+
+
+def halo_words(h):
+    h = halo_params(h)
+    return ("Halo: of the events outside both borders, one within %g× a "
+            "border's size and %g× nearer it than the other border (each in "
+            "its own size) is captured by that side; one within %g× of "
+            "either but near both is in the extended ambiguous zone; one "
+            "beyond both halos stays outside both."
+            % (h["reach"], h["margin"], h["reach"]))
+
+
 def distances(events, border, grace):
     """How far each event is from the box on each axis, in box widths:
     below 0 inside (how deep), above 0 outside (how far out). For the scoop
@@ -293,7 +376,9 @@ def diff(prev, cur):
 def summary(kind, cls):
     c = counts(cls)
     if kind == "ambiguous":
-        keep = c.get("both", 0) + c.get("neither", 0)
+        # Still ambiguous after a halo: inside both, the extended zone and
+        # what is beyond both halos.
+        keep = c.get("both", 0) + c.get("neither", 0) + c.get("halo_amb", 0)
     elif kind == "pca":
         keep = c.get("ds", 0) + c.get("ied", 0)
     else:

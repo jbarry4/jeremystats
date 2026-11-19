@@ -19,7 +19,7 @@
     "schema": "2026-09-03T00:08:55.429107+00:00",
     "session": "2026-09-03T00:08:55.429107+00:00",
     "start": "2026-09-03T00:08:55.429107+00:00",
-    "updated": "2026-11-09T15:31:48.347597+00:00",
+    "updated": "2026-11-12T18:24:54.102690+00:00",
     "view_state": "2026-11-09T15:31:48.347597+00:00"
   },
   "_keys": {
@@ -31,6 +31,10 @@
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31": [
         "set",
         "2026-09-03T00:08:55.429107+00:00"
+      ],
+      "vacc:s655a06b22296": [
+        "set",
+        "2026-11-12T18:24:54.102690+00:00"
       ]
     },
     "seen": {
@@ -49,7 +53,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-09T15:31:48.347597+00:00",
+    "at": "2026-11-12T18:24:54.102690+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -75,7 +79,8 @@
   "n_channels": 64,
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31"
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+    "vacc:s655a06b22296"
   ],
   "project": "KCNT1",
   "project_source": "guessed",
@@ -116,14 +121,14 @@
   "session": 2,
   "start": "2026-06-24T14:38:31",
   "updated": {
-    "app_version": "2026.11.06.4",
-    "at": "2026-11-09T10:31:48-05:00",
-    "commit": "24e7b82f",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.11.11.4",
+    "at": "2026-11-12T13:24:54-05:00",
+    "commit": "f9792b6e",
+    "email": "eanwer@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Eshal Anwer"
   },
   "view_state": {
     "channels": [

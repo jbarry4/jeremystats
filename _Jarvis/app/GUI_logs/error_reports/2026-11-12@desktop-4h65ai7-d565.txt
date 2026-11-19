@@ -1,0 +1,201 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-12
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.11.12.4 de71a7fc
+written     2026-11-12T18:05:10-05:00
+faults      17 error(s), 3 distinct
+left out    8 test fault(s) (harness pages, the test client)
+activity    300 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x5    12:42:11-15:55:46  extraction/split-preview: That cut leaves every event on one side.
+  2. x10   14:56:50-14:56:56  extraction/split: its X-ray bundle is not on this machine
+  3. x2    12:01:36-12:01:47  rootcanal/workflow-save: There is no saved pool None to use as the target.
+
+==========================================================================
+1/3  extraction/split-preview  x5
+==========================================================================
+first       2026-11-12T12:42:11-05:00
+latest      2026-11-12T15:55:46-05:00
+who         Shahriar Tafti
+signature   extraction/split-preview||That cut leaves every event on one side.
+
+message
+    That cut leaves every event on one side.
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 11375, in api_extraction_split_preview
+        cls, counts, types = _er_split_classes(rec, body.get("method"),
+                             ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+                                               None if cut is None else float(cut),
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                               with_types=True)
+                                               ^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 11274, in _er_split_classes
+        types = extractionmod.split_types(A, method, cut, rule, flip, layers)
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\extraction.py", line 280, in split_types
+        raise ValueError("That cut leaves every event on one side.")
+    ValueError: That cut leaves every event on one side.
+
+--- around 2026-11-12T12:42:11-05:00 ---
+    12:37:40   -270.5s  extraction.open  [toolkit]
+    12:37:55   -256.0s  extraction.split  {"cut":0.26938620140380864,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:37:57   -254.0s  extraction.split  {"cut":0.1932637819458008,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:37:59   -252.0s  extraction.split  {"cut":0.5340018736206056,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:01   -250.0s  extraction.split  {"cut":0.10264203751220703,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:04   -247.0s  extraction.split  {"cut":null,"folder":"xm-f7e3cb9cee38-v2","method":null,"n":1,"room":"dentate_spike"}
+    12:38:08   -243.0s  extraction.split  {"cut":0.5000970645263672,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:13   -238.0s  extraction.split  {"cut":0.23245732584228515,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:16   -235.0s  extraction.split  {"cut":0.28598527357910153,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:18   -233.0s  extraction.split  {"cut":0.32011903357910154,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:20   -231.0s  extraction.split  {"cut":0.35425279357910155,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:22   -229.0s  extraction.split  {"cut":0.4318295445263671,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:24   -227.0s  extraction.split  {"cut":0.34261632,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:38:34   -217.0s  extraction.split  {"cut":null,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:38:36   -215.0s  extraction.split  {"cut":0.7221050713159176,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:38:41   -210.0s  extraction.split  {"cut":-0.8341030864038086,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:38:42   -209.0s  extraction.split  {"cut":-0.5536550422802735,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:41:50    -21.0s  extraction.split  {"cut":-0.7461192324560547,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:41:51    -20.0s  extraction.split  {"cut":-0.8066078724560547,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:41:52    -19.0s  extraction.split  {"cut":0.4801505113159177,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:41:56    -15.0s  extraction.split  {"cut":0.9255666086840819,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:41:58    -13.0s  extraction.split  {"cut":1.0135500011401366,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:42:01    -10.0s  extraction.split  {"cut":1.1125316637719724,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:42:03     -8.0s  extraction.split  {"cut":1.0465438886840819,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:42:09     -2.0s  extraction.split  {"cut":-0.8066078724560547,"folder":"xm-f7e3cb9cee38-v2","method":"pca","n":1,"room":"dentate_spike"}
+    12:42:11     +0.0s  >>> extraction/split-preview: That cut leaves every event on one side.
+    12:43:01    +50.0s  extraction.split  {"cut":0.5255437819458009,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:03    +52.0s  extraction.split  {"cut":0.1582232902709961,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:10    +59.0s  extraction.split  {"cut":0.6263240234570312,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:13    +62.0s  extraction.split  {"cut":0.6555255296289062,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:16    +65.0s  extraction.split  {"cut":0.4229194496289062,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:23    +72.0s  extraction.split  {"cut":0.7024501298632811,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:24    +73.0s  extraction.split  {"cut":0.667019347897461,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:36    +85.0s  extraction.split  {"cut":0.5000367500854492,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:38    +87.0s  extraction.split  {"cut":0.5551707097436525,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:41    +90.0s  extraction.split  {"cut":0.46053778051269534,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:44    +93.0s  extraction.split  {"cut":0.3838014380676269,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:46    +95.0s  extraction.split  {"cut":0.15661755244995118,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:43:57   +106.0s  extraction.split  {"cut":0.5558749428613282,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    12:44:00   +109.0s  extraction.split  {"cut":0.3313324661230469,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+
+--- around 2026-11-12T13:16:28-05:00 ---
+    13:11:31   -297.0s  rootcanal.workflow.save  {"artifact":"bac8eaf5dfa8","kind":"ds"}
+    13:11:54   -274.0s  rootcanal.workflow.run  {"artifact":"bac8eaf5dfa8","bank":null,"kept":4201,"version":2}
+    13:11:54   -273.7s  rootcanal.workflow_run  [toolkit]  {"artifact":"bac8eaf5dfa8","banked":false,"version":2}
+    13:13:56   -152.0s  rootcanal.workflow.run  {"artifact":"bac8eaf5dfa8","bank":"ad9b1441cdaa","kept":4201,"version":3}
+    13:13:56   -151.6s  rootcanal.workflow_run  [toolkit]  {"artifact":"bac8eaf5dfa8","banked":true,"version":3}
+    13:16:21     -7.0s  extraction.split  {"cut":null,"folder":"xm-f7e3cb9cee38-v2","method":null,"n":1,"room":"dentate_spike"}
+    13:16:23     -5.0s  extraction.split  {"cut":0.43415685226318357,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    13:16:28     +0.0s  >>> extraction/split-preview: That cut leaves every event on one side.
+    13:16:31     +3.0s  extraction.split  {"cut":0.5484549158565372,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    13:18:15   +107.0s  extraction.split  {"cut":0.45578546752929694,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+    13:18:26   +118.0s  extraction.split  {"cut":0.49637819030761726,"folder":"xm-f7e3cb9cee38-v2","method":"delta","n":1,"room":"dentate_spike"}
+
+--- around 2026-11-12T15:55:46-05:00 ---
+    15:51:20   -265.4s  session.open  [toolkit]  rec=m008_s002_2022-07-27_12-15-50  {"channels":128,"duration_s":552.4138666666666,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM8_YH\\kcnt1m8_s2jul27\\2022-07-27_12-15-50","restored":["view restored"]}
+    15:51:21   -264.7s  events.import  [toolkit]  rec=m008_s002_2022-07-27_12-15-50  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:51:40   -246.0s  client.error  [toolkit]  {"detail":"{\"view\":\"toolkit\",\"kind\":\"request\",\"route\":\"/api/rootcanal/workflows\",\"method\":\"GET\",\"ms\":50686,\"lines\":[{\"at\":1794516679.62062,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading the recording list — done in 39.6 s\",\"key\":\"req:ce7b-11\",\"progress\":null,\"done\":true,\"ms\":39604},{\"at\":1794516680.5722082,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Opening the recording — done in 38.6 s\",\"key\":\"req:ce7b-17\",\"progress\":null,\"done\":true,\"ms\":38595},{\"at\":1794516680.6925426,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Taking stock of what is saved on this computer — checking the saved files can never conflict\",\"key\":\"req:ce7b-14\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516681.303957,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Taking stock of what is saved on this computer — done in 41.1 s\",\"key\":\"req:ce7b-14\",\"progress\":null,\"done\":true,\"ms\":41149},{\"at\":1794516682.7452874,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 2.2 s\",\"key\":\"req:ce7b-24\",\"progress\":null,\"done\":true,\"ms\":2165},{\"at\":1794516682.756867,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Drawing the whole-recording overview strip — done in 1.4 s\",\"key\":\"req:499440e53f40\",\"progress\":null,\"done\":true,\"ms\":1431},{\"at\":1794516685.065041,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading a stretch of the recording — done in 2.3 s\",\"key\":\"req:ce7b-27\",\"progress\":null,\"done\":true,\"ms\":2309},{\"at\":1794516686.1404798,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Summarising recording health\",\"key\":\"req:ce7b-29\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516687.7327523,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 6.9 s\",\"key\":\"req:ce7b-25\",\"progress\":null,\"done\":true,\"ms\":6880},{\"at\":1794516690.0151532,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 13.8 s\",\"key\":\"req:ce7b-22\",\"progress\":null,\"done\":true,\"ms\":13770},{\"at\":1794516691.524034,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading a stretch of the recording — 0 s to 10 s of 128 channels\",\"key\":\"req:ce7b-33\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516692.0429993,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading a stretch of the recording — done in 9.3 s\",\"key\":\"req:ce7b-28\",\"progress\":null,\"done\":true,\"ms\":9285},{\"at\":1794516692.0472834,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading a stretch of the recording — done in 4.0 s\",\"key\":\"req:ce7b-31\",\"progress\":null,\"done\":true,\"ms\":3973},{\"at\":1794516692.9570084,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading a stretch of the recording — done in 2.6 s\",\"key\":\"req:ce7b-33\",\"progress\":null,\"done\":true,\"ms\":2639},{\"at\":1794516697.4913633,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 57.7 s\",\"key\":\"req:ce7b-5\",\"progress\":null,\"done\":true,\"ms\":57674},{\"at\":1794516698.6154764,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working on syncstate — curation sets\",\"key\":\"req:ce7b-34\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516699.4944534,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working on syncstate — saved results\",\"key\":\"req:ce7b-34\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516699.4944835,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading what the tools have done\",\"key\":\"req:3c0d0c58ccd3\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794516699.6331367,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading what the tools have done — done in 1.2 s\",\"key\":\"req:3c0d0c58ccd3\",\"progress\":null,\"done\":true,\"ms\":1173},{\"at\":1794516699.745,\"lane\":\"jarvis\",\"kind\":\"info\",\"level\":\"warn\",\"text\":\"The ToolKit view has been waiting 51 s for the server; the server says: Working in Root Canal.\",\"key\":\"page#1\",\"progress\":null,\"done\":true,\"ms\":null}]}","message":"The ToolKit view has been waiting 51 s for the server; the server says: Working in Root Canal.","where":"stuck"}
+    15:53:24   -141.3s  extraction.open  [toolkit]
+    15:55:04    -42.0s  extraction.band  {"band":{"at":"2026-11-12T20:55:02+00:00","auto":false,"by":"Shahriar Tafti","sel_hi":41,"sel_lo":19,"t_hi_ms":0.0,"t_lo_ms":0.0},"folder":"xm-500fa6c3c5","gid":"s79ba9ba163c4","room":"dentate_spike"}
+    15:55:09    -37.0s  extraction.band  {"band":{"at":"2026-11-12T20:55:08+00:00","auto":false,"by":"Shahriar Tafti","sel_hi":50,"sel_lo":19,"t_hi_ms":0.0,"t_lo_ms":0.0},"folder":"xm-500fa6c3c5","gid":"s79ba9ba163c4","room":"dentate_spike"}
+    15:55:24    -22.0s  extraction.band  {"band":{"at":"2026-11-12T20:55:19+00:00","auto":false,"by":"Shahriar Tafti","sel_hi":52,"sel_lo":26,"t_hi_ms":0.0,"t_lo_ms":0.0},"folder":"xm-500fa6c3c5","gid":"s016e132432c8","room":"dentate_spike"}
+    15:55:32    -14.0s  extraction.band  {"band":{"at":"2026-11-12T20:55:28+00:00","auto":false,"by":"Shahriar Tafti","sel_hi":52,"sel_lo":35,"t_hi_ms":0.0,"t_lo_ms":0.0},"folder":"xm-500fa6c3c5","gid":"s016e132432c8","room":"dentate_spike"}
+    15:55:46     +0.0s  >>> extraction/split-preview: That cut leaves every event on one side.
+    15:55:48     +2.0s  extraction.split  {"cut":34.213709765625,"folder":"xm-500fa6c3c5","method":"bite","n":1,"room":"dentate_spike"}
+    15:55:51     +5.0s  extraction.split  {"cut":null,"folder":"xm-500fa6c3c5","method":null,"n":1,"room":"dentate_spike"}
+
+==========================================================================
+2/3  extraction/split  x10
+==========================================================================
+first       2026-11-12T14:56:50-05:00
+latest      2026-11-12T14:56:56-05:00
+who         Shahriar Tafti
+signature   extraction/split||its X-ray bundle is not on this machine
+
+message
+    its X-ray bundle is not on this machine
+
+context
+    artifact_id        980b57eab496
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 11123, in api_extraction_split_view
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 11044, in _er_split_arrays
+        "gid": gid, "flip": bool(val)}}])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ValueError: its X-ray bundle is not on this machine
+
+--- around 2026-11-12T14:56:50-05:00 ---
+    14:54:14   -156.0s  dspca.many.read  {"folder":"xm-f6c45faefb","force":false,"n":8}
+    14:56:40    -10.0s  extraction.extract  {"artifact":"980b57eab496","direct":true,"folder":"xm-500fa6c3c5","left":0,"n":18,"room":"dentate_spike","version":3}
+    14:56:50     +0.0s  >>> extraction/split: its X-ray bundle is not on this machine
+
+--- around 2026-11-12T14:56:54-05:00 ---
+    14:54:14   -160.0s  dspca.many.read  {"folder":"xm-f6c45faefb","force":false,"n":8}
+    14:56:40    -14.0s  extraction.extract  {"artifact":"980b57eab496","direct":true,"folder":"xm-500fa6c3c5","left":0,"n":18,"room":"dentate_spike","version":3}
+    14:56:54     +0.0s  >>> extraction/split: its X-ray bundle is not on this machine
+
+--- around 2026-11-12T14:56:56-05:00 ---
+    14:54:14   -162.0s  dspca.many.read  {"folder":"xm-f6c45faefb","force":false,"n":8}
+    14:56:40    -16.0s  extraction.extract  {"artifact":"980b57eab496","direct":true,"folder":"xm-500fa6c3c5","left":0,"n":18,"room":"dentate_spike","version":3}
+    14:56:56     +0.0s  >>> extraction/split: its X-ray bundle is not on this machine
+
+==========================================================================
+3/3  rootcanal/workflow-save  x2
+==========================================================================
+first       2026-11-12T12:01:36-05:00
+latest      2026-11-12T12:01:47-05:00
+who         Shahriar Tafti
+signature   rootcanal/workflow-save||There is no saved pool None to use as the target.
+
+message
+    There is no saved pool None to use as the target.
+
+context
+    kind               pspike
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 17124, in api_rootcanal_workflow_save
+        defn = _wf_definition(body)
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 16513, in _wf_definition
+        trec, tv, _tp = _wf_pool(body.get("target"), "target")
+                        ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\app.py", line 16329, in _wf_pool
+        raise rcworkflow.WorkflowError(
+            "There is no saved pool %s to use as the %s." % (aid, what))
+    backend.rcworkflow.WorkflowError: There is no saved pool None to use as the target.
+
+--- around 2026-11-12T12:01:36-05:00 ---
+    11:57:36   -240.0s  rootcanal.workflow.save  {"artifact":"178daabb125c","kind":"ds"}
+    11:57:54   -222.0s  rootcanal.workflow.run  {"artifact":"178daabb125c","bank":null,"kept":2074,"version":2}
+    11:57:54   -221.5s  rootcanal.workflow_run  [toolkit]  {"artifact":"178daabb125c","banked":false,"version":2}
+    11:58:08   -208.0s  rootcanal.workflow.run  {"artifact":"178daabb125c","bank":null,"kept":2074,"version":3}
+    11:58:08   -207.2s  rootcanal.workflow_run  [toolkit]  {"artifact":"178daabb125c","banked":false,"version":3}
+    12:01:36     +0.0s  >>> rootcanal/workflow-save: There is no saved pool None to use as the target.
+    12:02:05    +29.0s  rootcanal.workflow.save  {"artifact":"4e5ce690d4b1","kind":"pspike"}
+    12:02:48    +72.0s  client.error  [toolkit]  {"detail":"{\"view\":\"toolkit\",\"kind\":\"longtask\",\"ms\":5376,\"route\":null,\"lines\":[{\"at\":1794502690.259126,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading what the tools have done\",\"key\":\"req:79aba111943e\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502690.83978,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading what the tools have done — done in 1.7 s\",\"key\":\"req:79aba111943e\",\"progress\":null,\"done\":true,\"ms\":1740},{\"at\":1794502693.101709,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database — saved results\",\"key\":\"req:9ab7-123\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502693.7065036,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 1.6 s\",\"key\":\"req:9ab7-123\",\"progress\":null,\"done\":true,\"ms\":1612},{\"at\":1794502699.0169683,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 10.2 s\",\"key\":\"req:9ab7-122\",\"progress\":null,\"done\":true,\"ms\":10162},{\"at\":1794502699.909894,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database — saved results\",\"key\":\"req:9ab7-126\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502699.944512,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 1.2 s\",\"key\":\"req:9ab7-126\",\"progress\":null,\"done\":true,\"ms\":1199},{\"at\":1794502701.0666678,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 7 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502713.6087704,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 6 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502780.1346042,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading what the tools have done\",\"key\":\"req:ca66ef96a175\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502780.8782318,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading what the tools have done — done in 1.8 s\",\"key\":\"req:ca66ef96a175\",\"progress\":null,\"done\":true,\"ms\":1841},{\"at\":1794502923.9249473,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 3 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502926.405978,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-176\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502932.8604577,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 7.6 s\",\"key\":\"req:9ab7-176\",\"progress\":null,\"done\":true,\"ms\":7600},{\"at\":1794502933.9633427,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-177\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502934.249713,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 1.3 s\",\"key\":\"req:9ab7-177\",\"progress\":null,\"done\":true,\"ms\":1316},{\"at\":1794502945.431539,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 3 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502961.737579,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-185\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502962.8989587,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 2.4 s\",\"key\":\"req:9ab7-185\",\"progress\":null,\"done\":true,\"ms\":2382},{\"at\":1794502968.835,\"lane\":\"jarvis\",\"kind\":\"info\",\"level\":\"warn\",\"text\":\"The page froze for 5.4 s in the ToolKit view.\",\"key\":\"page#1\",\"progress\":null,\"done\":true,\"ms\":null}]}","message":"The page froze for 5.4 s in the ToolKit view.","where":"stuck"}
+    12:02:49    +73.0s  rootcanal.workflow.run  {"artifact":"4e5ce690d4b1","bank":null,"kept":214,"version":2}
+    12:02:49    +73.6s  rootcanal.workflow_run  [toolkit]  {"artifact":"4e5ce690d4b1","banked":false,"version":2}
+
+--- around 2026-11-12T12:01:47-05:00 ---
+    11:57:36   -251.0s  rootcanal.workflow.save  {"artifact":"178daabb125c","kind":"ds"}
+    11:57:54   -233.0s  rootcanal.workflow.run  {"artifact":"178daabb125c","bank":null,"kept":2074,"version":2}
+    11:57:54   -232.5s  rootcanal.workflow_run  [toolkit]  {"artifact":"178daabb125c","banked":false,"version":2}
+    11:58:08   -219.0s  rootcanal.workflow.run  {"artifact":"178daabb125c","bank":null,"kept":2074,"version":3}
+    11:58:08   -218.2s  rootcanal.workflow_run  [toolkit]  {"artifact":"178daabb125c","banked":false,"version":3}
+    12:01:47     +0.0s  >>> rootcanal/workflow-save: There is no saved pool None to use as the target.
+    12:02:05    +18.0s  rootcanal.workflow.save  {"artifact":"4e5ce690d4b1","kind":"pspike"}
+    12:02:48    +61.0s  client.error  [toolkit]  {"detail":"{\"view\":\"toolkit\",\"kind\":\"longtask\",\"ms\":5376,\"route\":null,\"lines\":[{\"at\":1794502690.259126,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading what the tools have done\",\"key\":\"req:79aba111943e\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502690.83978,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading what the tools have done — done in 1.7 s\",\"key\":\"req:79aba111943e\",\"progress\":null,\"done\":true,\"ms\":1740},{\"at\":1794502693.101709,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database — saved results\",\"key\":\"req:9ab7-123\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502693.7065036,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 1.6 s\",\"key\":\"req:9ab7-123\",\"progress\":null,\"done\":true,\"ms\":1612},{\"at\":1794502699.0169683,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 10.2 s\",\"key\":\"req:9ab7-122\",\"progress\":null,\"done\":true,\"ms\":10162},{\"at\":1794502699.909894,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Checking which records have reached the shared database — saved results\",\"key\":\"req:9ab7-126\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502699.944512,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Checking which records have reached the shared database — done in 1.2 s\",\"key\":\"req:9ab7-126\",\"progress\":null,\"done\":true,\"ms\":1199},{\"at\":1794502701.0666678,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 7 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502713.6087704,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 6 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502780.1346042,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Reading what the tools have done\",\"key\":\"req:ca66ef96a175\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502780.8782318,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Reading what the tools have done — done in 1.8 s\",\"key\":\"req:ca66ef96a175\",\"progress\":null,\"done\":true,\"ms\":1841},{\"at\":1794502923.9249473,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 3 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502926.405978,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-176\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502932.8604577,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 7.6 s\",\"key\":\"req:9ab7-176\",\"progress\":null,\"done\":true,\"ms\":7600},{\"at\":1794502933.9633427,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-177\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502934.249713,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 1.3 s\",\"key\":\"req:9ab7-177\",\"progress\":null,\"done\":true,\"ms\":1316},{\"at\":1794502945.431539,\"lane\":\"jarvis\",\"kind\":\"sync\",\"level\":\"ok\",\"text\":\"Synced: sent 3 changes, received 0\",\"key\":\"sync\",\"progress\":null,\"done\":true,\"ms\":null},{\"at\":1794502961.737579,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"info\",\"text\":\"Working in Root Canal\",\"key\":\"req:9ab7-185\",\"progress\":null,\"done\":false,\"ms\":null},{\"at\":1794502962.8989587,\"lane\":\"jarvis\",\"kind\":\"request\",\"level\":\"ok\",\"text\":\"Working in Root Canal — done in 2.4 s\",\"key\":\"req:9ab7-185\",\"progress\":null,\"done\":true,\"ms\":2382},{\"at\":1794502968.835,\"lane\":\"jarvis\",\"kind\":\"info\",\"level\":\"warn\",\"text\":\"The page froze for 5.4 s in the ToolKit view.\",\"key\":\"page#1\",\"progress\":null,\"done\":true,\"ms\":null}]}","message":"The page froze for 5.4 s in the ToolKit view.","where":"stuck"}
+    12:02:49    +62.0s  rootcanal.workflow.run  {"artifact":"4e5ce690d4b1","bank":null,"kept":214,"version":2}
+    12:02:49    +62.6s  rootcanal.workflow_run  [toolkit]  {"artifact":"4e5ce690d4b1","banked":false,"version":2}

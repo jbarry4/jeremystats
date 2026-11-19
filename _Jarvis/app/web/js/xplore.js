@@ -3675,7 +3675,22 @@ BARRY.views.xplore = (function () {
     const o = opts || {};
     const feat = 'width=' + (o.width || 760) + ',height=' + (o.height || 980)
                + ',menubar=no,toolbar=no';
-    const w = window.open(paneUrl(sess, specs, o), o.name || 'barry-aids', feat);
+    /* window.open can throw as well as return null. Firefox threw
+       NS_ERROR_ABORT here on Strawbarry (2026-11-16, entering Panning), and
+       the throw went up through every mode's enter(): Panning was left
+       half open, with no event shown and no presence beat. A window that
+       will not open is told about and the mode carries on without it, the
+       same as a blocked one. */
+    let w = null;
+    try {
+      w = window.open(paneUrl(sess, specs, o), o.name || 'barry-aids', feat);
+    } catch (e) {
+      try { BARRY.debug.note('warn', 'popOutPanes: ' + ((e && e.message) || e)); }
+      catch (e2) { /* not important */ }
+      toast('The browser would not open the second window. Leave and '
+            + 're-enter this mode to try again.', 'err', 9000);
+      return null;
+    }
     if (!w) {
       toast('The second window was blocked. Allow pop-ups for 127.0.0.1, '
             + 'then leave and re-enter this mode.', 'err', 9000);

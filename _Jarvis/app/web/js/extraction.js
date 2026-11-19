@@ -46,6 +46,15 @@
     sub: 'recordings',
     tests: 'usual',        // 'usual' (one test, picked by the residuals) | 'strict'
     folder: null,          // the set on show: the X-ray Many folder it was extracted from
+    splits: {},            // gid -> {method, cut, by, at}: split by hand, shared, per set
+    splitView: {},         // gid -> its three splits, pre-rendered (asked for once)
+    splitOpen: new Set(),  // gids whose split panel is open
+    splitLive: {},         // gid -> {method, cut, types, classes, counts} on screen, not yet saved
+    splitErr: {},
+    bandLive: {},          // gid -> the band being drawn, before it is saved (the new round)
+    bandBusy: {},          // gid -> true while its card is fitted again in a new band
+    interpBusy: {},        // gid -> true while its card is fitted again with contacts interpolated
+    showArchivedSets: false,
     knownV: 0,             // the room's newest version when last asked
     r2: null, r2Err: null, r2Gen: 0,
     split: 10, minN: 5, skip: new Set(), stats: null, statsErr: null, statsGen: 0,
@@ -109,6 +118,15 @@
         S.version = got.version;
         S.flips = got.flips || {};
         S.seps = got.seps || {};
+        S.evmode = got.mode || { mode: 'plain', ds3_cut: 0.5, trim_cut: 0.8 };
+        S.splits = got.splits || {};
+        S.splitLive = {};
+        // Another version is another set of bundles: its splits are asked again.
+        if (S.splitFor !== S.art.artifact_id + '@' + S.version) {
+          S.splitView = {};
+          S.splitErr = {};
+          S.splitFor = S.art.artifact_id + '@' + S.version;
+        }
         S.folder = ((S.pay || {}).source || {}).folder || null;
         // Round II was of the version before: asked again when it is shown.
         S.r2 = null; S.r2Err = null;
@@ -212,36 +230,57 @@
   }
 
   const flipped = (r) => !!(S.flips[r.gid] && S.flips[r.gid].flip);
+  // What the pages over the room have registered (erRoom.ext).
+  const ext = () => (window.erRoom && window.erRoom.ext) || {};
 
   /* SEPARABLE OR NOT, BY HAND (2026-11-10: "I meant swap the not separable
      / separable"): X-ray's two-vs-one test and its 10% rule are a rule; a
      person looking at the two CSDs is the judge. Shared, and counted. */
   function sepOf(r) {
     const o = S.seps[r.gid];
-    if (o && (o.verdict === 'yes' || o.verdict === 'no')) {
+    // "no_ds1" (2026-11-13: "add an option to say no DS1"): every event DS2.
+    if (o && (o.verdict === 'yes' || o.verdict === 'no' || o.verdict === 'no_ds1')) {
       return { verdict: o.verdict, byHand: true, by: o.by, at: o.at };
     }
+    // The new round (2026-11-12: "just archive and set in amber"): no
+    // automatic call; a card stays amber until a person calls it.
+    if (direct()) return { verdict: null, byHand: false, open: true };
     return { verdict: (r.separation || {}).verdict, byHand: false };
   }
   async function setSep(r, verdict) {
+    const was = sepOf(r).verdict;
     try {
       const got = await post('/api/extraction/sep', { room: S.room, folder: S.folder, gid: r.gid, verdict });
       S.seps = got.seps || {};
     } catch (e) { window.alert('Not saved: ' + e.message); return; }
+    // Into or out of "no DS1", the card's classes change (all DS2, or its
+    // split's again): the server draws them.
+    if (was === 'no_ds1' || verdict === 'no_ds1') { await load(S.version); return; }
     render();
     restat();
   }
   /* The classes as they are called: swapped, X-ray's DS1 is shown, drawn
-     and counted as DS2. Copies. */
+     and counted as DS2. Called "no DS1", every event is DS2, swapped or
+     not. Copies. */
   function shownClasses(r) {
-    const f = flipped(r);
-    return (r.classes || []).map((c) => Object.assign({}, c, {
-      shown: f && (c.c === 1 || c.c === 2) ? 3 - c.c : c.c,
-      name: 'DS' + (f && (c.c === 1 || c.c === 2) ? 3 - c.c : c.c) }))
-      .sort((a, b) => a.shown - b.shown);
+    const f = flipped(r) && !r.no_ds1;
+    return (r.classes || []).map((c) => {
+      const k = r.no_ds1 ? 2 : f && (c.c === 1 || c.c === 2) ? 3 - c.c : c.c;
+      return Object.assign({}, c, { shown: k, name: k === 3 ? 'DS3 (hybrid)' : k === 4 ? 'unsure' : 'DS' + k });
+    }).sort((a, b) => a.shown - b.shown);
   }
-  const colOf = (c) => tok(c.shown === 1 ? '--ds1' : '--ds2');
-  const softOf = (c) => tok(c.shown === 1 ? '--ds1-soft' : '--ds2-soft');
+  const CVAR = { 1: '--ds1', 2: '--ds2', 3: '--ds3', 4: '--unsure' };
+  const colOf = (c) => tok(CVAR[c.shown] || '--ds2');
+  const softOf = (c) => tok((CVAR[c.shown] || '--ds2') + '-soft');
+
+  async function archiveSet(folder, on) {
+    try {
+      await post('/api/extraction/set_archive', { folder, archived: !!on });
+    } catch (e) { window.alert('Not changed: ' + e.message); return; }
+    S.note = on ? 'Set archived: it is hidden from the Set row; Show archived sets brings it back.' : 'Set put back.';
+    const other = on ? S.folders.find((f) => f.id !== folder && f.in_room && !f.set_archived) : null;
+    await load(null, other ? other.id : folder);
+  }
 
   async function extract(folder) {
     if (S.busy) return;
@@ -258,6 +297,39 @@
       S.err = 'Not extracted: ' + e.message;
       render();
     }
+  }
+
+  /* TAKE THE IMPRESSION (2026-11-12: "click locked in and have it saved in
+     artifact as a STATE ... to then move on to Blob Analysis"; the user
+     named it Impression and chose to lock the whole set at once). */
+  async function impression() {
+    const recs = (S.pay && S.pay.recordings) || [];
+    const n = { yes: 0, no: 0, nods1: 0, open: 0 };
+    for (const r of recs) {
+      const v = sepOf(r);
+      n[v.open ? 'open' : v.verdict === 'yes' ? 'yes' : v.verdict === 'no_ds1' ? 'nods1' : 'no']++;
+    }
+    const note = window.prompt('Take the impression of ‘' + (((S.pay || {}).source || {}).folder_name || '')
+      + '’: every card locked in as it stands, at once.\n\n' + n.yes + ' separable · ' + n.no
+      + ' not separable (one class, “DS, one kind”)' + (n.nods1 ? ' · ' + n.nods1 + ' no DS1 (every event DS2)' : '')
+      + (n.open ? ' · ' + n.open + ' not called yet (they go in '
+      + 'uncalled, and Blob Analysis leaves them out until they are called)' : '')
+      + '.\n\nA note for it (optional):', '');
+    if (note === null) return;
+    S.busy = 'Taking the impression: every card as it stands…';
+    render();
+    try {
+      const got = await post('/api/extraction/impression', { artifact_id: S.art.artifact_id,
+        version: S.version, note });
+      S.note = 'Impression v' + got.version + ' taken: ' + got.n + ' recordings locked in'
+        + (got.uncalled ? ', ' + got.uncalled + ' of them not called yet' : '') + '. Blob Analysis opens from it.';
+      S.impression = { artifact_id: got.artifact_id, version: got.version };
+      if (ext().blobs) S.sub = 'blobs';
+    } catch (e) {
+      S.err = 'The impression was not taken: ' + e.message;
+    }
+    S.busy = null;
+    render();
   }
 
   async function setKo(r) {
@@ -312,6 +384,12 @@
     } else if (S.sub === 'round2') {
       body.appendChild(el('div', { id: 'erRound2' }, [round2Card()]));
       if (!S.r2 && !S.r2Err) loadRound2();
+    } else if (S.sub === 'er2') {
+      body.appendChild(ext().er2 ? ext().er2.render()
+        : el('p', { class: 'empty', text: 'Extraction Room 2.0 did not load.' }));
+    } else if (S.sub === 'blobs') {
+      body.appendChild(ext().blobs ? ext().blobs.render()
+        : el('p', { class: 'empty', text: 'Blob Analysis is being built.' }));
     } else {
       body.appendChild(numbers());
     }
@@ -320,7 +398,8 @@
   }
 
   const SUBS = [['recordings', 'Recordings'], ['stats', 'Round I · does it differ?'],
-                ['seprate', 'Separation rate'], ['round2', 'Round II'], ['numbers', 'The numbers']];
+                ['seprate', 'Separation rate'], ['round2', 'Round II'], ['numbers', 'The numbers'],
+                ['blobs', 'Blob Analysis'], ['er2', 'Room 2.0 · models']];
   function subTabs() {
     return el('div', { class: 'subtabs', role: 'tablist', id: 'erSubs' }, SUBS.map(([id, name]) => el('button', {
       role: 'tab', 'aria-selected': String(id === S.sub), text: name, 'data-sub': id,
@@ -347,13 +426,16 @@
     const pay = S.pay;
     const src = (pay && pay.source) || {};
     const kids = [];
-    const fs = S.folders.filter((f) => !f.archived && (f.bundles || f.in_room));
+    const fs = S.folders.filter((f) => !f.archived && (f.bundles || f.in_room || f.read_here)
+      && (S.showArchivedSets || !f.set_archived || f.id === S.folder));
     const inRoom = fs.filter((f) => f.in_room);
     // The set on show, though its folder has since been archived or gone.
     if (pay && S.folder && !inRoom.some((f) => f.id === S.folder)) {
       inRoom.push({ id: S.folder, name: src.folder_name || S.folder, in_room: { v: S.version }, new: 0 });
     }
     const waiting = fs.filter((f) => !f.in_room && f.bundles);
+    // THE NEW ROUND (2026-11-12): a folder with no X-ray results, read here.
+    const fresh = fs.filter((f) => !f.in_room && !f.bundles && f.read_here);
     kids.push(el('div', { class: 'bar' }, [
       el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Set' }),
         inRoom.length
@@ -367,8 +449,29 @@
     ].concat(waiting.map((f) => el('button', { class: 'btn primary er-take', 'data-folder': f.id, disabled: !!S.busy,
       text: 'Extract ‘' + f.name + '’ · ' + f.bundles + ' X-ray result' + (f.bundles === 1 ? '' : 's') + ', not in the room yet',
       title: 'The newest X-ray bundle of every recording in it, as a set of its own in this room.',
+      onclick: () => extract(f.id) }))).concat(fresh.map((f) => el('button', {
+      class: 'btn primary er-take-direct', 'data-folder': f.id, disabled: !!S.busy,
+      text: 'Take in ‘' + f.name + '’ · fitted here, no X-ray · ' + f.read_here + ' of ' + f.members + ' recordings read',
+      title: 'Each recording read at its kept events, fitted in a band over the two bottom sinks of its average '
+        + '(drawn by hand afterwards on each card) and split by the Bite line. A set of its own in this room.',
       onclick: () => extract(f.id) })))));
-    if (pay) {
+    const nArch = S.folders.filter((f) => f.set_archived && f.in_room).length;
+    const cur0 = S.folders.find((f) => f.id === S.folder);
+    kids.push(el('div', { class: 'bar' }, [
+      pay && S.folder ? el('button', { class: 'btn small', id: 'erArchiveSet', disabled: !!S.busy,
+        text: cur0 && cur0.set_archived ? 'Put this set back' : 'Archive this set',
+        title: 'Hidden from the Set row; its versions and every call stay.',
+        onclick: () => archiveSet(S.folder, !(cur0 && cur0.set_archived)) }) : null,
+      nArch ? el('button', { class: 'btn small', id: 'erShowArchived',
+        text: (S.showArchivedSets ? 'Hide' : 'Show') + ' archived sets · ' + nArch,
+        onclick: () => { S.showArchivedSets = !S.showArchivedSets; render(); } }) : null,
+    ].filter(Boolean)));
+    if (pay && direct()) {
+      kids.push(el('p', {}, [el('b', { text: 'Fitted here, no X-ray · ‘' + (src.folder_name || src.folder) + '’' }),
+        el('span', { class: 'muted', text: ' · ' + (pay.recordings || []).length + ' recordings · events kept by ‘'
+          + ((src.workflow || {}).nickname || '') + '’ v' + ((src.workflow || {}).version || '') + ' · split by the '
+          + 'Bite line unless a card says otherwise · ' + (pay.filter || '') + ' · %KO: ' + (pay.ko_from || '') })]));
+    } else if (pay) {
       kids.push(el('p', {}, [el('b', { text: 'Extracted from X-ray Many · ‘' + (src.folder_name || src.folder) + '’' }),
         el('span', { class: 'muted', text: ' · ' + (pay.recordings || []).length + ' recordings · events inside ‘'
           + ((src.workflow || {}).nickname || '') + '’ v' + ((src.workflow || {}).version || '') + ' · %KO: ' + (pay.ko_from || '') }) ]));
@@ -387,7 +490,8 @@
           vs.slice().reverse().map((v) => el('option', { value: String(v.v), selected: v.v === S.version,
             text: 'v' + v.v + (v.n != null ? ' · ' + v.n + ' recordings' : '')
                   + (v.at ? ' · ' + new Date(v.at).toLocaleString() : '') + (v.by ? ' · ' + v.by : '') })))]) : null,
-      pay ? el('button', { class: 'btn', id: 'erExtract', disabled: !!S.busy, text: 'Extract again',
+      pay ? el('button', { class: 'btn', id: 'erExtract', disabled: !!S.busy,
+        text: direct() ? 'Fit again' : 'Extract again',
         title: 'Takes the newest X-ray bundle of every recording in ‘' + (src.folder_name || '') + '’ into this set, as its '
                + 'next version. The versions before stay.',
         onclick: () => extract(S.folder) }) : null,
@@ -405,6 +509,80 @@
       'aria-pressed': String(v === value), text: w, title, onclick: () => on(v) })));
   }
 
+  /* DS3, THE TRIM, AND THE MIX-UP (2026-11-13; backend/dsmix.py). One
+     switch for the set, shared: every card as its split has it, with DS3
+     (the hybrid, Tarcsay et al. 2025) laid over, or with the unsure events
+     trimmed -- one at a time. Each card says its mix-up all three ways. */
+  const pct = (v) => (v == null ? '—' : Math.round(100 * v) + '%');
+  async function setMode(patch) {
+    S.busy = 'Working every card out again…';
+    render();
+    try {
+      await post('/api/extraction/mode', Object.assign({ room: S.room, folder: S.folder }, patch));
+      S.busy = null;
+      await load(S.version);
+    } catch (e) { S.busy = null; S.err = 'Not changed: ' + e.message; render(); }
+  }
+  function modeCtl() {
+    const m = S.evmode || { mode: 'plain', ds3_cut: 0.5, trim_cut: 0.8 };
+    const kids = [el('span', { class: 'lab', text: 'Events' }),
+      seg([['plain', 'as split', 'Every event in the class its split gives it.'],
+           ['ds3', 'with DS3 (hybrid)', 'Events whose outer and middle molecular layer sinks are balanced are DS3, taken '
+             + 'out of DS1 and DS2. Tarcsay et al. 2025, bioRxiv 10.1101/2025.10.27.684857.'],
+           ['trim', 'unsure trimmed', 'A two-Gaussian fit on each split’s own axis: an event under the cut-off for both '
+             + 'is unsure -- shown grey, left out of DS1’s and DS2’s numbers. The split still decides every class.']],
+          m.mode, (v) => setMode({ mode: v }), 'erEvMode')];
+    if (m.mode !== 'plain') {
+      const ds3 = m.mode === 'ds3';
+      const val = ds3 ? m.ds3_cut : m.trim_cut;
+      const out = el('span', { class: 'er-cutval num', text: ds3 ? '±' + (+val).toFixed(2) : pct(val) });
+      const rng = el('input', { type: 'range', class: 'er-cut', id: 'erCut', min: ds3 ? '0.1' : '0.5', max: ds3 ? '0.9' : '0.99',
+        step: ds3 ? '0.05' : '0.01', value: String(val),
+        'aria-label': ds3 ? 'DS3: the relative-sink score counts as balanced within' : 'Trim: an event is unsure under',
+        oninput: (e) => { out.textContent = ds3 ? '±' + (+e.target.value).toFixed(2) : pct(+e.target.value); },
+        onchange: (e) => setMode(ds3 ? { ds3_cut: +e.target.value } : { trim_cut: +e.target.value }) });
+      kids.push(el('span', { class: 'er-cutbox' }, [el('span', { class: 'muted small', text: ds3 ? 'score within' : 'sure at' }), rng, out]));
+    }
+    return el('div', { class: 'ctl er-modectl' }, kids);
+  }
+  /* A card's mix-up, three ways, and what its mode did. */
+  const MIXW = { clean: 'clean', within: 'within 10–15%', mixed: 'mixed' };
+  function mixBit(label, x, on) {
+    if (!x) return el('span', { class: 'er-mixbit none' + (on ? ' on' : '') }, [el('span', { class: 'lab', text: label }), el('b', { text: '—' })]);
+    return el('span', { class: 'er-mixbit mx-' + x.word + (on ? ' on' : ''),
+      title: label + ': an estimated ' + pct(x.est) + ' of ' + x.n + ' events are in the wrong class (95% interval '
+        + pct(x.lo) + ' to ' + pct(x.hi) + '). Up to 10% is clean, 10–15% is what waveform-only classification accepts, '
+        + 'over 15% is mixed.' + (x.straddles ? ' The interval crosses a line.' : '') },
+      [el('span', { class: 'lab', text: label }), el('b', { text: pct(x.est) }),
+       el('span', { class: 'muted', text: ' (' + pct(x.lo) + '–' + pct(x.hi) + ') ' + MIXW[x.word] })]);
+  }
+  function mixRow(r) {
+    const mx = r.mix;
+    if (!mx) return r.mix_error ? el('p', { class: 'small muted er-mix', text: 'No mix-up estimate: ' + r.mix_error }) : null;
+    const m = mx.mix || {}, d3 = mx.ds3 || {}, tr = mx.trim || {};
+    const kids = [el('div', { class: 'er-mixbar' }, [el('span', { class: 'lab', text: 'Mix-up' }),
+      mixBit('as split', m.plain, mx.mode === 'plain'), mixBit('DS3 out', m.ds3, mx.mode === 'ds3'),
+      mixBit('trimmed', m.trim, mx.mode === 'trim')])];
+    const p = m.plain;
+    if (p && p.word === 'mixed' && sepOf(r).verdict !== 'yes') {
+      kids.push(el('p', { class: 'small er-mixwhy', text: 'Mixed: its events read as one family, so any line mixes them.' }));
+    }
+    if (mx.mode === 'ds3') {
+      const c = d3.counts || {}, u = d3.unscorable || {};
+      kids.push(el('p', { class: 'small er-ds3say', text: d3.why ? 'No DS3 here: ' + d3.why
+        : 'DS3 (hybrid): ' + (c['3'] || 0) + ' of ' + d3.n + ' events, ' + ((d3.from || {})['1'] || 0) + ' from DS1 and '
+          + ((d3.from || {})['2'] || 0) + ' from DS2: relative-sink score within ±' + (+d3.cut).toFixed(2) + ', OML at contact '
+          + d3.oml + ', MML at ' + d3.mml + '. ' + (u.n || 0) + ' unscorable (sink under the baseline’s 99th percentile; DS1 '
+          + (u['1'] || 0) + ', DS2 ' + (u['2'] || 0) + ') keep their split’s class.'
+          + (d3.near ? ' OML and MML are ' + d3.gap + ' contact' + (d3.gap === 1 ? '' : 's') + ' apart here: one sink seen twice, '
+            + 'so this balance does not tell two layers apart.' : '') + ' Tarcsay et al. 2025.' }));
+    } else if (mx.mode === 'trim') {
+      kids.push(el('p', { class: 'small er-trimsay', text: tr.refused ? tr.refused
+        : (tr.unsure || 0) + ' unsure (under ' + pct(tr.cut) + ' for both classes): shown grey, out of DS1’s and DS2’s numbers.' }));
+    }
+    return el('div', { class: 'er-mix' }, kids);
+  }
+
   function controls() {
     return el('div', { class: 'card bar' }, [
       el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Show the' }),
@@ -414,6 +592,17 @@
       el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Pictures' }),
         seg([['both', 'CSD and depth profile'], ['csd', 'CSD view'], ['profile', 'depth profiles']],
             S.show, (v) => { S.show = v; render(); }, 'erShow')]),
+      direct() ? modeCtl() : null,
+      el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Split every recording by' }),
+        seg((direct() ? [['own', 'Bite line']] : [['own', 'X-ray’s own'], ['bite', 'Bite line']])
+          .concat([['pca', 'PCA, no gap'], ['pca_gap', 'PCA + gap'], ['delta', 'delta only'],
+                   ['delta_mid', 'delta middle']]),
+            allSplit(), (v) => splitAll(v), 'erSplitAll')]),
+      direct() ? el('div', { class: 'ctl' }, [el('button', { class: 'btn primary', id: 'erImpression',
+        disabled: !!S.busy, text: 'Take the impression',
+        title: 'Lock in every card of this set as it stands -- its band, its split and line, its swap and its '
+          + 'call -- as one saved state. Blob Analysis is cast from it.',
+        onclick: () => impression() })]) : null,
       el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Scale' }),
         seg([['same', 'the same for every recording', 'One colour scale for every CSD and one x axis for every '
                 + 'depth profile, so the recordings compare by eye.'],
@@ -421,6 +610,33 @@
                 + 'recordings are not comparable.']],
             S.scale, (v) => { S.scale = v; render(); }, 'erScale')]),
     ]);
+  }
+
+  /* What every recording is split by, when they all agree. */
+  function allSplit() {
+    const recs = (S.pay && S.pay.recordings) || [];
+    const ms = new Set(recs.map((r) => { const ch = S.splits[r.gid];
+      return ch ? (ch.cut != null ? 'cut' : ch.method) : 'own'; }));
+    return ms.size === 1 ? Array.from(ms)[0] : '';
+  }
+
+  async function splitAll(v) {
+    const recs = (S.pay && S.pay.recordings) || [];
+    const words = v === 'own' ? ownWord() : SPLIT_NAME[v];
+    if (!window.confirm('Split all ' + recs.length + ' recordings by ' + words + ', for everybody? '
+      + 'Each one’s cut by hand goes too. The first time, each recording is fitted again (a few seconds each).')) return;
+    S.busy = 'Splitting all ' + recs.length + ' recordings by ' + words + '…';
+    render();
+    try {
+      const got = await post('/api/extraction/split', { artifact_id: S.art.artifact_id, version: S.version,
+        gids: recs.map((r) => r.gid), method: v === 'own' ? null : v, cut: null });
+      S.note = 'All ' + recs.length + ' split by ' + words
+        + ((got.stuck || []).length ? '; not split: ' + got.stuck.join('; ') : '') + '.';
+    } catch (e) {
+      S.err = 'Not split: ' + e.message;
+    }
+    S.busy = null;
+    await load(S.version);
   }
 
   function legend() {
@@ -451,7 +667,20 @@
       onclick: () => setKo(r) });
   }
 
-  const SEP = { yes: 'separable', weak: 'weak', no: 'not separable', too_few: 'too few' };
+  const SEP = { yes: 'separable', weak: 'weak', no: 'not separable', too_few: 'too few', no_ds1: 'no DS1' };
+
+  /* The recording's length and its DS1 and DS2 rates (2026-11-13:
+     "somewhere include the recording length and the DS1/2 rate"). */
+  function rateWords(r) {
+    const tw = r.twin || null;
+    const m = (tw ? tw[1] - tw[0] : +r.duration_s) / 60;
+    const cls = shownClasses(r);
+    const n1 = (cls.find((c) => c.shown === 1) || {}).n || 0, n2 = (cls.find((c) => c.shown === 2) || {}).n || 0;
+    const n3 = (cls.find((c) => c.shown === 3) || {}).n || 0;
+    return (tw ? 'only ' + (tw[0] / 60).toFixed(1) + '–' + (tw[1] / 60).toFixed(1) + ' of ' + (+r.duration_s / 60).toFixed(1)
+      + ' min (' + r.n + ' of ' + r.n_all + ' events)' : m.toFixed(1) + ' min') + ' · DS1 ' + (n1 / m).toFixed(2) + ' a min · DS2 ' + (n2 / m).toFixed(2) + ' a min'
+      + (n3 ? ' · DS3 ' + (n3 / m).toFixed(2) + ' a min' : '');
+  }
 
   /* EACH CARD'S STATE, AT A GLANCE (2026-11-11: "make it super clear if
      something is left out of the stats, separable or not -- a light faint
@@ -459,18 +688,24 @@
      call that counts: separable, not ("weak" is not), or too few to call. */
   function stateOf(r) {
     if (S.skip.has(r.gid)) return 'out';
-    const v = sepOf(r).verdict;
-    return v === 'yes' ? 'yes' : (v === 'no' || v === 'weak') ? 'no' : 'few';
+    const sh0 = sepOf(r);
+    if (sh0.open) return 'open';
+    const v = sh0.verdict;
+    return v === 'yes' ? 'yes' : v === 'no_ds1' ? 'nods1' : (v === 'no' || v === 'weak') ? 'no' : 'few';
   }
   const STATE = { yes: 'Separable', no: 'Not separable', few: 'Too few events to call · not in the separation rate',
+                  nods1: 'No DS1: every event is DS2',
+                  open: 'Not called yet',
                   out: 'Left out of the stats' };
   function stateKey() {
     const recs = (S.pay && S.pay.recordings) || [];
-    const n = { yes: 0, no: 0, few: 0, out: 0 };
+    const n = { yes: 0, no: 0, nods1: 0, few: 0, open: 0, out: 0 };
     for (const r of recs) n[stateOf(r)]++;
-    const short = { yes: 'Separable', no: 'Not separable', few: 'Too few to call', out: 'Left out of the stats' };
+    const short = { yes: 'Separable', no: 'Not separable', nods1: 'No DS1', few: 'Too few to call', open: 'Not called yet',
+                    out: 'Left out of the stats' };
+    const keys = direct() ? ['open', 'yes', 'no', 'nods1', 'out'] : ['yes', 'no', 'nods1', 'few', 'out'];
     return el('div', { class: 'statekey card', id: 'erStateKey' }, [el('span', { class: 'lab', text: 'Cards' })]
-      .concat(['yes', 'no', 'few', 'out'].map((k) => el('span', { class: 'k st-' + k, 'data-state': k }, [
+      .concat(keys.map((k) => el('span', { class: 'k st-' + k, 'data-state': k }, [
         el('span', { class: 'sq' }), el('span', { text: short[k] + ' · ' + n[k] })]))));
   }
 
@@ -484,13 +719,16 @@
       r.ied != null && String(r.group).toUpperCase() !== 'CTL'
         ? el('span', { class: 'chip', text: r.ied ? 'IED' : 'no IED', title: 'From the lab’s sheet.' }) : null,
       el('span', { class: 'chip sepchip ' + (sh.verdict || '') + (sh.byHand ? ' byhand' : ''),
-        text: (SEP[sh.verdict] || sh.verdict || '—') + (sh.byHand ? ' · by hand' : ''),
+        text: sh.open ? 'not called yet' : (SEP[sh.verdict] || sh.verdict || '—') + (sh.byHand ? ' · by hand' : ''),
         title: (sh.byHand ? 'Called ' + SEP[sh.verdict] + ' by hand' + (sh.by ? ' by ' + sh.by : '')
                 + (sh.at ? ' on ' + new Date(sh.at).toLocaleString() : '') + '. X-ray said ' + (SEP[sep.verdict] || sep.verdict)
                 + '. ' : 'X-ray’s call. ')
                + 'Its test: ΔBIC ' + fmt(sep.dbic, 1) + ', the smaller class '
                + (sep.min_share != null ? Math.round(sep.min_share * 100) + '%' : '—') + ' of ' + (sep.n || r.n) + ' events.' }),
       el('span', { class: 'chip', text: r.n + ' events' }),
+      r.duration_s ? el('span', { class: 'chip er-rate', text: rateWords(r),
+        title: 'The recording’s length (from the registry) and how often this set’s DS1 and DS2 came, a minute: '
+          + 'the events inside its border, as the card splits them.' }) : null,
       flipped(r) ? el('span', { class: 'chip swapped', text: 'DS1 ↔ DS2 swapped by hand',
         title: 'X-ray called them the other way round; swapped' + (S.flips[r.gid].by ? ' by ' + S.flips[r.gid].by : '')
                + (S.flips[r.gid].at ? ' on ' + new Date(S.flips[r.gid].at).toLocaleString() : '') + '.' }) : null,
@@ -498,41 +736,692 @@
     /* LET ME TOGGLE THE LABEL (2026-11-10: "because the math can be a bit
        off"): X-ray's naming rule is a rule, and a person who can see the
        two CSDs can see when it named them the wrong way round. */
-    const acts = el('div', { class: 'acts' }, [
+    const callBtns = [
+      sh.open || sh.verdict === 'no_ds1' ? el('button', { class: 'btn small er-sep-no', text: 'Call it not separable',
+        title: 'Your call, for everybody: one class, “DS, one kind”, in Blob Analysis.',
+        onclick: () => setSep(r, 'no') }) : null,
       el('button', { class: 'btn small er-sep',
         text: sh.verdict === 'yes' ? 'Call it not separable' : 'Call it separable',
         title: 'Your call over X-ray’s, for everybody: the stats below count it at once. X-ray’s own test is kept.',
         onclick: () => setSep(r, sh.verdict === 'yes' ? 'no' : 'yes') }),
-      sh.byHand ? el('button', { class: 'btn small er-sep-back', text: 'Back to X-ray’s call',
+      sh.verdict !== 'no_ds1' ? el('button', { class: 'btn small er-sep-nods1', text: 'Call it no DS1',
+        title: 'Your call, for everybody: there is no DS1 in this recording. Every event is DS2 -- the card, the '
+          + 'stats (DS2’s numbers from all of them, no DS1 numbers, a DS1 share of 0) and Blob Analysis. In the '
+          + 'separation rate it counts as not separable.',
+        onclick: () => setSep(r, 'no_ds1') }) : null,
+      sh.byHand ? el('button', { class: 'btn small er-sep-back',
+        text: direct() ? 'Not called yet' : 'Back to X-ray’s call',
         title: 'X-ray said ' + (SEP[sep.verdict] || sep.verdict) + '.', onclick: () => setSep(r, null) }) : null,
+    ];
+    const toolBtns = [
       el('button', { class: 'btn small er-flip', text: flipped(r) ? 'Put DS1 and DS2 back' : 'Swap DS1 ↔ DS2',
         title: flipped(r) ? 'Back to what X-ray called them.'
           : 'Call X-ray’s DS1 DS2 and its DS2 DS1, here and in the stats, for everybody. The extracted numbers are not changed.',
         onclick: () => setFlip(r, !flipped(r)) }),
+      ext().compare ? el('button', { class: 'btn small er-compare',
+        text: 'Compare splits', title: 'The four ways of splitting it side by side, each with its own '
+          + 'line to move, and Use this on the one to keep.',
+        onclick: () => ext().compare.splits(r) }) : null,
+      ext().compare ? el('button', { class: 'btn small er-across',
+        text: 'Compare across sets', title: 'This recording in two sets side by side: the specific one '
+          + 'against the data-rich one, say.',
+        onclick: () => ext().compare.across(r) }) : null,
       el('button', { class: 'btn small er-skip', text: S.skip.has(r.gid) ? 'Put back in the stats' : 'Leave out of the stats',
         title: 'For this look only: the stats below are worked out without it.',
         onclick: () => { if (S.skip.has(r.gid)) S.skip.delete(r.gid); else S.skip.add(r.gid); render(); restat(); } }),
-    ]);
+    ];
+    // Tidied (2026-11-13): the call on one row, the tools on a quieter one.
+    const acts = el('div', { class: 'acts er-acts2' }, [
+      el('div', { class: 'acts-row acts-call' }, [el('span', { class: 'lab', text: 'Call' })].concat(callBtns.filter(Boolean))),
+      el('div', { class: 'acts-row acts-tools' }, [el('span', { class: 'lab', text: 'Tools' })].concat(toolBtns.filter(Boolean)))]);
     const st = stateOf(r);
-    const kids = [el('div', { class: 'state-tag' }, [el('span', { class: 'dot' }),
+    const ipc = r.interp || [];
+    const kids = [
+      // A corner banner (2026-11-13: "some sort of corner edge banner that
+      // shows clearly the card is interpolated").
+      ipc.length ? el('div', { class: 'er-ipflag', role: 'note',
+        title: 'Contact' + (ipc.length > 1 ? 's ' : ' ') + ipc.join(', ') + (ipc.length > 1 ? ' are' : ' is') + ' made again from '
+          + 'the good contacts above and below before the CSD, on this recording in every set'
+          + ((r.interp_by || {}).by ? ' · by ' + r.interp_by.by : '') + '.',
+        text: 'Interpolated · ' + ipc.join(', ') }) : null,
+      r.twin ? el('div', { class: 'er-ipflag er-twflag' + (ipc.length ? ' second' : ''), role: 'note',
+        title: 'Only the events stamped between these times are taken, on this recording in every set'
+          + ((r.twin_by || {}).by ? ' · by ' + r.twin_by.by : '') + '. Compare splits has the two knobs.',
+        text: 'Only ' + (r.twin[0] / 60).toFixed(1) + '–' + (r.twin[1] / 60).toFixed(1) + ' min' }) : null,
+      el('div', { class: 'state-tag' }, [el('span', { class: 'dot' }),
       el('span', { text: STATE[st] + (st !== 'out' && sh.byHand ? ' · your call' : '') })]), head, acts];
+    if (r.direct && r.csd_all) kids.push(bandPic(r));
     if (S.show !== 'profile') {
-      kids.push(el('div', { class: 'pics' }, shownClasses(r).map((c) => {
+      kids.push(el('div', { class: 'pics' }, shownClasses(r).map((c, k) => {
         const cv = el('canvas', { class: 'csd' });
-        live.push(() => drawCsd(cv, r, c));
+        // At draw time, from the split on screen: a cut being dragged
+        // redraws these without the card being built again.
+        const f = () => { const rv = viewRec(r); drawCsd(cv, rv, shownClasses(rv)[k] || c); };
+        f.gid = r.gid;
+        live.push(f);
         return el('div', { class: 'pic' }, [
           el('div', { class: 'cap' }, [el('b', { text: c.name, style: 'color:' + colOf(c) }),
-            el('span', { text: c.n + ' events' + (flipped(r) ? ' · X-ray’s DS' + c.c : '') })]), cv]);
+            el('span', { class: 'er-cap-n', 'data-k': String(k),
+              text: c.n + ' events' + (flipped(r) ? ' · X-ray’s DS' + c.c : '') })]), cv]);
       })));
     }
     if (S.show !== 'csd') {
       const cv = el('canvas', { class: 'prof' });
-      live.push(() => drawProfile(cv, r));
+      const f = () => drawProfile(cv, viewRec(r));
+      f.gid = r.gid;
+      live.push(f);
       kids.push(el('div', { class: 'pic' }, [el('div', { class: 'cap' }, [
         el('span', { text: 'Depth profile at the box’s time, mean ± SEM' })]), cv]));
     }
-    kids.push(values(r));
-    return el('div', { class: 'card rec st-' + st, 'data-gid': r.gid, 'data-state': st }, kids);
+    kids.push(splitPanel(r));
+    // A Bite line placed on the earlier sink picture: its place now means
+    // other events, so it is not used, and that is said.
+    if (r.split_stale) {
+      kids.push(el('p', { class: 'small warn er-stale', text: r.split_stale.words
+        + (r.split_stale.by ? ' (It was placed by ' + r.split_stale.by + '.)' : '') }));
+    }
+    kids.push(values(viewRec(r)));
+    const mxr = mixRow(r);
+    if (mxr) kids.push(mxr);
+    return el('div', { class: 'card rec st-' + (st === 'open' ? 'few' : st) + (ipc.length || r.twin ? ' has-ip' : ''), 'data-gid': r.gid,
+                       'data-state': st }, kids);
+  }
+
+  /* ---------- THE BAND, BY HAND (2026-11-12: "since we are skipping x-ray
+     add an option for defining the range of depth profile with a simple
+     click and drag, center, etc logic") ----------
+     A new-round card draws the recording's average CSD -- every event, the
+     whole shank -- with its band on it. Drag down it for a new band (and
+     across, for a time span); drag the band's top or bottom edge to move
+     that edge; click to centre the band where you click, the same depth;
+     double-click for the automatic band again (over the two bottom sinks
+     of the average). Shared, per set; the card is fitted again in the new
+     band, and split by its method's own line. */
+  const BG = { L: 26, T: 4, R: 4, B: 16 };
+  function bandGeom(cv, r) {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    const pw = w - BG.L - BG.R, ph = h - BG.T - BG.B;
+    const cs = r.contacts || [], nr = cs.length || 1;
+    const t = r.t_ms || [0, 1], t0 = t[0], t1 = t[t.length - 1];
+    return { pw, ph, nr, cs,
+      rowAt: (y) => Math.max(0, Math.min(nr - 1, Math.floor(((y - BG.T) / ph) * nr))),
+      msAt: (x) => Math.max(t0, Math.min(t1, t0 + ((x - BG.L) / pw) * (t1 - t0))),
+      yTop: (row) => BG.T + (row / nr) * ph, yBot: (row) => BG.T + ((row + 1) / nr) * ph };
+  }
+  const bandOf = (r) => S.bandLive[r.gid] || r.box || {};
+  function bandWords(r) {
+    const b = bandOf(r);
+    const t = b.t_lo_ms === b.t_hi_ms ? 'at ' + fmt(b.t_lo_ms, 0) + ' ms'
+      : 'from ' + fmt(b.t_lo_ms, 0) + ' to ' + fmt(b.t_hi_ms, 0) + ' ms';
+    if (S.bandBusy[r.gid]) return 'CSC ' + b.sel_lo + '–' + b.sel_hi + ' ' + t + ': fitting it again in the new band…';
+    if (S.bandLive[r.gid]) return 'CSC ' + b.sel_lo + '–' + b.sel_hi + ' ' + t + ': let go to fit it in this band';
+    return 'CSC ' + b.sel_lo + '–' + b.sel_hi + ' ' + t + ' · ' + (b.auto === false
+      ? 'drawn by hand' + (b.by ? ' (' + b.by + ')' : '') : 'automatic' + (b.why ? ': ' + b.why : ''));
+  }
+  function bandPic(r) {
+    const cv = el('canvas', { class: 'er-band-cv', 'data-gid': r.gid });
+    const f = () => drawBand(cv, r);
+    f.gid = r.gid;
+    live.push(f);
+    let clickT = null;
+    cv.addEventListener('pointerdown', (e) => dragBand(r, cv, e, (save) => {
+      clearTimeout(clickT);
+      clickT = setTimeout(save, 280);           // a double-click cancels it
+    }));
+    cv.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      clearTimeout(clickT);
+      delete S.bandLive[r.gid];
+      saveBand(r, null);
+    });
+    return el('div', { class: 'pic er-band' }, [
+      el('div', { class: 'cap' }, [el('b', { text: 'The band' }),
+        el('span', { class: 'er-band-words', text: bandWords(r) })]),
+      cv,
+      el('p', { class: 'muted small er-band-help', text: 'Drag down the CSD for a new band (across it too, for a '
+        + 'time span); drag the band’s top or bottom edge to move it; click to centre it there; double-click '
+        + 'for the automatic band over the two bottom sinks.' }),
+      interpRow(r),
+    ]);
+  }
+
+  /* CONTACTS INTERPOLATED BY HAND (2026-11-13, m6 s4's 38 and 39: "we cant
+     just remove them because that messes with the profile of the CSD ...
+     if there's a way to interpolate two channels like that that would be
+     the best method"). Each is made again from the two good contacts above
+     it and the two below -- one cubic through them -- before the CSD, so
+     the profile keeps its shape. The recording's, in every set. */
+  function interpWords(r) {
+    if (S.interpBusy[r.gid]) return 'Fitting it again with them interpolated…';
+    const cs = r.interp || [];
+    if (!cs.length) {
+      return 'For bad wires inside the band: each contact named is made again from the two good contacts above it '
+        + 'and the two below (a cubic, so the CSD keeps its shape), on this recording in every set.';
+    }
+    const by = r.interp_by || {};
+    return 'Contact' + (cs.length > 1 ? 's ' : ' ') + cs.join(', ') + (cs.length > 1 ? ' are' : ' is')
+      + ' interpolated: made again from the two good contacts above and below, in every set'
+      + (by.by ? ' · by ' + by.by : '') + '.';
+  }
+  function interpParse(text) {
+    const out = [];
+    for (const tok of String(text || '').split(/[\s,;]+/).filter(Boolean)) {
+      const m = /^(\d+)\s*[-–]\s*(\d+)$/.exec(tok);
+      if (m) { const a = +m[1], b = +m[2]; for (let c = Math.min(a, b); c <= Math.max(a, b); c++) out.push(c); }
+      else out.push(tok);
+    }
+    return out;
+  }
+  function interpRow(r) {
+    const cur = (r.interp || []).join(', ');
+    const inp = el('input', { class: 'er-interp-in', type: 'text', value: cur, placeholder: 'e.g. 38, 39',
+      'aria-label': 'Contacts to interpolate on ' + r.session_label });
+    const go = () => saveInterp(r, interpParse(inp.value));
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    return el('div', { class: 'er-interp' }, [
+      el('div', { class: 'er-interp-bar' }, [
+        el('span', { class: 'lab', text: 'Interpolate contacts' }), inp,
+        el('button', { class: 'btn small er-interp-go', type: 'button', text: 'Interpolate', disabled: !!S.interpBusy[r.gid],
+          onclick: go }),
+        (r.interp || []).length ? el('button', { class: 'btn small er-interp-off', type: 'button', text: 'Put them back',
+          disabled: !!S.interpBusy[r.gid], onclick: () => saveInterp(r, []) }) : null]),
+      el('p', { class: 'small muted er-interp-words', text: interpWords(r) }),
+    ]);
+  }
+  async function saveInterp(r, contacts) {
+    S.interpBusy[r.gid] = true;
+    const w = document.querySelector('#erGrid .rec[data-gid="' + r.gid + '"] .er-interp-words');
+    if (w) w.textContent = interpWords(r);
+    try {
+      const got = await post('/api/extraction/interp', { artifact_id: S.art.artifact_id, version: S.version,
+        gid: r.gid, contacts });
+      const i = S.pay.recordings.findIndex((x) => x.gid === r.gid);
+      if (i >= 0 && got.rec) S.pay.recordings[i] = got.rec;
+      S.splits = got.splits || S.splits;
+      delete S.splitView[r.gid];
+      delete S.splitLive[r.gid];
+      delete S.interpBusy[r.gid];
+      scaleMemo.key = null;
+      replaceCard(S.pay.recordings[i]);
+      restat();
+    } catch (e) {
+      delete S.interpBusy[r.gid];
+      window.alert('Not interpolated: ' + e.message);
+      replaceCard(r);
+    }
+  }
+  function drawBand(cv, r) {
+    if (!r.csd_all || !r.csd_all.length) return;
+    const b = bandOf(r);
+    drawCsd(cv, Object.assign({}, r, { box: {} }), { csd: r.csd_all, c: 0, shown: 1, name: 'all' });
+    if (!cv.clientWidth) return;
+    const G = bandGeom(cv, r);
+    const lo = G.cs.indexOf(b.sel_lo), hi = G.cs.indexOf(b.sel_hi);
+    if (lo < 0 || hi < 0) return;
+    const g = cv.getContext('2d');
+    const y0 = G.yTop(Math.min(lo, hi)), y1 = G.yBot(Math.max(lo, hi));
+    const ac = tok('--accent', '#2f6fdf');
+    g.fillStyle = ac; g.globalAlpha = 0.13;
+    g.fillRect(BG.L, y0, G.pw, y1 - y0);
+    g.globalAlpha = 1;
+    g.strokeStyle = ac; g.lineWidth = 2;
+    g.strokeRect(BG.L + 1, y0, G.pw - 2, y1 - y0);
+    g.fillStyle = ac;
+    for (const y of [y0, y1]) g.fillRect(BG.L + G.pw / 2 - 16, y - 3, 32, 6);
+    const t = r.t_ms || [0, 1], t0 = t[0], t1 = t[t.length - 1];
+    const X = (ms) => BG.L + ((ms - t0) / (t1 - t0)) * G.pw;
+    g.setLineDash([3, 3]);
+    for (const ms of b.t_lo_ms === b.t_hi_ms ? [b.t_lo_ms] : [b.t_lo_ms, b.t_hi_ms]) {
+      if (ms == null || !isFinite(ms)) continue;
+      g.beginPath(); g.moveTo(X(ms), y0); g.lineTo(X(ms), y1); g.stroke();
+    }
+    g.setLineDash([]);
+    g.lineWidth = 1;
+  }
+  function dragBand(r, cv, e, later) {
+    if (e.button !== 0 || S.bandBusy[r.gid]) return;
+    e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    const G = bandGeom(cv, r);
+    const b0 = Object.assign({}, bandOf(r));
+    const lo0 = G.cs.indexOf(b0.sel_lo), hi0 = G.cs.indexOf(b0.sel_hi);
+    const y = e.clientY - rect.top, x = e.clientX - rect.left;
+    const near = (yy) => Math.abs(y - yy) <= 7;
+    const mode = lo0 >= 0 && near(G.yTop(lo0)) ? 'top' : hi0 >= 0 && near(G.yBot(hi0)) ? 'bottom' : 'new';
+    const r0 = G.rowAt(y), ms0 = G.msAt(x);
+    const r1 = (v) => Math.round(v * 10) / 10;
+    let moved = false;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    const move = (ev) => {
+      const yy = ev.clientY - rect.top, xx = ev.clientX - rect.left;
+      if (Math.abs(yy - y) + Math.abs(xx - x) > 3) moved = true;
+      if (!moved) return;
+      const row = G.rowAt(yy);
+      let b;
+      if (mode === 'top' && hi0 >= 0) b = Object.assign({}, b0, { sel_lo: G.cs[Math.min(row, hi0 - 3)], auto: false });
+      else if (mode === 'bottom' && lo0 >= 0) b = Object.assign({}, b0, { sel_hi: G.cs[Math.max(row, lo0 + 3)], auto: false });
+      else {
+        const a = Math.min(r0, row), z = Math.max(r0, row);
+        const ms1 = G.msAt(xx);
+        const tt = Math.abs(xx - x) > 8 ? [Math.min(ms0, ms1), Math.max(ms0, ms1)]
+          : [b0.t_lo_ms || 0, b0.t_hi_ms || 0];
+        b = { sel_lo: G.cs[a], sel_hi: G.cs[z], t_lo_ms: r1(tt[0]), t_hi_ms: r1(tt[1]), auto: false };
+      }
+      S.bandLive[r.gid] = b;
+      drawBand(cv, r);
+      const w = cv.parentNode && cv.parentNode.querySelector('.er-band-words');
+      if (w) w.textContent = bandWords(r);
+    };
+    const up = () => {
+      cv.removeEventListener('pointermove', move);
+      cv.removeEventListener('pointerup', up);
+      cv.removeEventListener('pointercancel', up);
+      if (!moved) {
+        // A click: the same band, centred where it was clicked.
+        if (lo0 < 0 || hi0 < 0) return;
+        const hgt = Math.abs(hi0 - lo0);
+        let a = G.rowAt(y) - Math.floor(hgt / 2);
+        a = Math.max(0, Math.min(G.nr - 1 - hgt, a));
+        if (G.cs[a] === b0.sel_lo) return;
+        S.bandLive[r.gid] = Object.assign({}, b0, { sel_lo: G.cs[a], sel_hi: G.cs[a + hgt], auto: false });
+        drawBand(cv, r);
+        later(() => saveBand(r, S.bandLive[r.gid]));
+        return;
+      }
+      const b = S.bandLive[r.gid];
+      if (!b || G.cs.indexOf(b.sel_hi) - G.cs.indexOf(b.sel_lo) < 3) {
+        delete S.bandLive[r.gid];
+        drawBand(cv, r);
+        return;
+      }
+      saveBand(r, b);
+    };
+    cv.addEventListener('pointermove', move);
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+  }
+  async function saveBand(r, b) {
+    S.bandBusy[r.gid] = true;
+    const w = document.querySelector('#erGrid .rec[data-gid="' + r.gid + '"] .er-band-words');
+    if (w) w.textContent = bandWords(r);
+    try {
+      const got = await post('/api/extraction/band', Object.assign({ artifact_id: S.art.artifact_id,
+        version: S.version, gid: r.gid }, b ? { sel_lo: b.sel_lo, sel_hi: b.sel_hi, t_lo_ms: b.t_lo_ms,
+        t_hi_ms: b.t_hi_ms } : { reset: true }));
+      const i = S.pay.recordings.findIndex((x) => x.gid === r.gid);
+      if (i >= 0 && got.rec) S.pay.recordings[i] = got.rec;
+      S.splits = got.splits || S.splits;
+      delete S.splitView[r.gid];
+      delete S.splitLive[r.gid];
+      delete S.bandLive[r.gid];
+      delete S.bandBusy[r.gid];
+      scaleMemo.key = null;
+      replaceCard(S.pay.recordings[i]);
+      restat();
+    } catch (e) {
+      delete S.bandLive[r.gid];
+      delete S.bandBusy[r.gid];
+      window.alert('The band was not saved: ' + e.message);
+      replaceCard(r);
+    }
+  }
+
+  /* ---------- THE SPLIT, BY HAND (2026-11-11) ----------
+     "Include this sort of K-cluster plot below each depth profile as a
+     collapsible ... allow us to move where the line is drawn for DS1 and
+     DS2 and see the depth profile and CSDs update"; "have these 3 options
+     pre-rendered for us to flip through ... change one at a time, or
+     change all mice to the PCA". X-ray's fit makes all three splits every
+     time; the server keeps each recording's per-event numbers (one refit
+     the first time), so a method is instant and a cut is a moment. A
+     choice is shared, per set, and the stats count it (backend: "THE SPLIT
+     BY HAND"). */
+  const SPLIT_M = [['bite', 'Bite line'], ['pca', 'PCA, no gap'], ['pca_gap', 'PCA + gap'],
+                   ['delta', 'delta only, no PCA'], ['delta_mid', 'delta middle, no PCA']];
+  // Every split's name, the one-hump rows of Compare splits too (2026-11-13):
+  // those are chosen there, and named here when one is in use.
+  const SPLIT_NAME = { bite: 'Bite line', pca: 'PCA, no gap', pca_gap: 'PCA + gap', delta: 'delta only, no PCA',
+                       delta_mid: 'delta middle, no PCA' };
+  const HUMP_NAME = { bite: 'Bite line', pca: 'PCA', pca_gap: 'PCA + position', delta: 'delta, by position',
+                      delta_mid: 'delta middle, by position' };
+  for (const h of ['top', 'bottom']) {
+    for (const [m, w] of Object.entries(HUMP_NAME)) SPLIT_NAME[m + '_' + h] = w + ' · ' + h + ' hump only';
+  }
+  // The new round (2026-11-12): fitted here, no X-ray; its default is the Bite line.
+  const direct = () => !!(S.pay && S.pay.round === 'direct');
+  const ownWord = () => (direct() ? 'the Bite line (the default)' : 'X-ray’s own split');
+  const cutText = (v) => (v == null ? '—' : String(Number(Number(v).toPrecision(3))));
+
+  /* A recording as it is on screen: a cut being dragged, or a method just
+     flipped to, before it is saved. */
+  function viewRec(r) {
+    const lv = S.splitLive[r.gid];
+    return lv && lv.classes ? Object.assign({}, r, { classes: lv.classes, counts: lv.counts }) : r;
+  }
+
+  /* Which method, which cut, and every event's class, on screen now. */
+  function splitState(r) {
+    const sv = S.splitView[r.gid];
+    const lv = S.splitLive[r.gid];
+    const ch = S.splits[r.gid];
+    const method = lv ? lv.method : ch ? ch.method : (sv ? sv.own : 'delta');
+    const cut = lv ? lv.cut : ch ? ch.cut : null;
+    const types = lv && lv.types ? lv.types : sv && sv.methods[method] ? sv.methods[method].types : [];
+    return { method, cut, types };
+  }
+
+  function splitWords(r) {
+    const ch = S.splits[r.gid];
+    if (!ch) return direct() ? 'Bite line, its own line (the default)' : 'X-ray’s own split';
+    return SPLIT_NAME[ch.method] + (ch.cut != null ? ', cut at ' + cutText(ch.cut) : ', k-means') + ' · by hand'
+      + (ch.by ? ' (' + ch.by + ')' : '');
+  }
+
+  function splitPanel(r) {
+    const d = el('details', { class: 'er-split', 'data-gid': r.gid, open: S.splitOpen.has(r.gid) || null }, [
+      el('summary', {}, [el('b', { text: 'How DS1 and DS2 are split' }),
+        el('span', { class: 'muted small er-split-words', text: splitWords(r) })]),
+      el('div', { class: 'er-split-body' }, [splitBody(r)]),
+    ]);
+    d.addEventListener('toggle', () => {
+      if (d.open) {
+        S.splitOpen.add(r.gid);
+        if (!S.splitView[r.gid]) loadSplit(r);
+        else requestAnimationFrame(() => redrawCard(r.gid));
+      } else {
+        S.splitOpen.delete(r.gid);
+      }
+    });
+    return d;
+  }
+
+  function splitBody(r) {
+    const sv = S.splitView[r.gid];
+    if (S.splitErr[r.gid]) return el('p', { class: 'err small', text: 'Not available: ' + S.splitErr[r.gid] });
+    if (!sv) {
+      return el('p', { class: 'muted small er-split-wait',
+        text: 'Working out its three splits: the first time, its read is fitted again (a few seconds).' });
+    }
+    const st = splitState(r);
+    const ch = S.splits[r.gid];
+    const cv = el('canvas', { class: 'er-split-cv' });
+    const f = () => drawSplit(cv, r);
+    f.gid = r.gid;
+    f.split = true;
+    live.push(f);
+    cv.addEventListener('pointerdown', (e) => dragCut(r, cv, e));
+    const n1 = st.types.filter((t) => t === 1).length, n2 = st.types.filter((t) => t === 2).length;
+    const M = sv.methods[st.method] || {};
+    return el('div', { class: 'er-split-in' }, [
+      el('div', { class: 'bar' }, [
+        el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'How to split them' }),
+          seg(SPLIT_M.map(([m, w]) => [m, w + (m === sv.own ? (direct() ? ' · default' : ' · X-ray’s') : ''),
+            'Its classes: DS1 ' + (sv.pre[m] ? sv.pre[m].counts['1'] || 0 : '—') + ', DS2 '
+              + (sv.pre[m] ? sv.pre[m].counts['2'] || 0 : '—')]), st.method, (m) => chooseSplit(r, m, null),
+              'erSplitM-' + r.gid)]),
+      ]),
+      cv,
+      el('p', { class: 'small num er-split-info', text: 'DS1 ' + n1 + ' · DS2 ' + n2 + ' · '
+        + (st.cut != null ? 'cut by hand at ' + cutText(st.cut) + ' (k-means: ' + cutText(M.cut) + ')'
+          : 'k-means’ own split' + (/^delta/.test(st.method) ? ', its line at ' + cutText(M.cut) : '')
+            + '. Drag across the plot to cut it by hand.') }),
+      el('div', { class: 'acts' }, [
+        st.cut != null ? el('button', { class: 'btn small er-split-km', text: 'Back to k-means',
+          onclick: () => chooseSplit(r, st.method, null) }) : null,
+        ch ? el('button', { class: 'btn small er-split-back',
+          text: direct() ? 'Back to the Bite line' : 'Back to X-ray’s split',
+          onclick: () => chooseSplit(r, null, null) }) : null,
+      ].filter(Boolean)),
+    ]);
+  }
+
+  async function loadSplit(r) {
+    try {
+      const got = await api('/api/extraction/' + encodeURIComponent(S.art.artifact_id) + '/split?version='
+        + encodeURIComponent(S.version) + '&gid=' + encodeURIComponent(r.gid));
+      S.splitView[r.gid] = got;
+      delete S.splitErr[r.gid];
+      // A cut saved before: its classes, so its dots are coloured as split.
+      const ch = S.splits[r.gid];
+      if (ch && ch.cut != null) await preview(r, ch.method, ch.cut, true);
+    } catch (e) {
+      S.splitErr[r.gid] = e.message;
+    }
+    putSplitBody(r);
+  }
+
+  /* The panel's inside, and the card's pictures, again, in place. */
+  function putSplitBody(r) {
+    const box = document.querySelector('.er-split[data-gid="' + r.gid + '"] .er-split-body');
+    if (box) {
+      for (let i = live.length - 1; i >= 0; i--) if (live[i].gid === r.gid && live[i].split) live.splice(i, 1);
+      box.innerHTML = '';
+      box.appendChild(splitBody(r));
+    }
+    const words = document.querySelector('.er-split[data-gid="' + r.gid + '"] .er-split-words');
+    if (words) words.textContent = splitWords(r);
+    requestAnimationFrame(() => redrawCard(r.gid));
+  }
+
+  function redrawCard(gid) {
+    for (const f of live) if (f.gid === gid) { try { f(); } catch (e) { /* a canvas that left */ } }
+    const card = document.querySelector('#erGrid .rec[data-gid="' + gid + '"]');
+    const r = ((S.pay || {}).recordings || []).find((x) => x.gid === gid);
+    if (!card || !r) return;
+    const rv = viewRec(r);
+    const cls = shownClasses(rv);
+    card.querySelectorAll('.er-cap-n').forEach((n) => {
+      const c = cls[Number(n.dataset.k)];
+      if (c) n.textContent = c.n + ' events' + (flipped(r) ? ' · X-ray’s DS' + c.c : '');
+    });
+    const v = card.querySelector('.vals');
+    if (v) v.replaceWith(values(rv));
+    const info = card.querySelector('.er-split-info');
+    if (info) {
+      const st = splitState(r);
+      const M = (S.splitView[gid] || { methods: {} }).methods[st.method] || {};
+      info.textContent = 'DS1 ' + st.types.filter((t) => t === 1).length + ' · DS2 '
+        + st.types.filter((t) => t === 2).length + ' · ' + (st.cut != null
+        ? 'cut by hand at ' + cutText(st.cut) + ' (k-means: ' + cutText(M.cut) + ')'
+        : 'k-means’ own split' + (st.method === 'delta' ? ', its line at ' + cutText(M.cut) : '')
+          + '. Drag across the plot to cut it by hand.');
+    }
+  }
+
+  /* The classes a cut gives, from the server: while dragging, and once more
+     at the cut let go of. Only the newest is drawn. */
+  async function preview(r, method, cut, quiet) {
+    const mine = (r.__pv = (r.__pv || 0) + 1);
+    const got = await post('/api/extraction/split/preview', { artifact_id: S.art.artifact_id,
+      version: S.version, gid: r.gid, method, cut });
+    if (mine !== r.__pv) return null;
+    S.splitLive[r.gid] = { method, cut, types: got.types, classes: got.classes, counts: got.counts };
+    if (!quiet) redrawCard(r.gid);
+    return got;
+  }
+
+  /* Choose a split for a recording, and save it for everybody: a method
+     (cut null: its k-means), a cut, or null for X-ray's own. */
+  async function chooseSplit(r, method, cut) {
+    const sv = S.splitView[r.gid];
+    if (!sv) return;
+    const own = method == null || (method === sv.own && cut == null);
+    const m = method == null ? sv.own : method;
+    if (cut == null) {
+      S.splitLive[r.gid] = { method: m, cut: null, types: sv.methods[m].types,
+                             classes: sv.pre[m].classes, counts: sv.pre[m].counts };
+    }
+    putSplitBody(r);
+    try {
+      const got = await post('/api/extraction/split', { artifact_id: S.art.artifact_id, version: S.version,
+        gid: r.gid, method: own ? null : m, cut });
+      if ((got.stuck || []).length) throw new Error(got.stuck.join('; '));
+      S.splits = got.splits || {};
+      const lv = S.splitLive[r.gid];
+      const rec = S.pay.recordings.find((x) => x.gid === r.gid);
+      if (lv && rec) {
+        rec.classes = lv.classes;
+        rec.counts = lv.counts;
+        rec.split = S.splits[r.gid] || null;
+      }
+    } catch (e) {
+      window.alert('Not split: ' + e.message);
+      delete S.splitLive[r.gid];
+    }
+    const rec = S.pay.recordings.find((x) => x.gid === r.gid);
+    replaceCard(rec);
+    restat();
+  }
+
+  function replaceCard(rec) {
+    if (!rec) return;
+    const old = document.querySelector('#erGrid .rec[data-gid="' + rec.gid + '"]');
+    for (let i = live.length - 1; i >= 0; i--) if (live[i].gid === rec.gid) live.splice(i, 1);
+    // Saved now: what is on screen is the record.
+    const keep = S.splitLive[rec.gid];
+    delete S.splitLive[rec.gid];
+    if (keep && keep.cut != null) S.splitLive[rec.gid] = keep;      // its dots stay coloured as cut
+    if (old) old.replaceWith(card(rec));
+    requestAnimationFrame(drawAll);
+    setTimeout(drawAll, 60);
+  }
+
+  /* DRAG THE CUT: across the plot, the line follows; the dots recolour at
+     once by side, the CSDs and the profile when the server answers (a
+     fraction of a second), and the cut let go of is saved. */
+  function dragCut(r, cv, e) {
+    const sv = S.splitView[r.gid];
+    const map = cv.__split;
+    if (!sv || !map) return;
+    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    const st0 = splitState(r);
+    const xs = sv.methods[st0.method].x;
+    // INSIDE THE EVENTS, one at least on each side, as Compare splits keeps
+    // its lines (2026-11-13). The plot runs 4% past the last event, so a
+    // drag to its edge asked for a cut that leaves every event on one side:
+    // the server refused it, filed it as a fault (five on 11-12), and the
+    // let-go said "Not cut there".
+    const u = Array.from(new Set(xs.filter((x) => Number.isFinite(x)))).sort((a, b) => a - b);
+    const inside = (c) => (u.length < 2 ? c
+      : Math.max((u[0] + u[1]) / 2, Math.min((u[u.length - 2] + u[u.length - 1]) / 2, c)));
+    let busy = false, want = null, last = null;
+    const ask = async () => {
+      if (busy || want == null) return;
+      busy = true;
+      const c = want;
+      want = null;
+      try { await preview(r, st0.method, c); last = c; } catch (err) { /* the next one */ }
+      busy = false;
+      if (want != null) ask();
+    };
+    const move = (ev) => {
+      const b = cv.getBoundingClientRect();
+      const cut = inside(map.xOf(ev.clientX - b.left));
+      // Which class each side is, from the split on screen: the right
+      // side is whichever class most of its events are now.
+      const cur = splitState(r);
+      let r1 = 0, r2 = 0;
+      xs.forEach((x, i) => { if (x > cut) { if (cur.types[i] === 1) r1++; else r2++; } });
+      const right = r1 >= r2 ? 1 : 2;
+      const types = xs.map((x) => (x > cut ? right : 3 - right));
+      const lv = S.splitLive[r.gid] || {};
+      S.splitLive[r.gid] = { method: st0.method, cut, types,
+                             classes: lv.classes || (viewRec(r).classes), counts: lv.counts || r.counts };
+      drawSplit(cv, r);
+      want = cut;
+      ask();
+    };
+    const up = async (ev) => {
+      cv.removeEventListener('pointermove', move);
+      cv.removeEventListener('pointerup', up);
+      cv.removeEventListener('pointercancel', up);
+      const cut = (S.splitLive[r.gid] || {}).cut;
+      if (cut == null) return;
+      while (busy) await new Promise((res) => setTimeout(res, 50));
+      try { if (last !== cut) await preview(r, st0.method, cut); }
+      catch (err) { window.alert('Not cut there: ' + err.message); delete S.splitLive[r.gid]; putSplitBody(r); return; }
+      chooseSplit(r, st0.method, cut);
+    };
+    cv.addEventListener('pointermove', move);
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+    move(e);
+  }
+
+  /* The plot: each event at its place in the method on show (the sink gap
+     alone along a line, spread up and down only to separate the dots; a
+     PCA as PC1 against PC2), coloured by its class; the line the cut is
+     at, or k-means' own, with its handle on top. */
+  function drawSplit(cv, r) {
+    const sv = S.splitView[r.gid];
+    if (!sv) return;
+    const s = sized(cv);
+    if (!s) return;
+    const { g, w, h } = s;
+    const st = splitState(r);
+    const M = sv.methods[st.method];
+    if (!M || !Array.isArray(M.x) || !M.x.length) return;
+    // An event with no place on the axis (no sink in that hump, 2026-11-13)
+    // is left off the plot; the server puts it on the right side.
+    const ok = (v) => v != null && isFinite(v);
+    const xs = M.x, n = xs.length;
+    const delta = /^delta/.test(M.base || st.method);
+    const ys = delta || !Array.isArray(M.y) ? xs.map((_, i) => (i * 0.6180339887) % 1) : M.y;
+    const L = 40, Rr = 12, T = 24, B = 28;
+    const cutAt = st.cut != null ? st.cut : M.cut;
+    const fx = xs.filter(ok), fy = ys.filter(ok);
+    if (!fx.length) return;
+    let x0 = Math.min(...fx, ok(cutAt) ? cutAt : fx[0]), x1 = Math.max(...fx, ok(cutAt) ? cutAt : fx[0]);
+    if (x1 <= x0) { x0 -= 1; x1 += 1; }
+    const px = (x1 - x0) * 0.04;
+    x0 -= px; x1 += px;
+    let y0 = fy.length ? Math.min(...fy) : 0, y1 = fy.length ? Math.max(...fy) : 1;
+    if (y1 <= y0) { y0 -= 1; y1 += 1; }
+    const py = (y1 - y0) * 0.06;
+    y0 -= py; y1 += py;
+    const X = (v) => L + ((v - x0) / (x1 - x0)) * (w - L - Rr);
+    const Y = (v) => T + (1 - (v - y0) / (y1 - y0)) * (h - T - B);
+    g.strokeStyle = tok('--line');
+    g.strokeRect(L, T, w - L - Rr, h - T - B);
+    g.font = '10px ' + tok('--sans', 'sans-serif');
+    g.fillStyle = tok('--ink-3');
+    g.textAlign = 'center';
+    // Never cut off at the edge: smaller until it fits the narrowest card.
+    const xl = st.method === 'delta' ? 'sink gap, 0 to 1 (height only spreads the dots)'
+      : delta ? (M.axis || '') + ' (height only spreads the dots)' : (M.axis || '');
+    const room = w - L - Rr;
+    for (let fsz = 10; fsz > 7 && g.measureText(xl).width > room; fsz -= 0.5) g.font = fsz + 'px ' + tok('--sans', 'sans-serif');
+    g.fillText(xl, L + room / 2, h - 8, room);
+    g.font = '10px ' + tok('--sans', 'sans-serif');
+    if (!delta) {
+      g.save(); g.translate(12, T + (h - T - B) / 2); g.rotate(-Math.PI / 2);
+      g.fillText(M.yaxis || '', 0, 0); g.restore();
+    }
+    g.textAlign = 'left';
+    g.fillText('drag the cut', L + 4, T - 8);
+    const shown = (t) => (flipped(r) ? 3 - t : t);
+    for (const pass of [2, 1]) {
+      g.fillStyle = tok(pass === 1 ? '--ds1' : '--ds2');
+      for (let i = 0; i < n; i++) {
+        if (shown(st.types[i]) !== pass || !ok(xs[i])) continue;
+        g.beginPath(); g.arc(X(xs[i]), ok(ys[i]) ? Y(ys[i]) : h - B - 4, 3.2, 0, 6.2832); g.fill();
+      }
+    }
+    const cx = X(cutAt);
+    g.strokeStyle = tok('--ink');
+    g.globalAlpha = st.cut != null ? 1 : 0.45;
+    g.setLineDash([4, 3]);
+    g.beginPath(); g.moveTo(cx, T); g.lineTo(cx, h - B); g.stroke();
+    g.setLineDash([]);
+    g.globalAlpha = 1;
+    g.fillStyle = tok('--ink');
+    g.beginPath(); g.moveTo(cx - 6, T - 12); g.lineTo(cx + 6, T - 12); g.lineTo(cx, T - 2); g.closePath(); g.fill();
+    const lab = cutText(cutAt) + (st.cut != null ? '' : delta ? ' (k-means)' : ' (k-means is not a line)');
+    // Beside the handle, on whichever side it fits.
+    if (cx + 9 + g.measureText(lab).width > w - 2) { g.textAlign = 'right'; g.fillText(lab, cx - 9, T - 4); g.textAlign = 'left'; }
+    else g.fillText(lab, cx + 9, T - 4);
+    cv.__split = { xOf: (pxv) => x0 + ((Math.max(L, Math.min(w - Rr, pxv)) - L) / (w - L - Rr)) * (x1 - x0) };
   }
 
   function values(r) {
@@ -1064,7 +1953,8 @@
           el('td', {}, [el('div', { class: 'acts' }, [
             el('button', { class: 'btn small er-sep', text: sh.verdict === 'yes' ? 'Call it not separable' : 'Call it separable',
               onclick: () => setSep(r, sh.verdict === 'yes' ? 'no' : 'yes') }),
-            sh.byHand ? el('button', { class: 'btn small er-sep-back', text: 'Back to X-ray’s call',
+            sh.byHand ? el('button', { class: 'btn small er-sep-back',
+              text: direct() ? 'Not called yet' : 'Back to X-ray’s call',
               onclick: () => setSep(r, null) }) : null])]),
         ]);
       })),
@@ -1505,7 +2395,24 @@
   const th = qs.get('theme');
   if (th === 'dark' || th === 'light') document.documentElement.setAttribute('data-theme', th);
 
+  /* THE ROOM'S KIT (2026-11-12), for the pages that open over it --
+     Compare splits, Compare across sets (extraction_compare.js) and Blob
+     Analysis (extraction_blobs.js): its state, its fetch and its pictures,
+     so a card in a dialog is drawn exactly as the card on the page. */
+  const kit = {
+    S, api, post, el, tok, fmt, sgn, seg, sized, live, drawAll, drawCsd, drawProfile,
+    shownClasses, colOf, softOf, flipped, sepOf, viewRec, climOf, shared, xRange, p99,
+    recOf: (gid) => ((S.pay || {}).recordings || []).find((x) => x.gid === gid) || null,
+    reloadCard: async (gid) => {
+      await load(S.version);
+      const r = ((S.pay || {}).recordings || []).find((x) => x.gid === gid);
+      if (r) { delete S.splitView[gid]; delete S.splitLive[gid]; }
+    },
+    reload: (v) => load(v),
+  };
   window.erRoom = {
+    kit,
+    ext: (window.erRoom && window.erRoom.ext) || {},
     state: () => S,
     start: (fetchImpl) => { S.fetch = fetchImpl || null; return load(); },
     reload: (v) => load(v),

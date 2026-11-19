@@ -17980,6 +17980,18 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-venn-c.ds { border-color: var(--call-ds); }
 .wf-venn-c.p { border-color: var(--call-p); }
 .wf-venn-c.both { border-color: var(--call-amb); }
+/* THE HALO (2026-11-12): the Apply stage's capture of what is outside both. */
+.wf-halo { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.wf-halo.on { border-color: var(--call-amb); }
+.wf-halo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.wf-halo-sls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 18px; }
+.wf-halo-sl { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto; align-items: center; gap: 4px 10px; }
+.wf-halo-sl .hint { grid-column: 1 / -1; }
+.wf-halo-sl b { font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.wf-halo-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.wf-halo-counts b { font-variant-numeric: tabular-nums; }
+.wf-halo-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.wf-venn-halo { flex-basis: 100%; }
 .wf-avg-btns { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
 .wf-insp { display: flex; flex-direction: column; gap: var(--sp-6);
   border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-8); }
@@ -18015,7 +18027,7 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-sel { font: inherit; font-size: var(--fs-115); max-width: 100%; padding: 3px 6px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: var(--bg-2); color: var(--text); }
-.wf-name-in { font: inherit; min-width: 280px; max-width: 100%; padding: 3px 6px;
+.wf-name-in, .wf-folder-in { font: inherit; min-width: 280px; max-width: 100%; padding: 3px 6px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: var(--bg-2); color: var(--text); }
 .wf-custom { width: 7em; font: inherit; padding: 3px 6px; border: 1px solid var(--line);
@@ -18025,6 +18037,31 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   font-size: var(--fs-115); }
 .wf-prep-card { display: flex; flex-direction: column; gap: var(--sp-6);
   border-top: 1px solid var(--line-soft); padding-top: var(--sp-6); }
+/* Which pool or workflow, and which version (2026-11-12): one button that
+   says both, or "Select pool"; pressed, the picker (rcworkflow.js
+   `inputDialog`), Add a set's shape -- rows grouped by folder, then the
+   chosen one's version tree. */
+.wf-pin { display: inline-flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6); max-width: 100%; }
+.wf-vbtn, .wf-in { max-width: 100%; }
+.wf-in-name { font-weight: 600; overflow-wrap: anywhere; }
+.wf-in-empty { color: var(--accent); }
+.wf-newer, .wf-retired { color: var(--warn); }
+.wf-pick-sub { margin: 0 0 var(--sp-10); }
+.wf-pick-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--sp-16, 16px); align-items: start; }
+.wf-pick-find { width: 100%; box-sizing: border-box; font: inherit; padding: 5px 8px;
+  margin-bottom: var(--sp-8); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text); }
+.ncs .bm-list.wf-pick-list { max-height: min(58vh, 560px); }
+.wf-pick-group + .wf-pick-group { margin-top: var(--sp-8); }
+.wf-pick-folder { font-size: var(--fs-11); font-weight: 600; color: var(--text-3);
+  padding: 2px 7px; }
+.wf-pick-say { margin: var(--sp-8) 0 0; }
+.wf-pick-of { font-weight: 600; margin: -4px 0 var(--sp-8); overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .wf-pick-cols { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 900px) {
   .wf-views { grid-template-columns: minmax(0, 1fr); }
   .wf-stages { grid-template-columns: minmax(0, 1fr); }
@@ -18040,6 +18077,7 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-lg i.wf-lg-box { width: 16px; height: 11px; border-radius: 2px; background: none;
   border: 2px solid; }
 .wf-lg i.wf-lg-box.dashed { border-width: 1.5px; border-style: dashed; }
+.wf-lg i.wf-lg-box.dotted { border-width: 1.5px; border-style: dotted; }
 .wf-lg i.wf-lg-line { width: 18px; height: 3px; border-radius: 2px; }
 .wf-key { display: flex; flex-wrap: wrap; gap: var(--sp-12); font-size: var(--fs-115);
   margin-bottom: var(--sp-4); }

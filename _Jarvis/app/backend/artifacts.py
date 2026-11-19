@@ -713,6 +713,31 @@ register_kind("extraction", _extraction_key,
               lambda s: list(s.get("gids") or []), "Extraction Room")
 
 
+# THE IMPRESSION (2026-11-12: "click locked in and have it saved in artifact
+# as a STATE"): one room set's every band, split, line and call, locked in at
+# once, as the mould Blob Analysis is cast from. One artifact per room and
+# set; each lock is a version.
+def _impression_key(subject):
+    _need(subject, ("room", "folder"), "Impression")
+    return "extraction_impression|%s|%s" % (subject["room"], subject["folder"])
+
+
+def _impression_summary(payload):
+    p = payload or {}
+    recs = p.get("recordings") or []
+    return {"room": p.get("room"), "folder": p.get("folder_name"),
+            "recordings": len(recs),
+            "separable": sum(1 for r in recs if r.get("call") == "yes"),
+            "events": sum(int(r.get("n") or 0) for r in recs)}
+
+
+register_kind("extraction_impression", _impression_key,
+              lambda s: "Impression · %s" % (s.get("folder_name")
+                                             or s.get("folder")),
+              _impression_summary,
+              lambda s: list(s.get("gids") or []), "Impression")
+
+
 def subject_key(kind, subject):
     if kind not in KINDS:
         raise ArtifactError(
