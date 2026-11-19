@@ -1,21 +1,25 @@
 {
   "_at": {
+    "archived": "2026-11-13T17:37:30.952666+00:00",
+    "archived_at": "2026-11-13T17:37:30.952666+00:00",
+    "archived_by": "2026-11-13T17:37:30.952666+00:00",
     "assignee": "2026-10-21T14:09:04.987908+00:00",
-    "based_on": "2026-10-21T14:09:05.015679+00:00",
-    "based_on_at": "2026-10-21T14:09:05.015679+00:00",
+    "based_on": "2026-11-13T17:37:30.952666+00:00",
+    "based_on_at": "2026-11-13T17:37:30.952666+00:00",
+    "closed_at": "2026-11-13T17:37:30.952666+00:00",
     "created": "2026-10-21T14:09:04.963175+00:00",
     "gid": "2026-10-21T14:09:04.963175+00:00",
     "imports": "2026-10-21T14:09:04.963175+00:00",
     "kind": "2026-10-21T14:09:04.963175+00:00",
     "labels": "2026-10-21T14:09:04.963175+00:00",
     "name": "2026-10-21T14:09:04.963175+00:00",
-    "open": "2026-10-21T14:09:04.987908+00:00",
-    "opened_at": "2026-10-21T14:09:04.987908+00:00",
-    "opened_by": "2026-10-21T14:09:04.987908+00:00",
+    "open": "2026-11-13T17:37:30.952666+00:00",
+    "opened_at": "2026-11-13T17:37:50.220169+00:00",
+    "opened_by": "2026-11-13T17:37:30.952666+00:00",
     "schema": "2026-10-21T14:09:04.963175+00:00",
     "session_label": "2026-10-21T14:09:04.963175+00:00",
     "source": "2026-10-21T14:09:04.963175+00:00",
-    "updated": "2026-10-22T20:08:00.288586+00:00"
+    "updated": "2026-11-13T17:37:50.220169+00:00"
   },
   "_keys": {
     "events": {
@@ -41,7 +45,7 @@
       ],
       "e082115790a": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:05:01.468338+00:00"
       ],
       "e08ddbe4aa8": [
         "set",
@@ -57,7 +61,7 @@
       ],
       "e0c6aa8adab": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:03:07.720033+00:00"
       ],
       "e0cb7090725": [
         "set",
@@ -105,11 +109,11 @@
       ],
       "e1690d38187": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:02:59.123631+00:00"
       ],
       "e19cc0833ba": [
         "set",
-        "2026-10-22T19:57:04.027658+00:00"
+        "2026-10-22T20:03:17.803671+00:00"
       ],
       "e19f935c110": [
         "set",
@@ -161,7 +165,7 @@
       ],
       "e22f163b707": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:02:54.063732+00:00"
       ],
       "e25ebda94c6": [
         "set",
@@ -225,7 +229,7 @@
       ],
       "e3b3edbfd6c": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:03:03.573827+00:00"
       ],
       "e3b538e4cd1": [
         "set",
@@ -281,7 +285,7 @@
       ],
       "e496c22dde4": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:00:24.972661+00:00"
       ],
       "e49efb027ae": [
         "set",
@@ -301,7 +305,7 @@
       ],
       "e4c91d3ce52": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:02:38.663819+00:00"
       ],
       "e4de5e49aaf": [
         "set",
@@ -341,7 +345,7 @@
       ],
       "e54596ab768": [
         "set",
-        "2026-10-22T19:57:04.027658+00:00"
+        "2026-10-22T20:01:14.346470+00:00"
       ],
       "e55921457c7": [
         "set",
@@ -405,11 +409,11 @@
       ],
       "e63c09ce31b": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:05:05.896766+00:00"
       ],
       "e63c292c304": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:03:27.146964+00:00"
       ],
       "e64199df93f": [
         "set",
@@ -525,7 +529,7 @@
       ],
       "e7e24fe7b6e": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:02:46.711381+00:00"
       ],
       "e7ee79909be": [
         "set",
@@ -981,7 +985,7 @@
       ],
       "ef81082af9b": [
         "set",
-        "2026-10-21T14:09:04.963175+00:00"
+        "2026-10-22T20:03:11.458289+00:00"
       ],
       "ef8288e7672": [
         "set",
@@ -1022,13 +1026,17 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T20:08:00.288586+00:00",
+    "at": "2026-11-13T17:37:50.220169+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "archived": null,
+  "archived_at": null,
+  "archived_by": null,
   "assignee": "Rain Younger",
-  "based_on": "bdc68d968515",
-  "based_on_at": "2026-10-21T10:09:05-0400",
+  "based_on": "br-a13e6a64e9",
+  "based_on_at": "2026-11-13T12:37:30-0500",
+  "closed_at": null,
   "created": {
     "app_version": "2026.10.20.8",
     "at": "2026-10-21T10:09:04-04:00",
@@ -2220,10 +2228,19 @@
     },
     {
       "amplitude": 452.947,
+      "at": "2026-10-22T16:00:24-0400",
+      "by": "Rain Younger",
       "channel": 4,
       "id": "e496c22dde4",
-      "label": null,
+      "label": "spike",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:00:24-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
       "start": 601.650759
     },
     {
@@ -2285,19 +2302,23 @@
       "start": 610.090755
     },
     {
-      "amplitude": 409.053,
-      "channel": 8,
-      "id": "e7d4033ec2b",
-      "label": null,
-      "origin": "doppler",
-      "start": 610.914255
-    },
-    {
-      "at": "2026-10-22T19:54:20+00:00",
+      "at": "2026-10-22T15:54:20-0400",
       "by": "Rain Younger",
+      "channel": 8,
       "id": "e54596ab768",
       "label": "spike",
-      "origin": "incisor",
+      "merged_at": "2026-10-22T16:01:14-0400",
+      "merged_by": "Rain Younger",
+      "origin": "both",
+      "pair_t": 610.914255,
+      "reviews": [
+        {
+          "at": "2026-10-22T15:54:20-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "stamp": "incisor",
       "start": 611.00225
     },
     {
@@ -2414,10 +2435,19 @@
     },
     {
       "amplitude": 480.68,
+      "at": "2026-10-22T16:02:38-0400",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "e4c91d3ce52",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:02:38-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 635.716245
     },
     {
@@ -2430,10 +2460,19 @@
     },
     {
       "amplitude": 398.399,
+      "at": "2026-10-22T16:02:46-0400",
+      "by": "Rain Younger",
       "channel": 8,
       "id": "e7e24fe7b6e",
-      "label": null,
+      "label": "spike",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:02:46-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
       "start": 636.282245
     },
     {
@@ -2454,66 +2493,124 @@
     },
     {
       "amplitude": 418.522,
+      "at": "2026-10-22T16:02:54-0400",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "e22f163b707",
-      "label": null,
+      "label": "spike",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:02:54-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
       "start": 639.816243
     },
     {
       "amplitude": 431.93,
+      "at": "2026-10-22T16:02:59-0400",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "e1690d38187",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:02:59-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 641.187743
     },
     {
       "amplitude": 485.564,
+      "at": "2026-10-22T16:03:03-0400",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "e3b3edbfd6c",
-      "label": null,
+      "label": "spike",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:03:03-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
       "start": 642.196742
     },
     {
       "amplitude": 461.441,
+      "at": "2026-10-22T16:03:07-0400",
+      "by": "Rain Younger",
       "channel": 10,
       "id": "e0c6aa8adab",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:03:07-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 643.154242
     },
     {
       "amplitude": 463.951,
+      "at": "2026-10-22T16:03:11-0400",
+      "by": "Rain Younger",
       "channel": 28,
       "id": "ef81082af9b",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:03:11-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 647.34474
     },
     {
-      "amplitude": 371.654,
-      "channel": 4,
-      "id": "e7cd12b310d",
-      "label": null,
-      "origin": "doppler",
-      "start": 649.976739
-    },
-    {
-      "at": "2026-10-22T19:54:20+00:00",
+      "at": "2026-10-22T15:54:20-0400",
       "by": "Rain Younger",
+      "channel": 4,
       "id": "e19cc0833ba",
       "label": "spike",
-      "origin": "incisor",
+      "merged_at": "2026-10-22T16:03:17-0400",
+      "merged_by": "Rain Younger",
+      "origin": "both",
+      "pair_t": 649.976739,
+      "reviews": [
+        {
+          "at": "2026-10-22T15:54:20-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "stamp": "incisor",
       "start": 650.051514
     },
     {
       "amplitude": 435.478,
+      "at": "2026-10-22T16:03:27-0400",
+      "by": "Rain Younger",
       "channel": 6,
       "id": "e63c292c304",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:03:27-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 654.965237
     },
     {
@@ -2800,18 +2897,36 @@
     },
     {
       "amplitude": 401.882,
+      "at": "2026-10-22T16:05:01-0400",
+      "by": "Rain Younger",
       "channel": 44,
       "id": "e082115790a",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:05:01-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 775.332689
     },
     {
       "amplitude": 493.404,
+      "at": "2026-10-22T16:05:05-0400",
+      "by": "Rain Younger",
       "channel": 8,
       "id": "e63c09ce31b",
-      "label": null,
+      "label": "garbage",
       "origin": "doppler",
+      "reviews": [
+        {
+          "at": "2026-10-22T16:05:05-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
       "start": 782.689186
     },
     {
@@ -3341,8 +3456,8 @@
   ],
   "name": "PTEN m6 s4 2023-09-13 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "open": true,
-  "opened_at": "2026-10-21T10:09:04-0400",
-  "opened_by": "Rain Younger",
+  "opened_at": "2026-11-13T12:37:50-0500",
+  "opened_by": "Shahriar Tafti",
   "schema": 1,
   "session_label": "PTEN m6 s4 2023-09-13",
   "source": {
@@ -3354,9 +3469,9 @@
     "version": 0
   },
   "updated": {
-    "app_version": "2026.10.22.5",
-    "at": "2026-10-22T16:08:00-04:00",
-    "commit": "16df6dca",
+    "app_version": "2026.11.13.2",
+    "at": "2026-11-13T12:37:50-05:00",
+    "commit": "de71a7fc",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

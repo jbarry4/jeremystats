@@ -81,6 +81,7 @@ BARRY.views.misc = (function () {
     host.appendChild(el('div', { class: 'section-label', text: 'Colony' }));
     host.appendChild(vosCard());
     host.appendChild(smCard());
+    host.appendChild(chickenCard());
 
     /* ---- utilities ---- */
     host.appendChild(el('div', { class: 'section-label', text: 'Workbench' }));
@@ -201,6 +202,27 @@ BARRY.views.misc = (function () {
     if (tail) host.appendChild(tail);
   }
 
+
+  /* ======================================================================
+     Chicken Scratch (BETA) -- every source's word on each PTEN and KCNT1
+     mouse, disagreements left showing (web/chickenscratch.html, its own
+     window; backend/chickenscratch.py). Marks and notes made there feed
+     the next pass.
+     ====================================================================== */
+  function chickenCard() {
+    const card = el('div', { class: 'card vos-card' });
+    card.appendChild(el('h3', { html: '<span>Chicken Scratch</span> <span class="stat-chip warn">BETA</span>' }));
+    card.appendChild(el('p', { text: 'Everything the lab ever wrote about each PTEN and KCNT1 mouse '
+      + '(sheets, docs, PDFs, notebook photos, recording folders, SoftMouse, VOS) on one page per '
+      + 'mouse, with the places the sources disagree left showing. Mark what is right or wrong and '
+      + 'leave notes: they shape the next pass.' }));
+    card.appendChild(el('div', { class: 'card-actions' }, [
+      el('button', { class: 'btn sm', text: 'Open Chicken Scratch',
+                     onclick: () => window.open(location.origin + '/chickenscratch.html',
+                                                'barry-chickenscratch', 'width=1280,height=900') }),
+    ]));
+    return card;
+  }
 
   /* ======================================================================
      VOS log in -- the census, straight from VOS into the Lab Operations

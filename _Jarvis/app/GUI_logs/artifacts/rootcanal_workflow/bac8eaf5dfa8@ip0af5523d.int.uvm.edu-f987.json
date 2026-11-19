@@ -1,0 +1,157 @@
+{
+  "_at": {
+    "added": "2026-11-12T19:01:41.207401+00:00",
+    "deleted": "2026-11-12T19:01:41.207401+00:00",
+    "id": "2026-11-12T19:01:41.207401+00:00",
+    "kind": "2026-11-12T19:01:41.207401+00:00",
+    "name": "2026-11-12T19:01:41.207401+00:00",
+    "nickname": "2026-11-12T19:01:41.207401+00:00",
+    "schema": "2026-11-12T19:01:41.207401+00:00",
+    "subject": "2026-11-12T19:01:41.207401+00:00",
+    "subject_key": "2026-11-12T19:01:41.207401+00:00",
+    "version": "2026-11-12T19:01:41.207401+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "1ba8190f2f0b": [
+        "set",
+        "2026-11-12T19:01:41.207401+00:00"
+      ],
+      "21c531088fbd": [
+        "set",
+        "2026-11-12T19:01:41.207401+00:00"
+      ],
+      "6ce71322f2e6": [
+        "set",
+        "2026-11-12T19:01:41.207401+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:01:41.207401+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T13:11:31-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "bac8eaf5dfa8",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 CTL Baseline (Optimized Paramters/Snap/10% Grace))",
+  "nickname": "CTL Baseline (Optimized Paramters/Snap/10% Grace))",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 CTL Baseline (Optimized Paramters/Snap/10% Grace))",
+    "workflow_key": "9082226e2f694fbf8dc72f31c44197a8"
+  },
+  "subject_key": "rootcanal_workflow|9082226e2f694fbf8dc72f31c44197a8",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T13:11:31-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "916c37ecda2c",
+      "id": "21c531088fbd",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.1,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-12T13:11:31-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T13:11:53-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "3d66cc6de1d3",
+      "id": "1ba8190f2f0b",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": 0.1,
+        "kept": 4201,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.12.3",
+      "at": "2026-11-12T13:13:56-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "8cafd3f2c7eb",
+      "id": "6ce71322f2e6",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": "ad9b1441cdaa",
+        "events": 5203,
+        "grace": 0.1,
+        "kept": 4201,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 3
+    }
+  ]
+}

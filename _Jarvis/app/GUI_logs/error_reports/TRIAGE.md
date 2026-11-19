@@ -41,6 +41,760 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 24: 2026-11-19 (morning, scheduled), 11-18 08:50 to 11-19 08:50
+
+Covered: Bluebarry's 11-18 report (0 faults, 22 actions). There is no
+11-18 or 11-19 shard. `git fetch` brought five commits from 11-18: Rain's
+`715487f5`/`c2c85848` (09:16), Shahriar's `a71fcafb`/`7b2196df` (12:10)
+and Samara Sahagian's `3f39ab7c` (14:29), which merges in her `658cba52`
+from 10-30. `origin/master` is `3f39ab7c`, and HEAD is still `a5e56299`.
+They change only `GUI_logs`, no code. With them came Strawbarry's 11-17
+report and the first shards from a new machine, `samarasahagia-839d`
+(profile, people, workbench and one session). It has no report and no
+stamps file. Blackbarry's 11-13, 11-14, 11-17 and 11-18 reports and
+Strawbarry's 11-18 have not come. The cloud, read only, from
+`2026-11-17T13:50Z`: 3 `errors` rows (Bluebarry's three 11-17 test faults,
+which pass 23 already read), 996 `activity` rows and 49 `client.error`
+rows. All 49 are "stuck", and 36 of them pass 23 had already read. Floss:
+Rain's `20261109-102332-eca9` is still open, here and on origin.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-17 | Strawbarry (Aggie Krempasky, Maddie Massad) | 0 | 366 actions. Build `2026.11.16.1 05254eea` |
+| 11-18 | Bluebarry (Shahriar) | 0 | 22 actions |
+| 11-18 | Strawbarry (Sylvia Clouse, Maddie Massad, Rain Younger, Aggie Krempasky) | 0 `errors` rows | 156 actions in the cloud. No report yet |
+| 11-18 | Blackbarry (Isabella Piatek) | 0 `errors` rows | 280 actions in the cloud. No report yet |
+| 11-18 | Strawbarry, Blackbarry | 13 new "stuck" rows | Slow, not faults (1) |
+
+1. **"Stuck" rows** (cloud `activity`), the 13 new ones. None is
+   `GET /api/link`.
+   - Start-up clusters (`registry` ~35 s, `prefs`, `csc/open`,
+     `arc/precon/status`, `toolkit/bad-channels`, curation sets):
+     Strawbarry at 14:38Z (Rain) and Blackbarry at 17:15Z to 17:16Z.
+   - Blackbarry `POST /api/session/state` in Xplorefinder: 42.8 s at
+     17:46:35Z, 42.8 s at 18:30:13Z and 31.5 s at 18:44:59Z, with
+     `csc/window` 31 to 32 s beside the first and the last. That makes
+     eighteen since 11-09. Pass 19's open item, still not measured. One new
+     lead from the server lines the rows carry: in all three, a sync chip
+     check ("Working on syncstate" and "Checking which records have reached
+     the shared database", 3 to 10 s each) and a push ("Synced: sent 2 to
+     54 changes") ran in the seconds before. At 18:45:04Z and :06Z two
+     `/api/session*` requests finished after 1 min 4 s and 1 min 5 s.
+     `Store.upsert_session` holds the store's global `_LOCK` for its whole
+     read-modify-write. Inside it, `get_session` (`backend/store.py`
+     ~510) first reads the shard named for the gid. Records are filed
+     under their key, so with a gid in the identity that read usually
+     misses and it falls back to `all_sessions()`. That recompiles every
+     session shard whenever any shard has been written, and the pull
+     writes them. I have not shown
+     that this is what holds the 30 to 60 s. Measuring it needs Blackbarry,
+     and it is a design question as well, so I left it open.
+
+No code changed and there is no CHANGELOG entry.
+
+Builds: Bluebarry's 11-18 report says `2026.11.18.2 a5e56299`. That is the
+other session's Extraction Room 2.0 and pass 23's `2026.11.18.1`, both
+uncommitted here. Strawbarry ran `05254eea` on 11-17, so it now has pass
+18's Floss fix (`2026.11.13.1`, "Floss finds git") and Rain's ticket can be
+retried there. It does not have `2026.11.18.1`. No NS_ERROR_ABORT
+"promise" row has come from it since.
+
+Next pass: Bluebarry's 11-19 report and shard. Then Strawbarry's 11-18 and
+Blackbarry's 11-13/11-14/11-17/11-18 reports when git brings them, and any
+report from `samarasahagia-839d`. Then `git fetch`, then the cloud from
+`2026-11-18T13:50Z`. Open: pass 22's item 1 (a DS-PCA bundle opened on a
+machine without its read), pass 18's two watches, the Blackbarry
+`session/state` stalls with the lead above, Rain's Floss ticket, and pass
+23's NS_ERROR_ABORT watch.
+
+## Pass 23: 2026-11-18 (morning, scheduled), 11-17 08:50 to 11-18 08:50
+
+Covered: Bluebarry's 11-17 report and shard. HEAD has moved to `a5e56299`
+(maliajaff's commit `1a6973ac`, 11-17 10:58, took in the uncommitted
+`2026.11.11.5` to `2026.11.16.1` work). `git fetch` brought `05254eea`
+(Rain, 11-17 13:32) and `bd823077` (Shahriar, 14:47): `origin/master` is
+`bd823077`. Git brought Strawbarry's 11-12 to 11-16 reports and
+Blackbarry's 11-15 and 11-16. Blackbarry's 11-13/11-14 and both machines'
+11-17 have not come. The cloud, read only, from `2026-11-14T13:50Z`: 4
+`errors` rows (Blackbarry's 11-16 DS-PCA fault and Bluebarry's three test
+faults), 1044 `activity` rows and 60 `client.error` rows, one of them a real
+fault. Floss: Rain's `20261109-102332-eca9` is still open, here and on
+origin.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-12 to 11-15 | Strawbarry (Eshal Anwer) | 0 | 64, 29, 0, 0 actions. Build `2026.11.11.4 f9792b6e` |
+| 11-16 | Strawbarry (Maddie Massad) | 0 in the report, 1 in the cloud | `client.error` "promise", NS_ERROR_ABORT from `window.open` in `popOutPanes`. **Fixed** (1) |
+| 11-15 | Blackbarry (Isabella Piatek) | 0 | 0 actions. Build `2026.11.11.4 8c391def` |
+| 11-16 | Blackbarry (Isabella Piatek) | 1 | `dspca/fit` "That read is not on this machine any more", 12:54:31. Pass 22's item 1, already read from the shard. Still open |
+| 11-17 | Bluebarry (Shahriar) | 0 (3 test) | 33 actions. `extraction/one` "no version 9/10/11" on `980b57eab496` at 16:05:14, all `test: true`: the other session's probes |
+| 11-16, 11-17 | all three | 0 `errors` rows | 59 "stuck" rows. Slow, not faults (2) |
+
+1. **Panning on Strawbarry, a pop-up that threw** (11-16 18:09:52Z, Maddie
+   Massad, KCNT1 m531 s1, pooled set `s69cf561a98cf`). The page reported an
+   unhandled rejection: `[Exception... "Abort" nsresult: "0x80004004
+   (NS_ERROR_ABORT)"]` at `xplore.js` line 3678, `popOutPanes`, called from
+   `openAids` → `layout` → `enter` in `panning.js`. The stack format and the
+   nsresult say Firefox. Line 3678 is the `window.open` for the aid window.
+   `popOutPanes` handled a blocked window (`null`) but not a throw, so the
+   throw went up through `enter()` right after `setMode('panning')`, before
+   `publishMarks`, `goTo`, `render` and `beat`: Panning was left half open.
+   The activity shows Panning left at 18:09:28, entered at 18:09:41 to :42,
+   the error 10 s later, then the recording opened again at 18:09:57 and
+   only window moves after it. Why Firefox refused I cannot tell from here
+   (the usual cause is a named window that is still closing, and Panning
+   closes `barry-panning-aids` on leave). The fault is that a refusal broke
+   the mode. Fixed in `2026.11.18.1`: `popOutPanes` catches the throw, notes
+   it in the debug log, says "The browser would not open the second window.
+   Leave and re-enter this mode to try again." and returns `null`, as for a
+   blocked window. All six callers (Panning, Spotter, Curate, Braces, CFC
+   scope, StrataScope) already go on without a window on `null`.
+   `web/_dev/popoutthrow.html` (new) stubs the frame's `window.open` to
+   throw, return null and work. With the fix taken out: 5 ok, 3 fail. With
+   it in: 8 ok. `aidkeys` still 12 ok. A reload is enough. Strawbarry gets
+   it when it pulls; it is still on `f9792b6e`.
+2. **"Stuck" rows** (cloud `activity`): 59. None is `GET /api/link`.
+   - Start-up clusters (`registry` ~35 s, `csc/open`, `prefs`,
+     `arc/precon/status`, `toolkit/scopes`, `curation`): Strawbarry 11-16
+     15:43Z and 11-17 14:36Z, Blackbarry 11-16 17:19Z and 11-17 19:52Z.
+   - Blackbarry `POST /api/session/state`: **62.8 s** at 11-16 18:44:29Z
+     (the longest yet) and 34.8 s at 11-17 20:23:56Z, both in Xplorefinder,
+     with `csc/open` 32 s twice just before the first. Pass 17's open item,
+     now fifteen since 11-09. At 11-16 19:24Z a cluster of eleven (Toolkit
+     `session/bad`, `toolkit/scopes`, `rootcanal/meta`, `/done`,
+     `/candidates`, `/workflows`, `csc/window` and two spinners), with
+     "Working on syncs" beside them. Not measured; left open with pass 19's
+     note.
+   - Bluebarry 11-17 17:12Z: 25 `GET /api/rootcanal/workflow/<id>` at
+     30 s, all at once, plus `rootcanal/done` and `/candidates`: the Root
+     Canal page fetching every workflow in parallel. Also 11-16 22:11Z
+     `doppler/estimate` 32 s and `doppler/batch/plan` 34 s. Slow, not
+     broken; left open.
+
+What changed, all in `2026.11.18.1` and uncommitted:
+- `web/js/xplore.js`, `popOutPanes` (around 3674–3701): the `try` around
+  `window.open`. That file had no other uncommitted work.
+- `web/_dev/popoutthrow.html` (new).
+- `CHANGELOG.md`: the `2026.11.18.1` entry.
+
+Builds: Bluebarry's 11-17 report still says `2026.11.13.7 de71a7fc`, though HEAD
+was `a5e56299` from 10:58 that day: most likely the server was started
+before the commit and not restarted. I did not check. Strawbarry ran `f9792b6e` on
+11-12 to 11-16, so it does not have pass 18's Floss fix and Rain's ticket
+cannot be retried there yet. Blackbarry ran `8c391def` on 11-15 and 11-16.
+
+Next pass: Bluebarry's 11-18 report and shard. Then Strawbarry's and
+Blackbarry's 11-17 reports (365 and 140 actions in the cloud, no `errors`
+rows) and Blackbarry's 11-13/11-14 when git brings them. Then `git fetch`,
+then the cloud from `2026-11-17T13:50Z`. Open: pass 22's item 1 (a DS-PCA
+bundle opened on a machine without its read), pass 18's two watches, the
+Blackbarry `session/state` stalls, and Rain's Floss ticket. Watch for
+another NS_ERROR_ABORT now that it is caught: it would show only as a
+`popOutPanes` line in the debug log and the toast, not as a fault.
+
+## Pass 22: 2026-11-17 (morning, scheduled), 11-16 08:50 to 11-17 08:50
+
+Covered: Bluebarry's 11-16 report (build `2026.11.13.7 de71a7fc`, 0 faults,
+3 actions; no Bluebarry 11-16 or 11-17 shard). `git fetch` brought
+`8c391def` (Shahriar, 11-16 12:16): `origin/master` is `8c391def`, HEAD
+still `de71a7fc`. It carries Blackbarry's 11-12 report and Strawbarry's
+11-09 to 11-11 (all 0 faults; Strawbarry on `24e7b82f`, Blackbarry on
+`03847324`). Strawbarry's 11-12/11-13 and Blackbarry's 11-13 still have not
+come. A Blackbarry 11-16 shard is on disk here (`errors/2026-11-16@Blackbarry.jsonl`)
+with one real fault. Cloud not read this pass.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-09 to 11-11 | Strawbarry (Angelina Woychosky) | 0 | Build `2026.11.06.4 24e7b82f` |
+| 11-12 | Blackbarry (Isabella Piatek) | 0 | 114 actions, build `03847324` |
+| 11-16 | Bluebarry (Shahriar) | 0 | 3 actions |
+| 11-16 | Blackbarry (Isabella Piatek) | 1 | `dspca/fit` "That read is not on this machine any more" (1). Open |
+
+1. **DS-PCA fit on a read this machine never made** (17:54:31Z, gid
+   `sc74c98b2495d`, read `75398bb10d0c`). `dspca.load_read` refuses
+   because the `.npz` is absent. The read cache is machine-local, but an
+   X-ray bundle (an artifact, so it syncs) carries its read hash:
+   `enter(b)` in `web/js/dspca.js` (~line 1676) sets `q.read` from
+   `b.payload.read` and refits without asking whether that read is cached.
+   On any machine but the one that made the read, the fit fails. The
+   message says "read the set again", but in bundle mode `plan` is null, so
+   `readCard()` draws nothing and there is no "Read again" button: the
+   person has no way to do what it says. Not fixed: what a bundle opened on
+   another machine should do (re-read automatically from the bundle's set
+   and stamps, offer a Read button, or say the read lives on the making
+   machine) is the user's call. Left open.
+
+No code changed and there is no CHANGELOG entry.
+
+Next pass: Bluebarry's 11-17 report and shard, any Blackbarry shard on
+disk, then Strawbarry's 11-12/11-13 and Blackbarry's 11-13+ reports when
+git brings them. Then `git fetch`, then the cloud from `2026-11-14T13:50Z`
+(not read this pass). Item 1 above, pass 18's two watches and the Blackbarry
+`POST /api/session/state` stalls (pass 19) are open.
+
+## Pass 21: 2026-11-16 (morning, scheduled), 11-15 08:50 to 11-16 08:50
+
+Nothing new. Bluebarry's 11-15 report (build `2026.11.13.7 de71a7fc`) has
+0 faults and 0 actions, and there is no 11-14, 11-15 or 11-16 shard. 11-15
+was a Sunday. `git fetch` brought nothing: `origin/master` is still
+`67277475` and HEAD `de71a7fc`. The cloud, read only, from
+`2026-11-14T13:50Z`: 0 `errors` rows and no `activity` rows from any
+machine, so no `client.error` rows either. Its newest row is still
+Strawbarry's at 22:24Z on 11-13. Floss: 0 open here. I could not see
+Strawbarry's tickets this pass (nothing new came by git), so Rain's
+`20261109-102332-eca9` counts as still open there.
+
+No code changed and there is no CHANGELOG entry.
+
+Next pass: Bluebarry's 11-16 report and shard (a Monday, the first working
+day since 11-13). Then Strawbarry's 11-12 and 11-13 reports and
+Blackbarry's 11-13 when git brings them. Then `git fetch`, then the cloud
+from `2026-11-14T13:50Z` (nothing has arrived since, so the start does not
+move). Pass 18's two watches and pass 19's count of the Blackbarry
+`POST /api/session/state` stalls (thirteen since 11-09, with pooled
+curation set opens over 30 s beside them) all still stand.
+
+## Pass 20: 2026-11-15 (morning, scheduled), 11-14 08:50 to 11-15 08:50
+
+Nothing new. Bluebarry's 11-14 report (build `2026.11.13.7 de71a7fc`) has
+0 faults and 0 actions, and there is no 11-14 or 11-15 shard. 11-14 was a
+Saturday. `git fetch` brought nothing: `origin/master` is still `67277475`
+and HEAD `de71a7fc`. The cloud, read only, from `2026-11-14T13:50Z`: 0
+`errors` rows, 0 `client.error` rows and no activity from any machine. Its
+newest row is Strawbarry's at 22:24Z on 11-13. Floss: 0 open here, and
+Rain's `20261109-102332-eca9` is still open on Strawbarry.
+
+No code changed and there is no CHANGELOG entry.
+
+Next pass: Bluebarry's 11-15 report and shard. Then Strawbarry's 11-12
+and 11-13 reports and Blackbarry's 11-13 when git brings them. Then
+`git fetch`, then the cloud from `2026-11-15T13:50Z`. Pass 18's two
+watches and pass 19's count of the Blackbarry `POST /api/session/state`
+stalls (thirteen since 11-09, with pooled curation set opens over 30 s
+beside them) all still stand.
+
+## Pass 19: 2026-11-14 (morning, scheduled), 11-13 09:10 to 11-14 08:50
+
+Covered: Bluebarry's 11-13 report and shard. There is no 11-14 shard yet.
+`git fetch` brought two more commits, Shahriar's `7a7f77c8`/`67277475`
+(11-13 11:49). `origin/master` is `67277475`, and HEAD is still `de71a7fc`.
+With them came Blackbarry's 11-11 and 11-12 reports. Strawbarry's 11-12 and
+11-13 reports, and Blackbarry's 11-13, have not come yet. Floss: 0 open
+here, and Rain's `20261109-102332-eca9` is still open on Strawbarry. I read
+the cloud without writing to it, from `2026-11-13T13:45Z`: 6 `errors` rows,
+all Bluebarry's and the same as the shard, and 14 `client.error` rows.
+
+No real fault, so no code changed and there is no CHANGELOG entry.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-11 | Blackbarry (Isabella Piatek) | 0 | 0 actions. Build `2026.11.11.4 03847324` |
+| 11-12 | Blackbarry (Isabella Piatek) | 0 | 114 actions, same build |
+| 11-13 | Bluebarry (Shahriar) | 0 (6 test) | 256 actions. All six carry `test: true` (1) |
+| 11-13 | Blackbarry, Strawbarry | 0 `errors` rows | 424 and 28 actions in the cloud. 14 "stuck" rows with Bluebarry's. Slow, not faults (2) |
+
+1. **The six test faults** are the other session's probes of the
+   Extraction Room while it built `2026.11.13.2` to `.7`. All are on the
+   real folder `980b57eab496`, and all are flagged by the test client.
+   - 11:48:19 `extraction/split`, "keywords must be strings": a
+     `TypeError` from `dict(..., **{int(c): ...})` in `_er_direct_fit`.
+     That line was written and replaced the same morning. On disk the
+     function calls `extractionmod.rebuild_contacts` and no
+     `**{int(` is left anywhere in `backend/`. It is the only one of the
+     six that was a bug and not a refusal, and it is gone.
+   - 13:14:04–05 `extraction/interp`, three in two seconds: "Contact 70
+     is not on this shank (1-64)" and "Contact 63"/"Contact 1 needs two
+     good contacts above it and two below". These are the refusals of
+     `clean_interp`, asked for on purpose.
+   - 15:30:37 `extraction/split`, the Contact 63 refusal again, through
+     `_er_interp_look`.
+   - 16:55:01 `extraction/split`, "Only 1 event between 0.2 and 0.2 min:
+     a window keeps at least 8": the refusal of `subset_read` for a time
+     window with too few events.
+2. **"Stuck" rows** (cloud `activity`): 14. None is `GET /api/link`, and
+   none is a `rootcanal/meta` poll.
+   - Blackbarry, start-up at 16:50:30Z: `registry` 35 s.
+   - Blackbarry, `POST /api/session/state`: 41 s at 17:34:49Z, 33 s at
+     17:49:19Z and 32 s at 18:35:11Z, all in Xplorefinder. That is pass
+     17's open item, now thirteen times since 11-09.
+   - Blackbarry, new this pass: opening a pooled curation set took 32 s
+     at 17:54:40Z (`s655a06b22296`) and 31 s at 18:48:13Z
+     (`se0c7b6ba6d5a`). `csc/window` took 31 s at 17:49:56Z, right after
+     a `session/state` stall, and `csc/open` 31 s at 18:53:53Z. The
+     activity lines beside them read "Working on syncs…" and "Checking
+     which recordings…", so the server was busy with something else each
+     time. I did not measure it. Left open with the item above.
+   - Bluebarry at 18:39:32Z and Strawbarry at 20:37:47Z: the start-up
+     clusters seen before (`registry` 35 s, `csc/open`, `prefs`,
+     `arc/precon/status`).
+
+Builds: Bluebarry's 11-13 report says `2026.11.13.7 de71a7fc`. HEAD is
+still `de71a7fc`, and everything from `2026.11.11.5` to `2026.11.13.7`,
+with pass 18's `2026.11.13.1`, is uncommitted here. Blackbarry ran
+`03847324` on 11-11 and 11-12. That has `2026.11.07.2` (DS-PCA) and not
+pass 18's fixes. Strawbarry's newest report is still 11-11, on `24e7b82f`.
+
+Next pass: Bluebarry's 11-14 report and shard. Then Strawbarry's 11-12
+and 11-13 reports and Blackbarry's 11-13 when git brings them. Both used
+Jarvis on 11-13 and have no cloud `errors` rows. Then `git fetch`, then
+the cloud from `2026-11-14T13:50Z`. Pass 18's two watches still stand
+(the "every event on one side" cut, and Floss on Strawbarry after it
+pulls). Count the `POST /api/session/state` stalls on Blackbarry, and the
+pooled curation set opens over 30 s beside them. If they keep coming
+together, the thing to find is what holds the server for 30 s while
+"Working on syncs" shows.
+
+## Pass 18: 2026-11-13 (morning, scheduled), 11-12 09:00 to 11-13 09:10
+
+Covered: Bluebarry's 11-12 report and shard. There is no 11-13 shard yet.
+`git fetch` brought six commits from 11-12: Rain's `f9792b6e` (10:57),
+Shahriar's `8c652c84`/`03847324` (13:16) and Aggie's `e7d114ac`/`233b1502`/
+`42e0a8e3` (13:53 to 15:17). `origin/master` is `42e0a8e3`, and HEAD is
+still `de71a7fc`. With them came Strawbarry's 11-09, 11-10 and 11-11
+reports and Blackbarry's 11-10. They also brought eleven reports from Aggie
+Krempasky's Mac. It names itself `ip0af550d3.int.uvm.edu-f987` from 11-01
+to 11-10 and `ip0af5523d.int.uvm.edu-f987` on 11-11: one Mac, whose network
+name changes while the `-f987` stays. One Floss ticket came too. I read the
+cloud without writing to it, from `2026-11-12T13:45Z`: 25 `errors` rows,
+all Bluebarry's and the same as the shard, and 30 `client.error` rows.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-01 to 11-10 | Aggie's Mac (`ip0af550d3`) | 1 | 11-02 10:33 `cloud.sync` "not answering (no connection)", with nothing around it: the laptop was offline. Not a fault. 25 actions on 11-02, none on the other days. Build `2026.10.30.3 d972b0bd` |
+| 11-11 | Aggie's Mac (`ip0af5523d`) | 0 | 0 actions. Build `2026.11.11.4 233b1502`, written 11-12 14:01 |
+| 11-09 | Strawbarry (Angelina Woychosky) | 0 (1 test) | 348 actions. The one left out is pass 17's `harness dupes` (DS-PCA), dropped by the `harness` pattern |
+| 11-09 | Strawbarry (Rain), Floss | 1 | Floss could not start. **Fixed** (4) |
+| 11-10, 11-11 | Strawbarry | 0 | 0 actions |
+| 11-10 | Blackbarry (Isabella Piatek) | 0 | 433 actions. Build `2026.11.06.4 06e48c9b` |
+| 11-12 | Bluebarry (Shahriar) | 17 (3 distinct), 8 test | (1) **fixed**, (2) older code than was on disk, (3) **fixed**. The 8 test faults are the `hb-1`/`harness-none` pool-fit probes |
+| 11-12 | Strawbarry, Blackbarry, DESKTOP-AH45FAE | 0 `errors` rows | 30 "stuck" rows (with Bluebarry's). Slow, not faults (5) |
+
+1. **`extraction/split-preview`, "That cut leaves every event on one
+   side."**, five times: 12:42:11 (twice), 13:16:28–29 (twice) and
+   15:55:46. Shahriar was dragging the cut on an Extraction Room card:
+   delta and PCA on `xm-f7e3cb9cee38-v2`, and at 15:55 the Bite line on
+   `xm-500fa6c3c5`. The card's plot runs 4% past the events on each side
+   (`drawSplit`). `dragCut` in `web/js/extraction.js` sent wherever the
+   pointer was, so a drag to the edge asked for a cut with every event on
+   one side. `split_types` in `backend/extraction.py` refused it, and
+   `fail()` filed each refusal. The pairs are one preview while dragging
+   (the page swallows it) and one at let-go (the page says "Not cut
+   there"). Compare splits (`normCut` in `web/js/extraction_compare.js`)
+   already keeps its line inside the events. Fixed in `2026.11.13.1`: the
+   card's drag follows the same rule. `web/_dev/extraction.html` has a new
+   check that drags past the last event. With the fix taken out it fails
+   (148 ok, 2 fail). With the fix in, 150 ok.
+2. **`extraction/split`, "its X-ray bundle is not on this machine"**, ten
+   times from 14:56:50 to :56, on `980b57eab496`. Its v3 had been
+   extracted 10 s before, in the new "fitted here" round. v3's records are
+   `direct` and have no `bundle`. On disk, `_er_split_arrays` sends a direct
+   record to `_er_direct_arrays` before it looks for a bundle, so v3 cannot
+   give this message now. The traceback's line numbers (11123, 11044) do
+   not match the file (about 11395 and 11179 now). The server was running
+   older code than was on disk while the other session built that round.
+   After the restart at about 15:51, Bite-line cuts on the same folder went
+   through (15:55:48). Old code. I changed nothing.
+3. **`rootcanal/workflow-save`, "There is no saved pool None to use as the
+   target."**, at 12:01:36 and 12:01:47 (`kind: pspike`). The new P-spike
+   workflow `4e5ce690d4b1` was saved at 12:02:05, with the target "PTEN
+   Baseline v2 (Optimized parameters)". A new workflow's pools are found by
+   name (`byNick` in `openBuilder`, `web/js/rcworkflow.js`): "PTEN Baseline",
+   then "PTEN ALL PTEN Baseline Full Incisor". Both are archived in the
+   shared prefs (`0fb7e710f1b9`, `f669e8c87dc9`). The one on show is named
+   "… v2 (Optimized parameters)", and `byNick`'s "v2" rule allows nothing
+   after the number. So the builder opened on "Select pool", Save sent
+   `{artifact_id: null}`, and `_wf_pool` printed the null. Fixed in
+   `2026.11.13.1`. Save and Preview now say which pool to pick, using the
+   button's own words, and send nothing. The server's words never say
+   "None". `web/_dev/rcworkflow.html` has a new section, "A POOL NOT YET
+   PICKED" (3 checks). With the fix taken out, Save goes through and the
+   section throws at its next step (127 ok, 3 fail). With it in, 186 ok.
+   `tools/check_wf_pool_unpicked.py` gives 6 ok, and 3 fail with `--head`.
+   **For the user:** whether a new workflow should start on the renamed
+   pools. Which pools it starts on is your choice, so the defaults are
+   left as they are.
+4. **Floss on Strawbarry, ticket `20261109-102332-eca9`** (Rain, 11-09
+   10:23, `2026.11.06.4`). The ask: "When selecting Panning from Toolkit,
+   'Reading Panning's sets' shows up for a long time … This should be much
+   faster to load." Floss failed at once with "[WinError 2] The system
+   cannot find the file specified". The ticket has no `head` and no `run`,
+   so it stopped in `_prepare`, while copying the code. The message names
+   no file, so a program could not be started. The only one `_prepare`
+   starts is git, and `floss._git` asked for plain "git". Every other git
+   call in Jarvis goes through `store.git_exe()`, made on 10-07 for a
+   computer that has only GitHub Desktop's git. That is how Strawbarry's
+   reports get their commit. Fixed in `2026.11.13.1`: `_git` uses
+   `store.git_exe()`. `tools/check_floss_git.py` hides git from PATH.
+   Before the fix it gives the ticket's own error, and after it, 2 ok.
+   `tools/check_floss.py` still gives 8 ok. Needs a restart, and Strawbarry
+   gets it when it pulls. I cannot see Strawbarry's PATH, but nothing else
+   in `_prepare` gives that message. `inside.py`, `notes.py`, `sanity.py`,
+   `sysinfo.py` and `weekly.py` also call plain "git". No fault has come
+   from them, so I left them alone. **For the user:** Rain's ask itself
+   (Panning's sets are slow to load) is a speed request, not a fault, and I
+   did not look into it. The ticket is still open in
+   `tools/floss_inbox.py --remote`. I did not mark it, because it is
+   Strawbarry's file.
+5. **"Stuck" rows** (cloud `activity`): 30. None is `GET /api/link`.
+   - Bluebarry: `GET /api/rootcanal/meta` took 32–35 s four times, ten
+     minutes apart (15:48, 15:59, 16:09 and 16:19Z). That is the Meta
+     Workflow page's own poll (`web/js/rcmeta.js`). The route reads the
+     payload of every Root Canal workflow to find the Ambiguous ones, and
+     those snapshots are 5–6 MB each. I did not measure it. Also
+     `GET /api/rootcanal/workflows` took 51 s (20:51Z) and 31 s (21:44Z),
+     and `rootcanal/candidates` 35 s (17:30Z). There was one 5.4 s
+     longtask (17:02Z). The cluster of ten at 16:51Z is a restart. These
+     are the other session's Root Canal pages, still being built. Slow, not
+     broken; left open.
+   - Strawbarry at 18:12:55Z and Blackbarry at 18:19:20Z: the start-up
+     clusters seen before (`registry` 35 s, `csc/open`, `prefs`, `firstrun`
+     and others).
+   - Blackbarry: `POST /api/session/state` took 42 s at 18:27:24Z
+     (Xplorefinder), then "Working on a curation set" took 31 s at
+     18:31:43Z. That is pass 17's open item, ten times since 11-09.
+   - DESKTOP-AH45FAE is Rain's: 17 actions since 10-15, the last at 21:56Z
+     on 11-12. "Reading the recording list" took 34 s at 21:55:04Z, a
+     first start.
+
+What changed, all in `2026.11.13.1` and uncommitted:
+- `web/js/extraction.js`, in `dragCut` (around lines 1093–1113): `u`,
+  `inside`, and `inside(...)` around the pointer's place.
+- `web/js/rcworkflow.js`: `missingPool` and `sayMissingPool` just above
+  `previewBuilder` (around 4285–4311), and one line in `saveBuilder`
+  (around 4336).
+- `backend/app.py`: `WF_POOL_UNPICKED` and the `if not aid` at the top of
+  `_wf_pool` (around 17033–17050).
+- `backend/floss.py`, in `_git` (around 163). That file had no other
+  uncommitted work.
+- Checks: `web/_dev/extraction.html` ("PAST THE LAST EVENT", around 453),
+  `web/_dev/rcworkflow.html` ("A POOL NOT YET PICKED", around 1144), and
+  the new `tools/check_wf_pool_unpicked.py` and `tools/check_floss_git.py`.
+
+Every other hunk in `app.py`, `extraction.js`, `rcworkflow.js` and the two
+harnesses is the other session's uncommitted 11-11 and 11-12 work. With
+everything on disk: `extraction.html` 150 ok, `rcworkflow.html` 186 ok,
+`rcmeta.html` 31 ok, `tools/check_rcmeta_persist.py` 7 ok,
+`tools/check_wf_border_lend.py` 7 ok. As in pass 17, each harness server's
+start rewrote `GUI_logs/prefs/workbench@desktop-4h65ai7-d565.json` as it
+merged prefs. Only its `updated` stamp is from today, and no value came
+from a harness.
+
+Builds: Bluebarry's 11-12 report says `2026.11.12.4 de71a7fc`. HEAD here is
+still `de71a7fc`. The other session's `2026.11.11.5` to `2026.11.12.5`,
+pass 17's `2026.11.12.1` and this pass's `2026.11.13.1` are all
+uncommitted. Strawbarry ran `24e7b82f` from 11-09 to 11-11, and Blackbarry
+`06e48c9b` on 11-10. Neither has pulled past `b896bd29` yet, so neither
+has `2026.11.07.2` (DS-PCA). Aggie's Mac ran `d972b0bd` until 11-10, and
+`233b1502` from 11-12, which has it.
+
+Next pass: Bluebarry's 11-13 report and shard. Then Strawbarry's and
+Blackbarry's 11-12 reports when git brings them. Both used Jarvis on 11-12
+and have no cloud `errors` rows. Then `git fetch`, then the cloud from
+`2026-11-13T13:45Z`. If "That cut leaves every event on one side" appears
+on a Jarvis loaded after this change, find out which page sent it: the
+card (`extraction.js`) or Compare. If Floss fails on Strawbarry after it
+pulls past this change, run `tools/check_floss_git.py` there. Count the
+`POST /api/session/state` stalls and the `rootcanal/meta` polls over
+30 s.
+
+## Pass 17: 2026-11-12 (morning, scheduled), 11-09 08:50 to 11-12 09:00
+
+The scheduled passes of 11-10 and 11-11 did not run. Both stopped as they
+started because of a usage limit ("weekly limit", then "5-hour limit"; see
+`%LOCALAPPDATA%\JarvisTriage`). So this pass covers three days.
+
+Covered: Bluebarry's 11-09, 11-10 and 11-11 reports and shards. The
+reports that came by git in `de71a7fc` (11-11 15:52): Strawbarry's 11-06
+to 11-08 and Blackbarry's 11-05 to 11-09. The shard `11-09@Strawbarry`.
+`git fetch` brought nothing new: `origin/master` is `de71a7fc`, the same as
+HEAD. Floss: 0 open. I also read the cloud, without writing to it, from
+`2026-11-09T13:45Z`: 32 `errors` rows (the same records as the shards) and
+53 `client.error` rows. Strawbarry has no activity after 11-09 21:29Z.
+Blackbarry's last activity is at 11-10 20:55Z, and its 11-10 report has not
+come by git yet.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | Blackbarry (Isabella) | 1 | `cloud.sync` HTTP 520, already read in pass 12 from the shard. Not a fault |
+| 11-06 | Strawbarry (Rain) | 0 | 243 actions, build `2026.11.06.1 47b7b5c1` |
+| 11-06 to 11-08 | Blackbarry | 0 | 0 actions |
+| 11-07, 11-08 | Strawbarry | 0 | 0 actions |
+| 11-09 | Blackbarry (Isabella, Avery Sullenberger) | 0 | 353 actions, build `2026.11.06.4 a76eae4b` |
+| 11-09 | Strawbarry (Angelina Woychosky) | 1 (shard and cloud; no report yet) | DS-PCA opened on a harness seed. This is pass 14's fault, on code without its fix (1) |
+| 11-09 | Bluebarry (Shahriar) | 0 (16 test) | X-ray Many and DS-PCA harness probes |
+| 11-10 | Bluebarry | 0 (10 test) | one is a real bug behind a test flag, already fixed by the other session (2) |
+| 11-11 | Bluebarry | 0 (5 test) | one is a real race behind a test flag. **Fixed** (3) |
+| 11-09 to 11-11 | all three | 52 "stuck" rows, 1 other | slow, not faults. One pattern is left open (4) |
+
+1. **Strawbarry `dspca/plan`, "This set (harness dupes) is not attached
+   to a recording"**, 11-09 at 21:54:02Z (16:54 local), Angelina Woychosky,
+   with no `test` flag. It is the fault pass 14 fixed in `2026.11.07.2`.
+   The traceback's line numbers (8532, 4998) match `24e7b82f`, Rain's merge
+   on Strawbarry at 10:19 that day, and the commits after it up to
+   `a76eae4b`. None of them has `firstReadable` in `web/js/dspca.js`. The fix was committed only on 11-11 at 15:52, in
+   `b896bd29`. So this is the old code, not a failed fix. There is no
+   activity row after 21:29Z, so nothing shows anybody picking the set: the
+   panel opened on it by itself, as on 11-07.
+
+   Why that set: the seed `5360afb7c67c` (HARNESS m99 s1, `harness dupes`,
+   added by Debug_Bot on 10-22, no gid) is the **newest** dentate spike set
+   in the bank, and DS-PCA's list is newest first. The seed is in git
+   (`GUI_logs/event_bank/harness_m99_s1_5360afb7c67c@barrylab-d8e8.json`
+   and `@desktop-4h65ai7-d565.json`, committed 11-03 in `6bb57fc1`), so
+   every clone has it. It is one of **80 harness seeds in the bank in git**
+   (229 files, all added by Debug_Bot between 09-21 and 10-22). 29 of the
+   93 curated DS sets in the bank are such seeds, none of them on a
+   recording. Braces opens on the first set that has a gid, and DS-PCA now
+   opens on the first readable one, so neither opens on a seed by itself.
+   The seeds are still listed in both. **For the user:** whether to take
+   the 80 seeds out of the shared bank. It changes everybody's bank.
+   Deleting the files here would only leave uncommitted deletions, and
+   other clones keep their copies unless a tombstone removes them. So it
+   belongs in the app's own delete, and it is your decision. I changed
+   nothing.
+2. **Bluebarry `extraction/round2`, "name 'np' is not defined"**, 11-10 at
+   17:02:43, `test: true`. This was a real bug behind a test flag.
+   `_er_round2_rows` in `backend/app.py` called `np.mean` without importing
+   numpy, so Round II would have failed for anybody. That was the day the
+   Extraction Room first shipped (`2026.11.10.1`). The other session has
+   fixed it: the function now starts with `import numpy as np`, and that
+   is committed (`b896bd29`). `web/_dev/extraction.html` drives Round II.
+   No check added.
+3. **Bluebarry `rootcanal.meta.state`, "[WinError 32] The process cannot
+   access the file because it is being used by another process:
+   ...rcmeta\runs.json.part -> ...rcmeta\runs.json"**, 11-11 at 15:29:16.
+   It was `test: true`, from the harness server, with no request around
+   it. It is a real race. When Run is pressed on a Meta Workflow, the
+   request (`api_rootcanal_meta_run`) and the run's own thread
+   (`_meta_loop`) each call `_meta_persist(force=True)` at the same moment.
+   Both wrote through the one scratch name `runs.json.part`. On Windows,
+   while one writer holds the scratch file, the other's rename fails. I
+   measured it standalone: two writers at once collide in 186 of 200 tries.
+   For a person, pressing Run would have filed this as a real fault. The
+   run itself goes on.
+
+   Fixed in `2026.11.12.1`. A lock (`_META_WRITE`) lets one writer in at a
+   time. A copy of the runs is taken whole under it. The write goes through
+   `shards.write_json_atomic`, which uses a private scratch name and retries
+   the rename. `tools/check_rcmeta_persist.py` compiles app.py's own
+   `_META_*` lines and `_meta_persist` against a temp folder, so nothing
+   under GUI_logs is touched. On the code on disk: 7 ok, five runs in a
+   row. With `--head`: 2 of 7 fail, with "being used by another process",
+   and with "Access is denied" when something holds runs.json open.
+   `rcmeta.html` still passes (31 ok), and so does
+   `tools/check_wf_border_lend.py` (7 ok). Needs a restart. **My hunks in
+   `backend/app.py` are the two at `_META_SAVED` / `_meta_persist` (around
+   lines 17376 and 17410).** The other hunks there (`import collections`,
+   and the Extraction Room's `_er_splits` and the rest) are the other
+   session's uncommitted `2026.11.11.5`/`.6` work.
+4. **"Stuck" rows** (cloud `activity`, `where: stuck`): 52 of them. There
+   was also one `arc.spark.clipping` on Bluebarry at 11-10 21:17:43Z. It
+   came from port 8791 (the harness server), which asked for a 7 s window
+   on purpose. None of the rows is `GET /api/link`, so pass 11's fix holds.
+   - Most are clusters of four to six routes passing 30 s at the same
+     moment. Strawbarry, 11-09 15:21–15:24Z (Rain, just after start-up:
+     `registry` took 35 s). Blackbarry, 11-09 and 11-10 (Isabella and
+     Avery). Passes 12 and 13 saw the same.
+   - **`POST /api/session/state` (saving how a recording is being viewed)
+     took 30 to 57 s nine times.** Blackbarry on 11-09 at 15:50, 15:59
+     (57 s), 16:32 and 17:07Z, and on 11-10 at 18:56, 20:16 and 20:41Z.
+     Strawbarry on 11-09 at 15:24 and 18:42Z. Pass 12 saw it once and
+     asked to watch for it. Each time, the feed lines show "Checking which
+     records have reached the shared database" or "Working on syncstate"
+     starting a few seconds before. Then comes "Working on this recording",
+     and nothing more. At 20:16:49Z on 11-10 the save was the only slow
+     request (36.5 s), so it is not only the browser queueing behind other
+     slow requests. `STORE.upsert_session` holds the store's lock (`_LOCK`
+     in `backend/store.py`) for the whole save, so something else holding
+     that lock is a guess. I did not measure it, and the route behind that
+     feed line (`api_cloud_items` in `backend/syncitems.py`) does not take
+     the lock itself. Left open: it is slow, not broken, and finding what
+     holds it up needs a measurement on Blackbarry.
+   - Bluebarry: `dspca/raster` 34 s (11-09 22:24Z), and on 11-11
+     `doppler/estimate` 31 s, `extraction/extract` 30 s and 35 s, and
+     `rootcanal/candidates` 38 s. That is heavy work during the other
+     session's development. Not faults.
+
+A side effect of this pass: the harness server for `rcmeta.html` (08:59)
+rewrote `GUI_logs/prefs/workbench@desktop-4h65ai7-d565.json`. As it started,
+it merged in Blackbarry's prefs changes of 11-09, which had come by git:
+`xf_simplify_panning`, `panning_at`, `gobble`, Blackbarry's theme and its
+`jarvis` flag. Each carries its 11-09 time, and the merged values are the
+ones every Jarvis already reads. No value came from the harness. Bluebarry's
+own Jarvis does the same on its next start, so I left the file as it is.
+
+Builds: Bluebarry's reports say `2026.11.09.4`, `2026.11.10.1` and
+`2026.11.11.4`, each with `11fcd58a`. The commit is read once, when Jarvis
+starts, and HEAD here stayed at `11fcd58a` until `b896bd29` at 15:52 on
+11-11. So that commit is correct, not a sign of a stale build. Everything
+up to `2026.11.11.4` is committed and on origin (`de71a7fc`).
+`2026.11.11.5` and `.6` (the other session's) and `2026.11.12.1` (this
+pass) are uncommitted. On 11-09 Strawbarry ran code from `24e7b82f` or a
+little later, but before `b896bd29`. Blackbarry
+ran `2026.11.06.4 a76eae4b`. Neither has `2026.11.07.2` (DS-PCA) until
+it pulls past `b896bd29`.
+
+Next pass: Bluebarry's 11-12 report and shard. Then Blackbarry's 11-10
+report and Strawbarry's 11-09 report, when git brings them. Then `git
+fetch`, then the cloud `errors` and `client.error` rows from
+`2026-11-12T13:45Z`. If `rootcanal.meta.state` appears again on a Jarvis
+started after this change, run `tools/check_rcmeta_persist.py` first. If
+DS-PCA opens on "harness dupes" on a machine past `b896bd29`,
+`firstReadable` has failed. Count the `POST /api/session/state` stalls
+again.
+
+## Pass 16: 2026-11-09 (morning, scheduled), 11-08 08:50 to 11-09 08:50
+
+Nothing new. Bluebarry's 11-08 report (build `2026.11.06.4 11fcd58a`,
+written 18:16): 0 faults, 0 actions. Jarvis was running but nobody used
+it. There is no 11-08 or 11-09 shard. `git fetch` brought nothing:
+`origin/master` is still `83b3c701` (`.DS_Store` only). Strawbarry's
+11-06 and Blackbarry's 11-05 reports have still not come by git. Floss:
+0 open. In the cloud, read only, from `2026-11-08T13:45Z`: 0 `errors`
+rows, 0 `client.error` rows and 0 `activity` rows from any machine. As a
+control, the same query from `2026-11-07T13:45Z` returns pass 15's 15
+Bluebarry errors and 78 actions, so the query works and the silence is
+real. `tools/check_wf_border_lend.py` still passes (7 ok). No code
+changed. `2026.11.07.1` to `.3` are still uncommitted.
+
+Next pass: Bluebarry's 11-09 report and shard. Then Strawbarry's 11-06
+and Blackbarry's 11-05 reports when git brings them. Then `git fetch`,
+then the cloud `errors` and `client.error` rows from `2026-11-09T13:45Z`.
+
+## Pass 15: 2026-11-08 (morning, scheduled), 11-07 13:05 to 11-08 08:50
+
+Nothing new. Bluebarry's 11-07 report (build `2026.11.06.4 11fcd58a`):
+0 faults, 97 actions, 15 left out. Those are the shard's 15 records,
+all read in pass 14 (the `harness dupes` row is left out by the
+`harness` pattern). The shard has nothing after 13:06, and there is no
+11-08 shard. `git fetch` brought nothing new: `origin/master` is still
+`f26427e1`/`83b3c701` (`.DS_Store` only). Floss: 0 open. In the cloud,
+read only, from `2026-11-07T13:45Z`: the same 15 Bluebarry `errors`
+rows, 0 `client.error` rows, and activity only from Bluebarry (78
+rows, 17:54Z to 18:27Z). No other machine ran Jarvis on 11-07.
+`tools/check_wf_border_lend.py` still passes (7 ok). No code changed.
+`2026.11.07.1` to `.3` are still uncommitted.
+
+Next pass: Bluebarry's 11-08 report, if Jarvis runs today (a Sunday).
+Then Strawbarry's 11-06 and Blackbarry's 11-05 reports when git brings
+them. Then `git fetch`, then the cloud `errors` and `client.error` rows
+from `2026-11-08T13:45Z`.
+
+## Pass 14: 2026-11-07 (afternoon, by hand), 08:50 to 13:05
+
+Covered: the raw shard `11-07@desktop-4h65ai7-d565` (no report yet), the
+Floss inbox (`tools/floss_inbox.py --remote`: 0 open), `git fetch` (nothing
+new), and the cloud `errors` and `client.error` rows from `13:50Z`, read
+only. Nothing from other machines. Note for the next pass: the cloud
+`errors` table has `where_`, not `where`, and neither table has `user`.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-07 | Bluebarry | 1 (9 test) | fixed in `2026.11.07.2` (1) |
+
+1. **`dspca/plan` at 12:56:05, "This set (harness dupes) is not attached
+   to a recording".** `harness dupes` is `web/_dev/bankdupes.html`'s seed,
+   banked into the LIVE app's bank for a few seconds (the harness was run
+   against the live app, not `tools/harness_run.ps1`). A top-level window
+   on the live app, so no `X-Barry-Test`, opened DS-PCA in those seconds.
+   `loadCandidates` in `web/js/dspca.js` auto-picked `cands[0]`, the newest
+   set, although `/api/dspca/candidates` had marked it `readable: false`.
+   Any real set with no gid would do the same. It now uses
+   `firstReadable`, the recording picker's rule. `web/_dev/dspca.html` has
+   three new checks (308 ok). The 9 test faults are Root Canal and
+   `ui/mode.bounce` harness probes.
+
+## Pass 13: 2026-11-07 (morning, scheduled), 11-06 08:50 to 11-07 08:50
+
+Covered: Strawbarry's 11-05 report (on disk since 11-06 12:11),
+Bluebarry's 11-06 report and the raw shard `11-06@desktop-4h65ai7-d565`.
+There is no 11-07 shard yet. `git fetch` brought `f26427e1`/`83b3c701`
+(Shahriar, 11-06 15:21), which changed only `.DS_Store`, with no report.
+I also read the cloud, without writing to it: the `errors` table from
+`2026-11-06T13:50Z`, and the `activity` table's `client.error` rows from
+the same time. The column is `action`, not `kind`, and `errors` has no
+`shard` column. The cloud's last activity row is Bluebarry's, at 22:22Z
+on 11-06.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | Strawbarry (Aggie Krempasky) | 0 | 297 actions, build `2026.11.05.5` |
+| 11-06 | Bluebarry (Shahriar) | 0 (34 test) | all `test: true`, from the other session's Root Canal harness runs (1) |
+| 11-06 | Strawbarry (Maddie Massad, Aggie, Rain) | 0 (cloud) | 241 actions, nothing in `errors`. Its report has not come by git yet |
+| 11-06 | both | 20 `client.error` rows | 18 "stuck" (slow), 1 longtask, 1 from a script run in the page. None is a fault (2) |
+
+1. **Bluebarry's 34 test faults** came in two runs, 13:11–13:14 and
+   16:28–17:19 local: `rootcanal/fit` and `pool-fit` probes on
+   `harness-none`, `harness-nope`, `hb-1` and `hb-other`. Three were
+   different: **`rootcanal/pool-fit`, "PTEN m51 s1 2025-04-08 is in this
+   pool twice: as the read cached here (not banked) and as the read
+   cached here (not banked)"**, at 16:56:56, 17:07:23 and 17:08:30. That
+   was `web/_dev/rootcanalpool.html` ticking m51 s1's DS set and its
+   Panning set. Panning's sets became pool candidates on 11-06, in the
+   other session's uncommitted work. That session has since made the
+   harness pick recordings by gid, and made the picker swap one set for
+   the other (`toggleMember` and "Select all" in `web/js/rootcanal.js`).
+   The server refused correctly. I changed nothing. **For the other
+   session:** when both members are reads cached here,
+   `_rootcanal_member_kind` in `backend/app.py` describes them in the
+   same words, so the refusal does not say which one to keep. The
+   members already carry `set_type` ("ds" or "pooled"), so the wording
+   could name "its DS set" and "its Panning set". A person would only
+   see this with a pool saved holding both, before the picker's guard
+   existed. That pool's two rows have different ids, so the row's "counted
+   twice" warning would not show either. I left it alone because it is
+   that session's feature and still in progress.
+2. **`client.error` rows in `activity`:**
+   - **First registry read after a start, 30–35 s, three times.**
+     Strawbarry at 17:12–17:13Z (Aggie, right after "Ready"):
+     `GET /api/registry` took 30 s, and `csc/window`, `vacc/signin/state`,
+     `presets/support_panels` and `people` each waited about 30 s
+     behind it ("arranging recordings 50 of 2,039"). Bluebarry at
+     17:18Z: ten routes at 30–35 s just after the 12:17 local restart
+     ("Loading the analysis libraries — done in 15.2 s"), on a page left
+     open since the day before. Bluebarry at 19:39Z: `registry` 34.6 s
+     and `csc/window` 30.4 s just after "Ready". Pass 12 saw the same on
+     Strawbarry on 11-05. The small routes that wait are likely queued
+     in the browser behind the slow ones, not held by the server. I did
+     not measure that. It is slow, not broken. Whether to warm the
+     registry at start-up is a performance choice and is left open.
+   - Strawbarry at 18:02:34Z (Maddie Massad): ToolKit's curation pane
+     spinner ("reading the curation sets", then "reading the recording
+     registry", `web/js/toolkit.js` ~1620) ran 30 s after they left
+     Panning. Its last request was `/api/vacc/knows` matching 2,039
+     recordings, which reads the registry. It is the same slowness as
+     above. They went on working a minute later.
+   - Bluebarry at 18:00:26Z (13:00 local): "Uncaught TypeError: Cannot
+     read properties of null (reading 'click')" at `<anonymous>:6:78`.
+     The only thing around it is `link.scope` rows a minute apart in the
+     Sessions view. That is a script run inside the live page (CDP or
+     the console), most likely the other Claude session driving the app,
+     not Jarvis's own code. It is not a fault.
+   - Bluebarry at 22:19:11Z: a 1.0 s longtask during Root Canal pool
+     work. Not a fault.
+   - None of the `stuck` rows is `GET /api/link`, so pass 11's fix holds
+     everywhere. There was no repeat of pass 12's 34 s
+     `POST /api/session/state`.
+
+`tools/check_wf_border_lend.py` still passes (7 ok) on the code on
+disk. The other session went on editing `_wf_definition` on 11-06.
+"No border to lend" did not appear anywhere.
+
+Builds: Bluebarry's 11-06 report says `2026.11.06.4 11fcd58a`.
+Everything up to `2026.11.06.4`, including passes 11 and 12, is now
+committed and on `origin/master` (`git log origin/master..HEAD` is
+empty). Strawbarry ran `2026.11.05.5` on 11-05, so it had pass 11's
+fixes but not `2026.11.05.6`'s workflow fix. The other session's Panning
+pool work is still uncommitted, so it is on Bluebarry only. No code
+changed this pass, so there is no CHANGELOG entry.
+
+Next pass: Bluebarry's 11-07 report, if Jarvis runs today (a Saturday).
+Then Strawbarry's 11-06 report and Blackbarry's 11-05 report when git
+brings them. Blackbarry used Jarvis on 11-05 but has written no report
+since 11-04. Then `git fetch`, then the cloud `errors` table and
+`activity` `client.error` rows (`action=eq.client.error`) from
+`2026-11-07T13:45Z`.
+
 ## Pass 12: 2026-11-06 (morning, scheduled), 11-05 09:05 to 11-06 08:50
 
 Covered: Bluebarry's 11-04 and 11-05 reports, Blackbarry's 11-02 and 11-04

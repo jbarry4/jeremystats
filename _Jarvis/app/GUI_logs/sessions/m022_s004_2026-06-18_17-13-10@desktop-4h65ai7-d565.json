@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-10-22T17:13:49.647517+00:00",
+    "bad_channels": "2026-11-11T20:24:05.971881+00:00",
     "bad_channels_note": "2026-09-03T13:20:13.060390+00:00",
     "cohort": "2026-09-03T13:20:13.060390+00:00",
     "condition": "2026-09-03T13:20:13.060390+00:00",
@@ -27,7 +27,7 @@
     "spike_labels": "2026-09-16T16:52:54.927836+00:00",
     "split_from": "2026-09-03T00:10:40.126938+00:00",
     "start": "2026-09-04T15:57:01.695046+00:00",
-    "updated": "2026-11-04T21:07:29.902167+00:00",
+    "updated": "2026-11-11T20:26:36.942671+00:00",
     "view_state": "2026-10-01T20:29:47.381547+00:00"
   },
   "_keys": {
@@ -41,8 +41,8 @@
         "2026-09-10T04:05:46.969074+00:00"
       ],
       "Z:\\harness\\split-me": [
-        "gone",
-        "2026-11-04T21:07:29.902167+00:00"
+        "set",
+        "2026-11-11T20:26:36.942671+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
         "set",
@@ -81,7 +81,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T21:07:29.902167+00:00",
+    "at": "2026-11-11T20:26:36.942671+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -176,7 +176,8 @@
   "paths": [
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
-    "Y:\\ProcessedPtenData\\m22_ptenblind\\m22s4jul15\\2024-07-15_16-43-22"
+    "Y:\\ProcessedPtenData\\m22_ptenblind\\m22s4jul15\\2024-07-15_16-43-22",
+    "Z:\\harness\\split-me"
   ],
   "project": "KCNT1",
   "project_source": "manual",
@@ -249,9 +250,9 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "app_version": "2026.11.04.3",
-    "at": "2026-11-04T16:07:29-05:00",
-    "commit": "0aa728fe",
+    "app_version": "2026.11.11.4",
+    "at": "2026-11-11T15:26:36-05:00",
+    "commit": "11fcd58a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

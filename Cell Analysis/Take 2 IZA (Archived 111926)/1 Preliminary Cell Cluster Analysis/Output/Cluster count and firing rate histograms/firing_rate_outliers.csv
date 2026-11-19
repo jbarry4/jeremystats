@@ -1,0 +1,3 @@
+Session,ClusterID,SpikeCount,SessionDurationSec,FiringRateHz,OutlierType
+M10_s7,45,228255,1568.90253333333,145.487049163623,High firing rate
+M10_s7,44,190425,1568.90253333333,121.374652634041,High firing rate

@@ -119,6 +119,12 @@
          + 'dominates each second.'],
       ],
     },
+    /* Everything the lab has put in, counted live: drawn by its own module
+       (js/inside.js), which takes the whole body. */
+    inside: {
+      tab: 'Inside Jarvis',
+      custom: true,
+    },
   };
 
   /* ------------------------------------------------------------------------
@@ -710,6 +716,14 @@
     const body = s.body;
     body.textContent = '';
     body.scrollTop = 0;
+    if (spec.custom) {
+      const I = (B && B.inside) || window.JarvisInside || null;
+      try { s.stop = I ? I.render(body) : null; } catch (e) {
+        s.stop = null;
+        if (typeof reportClientError === 'function') reportClientError('jarvisshow.' + key, e.message, e.stack);
+      }
+      return;
+    }
 
     const hero = h('section', 'jx-hero');
     hero.append(h('h2', null, spec.title), h('p', 'jx-lede', spec.lede));

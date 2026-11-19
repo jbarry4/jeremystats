@@ -1,0 +1,186 @@
+{
+  "_at": {
+    "added": "2026-11-12T19:01:41.192515+00:00",
+    "deleted": "2026-11-12T19:01:41.192515+00:00",
+    "id": "2026-11-12T19:01:41.192515+00:00",
+    "kind": "2026-11-12T19:01:41.192515+00:00",
+    "name": "2026-11-12T19:01:41.192515+00:00",
+    "nickname": "2026-11-12T19:01:41.192515+00:00",
+    "schema": "2026-11-12T19:01:41.192515+00:00",
+    "subject": "2026-11-12T19:01:41.192515+00:00",
+    "subject_key": "2026-11-12T19:01:41.192515+00:00",
+    "version": "2026-11-12T19:01:41.192515+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "178daabb125c:00f0b7b86159>6028e667c3d4:2": [
+        "set",
+        "2026-11-12T19:01:41.192515+00:00"
+      ],
+      "178daabb125c:00f0b7b86159>6fa7fef7b7a3:2": [
+        "set",
+        "2026-11-12T19:01:41.192515+00:00"
+      ]
+    },
+    "versions": {
+      "00f0b7b86159": [
+        "set",
+        "2026-11-12T19:01:41.192515+00:00"
+      ],
+      "2515d8df6bc2": [
+        "set",
+        "2026-11-12T19:01:41.192515+00:00"
+      ],
+      "8485340a091c": [
+        "set",
+        "2026-11-12T19:01:41.192515+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:01:41.192515+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-12T11:57:36-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-12T17:08:53+00:00",
+      "by_id": "6028e667c3d4",
+      "by_version": 2,
+      "digest": "8a622a3db479",
+      "id": "178daabb125c:00f0b7b86159>6028e667c3d4:2",
+      "version": 3,
+      "version_id": "00f0b7b86159"
+    },
+    {
+      "at": "2026-11-12T17:31:14+00:00",
+      "by_id": "6fa7fef7b7a3",
+      "by_version": 2,
+      "digest": "8a622a3db479",
+      "id": "178daabb125c:00f0b7b86159>6fa7fef7b7a3:2",
+      "version": 3,
+      "version_id": "00f0b7b86159"
+    }
+  ],
+  "deleted": null,
+  "id": "178daabb125c",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 CTL Baseline (Optimized Paramters/Snap)",
+  "nickname": "CTL Baseline (Optimized Paramters/Snap)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 CTL Baseline (Optimized Paramters/Snap)",
+    "workflow_key": "697667d5da40410c8aaa6d6ff5a7054b"
+  },
+  "subject_key": "rootcanal_workflow|697667d5da40410c8aaa6d6ff5a7054b",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T11:57:36-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "d2effa936267",
+      "id": "8485340a091c",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "CTL Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-12T11:57:36-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T11:57:54-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "6f35adcc696e",
+      "id": "2515d8df6bc2",
+      "inputs": [
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2185,
+        "grace": 0.05,
+        "kept": 2074,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "ds"
+      },
+      "params_hash": "dd288b5e8d73",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.12.2",
+      "at": "2026-11-12T11:58:08-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "8a622a3db479",
+      "id": "00f0b7b86159",
+      "inputs": [
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2185,
+        "grace": 0.05,
+        "kept": 2074,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "ds"
+      },
+      "params_hash": "dd288b5e8d73",
+      "v": 3
+    }
+  ]
+}

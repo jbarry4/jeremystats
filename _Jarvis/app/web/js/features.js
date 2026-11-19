@@ -46,24 +46,84 @@ BARRY.prefs = (function () {
     return v === undefined || v === null ? fallback : v;
   }
 
-  /* Writes are coalesced: toggling six favourites in a row is one request. */
-  function set(key, value) {
+  /* Per-id writes waiting to go, {key: {id: value or null}} (2026-11-06).
+     See mergeKey. */
+  let merges = null;
+
+  /* Writes are coalesced: toggling six favourites in a row is one request.
+     `one` is mergeKey's ({merge: true, id, value}): `value` is still the
+     whole map, for the cache and for any stub standing in for this, but
+     only that id is sent. A whole write of the same key already waiting
+     carries it instead, and a whole write afterwards supersedes it. */
+  function set(key, value, one) {
     cache[key] = value;
-    pending = pending || {};
-    pending[key] = value;
+    if (one && one.merge === true && !(pending && key in pending)) {
+      merges = merges || {};
+      merges[key] = merges[key] || {};
+      merges[key][String(one.id)] =
+        one.value === undefined ? null : one.value;
+    } else {
+      pending = pending || {};
+      pending[key] = value;
+      if (merges) {
+        delete merges[key];
+        if (!Object.keys(merges).length) merges = null;
+      }
+    }
     if (timer) clearTimeout(timer);
     timer = setTimeout(flush, 350);
     return value;
   }
 
+  /* One id of a map-valued pref -- an archive, a folder, which folder a
+     pool is in (2026-11-06). set() of the whole map sent this page's copy
+     of it, loaded once at boot and never reloaded, so every id a colleague
+     had added since synced in was missing from it -- and the server
+     stamped each missing id "gone", which won everywhere: archiving one
+     pool here un-archived theirs. This sends only the id, merged into the
+     map as the server reads it then (store.set_prefs). null removes it.
+     Built from, and written through, BARRY.prefs.get/set rather than
+     their inner copies, so a harness that stubs those catches this too. */
+  function mergeKey(key, id, value) {
+    const p = BARRY.prefs;
+    const was = p.get(key, {});
+    const m = Object.assign({}, was && typeof was === 'object'
+                                && !Array.isArray(was) ? was : {});
+    const v = value === undefined ? null : value;
+    if (v === null) delete m[id]; else m[id] = v;
+    p.set(key, m, { merge: true, id: id, value: v });
+    return v;
+  }
+
+  /* What this page has written but the server has not yet answered for,
+     laid back over an answer that arrived first -- so a write made while
+     another was in flight does not blink back until its own flush. */
+  function overlay() {
+    for (const k of Object.keys(pending || {})) cache[k] = pending[k];
+    for (const k of Object.keys(merges || {})) {
+      const was = cache[k];
+      const m = Object.assign({}, was && typeof was === 'object'
+                                  && !Array.isArray(was) ? was : {});
+      for (const id of Object.keys(merges[k])) {
+        if (merges[k][id] === null) delete m[id];
+        else m[id] = merges[k][id];
+      }
+      cache[k] = m;
+    }
+  }
+
   async function flush() {
     if (timer) { clearTimeout(timer); timer = null; }
-    if (!pending) return;
-    const patch = pending;
+    if (!pending && !merges) return;
+    const body = {};
+    if (pending) body.patch = pending;
+    if (merges) body.merge = merges;
     pending = null;
+    merges = null;
     try {
-      const d = await apiPost('/api/prefs', { patch });
+      const d = await apiPost('/api/prefs', body);
       cache = d.prefs || cache;
+      overlay();
     } catch (e) {
       toast('Could not save preferences: ' + e.message, 'err');
     }
@@ -82,7 +142,7 @@ BARRY.prefs = (function () {
     return (get(key, []) || []).indexOf(value) >= 0;
   }
 
-  return { load, get, set, flush, toggleIn, has,
+  return { load, get, set, mergeKey, flush, toggleIn, has,
            all: () => cache };
 })();
 
@@ -248,6 +308,17 @@ BARRY.palette = (function () {
                    hay: 'who is jarvis paul about name memory dedication',
                    run: () => BARRY.jarvis.about() });
       }
+    }
+    /* Inside Jarvis (js/inside.js): the live census, and the PI's printout. */
+    if (BARRY.inside && BARRY.jarvisshow) {
+      out.push({ kind: 'action', label: 'Inside Jarvis',
+                 sub: 'everything the lab has put in, counted live and drawn five ways',
+                 hay: 'inside jarvis census numbers sunflower powers of ten gyrus connectome river showcase',
+                 run: () => BARRY.inside.open() });
+      out.push({ kind: 'action', label: 'Last 7 days’ work',
+                 sub: 'print the week for the PI, written by Hater of AI',
+                 hay: 'last 7 days week weekly work summary pi report printout progress print',
+                 run: () => BARRY.inside.open({ print: true }) });
     }
 
     /* The Arc's five steps, each reachable by name.

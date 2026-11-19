@@ -1,0 +1,1639 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>extraction: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:760px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0;background:#fff}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/extraction.html?harness=1&theme=light"></iframe>
+<script>
+/* The Extraction Room's page (2026-11-10): web/extraction.html.
+
+   ON FIXTURES. The page is started with a fetch of our own
+   (erRoom.start(fetch)), so every /api/extraction* answer is made here from
+   two synthetic recordings -- a control and a PTEN mouse -- and the page is
+   checked against known numbers:
+     - one tab, Dentate Spike;
+     - what was extracted, from where, its version, and Extract again;
+     - a card per recording: its %KO chip (0% for the control), its
+       separation, a CSD per class and the depth profile, drawn;
+     - "mean sink" says each class's sink and its delta, "mean source" its
+       source -- in the words under each card and in the numbers table;
+     - the pictures switch: CSD and depth profile, CSD only, profiles only;
+     - Extract again sends the room and the folder; correcting a %KO sends
+       the mouse and the number;
+     - five sub-tabs: Recordings, Round I, Separation rate, Round II, The
+       numbers -- each shows its own, and a dot on a chart takes you to its
+       recording;
+     - Separation rate: each group's rate with its 95% interval, Fisher,
+       Freeman-Halton, the Cochran-Armitage trend, the logistic odds per 10%
+       KO, and a call changed from its table;
+     - Round II: asked for with the version and the Low KO line, ranked by
+       p, each with its q, a finding and a lead told apart;
+     - each card's state at a glance: a wash and a tag for separable, not
+       separable, too few, and gray for left out of the stats, with a key
+       that counts them, and the same wash on the tables' rows;
+     - the usual tests by default (one test, picked by the residuals;
+       Boschloo for a rate; nothing gated on q), the strict a press away;
+     - a set per X-ray Many folder, each with its own versions and its own
+       calls (sent with the folder); a folder not in the room yet, and one
+       with newer X-ray results, say so; a new extraction made elsewhere is
+       opened, whether the room asks again or the ToolKit tells it;
+     - against %KO is the dose, among the PTEN mice alone, with the
+       controls-at-0% number beside it and named for what it measures; three
+       groups ask the trend in order first; who is left out is said;
+     - the split by hand: under each profile a closed panel; opened, the
+       three methods (X-ray's marked) and the plot; a method flipped to is
+       saved and redraws the card; a cut dragged asks the server and saves
+       where it was let go; back to X-ray's; every recording at once.
+   IT WRITES NOTHING: every POST is answered here. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => { const n = document.createElement('span'); if (cls) n.className = cls;
+  n.textContent = s + '\n'; L.appendChild(n); L.scrollTop = L.scrollHeight; };
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(60), 'dim'); };
+const ok = (name, good, why) => { if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) { const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) { try { if (await fn()) return true; } catch (e) { /* not yet */ } await sleep(80); }
+  say('       timed out waiting for ' + (what || 'something'), 'dim'); return false; }
+
+/* ---------- fixtures ---------- */
+const NC = 16, NT = 21;
+const contacts = Array.from({ length: NC }, (_, i) => i + 1);
+const t_ms = Array.from({ length: NT }, (_, j) => -50 + j * 5);
+function csdOf(sinkRow, srcRow, gain) {
+  return contacts.map((c, i) => t_ms.map((t) => {
+    const w = Math.exp(-(t * t) / 200);
+    return +(gain * w * (Math.exp(-((i - srcRow) ** 2) / 2) - 1.2 * Math.exp(-((i - sinkRow) ** 2) / 2))).toFixed(4);
+  }));
+}
+function profOf(sinkRow, srcRow, gain) {
+  return { contacts, band: [3, 14],
+           mean: contacts.map((c, i) => +(gain * (Math.exp(-((i - srcRow) ** 2) / 2) - 1.2 * Math.exp(-((i - sinkRow) ** 2) / 2))).toFixed(4)),
+           sem: contacts.map(() => 0.01) };
+}
+function rec(gid, label, group, mk, ko, verdict, k) {
+  k = k || 1;
+  return { gid, session_label: label, mouse_key: mk, group, ko_pct: ko, ko_said: ko == null ? 'not on the sheet' : 'sheet',
+    ied: group === 'PTEN' ? true : null, n: 120, counts: { 1: 50, 2: 70 },
+    separation: { verdict, dbic: 42.5, min_share: 0.4167, n: 120 },
+    box: { sel_lo: 3, sel_hi: 14, t_lo_ms: 0, t_hi_ms: 0, auto: false },
+    contacts, t_ms, spacing_um: 50, unit: 'µA/mm² (CSD, 5–100 Hz)', bad: [],
+    classes: [
+      { c: 1, name: 'DS1', n: 50, csd: csdOf(6, 9, 0.4 * k), profile: profOf(6, 9, 0.4 * k),
+        sink: { csc: 7, value: -0.48, sem: 0.02, unit: 'µA/mm²' },
+        delta: { contacts: 6.5, sem: 0.3, um: 325, um_sem: 15, n: 50 }, source: { csc: 10, value: 0.4, sem: 0.01 } },
+      { c: 2, name: 'DS2', n: 70, csd: csdOf(11, 8, 0.6 * k), profile: profOf(11, 8, 0.6 * k),
+        sink: { csc: 12, value: -0.72, sem: 0.03, unit: 'µA/mm²' },
+        delta: { contacts: 8.25, sem: 0.2, um: 412.5, um_sem: 10, n: 70 }, source: { csc: 9, value: 0.6, sem: 0.02 } },
+    ] };
+}
+const PAY = { schema: 'extraction.ds/1', room: 'dentate_spike', room_name: 'Dentate Spike',
+  source: { folder: 'xm-h5', folder_name: 'Harness 5%', workflow: { artifact_id: 'wH', version: 2, nickname: 'Harness DS 5%' } },
+  ko_from: 'JB % hits (harness)',
+  recordings: [rec('harness-c1', 'PTEN m2 s3 (harness)', 'CTL', 'PTEN|m2', 0, 'yes'),
+               rec('harness-p1', 'PTEN m7 s2 (harness)', 'PTEN', 'PTEN|m7', 24.12, 'no', 2)],
+  left_out: [] };
+const IDX = { ok: true, ko: { 'PTEN|m7': 24.12 },
+  rooms: [{ room: 'dentate_spike', name: 'Dentate Spike', artifact_id: 'erH', version: 2,
+            versions: [{ v: 1, at: '2026-11-10T12:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' },
+                       { v: 2, at: '2026-11-10T13:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' }] }],
+  folders: [{ id: 'xm-h5', name: 'Harness 5%', bundles: 2, in_room: { v: 2, at: '2026-11-10T13:00:00Z', by: 'Debug_Bot' }, new: 0 },
+            { id: 'xm-h10', name: 'Harness 10%', bundles: 0, in_room: null, new: 0 },
+            { id: 'xm-h7', name: 'Harness 7%', bundles: 2, in_room: null, new: 2 }] };
+/* THE NEW ROUND (2026-11-12): a set fitted here, no X-ray -- each card's
+   band drawn on its average CSD, split by the Bite line, amber until called. */
+const BAND0 = { sel_lo: 4, sel_hi: 13, t_lo_ms: 0, t_hi_ms: 0, auto: true,
+                why: 'the two bottom sinks of the average, 5-7 and 11-12, edge to edge' };
+function drec(r) {
+  return Object.assign(JSON.parse(JSON.stringify(r)), { direct: true, read: 'rh-' + r.gid,
+    box: Object.assign({}, BAND0), band: Object.assign({}, BAND0), csd_all: csdOf(7, 9, 0.5),
+    split: { method: 'bite', cut: null, default: true, words: 'Bite line' },
+    bite: { verdict: { word: 'partial', say: 'DS1 and DS2 sinks overlap in part: a lean, not a gap.' } } });
+}
+const PAY_D = { schema: 'extraction.ds/1', room: 'dentate_spike', room_name: 'Dentate Spike', round: 'direct',
+  source: { folder: 'xm-hd', folder_name: 'Harness Halo', workflow: { artifact_id: 'wA', version: 3, nickname: 'Harness Ambiguous' } },
+  ko_from: 'JB % hits (harness)', filter: '5-100 Hz, 60 Hz notched (harness).',
+  recordings: PAY.recordings.map(drec), left_out: [] };
+// A Bite line placed on the earlier sink picture (2026-11-12, the humps): the
+// server leaves it out and says so on the record.
+PAY_D.recordings[1].split_stale = { method: 'bite', cut: 3.5, by: 'Debug_Bot',
+  words: 'Its Bite line was placed by hand on the earlier sink picture (each event’s own two bumps), so that place now means other events: the line is back at its default until it is placed again.' };
+// Each recording's length (2026-11-13): its card says its DS1 and DS2 rates.
+PAY_D.recordings[0].duration_s = 1800;
+PAY_D.recordings[1].duration_s = 600;
+let BANDS = {};
+let SEPS_D = {};
+// DS3, the trim and the mix-up (2026-11-13).
+let MODE_D = { mode: 'plain', ds3_cut: 0.5, trim_cut: 0.8 };
+const MIX3 = { plain: { est: 0.08, lo: 0.05, hi: 0.12, word: 'clean', n: 120, straddles: true },
+               ds3: { est: 0.04, lo: 0.02, hi: 0.07, word: 'clean', n: 100, straddles: false },
+               trim: { est: 0.02, lo: 0.01, hi: 0.04, word: 'clean', n: 110, straddles: false } };
+const LAYERS = (types, md) => ({ mode: (md || MODE_D).mode, ds3_cut: 0.5, trim_cut: 0.8, mix: MIX3,
+  ds3: { cut: 0.5, oml: 5, mml: 8, gap: 3, near: false, n: types.length, cite: 'Tarcsay et al. 2025',
+         counts: { 1: types.filter((t, i) => t === 1 && i % 6).length, 2: types.filter((t, i) => t === 2 && i % 6).length,
+                   3: types.filter((t, i) => i % 6 === 0).length }, from: { 1: 5, 2: 15 }, unscorable: { n: 4, 1: 1, 2: 3 },
+         types: types.map((t, i) => (i % 6 === 0 ? 3 : t)), score: types.map((t, i) => (i % 6 === 0 ? 0.1 : t === 1 ? 0.9 : -0.9)) },
+  trim: { cut: 0.8, unsure: 10, would: 10, refused: null, types: types.map((t, i) => (i % 12 === 5 ? 4 : t)),
+          p_max: types.map((t, i) => (i % 12 === 5 ? 0.6 : 0.97)) } });
+const cardMix = () => ({ mode: MODE_D.mode, ds3_cut: MODE_D.ds3_cut, trim_cut: MODE_D.trim_cut, mix: MIX3,
+  ds3: { cut: MODE_D.ds3_cut, oml: 5, mml: 8, gap: 3, near: false, n: 120, counts: { 1: 40, 2: 60, 3: 20 }, from: { 1: 5, 2: 15 },
+         unscorable: { n: 4, 1: 1, 2: 3 } },
+  trim: { cut: MODE_D.trim_cut, unsure: 10, would: 10, refused: null } });
+let SPLIT_IP = [];
+let TW_SAVED = null;          // the card's time window, once one is saved
+// The timeline over Compare splits (2026-11-13): 120 events over 20
+// minutes, and theta in 4 s bins with one hole.
+const TIMELINE = { ok: true, gid: 'harness-p1', duration_s: 1200,
+  events: Array.from({ length: 120 }, (_, i) => +(5 + i * 9.9).toFixed(3)),
+  theta: { contact: 9, band: [6, 10], bin_s: 4, fs: 250, unit: 'µV²',
+           t: Array.from({ length: 300 }, (_, i) => i * 4),
+           power: Array.from({ length: 300 }, (_, i) => (i >= 120 && i < 126 ? null : +(5000 + 3000 * Math.sin(i / 20)).toFixed(1))) },
+  theta_why: null };
+/* BLOB ANALYSIS (2026-11-12): an Impression's recordings, measured. */
+const { B_BLOBS, B_IMPS, b_compare, b_all } = (() => {
+const T = Array.from({ length: 101 }, (_, i) => i - 50);
+const MS = [['peak', 'Peak sink', 'CSD', 'a stronger sink'], ['latency_ms', 'When the sink peaks, after the stamp', 'ms', 'a later peak'],
+  ['fwhm_ms', 'How long the sink lasts (time above half its peak)', 'ms', 'a longer sink'], ['rise_ms', 'Rise time, 10% to 90% of the peak', 'ms', 'a slower build'],
+  ['decay_ms', 'Decay time, 90% to 10% of the peak', 'ms', 'a slower fade'], ['sharpness', 'Sharpness: peak over the sink’s area in time', '1/ms', 'fast and strong; lower is slow and diffuse'],
+  ['area_t', 'Sink over time, at the blob’s depth', 'CSD·ms', 'more sink at that depth'], ['area', 'Total sink, over time and depth', 'CSD·ms·µm', 'more sink in all'],
+  ['spread_um', 'Depth spread (depth above half its peak)', 'µm', 'a sink spread over more depth']];
+const MEAS = MS.map(([id, words, unit, higher]) => ({ id, words, unit, higher }));
+const curve = (a, w, lat) => ({ n: 40, mean: T.map((t) => +(a * Math.exp(-((t - lat) ** 2) / (2 * w * w))).toFixed(4)), sem: T.map(() => +(a * 0.07).toFixed(4)) });
+const stats = (a) => Object.fromEntries(MS.map(([id], k) => { const v = a * (k + 1) * (id === 'area' ? 400 : 1);
+  return [id, { n: 40, median: v, mean: v * 1.02, sd: v * 0.3, q25: v * 0.8, q75: v * 1.25, open: id === 'decay_ms' ? 3 : 0 }]; }));
+const blob = (a, lat) => ({ n: 38, missing: 2, from_one: 5, edge_peak: 1, stats: stats(a), curve: curve(a, 5 + a * 4, lat) });
+function summary(call, a) {
+  const cls = { all: { n: 80, top: blob(a, 1), bottom: blob(a * 1.3, 3) } };
+  if (call === 'yes') { cls['1'] = { n: 40, top: blob(a * 0.8, 0), bottom: blob(a, 2) }; cls['2'] = { n: 40, top: blob(a * 1.2, 2), bottom: blob(a * 1.5, 4) }; }
+  else cls['0'] = { n: 80, top: blob(a, 1), bottom: blob(a * 1.3, 3) };
+  return { n: 80, t_ms: T, spacing_um: 25, classes: [], kinds: { two: 60, one: 14, merged: 5, unplaced: 1 }, third_big: 12, cls, values: {} };
+}
+const RECS = [['c1', 'CTL', 'yes', 0.9], ['c2', 'CTL', 'yes', 1.0], ['c3', 'CTL', 'yes', 1.1], ['c4', 'CTL', 'no', 0.95],
+              ['p1', 'PTEN', 'yes', 0.5], ['p2', 'PTEN', 'no', 1.6], ['p3', 'PTEN', 'yes', 1.5], ['p4', 'PTEN', 'no', 0.55]]
+  .map(([id, g, call, a]) => ({ gid: 'h-' + id, session_label: 'PTEN ' + id + ' s1 (harness)', mouse_key: 'PTEN|' + id, group: g,
+    ko_pct: g === 'PTEN' ? 20 : 0, call, flip: id === 'p3', split: { method: 'bite', cut: null, words: 'Bite line' }, band: {}, counts: {},
+    summary: summary(call, a) }));
+const BLOBS = { ok: true, folder_name: 'Harness Halo', filter: '5-100 Hz, 60 Hz notched (harness).',
+  filter_note: 'The blob timing (duration, rise and decay) is measured on the 5-100 Hz CSD, which rounds off slow sinks: it might be worth redoing with other filters.',
+  measures: MEAS, blobs: ['top', 'bottom'], min_recs: 3, left_out: [{ gid: 'h-x', session_label: 'PTEN x9 s2 (harness)', why: 'not called yet when the impression was taken' }],
+  recordings: RECS };
+const IMPS = { ok: true, impressions: [{ artifact_id: 'imH', version: 2, subject: { room: 'dentate_spike', folder: 'xm-hd', folder_name: 'Harness Halo' },
+  at: '2026-11-12T15:00:00Z', by: 'Debug_Bot', summary: { recordings: 9, separable: 5, events: 640 },
+  versions: [{ v: 1, at: '2026-11-12T14:00:00Z', by: 'Debug_Bot', note: 'first', nickname: null, summary: { recordings: 9, separable: 4, events: 640 } },
+             { v: 2, at: '2026-11-12T15:00:00Z', by: 'Debug_Bot', note: 'harness impression', nickname: 'Locked', summary: { recordings: 9, separable: 5, events: 640 } }] }] };
+function labelsOf(by, picks, cls) {
+  return RECS.map((r) => { let lab = by === 'sep' ? (r.call === 'yes' ? 'Separable' : 'Not separable') : by === 'pick' ? (picks.includes(r.gid) ? 'Picked' : 'The rest') : r.group;
+    if ((cls === 1 || cls === 2) && r.call !== 'yes') lab = null; if (cls === 0 && r.call !== 'no') lab = null; return lab; });
+}
+function compare(b) {
+  const labs = labelsOf(b.by, b.picks || [], b.cls);
+  const order = [];
+  for (const l of labs) if (l && !order.includes(l)) order.push(l);
+  const ref = { group: 'CTL', sep: 'Separable', pick: 'Picked' }[b.by];
+  if (order.includes(ref)) { order.splice(order.indexOf(ref), 1); order.unshift(ref); }
+  const ck = b.cls === 'all' ? 'all' : String(b.cls);
+  const m = MEAS.find((x) => x.id === b.measure);
+  const bins = Array.from({ length: 21 }, (_, i) => +(0.2 + i * 0.1).toFixed(2));
+  const ex = Array.from({ length: 101 }, (_, i) => +(0.2 + i * 0.02).toFixed(3));
+  const groups = order.map((lab, gi) => {
+    const rs = RECS.filter((r, i) => labs[i] === lab);
+    const enough = rs.length >= 3;
+    const meds = rs.map((r) => r.summary.cls[ck][b.blob].stats[b.measure].median);
+    const rh = rs.map((r, j) => bins.slice(1).map((x, k) => +(Math.exp(-((k - 6 - j * 3 - gi * 2) ** 2) / 8) / 4.4).toFixed(3)));
+    const re = rs.map((r, j) => ex.map((x) => +(1 / (1 + Math.exp(-(x - 0.9 - j * 0.15 - gi * 0.2) * 9))).toFixed(3)));
+    const mean = (rows) => rows[0].map((_, k) => rows.reduce((a, r) => a + r[k], 0) / rows.length);
+    return { label: lab, recs: rs.map((r) => r.session_label), n_rec: rs.length, n_events: rs.length * 38, medians: meds,
+      stats: enough ? { n: rs.length, median: meds.slice().sort((a, c) => a - c)[Math.floor(rs.length / 2)], mean: 1, sd: 0.2, q25: Math.min(...meds) * 1.05, q75: Math.max(...meds) * 0.95 } : null,
+      deciles: enough ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : null, hist: enough ? mean(rh) : null, under: enough ? 0.004 : null, over: enough ? 0.006 : null,
+      rec_hist: rh, rec_under: rs.map(() => 0.005), rec_over: rs.map(() => 0), ecdf: enough ? mean(re) : null, rec_ecdf: re,
+      curve: enough ? { n: rs.length, mean: rs[0].summary.cls[ck][b.blob].curve.mean, sem: rs[0].summary.cls[ck][b.blob].curve.sem } : null,
+      bimodal: enough ? { medians: { n: rs.length, dip: 0.08, p: null, bc: 0.61, hint: true }, events: { dip: 0.03, bc: 0.42, hint: false } } : null,
+      say: enough ? null : 'Fewer than 3 recordings: no averages.' };
+  });
+  const two = groups.length === 2 && groups.every((g) => g.stats);
+  return { ok: true, measure: b.measure, blob: b.blob, cls: b.cls, unit: m.unit, words: m.words, higher: m.higher,
+    left_out: b.measure === 'decay_ms' ? [{ rec: 'PTEN p4 s1 (harness)', why: '3 events' }] : [], bins, ecdf_x: ex, groups,
+    compare: two ? { a: groups[0].label, b: groups[1].label,
+      shift: { q: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], a: [], b: [], diff: [-0.3, -0.25, -0.1, 0, 0.05, 0.1, 0.2, 0.35, 0.5],
+               lo: [-0.5, -0.4, -0.3, -0.2, -0.15, -0.1, 0.02, 0.1, 0.2], hi: [-0.1, -0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.6, 0.8] },
+      effect: { diff: 0.12, lo: -0.2, hi: 0.4 },
+      tests: { location: { name: 'Mann-Whitney U on recording medians', stat: 5, p: 0.34, ci_clear: false, q: null, word: 'no sign' },
+               spread: { name: 'Brown-Forsythe on recording medians, recording labels permuted', stat: 4.1, p: 0.03, sd_a: 0.08, sd_b: 0.5, perms: 70, exact: true, q: null, word: 'hint' },
+               shape: { name: 'Anderson-Darling between the equal-weight distributions, recording labels permuted', stat: 2, p: 0.2, perms: 70, exact: true, q: null, word: 'no sign' } },
+      n_boot: 2000 } : null };
+}
+function all(b) {
+  const rows = [];
+  for (const blob of ['top', 'bottom']) for (const m of MEAS) {
+    const c = compare(Object.assign({}, b, { measure: m.id, blob }));
+    const find = blob === 'top' && m.id === 'fwhm_ms', lead = blob === 'bottom' && m.id === 'peak';
+    rows.push({ measure: m.id, blob, words: m.words, unit: m.unit, higher: m.higher,
+      groups: c.groups.map((g) => ({ label: g.label, n_rec: g.n_rec, n_events: g.n_events, stats: g.stats, say: g.say,
+        bimodal: g.bimodal ? { medians: Object.assign({}, g.bimodal.medians, { q: null, word: 'untested' }), events: g.bimodal.events } : null })),
+      compare: c.compare ? { a: c.compare.a, b: c.compare.b, effect: c.compare.effect, tests: {
+        location: Object.assign({}, c.compare.tests.location, find ? { p: 0.001, q: 0.012, word: 'finding' } : { q: 0.6, word: 'no sign' }),
+        spread: Object.assign({}, c.compare.tests.spread, lead ? { p: 0.03, q: 0.27, word: 'hint' } : { p: 0.4, q: 0.7, word: 'no sign' }),
+        shape: Object.assign({}, c.compare.tests.shape, { q: 0.5, word: 'no sign' }) } } : null });
+  }
+  return { ok: true, rows, family: { location: 18, spread: 18, shape: 18, bimodal: 36 } };
+}
+  return { B_BLOBS: BLOBS, B_IMPS: IMPS, b_compare: compare, b_all: all };
+})();
+
+// Which set each version of the room was extracted from.
+const VFOLDER = { 1: 'xm-h5', 2: 'xm-h5', 3: 'xm-h5', 4: 'xm-h7' };
+const FNAME = { 'xm-h5': 'Harness 5%', 'xm-h7': 'Harness 7%' };
+const MET = (key, name, unit, ctlv, ptenv) => ({ key, name, unit, words: name + ' (harness).',
+  values: [{ gid: 'harness-c1', label: 'c1', group: 'CTL', ko: 0, ko_group: 'CTL', value: ctlv },
+           { gid: 'harness-p1', label: 'p1', group: 'PTEN', ko: 24.12, ko_group: 'High KO', value: ptenv }],
+  two: { ctl: { n: 9, mean: ctlv, sem: 0.01 }, pten: { n: 9, mean: ptenv, sem: 0.01 }, welch_p: 0.012, mwu_p: 0.03, g: 1.21, why: null },
+  three: { CTL: { n: 9, mean: ctlv }, 'Low KO': { n: 3, mean: ptenv }, 'High KO': { n: 6, mean: ptenv },
+           anova_p: 0.2, kw_p: 0.3, why: null, pairs: [{ a: 'CTL', b: 'Low KO', holm_p: 0.4 }, { a: 'CTL', b: 'High KO', holm_p: 0.5 }, { a: 'Low KO', b: 'High KO', holm_p: 1 }] },
+  spearman: { rho: -0.45, p: 0.01, n: 18 },
+  dose: { rho: -0.2, p: 0.6, n: 9, fit: { slope: -0.001, intercept: ptenv, ko: [3.89, 28.43] } },
+  usual: { two: { test: 'welch', p: 0.012, normal_p: 0.4 },
+           three: { test: 'kw', p: 0.3, normal_p: 0.01, post: 'dunn', jt_p: 0.02, jt_z: -2.3,
+                    pairs: [{ a: 'CTL', b: 'Low KO', p: 0.6 }, { a: 'CTL', b: 'High KO', p: 0.04 }, { a: 'Low KO', b: 'High KO', p: 1 }] } } });
+const STATS = { ok: true, split: 10, min_n: 5, n: 18, skipped: [],
+  groups: { CTL: 9, PTEN: 9, 'Low KO': 3, 'High KO': 6, 'no KO': [] },
+  metrics: [MET('ds1_sink', 'DS1 sink strength', 'csd', 0.34, 0.30), MET('ds1_delta', 'DS1 delta', 'um', 968, 1082)],
+  only_sep: false,
+  separability: {
+    two: { CTL: { n: 8, yes: 6, rate: 0.75, ci: [0.41, 0.93] }, PTEN: { n: 9, yes: 5, rate: 0.556, ci: [0.27, 0.81] }, fisher_p: 0.62, boschloo_p: 0.48 },
+    three: { CTL: { n: 8, yes: 6, rate: 0.75, ci: [0.41, 0.93] }, 'Low KO': { n: 3, yes: 1, rate: 0.333, ci: [0.06, 0.79] },
+             'High KO': { n: 6, yes: 4, rate: 0.667, ci: [0.3, 0.9] }, exact_p: 0.66, trend_p: 0.32, trend_z: -1.0,
+             pairs: [{ a: 'CTL', b: 'Low KO', holm_p: 0.9, boschloo_holm_p: 0.8 }, { a: 'CTL', b: 'High KO', holm_p: 1, boschloo_holm_p: 0.7 },
+                     { a: 'Low KO', b: 'High KO', holm_p: 1, boschloo_holm_p: 1 }] },
+    ko: { yes: { n: 11, median: 0 }, no: { n: 6, median: 4.8 }, mwu_p: 0.5, logit: { or10: 0.743, p: 0.5, n: 17 },
+          logit_pten: { or10: 1.1, p: 0.8, n: 9 } },
+    not_counted: ['PTEN m51 s1 (harness)'], by_hand: [],
+    values: [{ gid: 'harness-c1', label: 'c1', group: 'CTL', ko: 0, ko_group: 'CTL', sep: true, verdict: 'yes', by_hand: false },
+             { gid: 'harness-p1', label: 'p1', group: 'PTEN', ko: 24.12, ko_group: 'High KO', sep: false, verdict: 'no', by_hand: false }] } };
+const MET2 = (key, name, unit, ctlv, ptenv, p2, p3, pk, q, u2, qu) => Object.assign(MET(key, name, unit, ctlv, ptenv), {
+  usual: { two: { test: u2[0], p: u2[1], normal_p: u2[0] === 'welch' ? 0.5 : 0.01 },
+           three: { test: 'anova', p: p3, normal_p: 0.3, post: 'tukey', pairs: [] } },
+  q_usual: qu,
+  two: { ctl: { n: 9, mean: ctlv, sem: 0.01 }, pten: { n: 9, mean: ptenv, sem: 0.01 }, welch_p: p2, mwu_p: p2, g: -1.1, why: null },
+  three: { CTL: { n: 9, mean: ctlv }, 'Low KO': { n: 3, mean: ptenv }, 'High KO': { n: 6, mean: ptenv }, anova_p: p3, kw_p: p3, why: null, pairs: [] },
+  spearman: { rho: -0.62, p: pk, n: 18 }, dose: { rho: -0.7, p: pk, n: 9, fit: null }, q });
+const R2 = { ok: true, n: 18, split: 10, groups: { CTL: 9, 'Low KO': 3, 'High KO': 6, PTEN: 9 },
+  metrics: [MET2('events_min', 'Events per minute', '/min', 1.9, 2.1, 0.3, 0.5, 0.4, { two: 0.5, three: 0.6, ko: 0.6 },
+                 ['welch', 0.02], { two: 0.03, three: 0.6, ko: 0.6 }),
+            MET2('ds_like', 'Share that look like control DS', 'share', 0.9, 0.82, 0.01, 0.03, 0.006, { two: 0.04, three: 0.15, ko: 0.066 },
+                 ['mwu', 0.01], { two: 0.03, three: 0.15, ko: 0.066 }),
+            MET2('ds_amp', 'DS amplitude', 'uV', 900, 1010, 0.04, 0.2, 0.2, { two: 0.2, three: 0.4, ko: 0.4 },
+                 ['welch', 0.3], { two: 0.3, three: 0.4, ko: 0.4 })] };
+// The split by hand: three methods over 120 events, their classes.
+const SPLIT_N = 120;
+const clsN = (n1) => JSON.parse(JSON.stringify(PAY.recordings[0].classes)).map((c) => Object.assign(c, { n: c.c === 1 ? n1 : SPLIT_N - n1 }));
+const meth = (n1, name, xf, axis, yaxis) => ({ name, axis, yaxis,
+  x: Array.from({ length: SPLIT_N }, (_, i) => +xf(i).toFixed(4)),
+  y: Array.from({ length: SPLIT_N }, (_, i) => +(Math.sin(i) * 0.5).toFixed(4)),
+  types: Array.from({ length: SPLIT_N }, (_, i) => (i < n1 ? 1 : 2)),
+  cut: +((xf(n1 - 1) + xf(n1)) / 2).toFixed(5) });
+const SPLITVIEW = { ok: true, n: SPLIT_N, own: 'delta', rule: 'tort', choice: null,
+  methods: { bite: meth(30, 'Bite line', (i) => i, 'events in Bite line order', 'where its sink sits (contact)'),
+             pca: meth(45, 'PCA, no gap', (i) => i / 30 - 2, 'PC1', 'PC2'),
+             pca_gap: meth(40, 'PCA + gap', (i) => i / 30 - 2, 'PC1', 'PC2'),
+             delta: meth(50, 'delta only, no PCA', (i) => i / SPLIT_N, 'sink gap (0 to 1)', null) },
+  pre: { bite: { classes: clsN(30), counts: { 1: 30, 2: 90 } },
+         pca: { classes: clsN(45), counts: { 1: 45, 2: 75 } }, pca_gap: { classes: clsN(40), counts: { 1: 40, 2: 80 } },
+         delta: { classes: clsN(50), counts: { 1: 50, 2: 70 } } } };
+// The overlap yardstick (2026-11-12) and the Bite line's own picture.
+const SC = (n1) => ({ n1, n2: SPLIT_N - n1, within1: 0.4, within2: 0.38, between: 0.12, si: 0.69, ncut: 0.3,
+  verdict: { word: 'separate', say: 'DS1 and DS2 sinks barely overlap: two families.' } });
+for (const [m, n1] of [['bite', 30], ['pca', 45], ['pca_gap', 40], ['delta', 50]]) SPLITVIEW.pre[m].scores = SC(n1);
+{
+  const K = SPLIT_N - 1, ks = Array.from({ length: K }, (_, i) => i + 1);
+  SPLITVIEW.bite = { n: SPLIT_N, order: Array.from({ length: SPLIT_N }, (_, i) => i),
+    coord: Array.from({ length: SPLIT_N }, (_, i) => +(i / SPLIT_N).toFixed(4)), no_sink: [], weak: [],
+    contacts: Array.from({ length: 12 }, (_, i) => i + 3),
+    raster: Array.from({ length: SPLIT_N }, (_, i) => Array.from({ length: 12 }, (_, c) =>
+      +Math.exp(-((c - (i < 30 ? 3 : 8)) ** 2) / 3).toFixed(3))),
+    matrix: [[0.9, 0.1], [0.1, 0.9]], edges: [0, 30, SPLIT_N],
+    sweep: { k: ks, ncut: ks.map((k) => +(0.3 + Math.abs(k - 30) / 100).toFixed(3)),
+             si: ks.map((k) => +(0.7 - Math.abs(k - 30) / 200).toFixed(3)),
+             within_left: ks.map(() => 0.4), within_right: ks.map(() => 0.38), between: ks.map(() => 0.12),
+             best: 30, floor: 5, candidates: [{ k: 30, si: 0.7, clears: true }, { k: 80, si: 0.45, clears: true }],
+             min_share: 0.02, min_events: 5 },
+    left_is: ks.map(() => 1), line: { k: 30, cut: 29.5, default_k: 30, default_cut: 0.25 },
+    types: Array.from({ length: SPLIT_N }, (_, i) => (i < 30 ? 1 : 2)), scores: SC(30),
+    verdict: { word: 'separate', say: 'DS1 and DS2 sinks barely overlap: two families.' },
+    bumps: { found: [], kept: [], short: 0, third_big: 0, sink: 'humps', hump_at: 9, camel: 4,
+             peaks: Array.from({ length: SPLIT_N }, (_, i) => (i < 30 ? [5, 9] : [6, 11])) }, params: {} };
+}
+// Delta middle and the two hump rows (2026-11-13): fifteen splits. The humps
+// part at contact 9 (contacts 3-8 and 9-14); the Bite line on each hump has
+// its own order, cost and line; every hump-row split is also scored on its
+// own hump. One event has no sink in the bottom hump: off delta's axis.
+{
+  const SCH = (n1, h) => Object.assign(SC(n1), { hump: { si: 0.81, within1: 0.5, within2: 0.45, between: 0.1, side: h } });
+  SPLITVIEW.methods.delta_mid = meth(55, 'delta middle, no PCA', (i) => 2 + i / 20, 'contacts between the two humps’ middles', null);
+  SPLITVIEW.pre.delta_mid = { classes: clsN(55), counts: { 1: 55, 2: 65 }, scores: SC(55) };
+  SPLITVIEW.humps = { top: [3, 8], bottom: [9, 14], at: 9 };
+  SPLITVIEW.bite_rows = {};
+  const K = SPLIT_N - 1, ks = Array.from({ length: K }, (_, i) => i + 1);
+  for (const h of ['top', 'bottom']) {
+    const t = h === 'top', kk = t ? 25 : 35;
+    const add = (m, n1, name, xf, axis, yaxis) => {
+      SPLITVIEW.methods[m] = meth(n1, name, xf, axis, yaxis);
+      SPLITVIEW.pre[m] = { classes: clsN(n1), counts: { 1: n1, 2: SPLIT_N - n1 }, scores: SCH(n1, h) };
+    };
+    add('bite_' + h, kk, 'Bite line · ' + h + ' hump only', (i) => i, 'events in Bite line order', 'where its sink sits (contact)');
+    add('pca_' + h, t ? 44 : 46, 'PCA · ' + h + ' hump only', (i) => i / 30 - 2, 'PC1', 'PC2');
+    add('pca_gap_' + h, t ? 41 : 43, 'PCA + position · ' + h + ' hump only', (i) => i / 30 - 2, 'PC1', 'PC2');
+    add('delta_' + h, t ? 40 : 60, 'delta, by position · ' + h + ' hump only', (i) => (t ? 3 : 9) + Math.floor(i / 24),
+        'where the ' + h + ' hump’s sink is strongest (contact)', null);
+    add('delta_mid_' + h, t ? 52 : 58, 'delta middle, by position · ' + h + ' hump only', (i) => (t ? 3 : 9) + i / 24,
+        'the ' + h + ' hump’s middle (contact)', null);
+    SPLITVIEW.bite_rows[h] = { n: SPLIT_N, order: Array.from({ length: SPLIT_N }, (_, i) => i),
+      coord: Array.from({ length: SPLIT_N }, (_, i) => +(i / SPLIT_N).toFixed(4)), no_sink: [],
+      contacts: SPLITVIEW.bite.contacts, sink_contacts: t ? [3, 4, 5, 6, 7, 8] : [9, 10, 11, 12, 13, 14],
+      sweep: { k: ks, ncut: ks.map((k) => +(0.3 + Math.abs(k - kk) / 100).toFixed(3)),
+               si: ks.map((k) => +(0.8 - Math.abs(k - kk) / 200).toFixed(3)),
+               within_left: ks.map(() => 0.5), within_right: ks.map(() => 0.45), between: ks.map(() => 0.1),
+               best: kk, floor: 5, candidates: [{ k: kk, si: 0.8, clears: true }], min_share: 0.02, min_events: 5 },
+      left_is: ks.map(() => 1), line: { k: kk, cut: kk - 0.5, default_k: kk, default_cut: 0.2 },
+      types: Array.from({ length: SPLIT_N }, (_, i) => (i < kk ? 1 : 2)), scores: SC(kk),
+      verdict: { word: 'separate', say: 'DS1 and DS2 sinks barely overlap: two families.' }, params: { sink: 'one' } };
+  }
+  SPLITVIEW.methods.delta_bottom.x[SPLIT_N - 1] = null;
+  for (const [m, M] of Object.entries(SPLITVIEW.methods)) {
+    M.base = m.replace(/_(top|bottom)$/, '');
+    M.row = (/_(top|bottom)$/.exec(m) || [0, 'both'])[1];
+  }
+}
+// The same with the recording's low contacts left out (a look): what was
+// left out, and a Bite line that moved.
+const SPLITVIEW_LOW = () => {
+  const v = JSON.parse(JSON.stringify(SPLITVIEW));
+  v.low = { on: true, contacts: [{ c: 25, off_pct: -11.57, in_band: false }, { c: 49, off_pct: -4.09, in_band: true }],
+            first: {}, bad: [8, 41, 59], frac_pct: 3, band: [3, 14], left_out: [25, 49] };
+  v.choice = null;
+  v.methods.bite.types = Array.from({ length: SPLIT_N }, (_, i) => (i < 33 ? 1 : 2));
+  v.pre.bite = { classes: clsN(33), counts: { 1: 33, 2: 87 }, scores: SC(33) };
+  return v;
+};
+let SPLITS = {};
+const sent = [];
+function stubFetch(u, o) {
+  const s = String(u), p = s.split('?')[0];
+  const body = o && o.body ? JSON.parse(o.body) : null;
+  const json = (x, st) => Promise.resolve(new Response(JSON.stringify(x), { status: st || 200, headers: { 'Content-Type': 'application/json' } }));
+  sent.push([p, body, s]);
+  if (p === '/api/extraction') return json(IDX);
+  if (p === '/api/extraction/extract') return json({ ok: true, artifact_id: 'erH',
+    version: body && body.folder === 'xm-hd' ? 5 : 3, n: 2, left: [] });
+  if (p === '/api/extraction/band') {
+    const r0 = PAY_D.recordings.find((r) => r.gid === body.gid);
+    const r = JSON.parse(JSON.stringify(r0));
+    if (body.reset) delete BANDS[body.gid];
+    else BANDS[body.gid] = { sel_lo: body.sel_lo, sel_hi: body.sel_hi, t_lo_ms: body.t_lo_ms, t_hi_ms: body.t_hi_ms,
+                             auto: false, by: 'Debug_Bot', at: '2026-11-12T15:00:00Z' };
+    if (BANDS[body.gid]) { r.box = r.band = Object.assign({}, BANDS[body.gid]); r.band_moved = true; }
+    return json({ ok: true, rec: r, bands: JSON.parse(JSON.stringify(BANDS)), splits: {} });
+  }
+  if (p === '/api/extraction/impression') return json({ ok: true, artifact_id: 'imH', version: 2, n: 2, uncalled: 2 });
+  if (p === '/api/extraction/impressions') return json(B_IMPS);
+  if (p === '/api/extraction/blobs') return json(B_BLOBS);
+  if (p === '/api/extraction/blobs/compare') return json(b_compare(body));
+  if (p === '/api/extraction/blobs/all') return json(b_all(body));
+  if (p === '/api/extraction/set_archive') return json({ ok: true, archive: body.archived ? { [body.folder]: { at: 'now' } } : {} });
+  if (p === '/api/extraction/ko') return json({ ok: true, ko: { 'PTEN|m7': body.pct } });
+  if (p === '/api/extraction/flip') return json({ ok: true, flips: body.flip ? { [body.gid]: { flip: true, by: 'Debug_Bot', at: '2026-11-10T14:00:00Z' } } : {} });
+  if (p === '/api/extraction/stats') return json(STATS);
+  if (p === '/api/extraction/round2') return json(R2);
+  if (/^\/api\/extraction\/[^/]+\/split$/.test(p)) {
+    const v = /[?&]low=1(&|$)/.test(s) ? SPLITVIEW_LOW() : JSON.parse(JSON.stringify(SPLITVIEW));
+    v.mode = Object.assign({}, MODE_D);
+    {
+      // The time window (2026-11-13): the card's, none, or one tried.
+      const tq = new URLSearchParams(s.split('?')[1]).get('twin');
+      v.twin_saved = TW_SAVED;
+      v.twin = tq === '0' ? null : tq ? tq.split(',').map(Number) : TW_SAVED;
+      if (v.twin) {
+        v.methods.bite.types = Array.from({ length: SPLIT_N }, (_, i) => (i < 20 ? 1 : 2));
+        v.pre.bite = { classes: clsN(20), counts: { 1: 20, 2: 100 }, scores: SC(20) };
+      }
+      if (JSON.stringify(v.twin) !== JSON.stringify(TW_SAVED)) v.choice = null;
+    }
+    for (const m of Object.keys(v.pre)) v.pre[m].layers = LAYERS(v.methods[m].types);
+    if (SPLIT_IP.length) {
+      // Interpolated contacts on the card (2026-11-13), and the look without.
+      v.interp_saved = SPLIT_IP.slice();
+      const tried = new URLSearchParams(s.split('?')[1]).get('interp');
+      if (tried && tried !== '0') {
+        v.interp = tried.split(',').map(Number); v.choice = null;
+        v.methods.bite.types = Array.from({ length: SPLIT_N }, (_, i) => (i < 26 ? 1 : 2));
+        v.pre.bite = { classes: clsN(26), counts: { 1: 26, 2: 94 }, scores: SC(26) };
+      } else if (/[?&]interp=0(&|$)/.test(s)) {
+        v.interp = []; v.interp_off = true; v.choice = null;
+        v.methods.bite.types = Array.from({ length: SPLIT_N }, (_, i) => (i < 28 ? 1 : 2));
+        v.pre.bite = { classes: clsN(28), counts: { 1: 28, 2: 92 }, scores: SC(28) };
+      } else v.interp = SPLIT_IP.slice();
+    }
+    return json(v);
+  }
+  if (p === '/api/extraction/split/preview') {
+    const xs = SPLITVIEW.methods[body.method].x;
+    const types = xs.map((x) => (x == null || x > body.cut ? 2 : 1));
+    const n1 = types.filter((t) => t === 1).length;
+    const h = (/_(top|bottom)$/.exec(body.method) || [])[1];
+    return json({ ok: true, classes: clsN(n1), counts: { 1: n1, 2: SPLIT_N - n1 }, types,
+                  scores: Object.assign(SC(n1), h ? { hump: { si: 0.77, within1: 0.5, within2: 0.45, between: 0.1, side: h } } : {}) });
+  }
+  if (p === '/api/extraction/split') {
+    for (const g of body.gids || [body.gid]) {
+      if (body.method) SPLITS[g] = { method: body.method, cut: body.cut, by: 'Debug_Bot', at: '2026-11-11T20:00:00Z' };
+      else delete SPLITS[g];
+    }
+    return json({ ok: true, splits: JSON.parse(JSON.stringify(SPLITS)), stuck: [] });
+  }
+  if (p === '/api/extraction/sep' && body.folder === 'xm-hd') {
+    // The new round's set keeps its calls, so a reload ("no DS1") has them.
+    if (body.verdict) SEPS_D[body.gid] = { verdict: body.verdict, by: 'Debug_Bot', at: '2026-11-13T15:00:00Z' };
+    else delete SEPS_D[body.gid];
+    return json({ ok: true, seps: JSON.parse(JSON.stringify(SEPS_D)) });
+  }
+  if (p === '/api/extraction/sep') return json({ ok: true, seps: body.verdict ? { [body.gid]: { verdict: body.verdict, by: 'Debug_Bot', at: '2026-11-10T15:00:00Z' } } : {} });
+  if (/^\/api\/extraction\/[^/]+\/timeline$/.test(p)) return json(TIMELINE);
+  if (p === '/api/extraction/twin') {
+    TW_SAVED = body.clear ? null : [body.t0, body.t1];
+    return json({ ok: true, rec: JSON.parse(JSON.stringify(PAY.recordings.find((x) => x.gid === body.gid) || {})), splits: {} });
+  }
+  if (p === '/api/extraction/mode') {
+    for (const k of ['mode', 'ds3_cut', 'trim_cut']) if (body[k] != null) MODE_D[k] = body[k];
+    return json({ ok: true, mode: Object.assign({}, MODE_D) });
+  }
+  if (p === '/api/extraction/interp') {
+    if (!(body.contacts || []).length) SPLIT_IP = [];
+    const bad = (body.contacts || []).find((c) => !(c >= 1 && c <= 16));
+    if (bad != null) return json({ ok: false, error: 'Contact ' + bad + ' is not on this shank (1-16).' }, 400);
+    const r = JSON.parse(JSON.stringify(PAY_D.recordings.find((x) => x.gid === body.gid)));
+    r.mix = cardMix();
+    if ((body.contacts || []).length) {
+      r.interp = body.contacts.slice().sort((a, b) => a - b);
+      r.interp_by = { by: 'Debug_Bot', at: '2026-11-13T15:00:00Z' };
+    }
+    return json({ ok: true, rec: r, interps: {}, splits: {} });
+  }
+  if (p === '/api/extraction/erH') {
+    const v = Number(new URLSearchParams(s.split('?')[1]).get('version')) || 2;
+    if (v === 5) {
+      // A card called "no DS1" comes back as the server makes it: one class,
+      // DS2, of every event.
+      const pd = JSON.parse(JSON.stringify(PAY_D));
+      for (const r of pd.recordings) {
+        r.mix = cardMix();
+        if (MODE_D.mode === 'ds3') {
+          r.classes.push(Object.assign({}, r.classes[0], { c: 3, name: 'DS3', n: 20 }));
+          r.counts = { 1: 40, 2: 60, 3: 20 };
+        }
+        if ((SEPS_D[r.gid] || {}).verdict !== 'no_ds1') continue;
+        const c2 = r.classes.find((c) => c.c === 2);
+        r.classes = [Object.assign({}, c2, { n: r.n })];
+        r.counts = { 2: r.n };
+        r.no_ds1 = true;
+      }
+      return json({ ok: true, payload: pd, version: 5, splits: {}, seps: JSON.parse(JSON.stringify(SEPS_D)), flips: {},
+                    mode: Object.assign({}, MODE_D) });
+    }
+    const pay = JSON.parse(JSON.stringify(PAY));
+    pay.source.folder = VFOLDER[v];
+    pay.source.folder_name = FNAME[VFOLDER[v]];
+    return json({ ok: true, payload: pay, version: v, splits: JSON.parse(JSON.stringify(SPLITS)) });
+  }
+  return json({ ok: false, error: 'harness: no such route ' + p }, 404);
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  await until(() => !!W.erRoom, 8000, 'the page');
+  const txt = (sel, root) => ((root || D()).querySelector(sel) || {}).textContent || '';
+  const cards = () => Array.from(D().querySelectorAll('#erGrid .rec'));
+  const inked = (cv) => { if (!cv || !cv.width) return 0; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; };
+  const btn = (re, root) => Array.from((root || D()).querySelectorAll('button')).find((b) => re.test(b.textContent.trim()));
+  const goSub = async (id) => { D().querySelector('#erSubs button[data-sub="' + id + '"]').click();
+    await until(() => W.erRoom.state().sub === id && !!D().querySelector('#erSubs button[data-sub="' + id + '"][aria-selected="true"]'),
+                3000, 'the ' + id + ' tab'); };
+  try {
+    await W.erRoom.start(stubFetch);
+    await until(() => cards().length === 2, 8000, 'the cards');
+
+    head('THE ROOM, AND WHAT IS IN IT');
+    ok('one tab, Dentate Spike, chosen', Array.from(D().querySelectorAll('#erTabs button')).map((b) => b.textContent).join('|') === 'Dentate Spike'
+       && D().querySelector('#erTabs button').getAttribute('aria-selected') === 'true');
+    ok('it says where it was extracted from', /Extracted from X-ray Many · ‘Harness 5%’/.test(txt('#erBody .card'))
+       && /events inside ‘Harness DS 5%’ v2/.test(txt('#erBody .card')), txt('#erBody .card').slice(0, 200));
+    ok('the version on show is the newest, with the others offered', D().querySelector('#erVersion').value === '2'
+       && D().querySelectorAll('#erVersion option').length === 2);
+    ok('a card per recording, the control first', cards().map((c) => c.dataset.gid).join(',') === 'harness-c1,harness-p1');
+    ok('the sets: the one extracted, chosen; a folder with nothing run is not offered',
+       Array.from(D().querySelectorAll('#erSets button')).map((b) => b.textContent).join('|') === 'Harness 5% · v2'
+       && D().querySelector('#erSets button').getAttribute('aria-pressed') === 'true'
+       && !/Harness 10%/.test(txt('#erSource')), txt('#erSets'));
+    ok('a folder run in X-ray Many but not in the room yet says so, with its press',
+       !!btn(/^Extract ‘Harness 7%’ · 2 X-ray results, not in the room yet$/, D().querySelector('#erSource')));
+
+    head('SUB-TABS');
+    const subs = () => Array.from(D().querySelectorAll('#erSubs button'));
+    ok('six sub-tabs, Blob Analysis last, Recordings chosen', subs().map((b) => b.textContent).join('|')
+       === 'Recordings|Round I · does it differ?|Separation rate|Round II|The numbers|Blob Analysis'
+       && subs()[0].getAttribute('aria-selected') === 'true', subs().map((b) => b.textContent).join('|'));
+    ok('Recordings shows the cards, and none of the stats or the table', cards().length === 2
+       && !D().querySelector('#erStatsCard') && !D().querySelector('#erTable') && !D().querySelector('#erRound2'));
+
+    head('%KO, BESIDE EACH ONE');
+    const ko = (i) => cards()[i].querySelector('.chip.ko');
+    ok('the control says 0% KO', ko(0) && ko(0).textContent === '0% KO' && ko(0).classList.contains('ctl'), ko(0) && ko(0).textContent);
+    ok('the PTEN mouse its own %KO', ko(1) && ko(1).textContent === '24.12% KO', ko(1) && ko(1).textContent);
+    ok('and its separation, said in words', /not separable/.test(txt('.chip.no', cards()[1])) && /separable/.test(txt('.chip.yes', cards()[0])));
+
+    head('THE SPLIT, BY HAND');
+    const sp_panel = (i) => cards()[i].querySelector('details.er-split');
+    ok('under each profile, a closed sp_panel saying how DS1 and DS2 are split',
+       cards().every((c, i) => sp_panel(i) && !sp_panel(i).open && /How DS1 and DS2 are split/.test(txt('summary', sp_panel(i)))
+         && /X-ray’s own split/.test(txt('summary', sp_panel(i)))));
+    const sp_ns0 = sent.length;
+    sp_panel(0).open = true;
+    await until(() => !!sp_panel(0).querySelector('canvas.er-split-cv') && inked(sp_panel(0).querySelector('canvas.er-split-cv')) > 200,
+                5000, 'the plot');
+    ok('opened, it asks for this recording’s three splits once, and draws them',
+       sent.slice(sp_ns0).filter((x) => /\/split$/.test(x[0])).length === 1 && inked(sp_panel(0).querySelector('canvas.er-split-cv')) > 200);
+    const sp_segM = () => Array.from(sp_panel(0).querySelectorAll('.seg button'));
+    ok('the five methods, the Bite line first, delta middle last, X-ray’s marked and pressed',
+       sp_segM().map((b) => b.textContent).join('|') === 'Bite line|PCA, no gap|PCA + gap|delta only, no PCA · X-ray’s|delta middle, no PCA'
+       && sp_segM()[3].getAttribute('aria-pressed') === 'true', sp_segM().map((b) => b.textContent).join('|'));
+    ok('and what it is: the classes, and k-means’ line', /^DS1 50 · DS2 70 · k-means’ own split, its line at 0\.41\d/.test(txt('.er-split-info', sp_panel(0))),
+       txt('.er-split-info', sp_panel(0)));
+    const sp_ns1 = sent.length;
+    btn(/^PCA \+ gap$/, sp_panel(0)).click();
+    await until(() => sent.slice(sp_ns1).some((x) => x[0] === '/api/extraction/split'), 4000, 'the save');
+    const sp_sv1 = (sent.slice(sp_ns1).find((x) => x[0] === '/api/extraction/split') || [])[1] || {};
+    ok('a method flipped to is saved for everybody: this recording, that method, no cut',
+       sp_sv1.gid === 'harness-c1' && sp_sv1.method === 'pca_gap' && sp_sv1.cut === null, JSON.stringify(sp_sv1));
+    await until(() => /PCA \+ gap, k-means · by hand/.test(txt('summary', sp_panel(0))), 4000, 'the card');
+    ok('the card is redrawn with that split’s classes, and says so',
+       /PCA \+ gap, k-means · by hand/.test(txt('summary', sp_panel(0)))
+       && /^40 events/.test(txt('.er-cap-n[data-k="0"]', cards()[0])) && /^80 events/.test(txt('.er-cap-n[data-k="1"]', cards()[0]))
+       && sp_panel(0).open, txt('.er-cap-n', cards()[0]));
+    ok('and the stats are asked again', sent.slice(sp_ns1).some((x) => x[0] === '/api/extraction/stats'));
+    // Drag the cut on the gap's own line.
+    btn(/^delta only, no PCA · X-ray’s$/, sp_panel(0)).click();
+    await until(() => /X-ray’s own split/.test(txt('summary', sp_panel(0))), 4000, 'back to delta');
+    const sp_cvS = () => sp_panel(0).querySelector('canvas.er-split-cv');
+    await until(() => inked(sp_cvS()) > 200, 3000, 'drawn');
+    const sp_ns2 = sent.length;
+    const sp_rb = sp_cvS().getBoundingClientRect();
+    const sp_PE = W.PointerEvent || W.MouseEvent;
+    const sp_at = (f) => ({ clientX: sp_rb.left + sp_rb.width * f, clientY: sp_rb.top + sp_rb.height / 2, pointerId: 7, bubbles: true });
+    sp_cvS().dispatchEvent(new sp_PE('pointerdown', sp_at(0.5)));
+    sp_cvS().dispatchEvent(new sp_PE('pointermove', sp_at(0.6)));
+    sp_cvS().dispatchEvent(new sp_PE('pointermove', sp_at(0.7)));
+    sp_cvS().dispatchEvent(new sp_PE('pointerup', sp_at(0.7)));
+    await until(() => sent.slice(sp_ns2).some((x) => x[0] === '/api/extraction/split'), 5000, 'the cut saved');
+    const sp_pv = sent.slice(sp_ns2).filter((x) => x[0] === '/api/extraction/split/preview');
+    const sp_sv2 = (sent.slice(sp_ns2).find((x) => x[0] === '/api/extraction/split') || [])[1] || {};
+    ok('dragging asks the server for the classes as it goes', sp_pv.length >= 1 && sp_pv.every((x) => x[1].method === 'delta'), sp_pv.length + ' previews');
+    ok('let go, the cut is saved where it was let go', sp_sv2.method === 'delta' && typeof sp_sv2.cut === 'number' && sp_sv2.cut > 0.5
+       && Math.abs(sp_sv2.cut - sp_pv[sp_pv.length - 1][1].cut) < 1e-9, JSON.stringify(sp_sv2));
+    await until(() => /cut at/.test(txt('summary', sp_panel(0))), 4000, 'the words');
+    const sp_n1 = SPLITVIEW.methods.delta.x.filter((x) => x <= sp_sv2.cut).length;
+    ok('the card has the cut’s classes, and says where it is', new RegExp('^' + sp_n1 + ' events').test(txt('.er-cap-n[data-k="0"]', cards()[0]))
+       && /cut by hand at 0\.\d+ \(k-means: 0\.41\d\)/.test(txt('.er-split-info', sp_panel(0))), txt('summary', sp_panel(0)) + ' | ' + txt('.er-cap-n', cards()[0]) + ' | ' + txt('.er-split-info', sp_panel(0)));
+    await until(() => Array.from(cards()[0].querySelectorAll('canvas.csd, canvas.prof')).every((cv) => inked(cv) > 200), 3000, 'the redraw');
+    ok('the CSDs and the profile are drawn again', Array.from(cards()[0].querySelectorAll('canvas.csd, canvas.prof')).every((cv) => inked(cv) > 200),
+       Array.from(cards()[0].querySelectorAll('canvas.csd, canvas.prof')).map(inked).join('/'));
+    // PAST THE LAST EVENT (2026-11-13): the plot runs 4% beyond the events,
+    // so a drag to its edge asked for a cut with every event on one side.
+    // The server refused it and filed it as a fault (five on 11-12).
+    const sp_ns2e = sent.length;
+    const sp_rbE = sp_cvS().getBoundingClientRect();
+    const sp_atE = (f) => ({ clientX: sp_rbE.left + sp_rbE.width * f, clientY: sp_rbE.top + sp_rbE.height / 2, pointerId: 8, bubbles: true });
+    sp_cvS().dispatchEvent(new sp_PE('pointerdown', sp_atE(0.5)));
+    sp_cvS().dispatchEvent(new sp_PE('pointermove', sp_atE(0.9)));
+    sp_cvS().dispatchEvent(new sp_PE('pointermove', sp_atE(1.0)));
+    sp_cvS().dispatchEvent(new sp_PE('pointermove', sp_atE(1.2)));
+    sp_cvS().dispatchEvent(new sp_PE('pointerup', sp_atE(1.2)));
+    await until(() => sent.slice(sp_ns2e).some((x) => x[0] === '/api/extraction/split'), 5000, 'the edge cut saved');
+    const sp_xsE = SPLITVIEW.methods.delta.x;
+    const sp_both = (c) => typeof c === 'number' && sp_xsE.some((x) => x > c) && sp_xsE.some((x) => x <= c);
+    const sp_pvE = sent.slice(sp_ns2e).filter((x) => x[0] === '/api/extraction/split/preview').map((x) => x[1].cut);
+    const sp_svE = (sent.slice(sp_ns2e).find((x) => x[0] === '/api/extraction/split') || [])[1] || {};
+    ok('dragged past the last event, the cut stops inside the events: one at least on each side, previewed and saved',
+       sp_pvE.length >= 1 && sp_pvE.every(sp_both) && sp_both(sp_svE.cut)
+       && Math.abs(sp_svE.cut - (sp_xsE[sp_xsE.length - 2] + sp_xsE[sp_xsE.length - 1]) / 2) < 1e-9,
+       JSON.stringify(sp_pvE) + ' saved ' + sp_svE.cut + ' (last two events ' + sp_xsE.slice(-2).join(', ') + ')');
+    btn(/^Back to X-ray’s split$/, sp_panel(0)).click();
+    await until(() => /X-ray’s own split/.test(txt('summary', sp_panel(0))), 4000, 'back');
+    const sp_sv3 = sent.filter((x) => x[0] === '/api/extraction/split').pop()[1];
+    ok('back to X-ray’s split: given back, the card as extracted', sp_sv3.method === null && /^50 events/.test(txt('.er-cap-n[data-k="0"]', cards()[0])));
+    // Every recording at once.
+    W.confirm = () => true;
+    const sp_ns3 = sent.length;
+    btn(/^PCA, no gap$/, D().querySelector('#erSplitAll')).click();
+    await until(() => sent.slice(sp_ns3).some((x) => x[0] === '/api/extraction/split'), 4000, 'all');
+    const sp_sv4 = (sent.slice(sp_ns3).find((x) => x[0] === '/api/extraction/split') || [])[1] || {};
+    ok('every recording split by one method, for everybody, then the room asked again',
+       (sp_sv4.gids || []).join() === 'harness-c1,harness-p1' && sp_sv4.method === 'pca' && sp_sv4.cut === null, JSON.stringify(sp_sv4));
+    await until(() => D().querySelector('#erSplitAll') && btn(/^PCA, no gap$/, D().querySelector('#erSplitAll'))
+                && btn(/^PCA, no gap$/, D().querySelector('#erSplitAll')).getAttribute('aria-pressed') === 'true', 5000, 'pressed');
+    ok('and the switch says so', btn(/^PCA, no gap$/, D().querySelector('#erSplitAll')).getAttribute('aria-pressed') === 'true');
+    btn(/^X-ray’s own$/, D().querySelector('#erSplitAll')).click();
+    await until(() => Object.keys(SPLITS).length === 0, 4000, 'back for all');
+    await until(() => cards().length === 2, 4000, 'the cards');
+
+    head('EACH CARD’S STATE, AT A GLANCE');
+    const wash = (c) => W.getComputedStyle(c).backgroundImage;
+    ok('a separable card: washed, and it says so on top', cards()[0].classList.contains('st-yes')
+       && txt('.state-tag', cards()[0]) === 'Separable' && /gradient/.test(wash(cards()[0])), txt('.state-tag', cards()[0]));
+    ok('a not separable one: a different wash, and it says so', cards()[1].classList.contains('st-no')
+       && txt('.state-tag', cards()[1]) === 'Not separable' && wash(cards()[1]) !== wash(cards()[0]), wash(cards()[1]));
+    ok('a key that counts them', /Separable · 1/.test(txt('#erStateKey')) && /Not separable · 1/.test(txt('#erStateKey'))
+       && /Too few to call · 0/.test(txt('#erStateKey')) && /Left out of the stats · 0/.test(txt('#erStateKey')), txt('#erStateKey'));
+    const ns0 = sent.length;
+    btn(/^Leave out of the stats$/, cards()[0]).click();
+    await until(() => cards()[0] && cards()[0].classList.contains('st-out'), 3000, 'left out');
+    ok('left out of the stats: gray, said, counted, and the stats asked again without it',
+       txt('.state-tag', cards()[0]) === 'Left out of the stats' && wash(cards()[0]) !== wash(cards()[1])
+       && /Left out of the stats · 1/.test(txt('#erStateKey'))
+       && (sent.slice(ns0).find((x) => x[0] === '/api/extraction/stats') || [])[1].skip.join() === 'harness-c1',
+       txt('.state-tag', cards()[0]));
+    await goSub('stats');
+    await until(() => !!W.erRoom.state().stats, 6000, 'the stats');
+    ok('and the stats tabs say who is left out', /^Left out of these stats: PTEN m2 s3 \(harness\)\. Every number here is without it; put them back on the Recordings tab\.$/
+       .test(txt('#erStatsCard .er-left')), txt('#erStatsCard .er-left'));
+    await goSub('recordings');
+    btn(/^Put back in the stats$/, cards()[0]).click();
+    await until(() => cards()[0] && cards()[0].classList.contains('st-yes'), 3000, 'put back');
+    ok('and put back: separable again', txt('.state-tag', cards()[0]) === 'Separable' && /Left out of the stats · 0/.test(txt('#erStateKey')));
+
+    head('THE PICTURES, DRAWN');
+    await until(() => cards().every((c) => Array.from(c.querySelectorAll('canvas')).every((cv) => inked(cv) > 200)), 6000, 'the pictures');
+    ok('each card: a CSD per class and the depth profile, drawn',
+       cards().every((c) => c.querySelectorAll('canvas.csd').length === 2 && c.querySelectorAll('canvas.prof').length === 1
+         && Array.from(c.querySelectorAll('canvas')).every((cv) => inked(cv) > 200)),
+       cards().map((c) => Array.from(c.querySelectorAll('canvas')).map(inked).join('/')).join(' '));
+
+    head('MEAN SINK, WITH ITS DELTA; MEAN SOURCE');
+    const vals = (i) => txt('.vals', cards()[i]);
+    ok('mean sink says each class’s sink and its delta, in contacts and µm',
+       /DS1sink -0\.480 ± 0\.020 at CSC7 · Δ 6\.5 ± 0\.3 contacts \(325 ± 15 µm\)/.test(vals(0))
+       && /DS2sink -0\.720 ± 0\.030 at CSC12 · Δ 8\.3 ± 0\.2 contacts \(413 ± 10 µm\)/.test(vals(0)), vals(0));
+    await goSub('numbers');
+    ok('The numbers: the table has the sinks and the deltas, and no cards',
+       /DS1 sink.*DS2 sink.*DS1 Δ contacts/.test(txt('#erTable thead')) && !cards().length, txt('#erTable thead'));
+    await goSub('recordings');
+    const csdSink = inked(cards()[0].querySelector('canvas.csd'));
+    btn(/^mean source$/, D().querySelector('#erMode')).click();
+    await until(() => /source/.test(vals(0)), 4000, 'the source words');
+    ok('mean source says each class’s source, and no delta',
+       /DS1source \+0\.400 ± 0\.010 at CSC10/.test(vals(0)) && !/Δ/.test(vals(0)), vals(0));
+    await goSub('numbers');
+    ok('and the table swaps to the sources, its own switch pressed there too', /DS1 source.*DS2 source/.test(txt('#erTable thead'))
+       && !/Δ/.test(txt('#erTable thead'))
+       && btn(/^mean source$/, D().querySelector('#erModeN')).getAttribute('aria-pressed') === 'true');
+    await goSub('recordings');
+    await until(() => inked(cards()[0].querySelector('canvas.csd')) > 200, 4000, 'redrawn');
+    ok('the switch is pressed where it says', btn(/^mean source$/, D().querySelector('#erMode')).getAttribute('aria-pressed') === 'true');
+    btn(/^mean sink$/, D().querySelector('#erMode')).click();
+    await until(() => /Δ/.test(vals(0)), 4000, 'back to sinks');
+
+    head('THE PICTURES SWITCH');
+    btn(/^CSD view$/, D().querySelector('#erShow')).click();
+    await until(() => !cards()[0].querySelector('canvas.prof'), 3000, 'CSD only');
+    ok('CSD view: the CSDs, no profile', cards().every((c) => c.querySelectorAll('canvas.csd').length === 2 && !c.querySelector('canvas.prof')));
+    btn(/^depth profiles$/, D().querySelector('#erShow')).click();
+    await until(() => !cards()[0].querySelector('canvas.csd'), 3000, 'profiles only');
+    ok('depth profiles: the profile, no CSDs', cards().every((c) => !c.querySelector('canvas.csd') && !!c.querySelector('canvas.prof')));
+    btn(/^CSD and depth profile$/, D().querySelector('#erShow')).click();
+    await until(() => !!cards()[0].querySelector('canvas.csd') && !!cards()[0].querySelector('canvas.prof'), 3000, 'both');
+
+    head('ONE SCALE FOR EVERY RECORDING');
+    const r0 = W.erRoom._range('harness-c1'), r1 = W.erRoom._range('harness-p1');
+    ok('by default every depth profile shares one x axis, and every CSD one colour scale',
+       JSON.stringify(r0.x) === JSON.stringify(r1.x) && r0.clim === r1.clim, JSON.stringify([r0, r1]));
+    btn(/^each its own$/, D().querySelector('#erScale')).click();
+    await until(() => W.erRoom.state().scale === 'own', 3000, 'own scales');
+    const o0 = W.erRoom._range('harness-c1'), o1 = W.erRoom._range('harness-p1');
+    ok('“each its own” gives each recording its own', JSON.stringify(o0.x) !== JSON.stringify(o1.x) && o0.clim !== o1.clim,
+       JSON.stringify([o0, o1]));
+    btn(/^the same for every recording$/, D().querySelector('#erScale')).click();
+
+    head('DS1 AND DS2 SWAPPED BY HAND');
+    const nf = sent.length;
+    btn(/^Swap DS1 ↔ DS2$/, cards()[0]).click();
+    await until(() => sent.slice(nf).some((x) => x[0] === '/api/extraction/flip'), 4000, 'the swap');
+    const fb = sent.slice(nf).find((x) => x[0] === '/api/extraction/flip');
+    ok('the swap is sent: this room, this set, this recording, on', fb && fb[1].room === 'dentate_spike'
+       && fb[1].folder === 'xm-h5' && fb[1].gid === 'harness-c1' && fb[1].flip === true, JSON.stringify(fb && fb[1]));
+    await until(() => /swapped by hand/.test(cards()[0].textContent), 4000, 'the swapped card');
+    ok('the card says so', /DS1 ↔ DS2 swapped by hand/.test(cards()[0].textContent));
+    ok('and X-ray’s DS2 is now called DS1: its sink is DS1’s',
+       /DS1sink -0\.720 ± 0\.030 at CSC12/.test(txt('.vals', cards()[0])) && /DS2sink -0\.480/.test(txt('.vals', cards()[0])),
+       txt('.vals', cards()[0]));
+    ok('the CSDs follow: the first picture is the new DS1, X-ray’s DS2',
+       /DS170 events · X-ray’s DS2/.test(txt('.pics .pic .cap', cards()[0])), txt('.pics .pic .cap', cards()[0]));
+    ok('and the stats are asked again', sent.slice(nf).some((x) => x[0] === '/api/extraction/stats'));
+    btn(/^Put DS1 and DS2 back$/, cards()[0]).click();
+    await until(() => !/swapped by hand/.test(cards()[0].textContent), 4000, 'back');
+    ok('and back', /DS1sink -0\.480/.test(txt('.vals', cards()[0])));
+
+    head('ROUND I · DOES IT DIFFER?');
+    await goSub('stats');
+    ok('Round I shows its card, and no cards of recordings', !!D().querySelector('#erStatsCard') && !cards().length);
+    await until(() => D().querySelectorAll('#erStatsCard .stat').length === 3
+                && Array.from(D().querySelectorAll('.stat-cv')).every((c) => inked(c) > 100), 6000, 'the stats');
+    ok('a panel for separable, and one per measure, each with its chart drawn',
+       D().querySelectorAll('#erStatsCard .stat').length === 3
+       && D().querySelector('#erStatsCard .stat').classList.contains('sep')
+       && Array.from(D().querySelectorAll('.stat-cv')).every((c) => inked(c) > 100));
+    const sp = () => txt('#erStatsCard .stat:not(.sep)');
+    const sepw = () => txt('#erStatsCard .stat.sep');
+    ok('the usual tests by default', W.erRoom.state().tests === 'usual'
+       && btn(/^the usual ones$/, D().querySelector('#erTests')).getAttribute('aria-pressed') === 'true');
+    ok('usual, PTEN vs CTL: one test, picked by the residuals, and why',
+       /Welch’s t-test p = 0\.012 \(the residuals look normal, Shapiro–Wilk p = 0\.4\) · g \+1\.21/.test(sp())
+       && !/Mann–Whitney/.test(sp()) && /differs/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    ok('usual, separable: Boschloo’s exact test, Fisher’s beside it',
+       /Separable: PTEN 5 of 9, CTL 6 of 8 · Boschloo’s exact p = 0\.48 \(Fisher’s p = 0\.62\)/.test(sepw()), sepw());
+    ok('and the footnote says which tests', /The usual tests: one per question/.test(txt('#erStatsCard')));
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /Kruskal/.test(sp()), 3000, 'usual three');
+    ok('usual, three groups: Kruskal–Wallis when the residuals are not normal, then Dunn’s pairs',
+       /Kruskal–Wallis p = 0\.3 \(the residuals are not normal, Shapiro–Wilk p = 0\.01, so ranks\) · pairs \(Dunn’s, Holm\): CTL–Low KO p = 0\.6, CTL–High KO p = 0\.04, Low KO–High KO p = 1/.test(sp())
+       && !/ANOVA/.test(sp()), sp());
+    ok('usual, three groups: the trend in order first, and it decides the word',
+       /in order, CTL → Low KO → High KO \(Jonckheere–Terpstra\) p = 0\.02 · Kruskal–Wallis/.test(sp())
+       && txt('#erStatsCard .stat:not(.sep) .verdict') === 'falls CTL → Low → High'
+       && D().querySelector('#erStatsCard .stat:not(.sep)').classList.contains('hit'), txt('#erStatsCard .stat:not(.sep) .verdict'));
+    ok('usual, separable in three groups: the trend, and Boschloo’s pairs',
+       /trend, CTL → Low KO → High KO \(Cochran–Armitage\) p = 0\.32 · pairs \(Boschloo, Holm\): CTL–Low KO p = 0\.8/.test(sepw()), sepw());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erCmp')).click();
+    btn(/^strict$/, D().querySelector('#erTests')).click();
+    await until(() => W.erRoom.state().tests === 'strict' && /Mann–Whitney p/.test(sp()), 3000, 'strict');
+    ok('strict: both tests again, and its footnote', /Welch p = 0\.012 · Mann–Whitney p = 0\.03/.test(sp())
+       && /Strict: two groups need/.test(txt('#erStatsCard')), sp());
+    ok('separable, PTEN vs CTL: how many of each, and Fisher’s exact test',
+       /Separable: PTEN 5 of 9, CTL 6 of 8 · Fisher’s exact p = 0\.62/.test(sepw())
+       && /Too few events to say, so not counted: PTEN m51 s1/.test(sepw()), sepw());
+    ok('PTEN vs CTL: both tests, the effect size, said', /Welch p = 0\.012 · Mann–Whitney p = 0\.03 · g \+1\.21/.test(sp())
+       && /differs/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /ANOVA/.test(sp()), 3000, 'three groups');
+    ok('CTL, Low KO, High KO: ANOVA, Kruskal–Wallis and each pair, Holm-adjusted',
+       /ANOVA p = 0\.2 · Kruskal–Wallis p = 0\.3/.test(sp()) && /CTL–High KO p = 0\.5/.test(sp())
+       && /no clear difference/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    ok('separable, three groups: each group, the exact test, each pair',
+       /Separable: CTL 6 of 8 · Low KO 1 of 3 · High KO 4 of 6 · exact \(Freeman–Halton\) p = 0\.66/.test(sepw()), sepw());
+    ok('with the Low KO line to move', !!D().querySelector('#erSplit') && D().querySelector('#erSplit').value === '10');
+    const ns = sent.length;
+    D().querySelector('#erSplit').value = '15';
+    D().querySelector('#erSplit').dispatchEvent(new W.Event('change', { bubbles: true }));
+    await until(() => sent.slice(ns).some((x) => x[0] === '/api/extraction/stats'), 3000, 'asked again');
+    ok('moving it asks again, with the new line', (sent.slice(ns).find((x) => x[0] === '/api/extraction/stats') || [])[1].split === 15);
+    btn(/^against %KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /Spearman/.test(sp()), 3000, 'against %KO');
+    ok('against %KO: the dose among PTEN alone, and the controls-at-0% one beside it, named for what it measures',
+       /The dose, among the PTEN mice alone: Spearman ρ -0\.20 · p = 0\.6 · n 9 · all mice, the controls at 0%: ρ -0\.45 · p = 0\.01 \(mostly PTEN against controls\)/.test(sp()), sp());
+    ok('lower than controls with no dose trend says exactly that, and is not lit as a hit',
+       txt('#erStatsCard .stat:not(.sep) .verdict') === 'lower in PTEN, no dose trend'
+       && !D().querySelector('#erStatsCard .stat:not(.sep)').classList.contains('hit'), txt('#erStatsCard .stat:not(.sep) .verdict'));
+    ok('separable against %KO: the dose among PTEN alone', /The dose, among PTEN alone: odds of separating × 1\.10 per 10% KO, p = 0\.8 \(n 9\)/.test(sepw()), sepw());
+    ok('separable against %KO: the %KO of the separable and of the rest',
+       /%KO of the separable: median 0\.0% \(n 11\) vs the rest 4\.8% \(n 6\) · Mann–Whitney p = 0\.5/.test(sepw()), sepw());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erCmp')).click();
+    const no = sent.length;
+    btn(/^the separable ones only$/, D().querySelector('#erOnlySep')).click();
+    await until(() => sent.slice(no).some((x) => x[0] === '/api/extraction/stats'), 3000, 'asked again');
+    ok('“the separable ones only” asks for the measures from those alone',
+       (sent.slice(no).find((x) => x[0] === '/api/extraction/stats') || [])[1].only_sep === true);
+    btn(/^every recording$/, D().querySelector('#erOnlySep')).click();
+
+    head('SEPARATION RATE');
+    await goSub('seprate');
+    const sr = () => txt('#erSepRateCard .stat');
+    await until(() => !!D().querySelector('#erSepRateCard canvas.stat-cv') && inked(D().querySelector('#erSepRateCard canvas.stat-cv')) > 100,
+                4000, 'the rate chart');
+    ok('its own tab: the rate chart drawn', inked(D().querySelector('#erSepRateCard canvas.stat-cv')) > 100);
+    ok('PTEN vs CTL: each rate with its 95% interval, and Fisher’s exact test',
+       /PTEN 56% \(5 of 9; 95% CI 27%–81%\)/.test(sr()) && /CTL 75% \(6 of 8; 95% CI 41%–93%\)/.test(sr())
+       && /Fisher’s exact test p = 0\.62/.test(sr()) && /no clear difference/.test(txt('#erSepRateCard .verdict')), sr());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /Cochran/.test(sr()), 3000, 'three groups');
+    ok('three groups: the exact test, and the trend in order, CTL → Low KO → High KO',
+       /Low KO 33% \(1 of 3; 95% CI 6%–79%\)/.test(sr()) && /Freeman–Halton exact test p = 0\.66/.test(sr())
+       && /Cochran–Armitage trend, CTL → Low KO → High KO: p = 0\.32 \(z -1\.00, falling\)/.test(sr()), sr());
+    ok('the comparison is the same one Round I shows', W.erRoom.state().cmp === 'three');
+    btn(/^against %KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /logistic regression/.test(sr()), 3000, 'against %KO');
+    ok('against %KO: the dose among PTEN alone decides; all mice beside it',
+       /The dose, among PTEN alone: logistic regression, odds of separating × 1\.10 per 10% KO, p = 0\.8 \(n 9\)/.test(sr())
+       && /All mice, controls at 0%: odds of separating × 0\.74 per 10% KO, p = 0\.5 \(n 17\)/.test(sr())
+       && txt('#erSepRateCard .verdict') === 'no clear trend with %KO', sr());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    btn(/^the usual ones$/, D().querySelector('#erSepRateCard #erTests')).click();
+    await until(() => /Boschloo/.test(sr()), 3000, 'usual');
+    ok('usual: Boschloo’s exact test, with Fisher’s said beside it',
+       /Boschloo’s exact test p = 0\.48 \(an exact test never less powerful than Fisher’s; Fisher’s p = 0\.62\)/.test(sr()), sr());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /Boschloo, Holm/.test(sr()), 3000, 'usual three');
+    ok('usual, three groups: the trend decides, Boschloo’s pairs, the strict exact test said last',
+       /pairs \(Boschloo, Holm\): CTL–Low KO p = 0\.8, CTL–High KO p = 0\.7/.test(sr())
+       && /Freeman–Halton exact test, the strict one: p = 0\.66/.test(sr())
+       && /no clear difference/.test(txt('#erSepRateCard .verdict')), sr());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    btn(/^strict$/, D().querySelector('#erSepRateCard #erTests')).click();
+    const srow = () => D().querySelector('#erSepTable tr[data-gid="harness-p1"]');
+    ok('each row washed as its card is', srow() && srow().classList.contains('st-no')
+       && D().querySelector('#erSepTable tr[data-gid="harness-c1"]').classList.contains('st-yes'));
+    ok('a row per recording: X-ray’s call, the call that counts, and the press to change it',
+       D().querySelectorAll('#erSepTable tbody tr').length === 2 && /not separable \(ΔBIC 42\.5, smaller class 42%\)/.test(txt('td:nth-child(4)', srow()))
+       && !!btn(/^Call it separable$/, srow()), srow() && srow().textContent);
+    const n3 = sent.length;
+    btn(/^Call it separable$/, srow()).click();
+    await until(() => sent.slice(n3).some((x) => x[0] === '/api/extraction/sep'), 4000, 'the call');
+    await until(() => /by hand/.test(txt('td:nth-child(5)', srow())), 4000, 'the row');
+    ok('called from the table: sent, said, and the tab stays put',
+       (sent.slice(n3).find((x) => x[0] === '/api/extraction/sep') || [])[1].verdict === 'yes'
+       && txt('td:nth-child(5)', srow()) === 'separable · by hand' && W.erRoom.state().sub === 'seprate'
+       && sent.slice(n3).some((x) => x[0] === '/api/extraction/stats'), txt('td:nth-child(5)', srow()));
+    btn(/^Back to X-ray’s call$/, srow()).click();
+    await until(() => !/by hand/.test(txt('td:nth-child(5)', srow())), 4000, 'back');
+
+    head('ROUND II');
+    const n4 = sent.length;
+    await goSub('round2');
+    await until(() => sent.slice(n4).some((x) => x[0] === '/api/extraction/round2'), 4000, 'round 2 asked');
+    const r2b = (sent.slice(n4).find((x) => x[0] === '/api/extraction/round2') || [])[1] || {};
+    ok('opened, it asks for this extraction, this version, the Low KO line',
+       r2b.artifact_id === 'erH' && r2b.version === 2 && r2b.split === 15 && Array.isArray(r2b.skip), JSON.stringify(r2b));
+    await until(() => D().querySelectorAll('#erRound2Card .stat').length === 3, 4000, 'the panels');
+    const r2names = () => Array.from(D().querySelectorAll('#erRound2Card .stat .stat-h b')).map((b) => b.textContent);
+    ok('a panel per measure, ranked by p', r2names().join('|') === 'Share that look like control DS|DS amplitude|Events per minute',
+       r2names().join('|'));
+    const r2p = (i) => D().querySelectorAll('#erRound2Card .stat')[i];
+    ok('one the q clears is a finding; one only the p clears is a lead',
+       r2p(0).classList.contains('hit') && /^finding \(q = 0\.04\)$/.test(txt('.chip.q', r2p(0)))
+       && r2p(1).classList.contains('lead') && !r2p(1).classList.contains('hit') && /^lead \(q = 0\.2\)$/.test(txt('.chip.q', r2p(1)))
+       && !r2p(2).classList.contains('hit') && !r2p(2).classList.contains('lead') && txt('.chip.q', r2p(2)) === 'q = 0.5',
+       Array.from(D().querySelectorAll('#erRound2Card .chip.q')).map((c) => c.textContent).join(' / '));
+    ok('and it says what it found, in words', /^Found: Share that look like control DS \(p = 0\.01, q = 0\.04\)\.$/.test(txt('.r2-say')),
+       txt('.r2-say'));
+    ok('in its units: per minute, µV, a share', /events per minute/.test(txt('.muted', r2p(2))) && /µV/.test(txt('.muted', r2p(1)))
+       && /PTEN 82% ± 1%/.test(r2p(0).textContent), r2p(1).textContent);
+    btn(/^against %KO$/, D().querySelector('#erRound2Card #erCmp')).click();
+    await until(() => /Spearman/.test(txt('#erRound2Card .stat')), 3000, 'against %KO');
+    ok('against %KO: none clears the false discovery rate, the lead said as a lead',
+       /^Nothing clears the false discovery rate\. Leads, under 0\.05 on their own: Share that look like control DS \(p = 0\.006, q = 0\.066\)\.$/
+         .test(txt('.r2-say')) && !D().querySelector('#erRound2Card .stat.hit'), txt('.r2-say'));
+    await until(() => Array.from(D().querySelectorAll('#erRound2Card canvas.stat-cv')).every((c) => inked(c) > 100), 4000, 'the charts');
+    ok('every chart drawn', Array.from(D().querySelectorAll('#erRound2Card canvas.stat-cv')).every((c) => inked(c) > 100));
+    const n5 = sent.length;
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erRound2Card #erCmp')).click();
+    await until(() => !!D().querySelector('#erRound2Card #erSplit'), 3000, 'the line');
+    D().querySelector('#erRound2Card #erSplit').value = '12';
+    D().querySelector('#erRound2Card #erSplit').dispatchEvent(new W.Event('change', { bubbles: true }));
+    await until(() => sent.slice(n5).some((x) => x[0] === '/api/extraction/round2'), 3000, 'asked again');
+    ok('moving the Low KO line asks Round II and Round I again',
+       (sent.slice(n5).find((x) => x[0] === '/api/extraction/round2') || [])[1].split === 12
+       && sent.slice(n5).some((x) => x[0] === '/api/extraction/stats'));
+    btn(/^PTEN vs CTL$/, D().querySelector('#erRound2Card #erCmp')).click();
+    btn(/^the usual ones$/, D().querySelector('#erRound2Card #erTests')).click();
+    await until(() => /^Under 0\.05/.test(txt('.r2-say')), 3000, 'usual round 2');
+    ok('usual: ranked by each measure’s own test', r2names().join('|') === 'Share that look like control DS|Events per minute|DS amplitude',
+       r2names().join('|'));
+    ok('usual: under 0.05 differs, said with its test and its q, q not a gate',
+       r2p(0).classList.contains('hit') && r2p(1).classList.contains('hit') && !r2p(2).classList.contains('hit')
+       && !D().querySelector('#erRound2Card .stat.lead')
+       && /^Under 0\.05: Share that look like control DS \(Mann–Whitney p = 0\.01, q = 0\.03\); Events per minute \(Welch’s t-test p = 0\.02, q = 0\.03\)\. Holding across all 3: Share that look like control DS, Events per minute\.$/
+         .test(txt('.r2-say')), txt('.r2-say'));
+    ok('a q under 0.05 is said to hold across all of them, and only that one is green',
+       /^holds across all 3 \(q = 0\.03\)$/.test(txt('.chip.q', r2p(0))) && r2p(0).querySelector('.chip.q').classList.contains('holds')
+       && txt('.chip.q', r2p(2)) === 'q = 0.3' && !r2p(2).querySelector('.chip.q').classList.contains('holds'), txt('.chip.q', r2p(0)));
+    await until(() => D().querySelectorAll('#erRound2Card .stat').length === 3
+                && inked(D().querySelector('#erRound2Card canvas.stat-cv')) > 100, 3000, 'redrawn');
+    const cv = D().querySelector('#erRound2Card canvas.stat-cv');
+    const pt = (cv.__pts || []).find((q) => q.v.gid === 'harness-p1');
+    const cb = cv.getBoundingClientRect();
+    cv.dispatchEvent(new W.MouseEvent('click', { clientX: cb.left + pt.x, clientY: cb.top + pt.y, bubbles: true }));
+    await until(() => W.erRoom.state().sub === 'recordings' && cards().length === 2, 3000, 'the recordings');
+    ok('a dot clicked takes you to its recording, lit', W.erRoom.state().sub === 'recordings'
+       && !!D().querySelector('#erGrid .rec.flash[data-gid="harness-p1"]'));
+
+    head('SEPARABLE OR NOT, CALLED BY HAND');
+    const card1 = () => cards()[1];
+    ok('X-ray’s call is on the card, with the press to overrule it',
+       /not separable/.test(txt('.sepchip', card1())) && !!btn(/^Call it separable$/, card1()));
+    const n2 = sent.length;
+    btn(/^Call it separable$/, card1()).click();
+    await until(() => sent.slice(n2).some((x) => x[0] === '/api/extraction/sep'), 4000, 'the call');
+    const sb = sent.slice(n2).find((x) => x[0] === '/api/extraction/sep');
+    ok('the call is sent: this room, this set, this recording, separable', sb && sb[1].room === 'dentate_spike'
+       && sb[1].folder === 'xm-h5' && sb[1].gid === 'harness-p1' && sb[1].verdict === 'yes', JSON.stringify(sb && sb[1]));
+    await until(() => /by hand/.test(txt('.sepchip', card1())), 4000, 'the chip');
+    ok('and its wash follows the call: separable, your call', card1().classList.contains('st-yes')
+       && txt('.state-tag', card1()) === 'Separable · your call', txt('.state-tag', card1()));
+    ok('the card says separable, by hand, and offers X-ray’s call back',
+       txt('.sepchip', card1()) === 'separable · by hand' && !!btn(/^Back to X-ray’s call$/, card1())
+       && !!btn(/^Call it not separable$/, card1()), txt('.sepchip', card1()));
+    ok('and the stats are asked again, Round II with them once it has been opened',
+       sent.slice(n2).some((x) => x[0] === '/api/extraction/stats') && sent.slice(n2).some((x) => x[0] === '/api/extraction/round2'));
+    await goSub('numbers');
+    ok('the table says so too', /separable \(by hand\)/.test(txt('#erTable')));
+    await goSub('recordings');
+    btn(/^Back to X-ray’s call$/, card1()).click();
+    await until(() => !/by hand/.test(txt('.sepchip', card1())), 4000, 'back');
+    const sb2 = sent.filter((x) => x[0] === '/api/extraction/sep').pop();
+    ok('and back: the call given back to X-ray', sb2 && sb2[1].verdict === null && /not separable/.test(txt('.sepchip', card1())));
+
+    head('EXTRACT AGAIN, AND A %KO CORRECTED');
+    const n0 = sent.length;
+    btn(/^Extract again$/).click();
+    await until(() => sent.slice(n0).some((x) => x[0] === '/api/extraction/extract'), 4000, 'the extract');
+    const ex = sent.slice(n0).find((x) => x[0] === '/api/extraction/extract');
+    ok('Extract again sends the room and the folder', ex && ex[1].room === 'dentate_spike' && ex[1].folder === 'xm-h5', JSON.stringify(ex && ex[1]));
+    await until(() => sent.slice(n0).some((x) => /version=3/.test(x[2])), 4000, 'the new version');
+    ok('and opens the new version', sent.slice(n0).some((x) => /\/api\/extraction\/erH\?version=3/.test(x[2])));
+    await until(() => cards().length === 2, 4000, 'the cards again');
+    W.prompt = () => '30';
+    ko(1).click();
+    await until(() => sent.some((x) => x[0] === '/api/extraction/ko'), 4000, 'the %KO');
+    const kb = sent.find((x) => x[0] === '/api/extraction/ko');
+    ok('clicking a PTEN mouse’s %KO corrects it, for everybody', kb && kb[1].mouse_key === 'PTEN|m7' && kb[1].pct === 30, JSON.stringify(kb && kb[1]));
+    await until(() => ko(1) && ko(1).textContent === '30% KO', 4000, 'the chip');
+    ok('and the chip says the new number', ko(1) && ko(1).textContent === '30% KO', ko(1) && ko(1).textContent);
+    const c0 = sent.filter((x) => x[0] === '/api/extraction/ko').length;
+    ko(0).click();
+    await sleep(200);
+    ok('a control’s 0% is not editable', sent.filter((x) => x[0] === '/api/extraction/ko').length === c0);
+
+    head('A NEW EXTRACTION, MADE ELSEWHERE');
+    const room = IDX.rooms[0];
+    room.versions.push({ v: 3, at: '2026-11-11T10:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' },
+                       { v: 4, at: '2026-11-11T11:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 7%', folder_id: 'xm-h7' });
+    room.version = 4;
+    IDX.folders[0].in_room = { v: 3, at: '2026-11-11T10:00:00Z', by: 'Debug_Bot' };
+    IDX.folders[2].in_room = { v: 4, at: '2026-11-11T11:00:00Z', by: 'Debug_Bot' };
+    IDX.folders[2].new = 0;
+    await W.erRoom._poll();
+    await until(() => W.erRoom.state().version === 4 && cards().length === 2, 4000, 'v4');
+    ok('asked again, the room opens the new one, and says so', W.erRoom.state().folder === 'xm-h7'
+       && /^Opened v4, ‘Harness 7%’, extracted .* by Debug_Bot: the newest in the room\.$/.test(txt('.er-note')), txt('.er-note'));
+    const setb = () => Array.from(D().querySelectorAll('#erSets button'));
+    ok('each folder is a set of its own, the new one chosen; nothing is waiting now',
+       setb().map((b) => b.textContent).join('|') === 'Harness 5% · v3|Harness 7% · v4'
+       && setb()[1].getAttribute('aria-pressed') === 'true' && !D().querySelector('.er-take'),
+       setb().map((b) => b.textContent).join('|'));
+    ok('its versions are its own', Array.from(D().querySelectorAll('#erVersion option')).map((o) => o.value).join() === '4');
+    const n6 = sent.length;
+    setb()[0].click();
+    await until(() => W.erRoom.state().folder === 'xm-h5' && cards().length === 2, 4000, 'back to 5%');
+    ok('the other set opens at its newest, with its versions', sent.slice(n6).some((x) => /\/api\/extraction\/erH\?version=3/.test(x[2]))
+       && Array.from(D().querySelectorAll('#erVersion option')).map((o) => o.value).join() === '3,2,1');
+    IDX.folders[0].new = 1;
+    await W.erRoom._poll();
+    await until(() => !!D().querySelector('#erNew'), 3000, 'the notice');
+    ok('newer X-ray results than this set’s version say so, with the press that takes them',
+       /^1 X-ray result in ‘Harness 5%’ is newer than this set’s v3\. Extract them$/.test(txt('#erNew')) && !!btn(/^Extract them$/, D().querySelector('#erNew')),
+       txt('#erNew'));
+    IDX.folders[0].new = 0;
+    const bc = new BroadcastChannel('barry-extraction');
+    bc.postMessage({ type: 'extracted', room: 'dentate_spike', version: 4, folder: 'xm-h7', folder_name: 'Harness 7%' });
+    await until(() => W.erRoom.state().version === 4, 4000, 'the word from the ToolKit');
+    ok('told by the ToolKit, the room opens what it just extracted', W.erRoom.state().folder === 'xm-h7'
+       && /^Opened v4, just extracted from ‘Harness 7%’\.$/.test(txt('.er-note')), txt('.er-note'));
+    bc.close();
+
+    head('COMPARE SPLITS, AND ONE RECORDING ACROSS SETS (2026-11-12)');
+    const c_erc = () => D().querySelector('#erc-splits');
+    btn(/^Compare splits$/, cards()[1]).click();
+    await until(() => !!c_erc(), 4000, 'the dialog');
+    const c_panels = () => Array.from(c_erc().querySelectorAll('.erc-state:not([hidden]) .erc-panel'));
+    const c_of = (m) => c_erc().querySelector('.erc-state:not([hidden]) .erc-panel[data-method="' + m + '"]');
+    const c_rows = () => Array.from(c_erc().querySelectorAll('.erc-state:not([hidden]) .erc-row'));
+    const C_ORDER = ['', '_top', '_bottom'].map((s) => ['bite', 'pca', 'pca_gap', 'delta', 'delta_mid'].map((b) => b + s).join()).join();
+    await until(() => c_panels().length === 15, 5000, 'the fifteen panels');
+    // THE SCORE GRID (2026-11-13): fifteen cells, one panel open.
+    {
+      const cells = () => Array.from(c_erc().querySelectorAll('.erc-state:not([hidden]) .erc-cellbtn'));
+      const shown = () => c_panels().filter((x) => x.getClientRects().length > 0);
+      ok('a 5 × 3 grid of the fifteen splits, each with its counts, SI and mix-up; the one in use is the one open',
+         cells().length === 15 && cells().map((b) => b.dataset.method).join() === C_ORDER
+         && cells().every((b) => /^\d+\/\d+SI 0\.69mix 8%$/.test(b.textContent) && b.dataset.word === 'clean')
+         && shown().length === 1 && shown()[0].dataset.method === 'delta'
+         && c_erc().querySelector('.erc-cellbtn[data-method="delta"]').getAttribute('aria-pressed') === 'true'
+         && c_erc().querySelector('.erc-cellbtn[data-method="delta"]').classList.contains('inuse'),
+         cells().length + ' cells, open ' + shown().map((x) => x.dataset.method).join() + ' | ' + (cells()[0] || {}).textContent);
+      c_erc().querySelector('.erc-cellbtn[data-method="pca_top"]').click();
+      await until(() => shown().length === 1 && shown()[0].dataset.method === 'pca_top'
+        && inked(shown()[0].querySelector('canvas.erc-line')) > 200, 3000, 'the cell opened');
+      ok('a cell clicked opens that split’s full panel in its place, drawn',
+         shown().length === 1 && shown()[0].dataset.method === 'pca_top' && inked(shown()[0].querySelector('canvas.erc-line')) > 200);
+      ok('every panel says its mix-up three ways, with intervals and the verdict, and draws its probabilities',
+         txt('.erc-mix', shown()[0]) === 'Mix-up: as split 8% (5%–12%) · DS3 out 4% (2%–7%) · trimmed 2% (1%–4%). Clean (10% or under).'
+         && shown()[0].querySelector('.erc-mix').dataset.word === 'clean'
+         && /^With the set’s switches: DS3 would take 20, the trim 10\.$/.test(txt('.erc-lay', shown()[0]))
+         && inked(shown()[0].querySelector('canvas.erc-prob')) > 100, txt('.erc-mix', shown()[0]) + ' | ' + txt('.erc-lay', shown()[0]));
+      c_erc().querySelector('.erc-openall').click();
+      await until(() => shown().length === 15, 3000, 'all open');
+      ok('Open all 15 shows every panel', shown().length === 15
+         && c_erc().querySelector('.erc-openall').getAttribute('aria-pressed') === 'true');
+    }
+    ok('Compare splits opens over the room: a dialog, the recording named, the page held still',
+       !!c_erc() && !!c_erc().querySelector('[role=dialog][aria-modal=true]')
+       && /PTEN m7 s2 \(harness\)/.test(txt('.erc-title', c_erc()))
+       && D().documentElement.style.overflow === 'hidden' && c_erc().contains(D().activeElement),
+       txt('.erc-title', c_erc()));
+    ok('fifteen full panels in three rows -- both humps, the top hump only, the bottom hump only -- five ways in each, delta middle the fifth',
+       c_panels().map((x) => x.dataset.method).join() === C_ORDER
+       && c_rows().map((r) => txt('h3', r)).join('|') === 'Both humps|The top hump only|The bottom hump only'
+       && c_rows().every((r) => r.querySelectorAll('.erc-panel').length === 5),
+       c_panels().map((x) => x.dataset.method).join());
+    await until(() => c_panels().length === 15 && c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200
+      && Array.from(x.querySelectorAll('canvas.erc-csd')).every((c) => inked(c) > 200)), 5000, 'the pictures');
+    ok('each panel draws its line, its DS1 and DS2 CSDs and its profile',
+       c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200
+         && x.querySelectorAll('canvas.erc-csd').length === 2
+         && Array.from(x.querySelectorAll('canvas.erc-csd')).every((c) => inked(c) > 200)
+         && inked(x.querySelector('canvas.erc-prof')) > 200));
+    const c_pinks = (cv) => {
+      if (!cv || !cv.width) return 0;
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      let k = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] > 100 && d[i] > 150 && d[i] - d[i + 1] > 80 && d[i + 2] - d[i + 1] > 20) k++;
+      }
+      return k;
+    };
+    const c_pkw = txt('.erc-peaks', c_panels()[0]);
+    ok('where each sink is strongest: pink dots on the Bite line’s raster and the sorted ones, the medians in words, DS1 and DS2 apart',
+       /Top sink: median contact 6 \(DS1 [56], DS2 [56]\)\. Bottom sink: median contact 11 \(DS1 (9|11), DS2 (9|11)\)/.test(c_pkw)
+       && /DS1 5, DS2 6|DS1 6, DS2 5/.test(c_pkw)
+       && c_pinks(c_panels()[0].querySelector('canvas.erc-line')) > 40
+       && c_pinks(c_panels()[1].querySelector('canvas.erc-sorted')) > 40
+       && /^Pink dots/.test(txt('.erc-peaks', c_panels()[1])),
+       c_pkw + ' | pink px ' + c_pinks(c_panels()[0].querySelector('canvas.erc-line')) + ', '
+       + c_pinks(c_panels()[1].querySelector('canvas.erc-sorted')));
+    ok('the Bite line says its sink is the recording’s two humps, where they part, and how many had a notch',
+       txt('.erc-bumps', c_panels()[0]) === 'The sink is the recording’s two humps, parted at contact 9, each taken whole on every event. '
+       + '4 events had a notch inside a hump; it stays one hump.', txt('.erc-bumps', c_panels()[0]));
+    ok('one of them is in use, the others offer Use this',
+       c_panels().filter((x) => /^In use$/.test(txt('.erc-use', x))).length === 1
+       && c_panels().filter((x) => /^Use this$/.test(txt('.erc-use', x))).length === 14,
+       c_panels().map((x) => txt('.erc-use', x)).join('|'));
+    ok('each says its counts and its overlap score on the one yardstick',
+       c_panels().every((x) => /^DS1 \d+ · DS2 \d+/.test(txt('.erc-n', x)) && /^SI 0\.69/.test(txt('.erc-si', x))),
+       c_panels().map((x) => txt('.erc-n', x) + ' / ' + txt('.erc-si', x)).join(' | '));
+    await until(() => /^The recording is 20\.0 minutes long/.test(txt('.erc-tlsay', c_erc()))
+      && inked(c_erc().querySelector('canvas.erc-tl')) > 300, 5000, 'the timeline');
+    ok('at the top, when every event happened and theta under it on the same minutes, with the length and the rates',
+       txt('.erc-tlsay', c_erc()) === 'The recording is 20.0 minutes long; 120 events, 6.00 a minute. As delta only, no '
+         + 'PCA splits them: DS1 50 (2.50 a minute), DS2 70 (3.50 a minute). Move a line on any panel and the ticks follow '
+         + 'it. Below them, theta (6–10 Hz) power on contact 9, the middle of the band, in 4 s bins.'
+       && sent.filter((x) => /\/timeline$/.test(x[0])).length === 1
+       && inked(c_erc().querySelector('canvas.erc-tl')) > 300, txt('.erc-tlsay', c_erc()));
+    ok('each row says its contacts: where the humps part, and each hump’s span',
+       /The two humps part at contact 9\.$/.test(txt('.erc-rowhead p', c_rows()[0]))
+       && /Contacts 3–8\.$/.test(txt('.erc-rowhead p', c_rows()[1])) && /Contacts 9–14\.$/.test(txt('.erc-rowhead p', c_rows()[2])),
+       c_rows().map((r) => txt('.erc-rowhead p', r)).join(' | '));
+    ok('delta middle is named, and says it takes each hump’s middle, not its deepest point',
+       txt('h3', c_of('delta_mid')) === 'delta middle, no PCA'
+       && /the middles of each event’s two humps are, not their deepest points/.test(txt('p.muted', c_of('delta_mid'))),
+       txt('p.muted', c_of('delta_mid')));
+    ok('on one hump, the Bite line has its own order and line, says which contacts count, and dims the other hump',
+       /^Its default line: after 25 of 120 events\.$/.test(txt('.erc-lw', c_of('bite_top')))
+       && /^Its default line: after 35 of 120 events\.$/.test(txt('.erc-lw', c_of('bite_bottom')))
+       && /in the order their top-hump sinks overlap; contacts down, darker where its sink sits, the other hump dimmed/.test(
+         txt('.erc-cap', c_of('bite_top')))
+       && txt('.erc-bumps', c_of('bite_top')) === 'Only the top hump’s sink counts here, contacts 3–8.',
+       txt('.erc-lw', c_of('bite_top')) + ' | ' + txt('.erc-bumps', c_of('bite_top')));
+    ok('every split on one hump is scored on that hump as well; the both-humps row is not',
+       c_panels().filter((x) => x.dataset.row !== 'both').every((x) =>
+         txt('.erc-hsi', x) === 'On the ' + x.dataset.row + ' hump alone: SI 0.81, its sinks there overlap little.')
+       && c_panels().filter((x) => x.dataset.row === 'both').every((x) => !x.querySelector('.erc-hsi')),
+       c_panels().map((x) => txt('.erc-hsi', x)).join(' | '));
+    ok('an event with no sink in that hump is off the axis, and said',
+       /1 event with no sink in the bottom hump goes to the right side\.$/.test(txt('.erc-lw', c_of('delta_bottom'))),
+       txt('.erc-lw', c_of('delta_bottom')));
+    {
+      const cv = c_of('bite_top').querySelector('canvas.erc-line'), b = cv.getBoundingClientRect();
+      const pt = (f) => ({ clientX: b.left + f * b.width, clientY: b.top + b.height / 2, pointerId: 11, bubbles: true, button: 0, buttons: 1 });
+      const n0 = sent.length;
+      cv.dispatchEvent(new W.PointerEvent('pointerdown', pt(0.6)));
+      cv.dispatchEvent(new W.PointerEvent('pointerup', pt(0.6)));
+      await until(() => sent.slice(n0).some((x) => x[0] === '/api/extraction/split/preview'), 3000, 'a hump preview');
+      await until(() => /^On the top hump alone: SI 0\.77/.test(txt('.erc-hsi', c_of('bite_top'))), 3000, 'its hump score');
+      const pv = sent.slice(n0).filter((x) => x[0] === '/api/extraction/split/preview').map((x) => x[1]);
+      ok('the Bite line on one hump moves by place in its own order, and its hump score follows',
+         pv.length >= 1 && pv.every((x) => x.method === 'bite_top' && Math.abs((x.cut % 1) - 0.5) < 1e-9 && x.low === false)
+         && /^On the top hump alone: SI 0\.77/.test(txt('.erc-hsi', c_of('bite_top'))),
+         JSON.stringify(pv) + ' | ' + txt('.erc-hsi', c_of('bite_top')));
+      ok('and the timeline’s ticks follow the line just moved',
+         /As Bite line · top hump only splits them: DS1 \d+ \(/.test(txt('.erc-tlsay', c_erc())), txt('.erc-tlsay', c_erc()));
+    }
+    // Low contacts (2026-11-13): a look, nothing kept.
+    const c_lb = () => c_erc().querySelector('.erc-low');
+    ok('the low-contacts toggle is there, off, and says what it would do',
+       !!c_lb() && c_lb().getAttribute('aria-pressed') === 'false'
+       && /^A look with this recording’s low contacts left out: .* Nothing is kept\.$/.test(txt('.erc-lowsay', c_erc())),
+       txt('.erc-lowsay', c_erc()));
+    {
+      const n0 = sent.length;
+      c_lb().click();
+      await until(() => c_lb().getAttribute('aria-pressed') === 'true' && /^Left out/.test(txt('.erc-lowsay', c_erc()))
+        && c_panels().length === 15, 4000, 'the look');
+      ok('turned on, it asks again with them left out, and says which, how low, and which are outside the band',
+         sent.slice(n0).some((x) => /\/split$/.test(x[0]) && /[?&]low=1/.test(x[2]))
+         && txt('.erc-lowsay', c_erc()) === 'Left out: contact 25 (reads 11.6% low), contact 49 (reads 4.1% low); 25 is outside '
+           + 'this band. Each is made again from the two contacts either side (a cubic, so it puts no notch of its own there), '
+           + 'and every split below is worked out again. A look only: Use this is off while this is on. '
+           + 'Already marked bad, as always: 8, 41, 59.',
+         txt('.erc-lowsay', c_erc()));
+      await until(() => inked(c_panels()[0].querySelector('canvas.erc-line')) > 200, 4000, 'drawn again');
+      ok('every split is worked out again: the Bite line’s classes moved', /^DS1 33 · DS2 87/.test(txt('.erc-n', c_panels()[0])),
+         txt('.erc-n', c_panels()[0]));
+      ok('a look only: no Use this works and none is in use', c_panels().every((x) => !x.querySelector('.erc-use')
+         || x.querySelector('.erc-use').disabled) && !c_panels().some((x) => x.classList.contains('inuse')));
+      const cv = c_of('pca').querySelector('canvas.erc-line'), b = cv.getBoundingClientRect();
+      const n1 = sent.length;
+      cv.dispatchEvent(new W.PointerEvent('pointerdown', { clientX: b.left + 0.7 * b.width, clientY: b.top + b.height / 2,
+        pointerId: 12, bubbles: true, button: 0, buttons: 1 }));
+      cv.dispatchEvent(new W.PointerEvent('pointerup', { clientX: b.left + 0.7 * b.width, clientY: b.top + b.height / 2,
+        pointerId: 12, bubbles: true, button: 0, buttons: 1 }));
+      await until(() => sent.slice(n1).some((x) => x[0] === '/api/extraction/split/preview'), 3000, 'a low preview');
+      ok('a line moved in the look is asked for with the low contacts left out',
+         sent.slice(n1).filter((x) => x[0] === '/api/extraction/split/preview').every((x) => x[1].low === true));
+      const n2 = sent.length;
+      c_lb().click();
+      await until(() => c_lb().getAttribute('aria-pressed') === 'false' && c_panels().length === 15
+        && c_panels().filter((x) => /^Use this$/.test(txt('.erc-use', x)) && !x.querySelector('.erc-use').disabled).length === 14,
+        4000, 'back');
+      ok('turned off, every contact is back at once -- a view already seen is not asked for again -- and Use this works',
+         !sent.slice(n2).some((x) => /\/split$/.test(x[0]))
+         && /^DS1 30 · DS2 90/.test(txt('.erc-n', c_panels()[0]))
+         && c_panels().filter((x) => /^In use$/.test(txt('.erc-use', x))).length === 1, txt('.erc-n', c_panels()[0]));
+      await until(() => c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200), 4000, 'drawn again');
+    }
+    // The time window's two knobs (2026-11-13).
+    {
+      const tl = () => c_erc().querySelector('canvas.erc-tl');
+      const say = () => txt('.erc-tlsay', c_erc());
+      const knobTo = (fromFrac, toFrac) => {
+        const b = tl().getBoundingClientRect(), pw = b.width - 54;
+        const at = (f) => ({ clientX: b.left + 44 + f * pw, clientY: b.top + 18, pointerId: 21, bubbles: true, button: 0, buttons: 1 });
+        tl().dispatchEvent(new W.PointerEvent('pointerdown', at(fromFrac)));
+        tl().dispatchEvent(new W.PointerEvent('pointermove', at((fromFrac + toFrac) / 2)));
+        tl().dispatchEvent(new W.PointerEvent('pointerup', at(toFrac)));
+      };
+      ok('no window yet: only the hint, no window buttons',
+         /Drag the two knobs on the line/.test(txt('.erc-twbar', c_erc())) && c_erc().querySelector('.erc-tw-all').hidden
+         && c_erc().querySelector('.erc-tw-keep').hidden);
+      const n0 = sent.length;
+      knobTo(0, 0.25);
+      await until(() => /only the events from 5\.0 to 20\.0 min are taken \(a look/.test(say()) && c_panels().length === 15, 5000, 'the window');
+      const rq = sent.slice(n0).filter((x) => /\/split$/.test(x[0]));
+      ok('the left knob dragged in: every split is asked for with only the events in the window, the rates are the window’s, and it is a look',
+         rq.length === 1 && new URLSearchParams(rq[0][2].split('?')[1]).get('twin') === '300,1200'
+         && /; 90 events, 6\.00 a minute\. As Bite line splits them/.test(say())
+         && c_panels().every((x) => !x.querySelector('.erc-use') || x.querySelector('.erc-use').disabled)
+         && txt('.erc-tw-keep', c_erc()) === 'Save this window on the card: 5.0–20.0 min, for everybody'
+         && !c_erc().querySelector('.erc-tw-all').hidden, say() + ' | ' + txt('.erc-tw-keep', c_erc()));
+      const n1 = sent.length;
+      c_erc().querySelector('.erc-tw-all').click();
+      const back = /; 120 events, 6\.00 a minute/.test(say()) && c_erc().querySelector('.erc-tw-keep').hidden;
+      knobTo(0, 0.25);
+      await until(() => /a look/.test(say()), 3000, 'the window again');
+      ok('Whole recording and the same window again are views already seen: at once, nothing asked for',
+         back && !sent.slice(n1).some((x) => /\/split$/.test(x[0])), String(back));
+      const wasC = W.confirm;
+      W.confirm = () => true;
+      const n2 = sent.length;
+      c_erc().querySelector('.erc-tw-keep').click();
+      await until(() => /\(the card’s window\)/.test(say()) && c_panels().length === 15, 5000, 'saved');
+      const tb = (sent.slice(n2).find((x) => x[0] === '/api/extraction/twin') || [])[1] || {};
+      ok('saved on the card: the window is the recording’s, for everybody, and no longer a look',
+         tb.t0 === 300 && tb.t1 === 1200 && tb.gid === 'harness-p1' && c_erc().querySelector('.erc-tw-keep').hidden
+         && /^Only the events from 5\.0 to 20\.0 min are taken now/.test(txt('.erc-status', c_erc()))
+         && c_panels().filter((x) => /^Use this$/.test(txt('.erc-use', x)) && !x.querySelector('.erc-use').disabled).length >= 13,
+         JSON.stringify(tb) + ' | ' + say());
+      c_erc().querySelector('.erc-tw-all').click();
+      await until(() => !c_erc().querySelector('.erc-tw-keep').hidden && /; 120 events/.test(say()), 5000, 'whole again');
+      const n3 = sent.length;
+      c_erc().querySelector('.erc-tw-keep').click();
+      await until(() => sent.slice(n3).some((x) => x[0] === '/api/extraction/twin') && c_panels().length === 15
+        && c_erc().querySelector('.erc-tw-all').hidden, 5000, 'cleared');
+      W.confirm = wasC;
+      ok('and the whole recording can be saved back',
+         ((sent.slice(n3).find((x) => x[0] === '/api/extraction/twin') || [])[1] || {}).clear === true && TW_SAVED === null);
+      await until(() => c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200), 4000, 'drawn');
+    }
+    // Interpolation on and off in the dialog (2026-11-13).
+    {
+      SPLIT_IP = [8, 9];
+      W.erRoom.ext.compare.close();
+      await until(() => !c_erc(), 3000, 'closed');
+      btn(/^Compare splits$/, cards()[1]).click();
+      await until(() => !!c_erc() && c_panels().length === 15 && !c_erc().querySelector('.erc-ipseg').hidden, 5000, 'the switch');
+      const on = () => c_erc().querySelector('.erc-ip-on'), off = () => c_erc().querySelector('.erc-ip-off');
+      ok('a card with interpolated contacts gets a two-way switch for them, Interpolated pressed, saying what shows',
+         txt('.erc-ip-lab', c_erc()) === 'Contacts 8, 9:' && on().getAttribute('aria-pressed') === 'true'
+         && off().getAttribute('aria-pressed') === 'false'
+         && / Showing contacts 8, 9 INTERPOLATED, as the card has them\. Press As recorded to see every split without\.$/.test(
+           txt('.erc-lowsay', c_erc())) && c_erc().querySelector('.erc-ip-keep').hidden
+         && txt('.erc-ipdiff', c_erc()) === '', txt('.erc-lowsay', c_erc()));
+      const n0 = sent.length;
+      off().click();
+      await until(() => off().getAttribute('aria-pressed') === 'true' && c_panels().length === 15
+        && / Showing contacts 8, 9 AS RECORDED/.test(txt('.erc-lowsay', c_erc())), 4000, 'as recorded');
+      await until(() => inked(c_panels()[0].querySelector('canvas.erc-line')) > 200, 4000, 'drawn again');
+      ok('as recorded: asked again without them, every split and picture made again, what changed said, nothing to keep',
+         sent.slice(n0).some((x) => /\/split$/.test(x[0]) && /[?&]interp=0/.test(x[2]))
+         && /^DS1 28 · DS2 92/.test(txt('.erc-n', c_panels()[0]))
+         && txt('.erc-ipdiff', c_erc()) === 'Changed from interpolated: Bite line 30/90 → 28/92. In the pictures, look at the '
+           + 'rows at contacts 8, 9.'
+         && c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200)
+         && c_panels().every((x) => !x.querySelector('.erc-use') || x.querySelector('.erc-use').disabled)
+         && / \(without interpolation\): DS1 28 /.test(txt('.erc-tlsay', c_erc()))
+         && !c_erc().querySelector('.erc-ip-keep').hidden, txt('.erc-ipdiff', c_erc()) + ' | ' + txt('.erc-n', c_panels()[0]));
+      const cv = c_of('pca').querySelector('canvas.erc-line'), b = cv.getBoundingClientRect();
+      const n1 = sent.length;
+      for (const t of ['pointerdown', 'pointerup']) cv.dispatchEvent(new W.PointerEvent(t, { clientX: b.left + 0.7 * b.width,
+        clientY: b.top + b.height / 2, pointerId: 13, bubbles: true, button: 0, buttons: 1 }));
+      await until(() => sent.slice(n1).some((x) => x[0] === '/api/extraction/split/preview'), 3000, 'a preview');
+      ok('a line moved there is asked for without them too',
+         sent.slice(n1).filter((x) => x[0] === '/api/extraction/split/preview').every((x) => x[1].interp === false));
+      on().click();
+      await until(() => on().getAttribute('aria-pressed') === 'true' && /^DS1 30 · DS2 90/.test(txt('.erc-n', c_panels()[0]))
+        && c_panels().filter((x) => /^Use this$/.test(txt('.erc-use', x)) && !x.querySelector('.erc-use').disabled).length === 14,
+        4000, 'interpolated again');
+      ok('interpolated again: the card’s splits, what changed back said, and Use this works',
+         txt('.erc-ipdiff', c_erc()) === 'Changed from as recorded: Bite line 28/92 → 30/90. In the pictures, look at the '
+           + 'rows at contacts 8, 9.', txt('.erc-ipdiff', c_erc()));
+      // A set chosen there, and flips that ask for nothing (2026-11-13).
+      {
+        const n3 = sent.length;
+        c_erc().querySelector('.erc-ip-in').value = '7-9';
+        c_erc().querySelector('.erc-ip-go').click();
+        await until(() => /^DS1 26 · DS2 94/.test(txt('.erc-n', c_panels()[0] || D())), 4000, 'the set tried');
+        const rq = sent.slice(n3).filter((x) => /\/split$/.test(x[0]));
+        ok('a set typed there is tried: asked for once, said, a look, and offered to the card',
+           rq.length === 1 && new URLSearchParams(rq[0][2].split('?')[1]).get('interp') === '7,8,9'
+           && / Showing contacts 7, 8, 9 INTERPOLATED, a set tried here: .* the card keeps 8, 9 interpolated\.$/.test(txt('.erc-lowsay', c_erc()))
+           && txt('.erc-ip-try', c_erc()) === 'Trying 7, 8, 9' && c_erc().querySelector('.erc-ip-try').getAttribute('aria-pressed') === 'true'
+           && c_panels().every((x) => !x.querySelector('.erc-use') || x.querySelector('.erc-use').disabled)
+           && txt('.erc-ip-keep', c_erc()) === 'Save this set on the card: interpolate 7, 8, 9 for everybody'
+           && /^Changed from interpolated: Bite line 30\/90 → 26\/94\. In the pictures, look at the rows at contacts 7, 8, 9\.$/.test(txt('.erc-ipdiff', c_erc())),
+           txt('.erc-lowsay', c_erc()) + ' | ' + txt('.erc-ipdiff', c_erc()));
+        const n4 = sent.length;
+        const first = c_panels()[0];
+        on().click();
+        const atOnce1 = /^DS1 30 · DS2 90/.test(txt('.erc-n', c_panels()[0])) && c_panels().length === 15;
+        off().click();
+        const atOnce2 = /^DS1 28 · DS2 92/.test(txt('.erc-n', c_panels()[0])) && c_panels().length === 15;
+        c_erc().querySelector('.erc-ip-try').click();
+        const atOnce3 = /^DS1 26 · DS2 94/.test(txt('.erc-n', c_panels()[0])) && c_panels()[0] === first;
+        ok('flipping between the three is at once: nothing asked for, nothing built again, the same panels come back',
+           atOnce1 && atOnce2 && atOnce3 && !sent.slice(n4).some((x) => /\/split$/.test(x[0])),
+           [atOnce1, atOnce2, atOnce3, sent.slice(n4).map((x) => x[0]).join()].join(' | '));
+        await sleep(150);
+        ok('and the pictures of the view on show are drawn', c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200));
+        on().click();
+      }
+      off().click();
+      await until(() => !c_erc().querySelector('.erc-ip-keep').hidden, 4000, 'as recorded again');
+      const wasC = W.confirm;
+      W.confirm = () => true;
+      const n2 = sent.length;
+      c_erc().querySelector('.erc-ip-keep').click();
+      await until(() => sent.slice(n2).some((x) => x[0] === '/api/extraction/interp')
+        && c_panels().length === 15 && c_erc().querySelector('.erc-ipseg').hidden, 5000, 'kept off');
+      W.confirm = wasC;
+      ok('Save “as recorded” for good stops interpolating them on the card, and the switch goes',
+         JSON.stringify(((sent.slice(n2).find((x) => x[0] === '/api/extraction/interp') || [])[1] || {}).contacts) === '[]'
+         && /no longer interpolated/.test(txt('.erc-status', c_erc())) && /^DS1 30 · DS2 90/.test(txt('.erc-n', c_panels()[0]))
+         && txt('.erc-ipdiff', c_erc()) === '', txt('.erc-status', c_erc()));
+      await until(() => c_panels().every((x) => inked(x.querySelector('canvas.erc-line')) > 200), 4000, 'drawn');
+    }
+    const c_bp = c_panels()[0], c_lcv = c_bp.querySelector('canvas.erc-line');
+    const c_lr = c_lcv.getBoundingClientRect();
+    const c_pt = (f) => ({ clientX: c_lr.left + f * c_lr.width, clientY: c_lr.top + c_lr.height / 2, pointerId: 9,
+                         bubbles: true, button: 0, buttons: 1 });
+    const c_nc0 = sent.length;
+    c_lcv.dispatchEvent(new W.PointerEvent('pointerdown', c_pt(0.5)));
+    c_lcv.dispatchEvent(new W.PointerEvent('pointermove', c_pt(0.6)));
+    c_lcv.dispatchEvent(new W.PointerEvent('pointermove', c_pt(0.7)));
+    c_lcv.dispatchEvent(new W.PointerEvent('pointerup', c_pt(0.7)));
+    await until(() => sent.slice(c_nc0).some((x) => x[0] === '/api/extraction/split/preview'), 3000, 'a preview');
+    await sleep(600);
+    const c_pvs = sent.slice(c_nc0).filter((x) => x[0] === '/api/extraction/split/preview').map((x) => x[1]);
+    ok('dragging the Bite line moves it by place: every preview is the Bite line, cut between two events',
+       c_pvs.length >= 1 && c_pvs.every((b) => b.method === 'bite' && Math.abs((b.cut % 1) - 0.5) < 1e-9)
+       && c_pvs[c_pvs.length - 1].cut > 60, JSON.stringify(c_pvs.map((b) => b.cut)));
+    const c_pp = c_panels()[1], c_scv = c_pp.querySelector('canvas.erc-line');
+    const c_sr = c_scv.getBoundingClientRect();
+    const c_spt = (f) => ({ clientX: c_sr.left + f * c_sr.width, clientY: c_sr.top + c_sr.height / 2, pointerId: 10,
+                          bubbles: true, button: 0, buttons: 1 });
+    c_scv.dispatchEvent(new W.PointerEvent('pointerdown', c_spt(0.7)));
+    c_scv.dispatchEvent(new W.PointerEvent('pointerup', c_spt(0.7)));
+    await sleep(500);
+    const c_nc1 = sent.length;
+    c_pp.querySelector('.erc-use').click();
+    await until(() => sent.slice(c_nc1).some((x) => x[0] === '/api/extraction/split'), 3000, 'the save');
+    const c_sv = (sent.slice(c_nc1).find((x) => x[0] === '/api/extraction/split') || [])[1] || {};
+    ok('Use this keeps that split for everybody: this recording, PCA, its line',
+       c_sv.gid === 'harness-p1' && c_sv.method === 'pca' && typeof c_sv.cut === 'number', JSON.stringify(c_sv));
+    await until(() => /^Kept for everybody: PCA, no gap/.test(txt('.erc-status', c_erc() || D())), 4000, 'its words');
+    ok('it says so, and the dialog stays open', !!c_erc() && /^Kept for everybody: PCA, no gap/.test(txt('.erc-status', c_erc())),
+       txt('.erc-status', c_erc() || D()));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => !c_erc(), 3000, 'closed');
+    ok('Esc closes it and lets the page scroll again', !c_erc() && D().documentElement.style.overflow === '');
+    SPLITS = {};
+    const c_st0 = W.erRoom.state();
+    const c_was = { v: c_st0.version, scale: c_st0.scale, flips: JSON.stringify(c_st0.flips) };
+    btn(/^Compare across sets$/, cards()[0]).click();
+    await until(() => D().querySelectorAll('#erc-across .erc-col').length === 2, 4000, 'the two columns');
+    const c_cols = () => Array.from(D().querySelectorAll('#erc-across .erc-col'));
+    await until(() => c_cols().every((c) => Array.from(c.querySelectorAll('canvas')).some((x) => inked(x) > 200)), 5000, 'drawn');
+    ok('Compare across sets: two sets side by side, each named with its version',
+       c_cols().length === 2 && /Harness 7%/.test(txt('h3', c_cols()[0])) && /Harness 5%/.test(txt('h3', c_cols()[1])),
+       c_cols().map((c) => txt('h3', c)).join(' | '));
+    ok('each column draws this recording in its own set', c_cols().every((c) =>
+       Array.from(c.querySelectorAll('canvas')).some((x) => inked(x) > 200)));
+    ok('and the differences are said under them', /Events: 120 and 120/.test(txt('#erc-across .erc-diff')),
+       txt('#erc-across .erc-diff'));
+    W.erRoom.ext.compare.close();
+    await until(() => !D().querySelector('#erc-across'), 3000, 'closed');
+    const c_st1 = W.erRoom.state();
+    ok('and the room on show is left exactly as it c_was', c_st1.version === c_was.v && c_st1.scale === c_was.scale
+       && JSON.stringify(c_st1.flips) === c_was.flips);
+
+    head('THE NEW ROUND: FITTED HERE, BANDS BY HAND, AMBER UNTIL CALLED, THE IMPRESSION');
+    IDX.folders.push({ id: 'xm-hd', name: 'Harness Halo', bundles: 0, in_room: null, new: 0,
+                       read_here: 2, members: 2, events: 240 });
+    await W.erRoom._poll();
+    await until(() => !!D().querySelector('.er-take-direct'), 4000, 'the take-in button');
+    ok('a folder with no X-ray results, read here, can be taken in, and says how',
+       /^Take in ‘Harness Halo’ · fitted here, no X-ray · 2 of 2 recordings read$/.test(txt('.er-take-direct')),
+       txt('.er-take-direct'));
+    const nd0 = sent.length;
+    D().querySelector('.er-take-direct').click();
+    await until(() => sent.slice(nd0).some((x) => x[0] === '/api/extraction/extract'), 3000, 'the extract');
+    ok('taking it in asks the server to extract that folder',
+       (sent.slice(nd0).find((x) => x[0] === '/api/extraction/extract') || [])[1].folder === 'xm-hd');
+    room.versions.push({ v: 5, at: '2026-11-12T14:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness Halo', folder_id: 'xm-hd' });
+    room.version = 5;
+    IDX.folders[IDX.folders.length - 1].in_room = { v: 5, at: '2026-11-12T14:00:00Z', by: 'Debug_Bot' };
+    VFOLDER[5] = 'xm-hd';
+    await W.erRoom.reload(5);
+    await until(() => W.erRoom.state().version === 5 && cards().length === 2, 4000, 'v5');
+    ok('it opens fitted here: no X-ray, the Bite line, the filter said',
+       /^Fitted here, no X-ray · ‘Harness Halo’/.test(txt('#erSource p')) && /Bite line/.test(txt('#erSource p'))
+       && /5-100 Hz/.test(txt('#erSource p')), txt('#erSource p'));
+    ok('every card is amber, not called yet, with no automatic call',
+       cards().every((c) => c.dataset.state === 'open' && c.classList.contains('st-few')
+                            && /not called yet/.test(txt('.sepchip', c)))
+       && /Not called yet · 2/.test(txt('#erStateKey')), cards().map((c) => c.dataset.state).join());
+    ok('a Bite line placed on the earlier sink picture is said on its card, with who placed it, and not used',
+       /^Its Bite line was placed by hand on the earlier sink picture .* \(It was placed by Debug_Bot\.\)$/.test(txt('.er-stale', cards()[1]))
+       && !cards()[0].querySelector('.er-stale'), txt('.er-stale', cards()[1]));
+    ok('a card can be called separable or not separable straight away',
+       !!btn(/^Call it separable$/, cards()[0]) && !!btn(/^Call it not separable$/, cards()[0]));
+    const bcv = () => cards()[0].querySelector('canvas.er-band-cv');
+    await until(() => inked(bcv()) > 500, 4000, 'the band picture');
+    ok('each card draws its average CSD with its band, the automatic one said',
+       inked(bcv()) > 500 && /^CSC 4–13 at 0 ms · automatic: the two bottom sinks/.test(txt('.er-band-words', cards()[0])),
+       txt('.er-band-words', cards()[0]));
+    ok('the split panel says the Bite line is the default', /Bite line, its own line \(the default\)/.test(
+       txt('details.er-split summary', cards()[0])), txt('details.er-split summary', cards()[0]));
+    const PE = W.PointerEvent;
+    const rowY = (cv, row) => 4 + ((row + 0.5) / 16) * (cv.clientHeight - 20);
+    const at = (cv, row) => { const b = cv.getBoundingClientRect();
+      return { clientX: b.left + 60, clientY: b.top + rowY(cv, row), pointerId: 7, bubbles: true, button: 0, buttons: 1 }; };
+    const nb0 = sent.length;
+    let cv0 = bcv();
+    cv0.dispatchEvent(new PE('pointerdown', at(cv0, 0)));
+    cv0.dispatchEvent(new PE('pointermove', at(cv0, 4)));
+    cv0.dispatchEvent(new PE('pointermove', at(cv0, 7)));
+    cv0.dispatchEvent(new PE('pointerup', at(cv0, 7)));
+    await until(() => sent.slice(nb0).some((x) => x[0] === '/api/extraction/band'), 3000, 'the band saved');
+    const bs = (sent.slice(nb0).find((x) => x[0] === '/api/extraction/band') || [])[1] || {};
+    ok('dragging down the CSD draws a new band, saved for this recording in this set',
+       bs.gid === 'harness-c1' && bs.sel_lo === 1 && bs.sel_hi === 8 && bs.version === 5 && !bs.reset, JSON.stringify(bs));
+    await until(() => /drawn by hand/.test(txt('.er-band-words', cards()[0])), 3000, 'the card redrawn');
+    ok('the card comes back fitted in it, saying so', /^CSC 1–8 at 0 ms · drawn by hand \(Debug_Bot\)$/.test(
+       txt('.er-band-words', cards()[0])), txt('.er-band-words', cards()[0]));
+    const nb1 = sent.length;
+    cv0 = bcv();
+    cv0.dispatchEvent(new PE('pointerdown', at(cv0, 10)));
+    cv0.dispatchEvent(new PE('pointerup', at(cv0, 10)));
+    await until(() => sent.slice(nb1).some((x) => x[0] === '/api/extraction/band'), 3000, 'the centred band');
+    const bc2 = (sent.slice(nb1).find((x) => x[0] === '/api/extraction/band') || [])[1] || {};
+    ok('a click centres the same band there', bc2.sel_lo === 8 && bc2.sel_hi === 15, JSON.stringify(bc2));
+    await until(() => /CSC 8–15/.test(txt('.er-band-words', cards()[0])), 3000, 'the centred card');
+    const nb2 = sent.length;
+    bcv().dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+    await until(() => sent.slice(nb2).some((x) => x[0] === '/api/extraction/band'), 3000, 'the reset');
+    ok('a double-click gives back the automatic band',
+       ((sent.slice(nb2).find((x) => x[0] === '/api/extraction/band') || [])[1] || {}).reset === true);
+    await until(() => /automatic/.test(txt('.er-band-words', cards()[0])), 3000, 'the automatic card');
+
+    // The recording's length and its rates (2026-11-13).
+    {
+      const r0 = W.erRoom.state().pay.recordings[0];
+      const n1 = (r0.classes.find((c) => c.c === 1) || {}).n, n2 = (r0.classes.find((c) => c.c === 2) || {}).n;
+      ok('each card says its recording’s length and its DS1 and DS2 rates',
+         txt('.er-rate', cards()[0]) === '30.0 min · DS1 ' + (n1 / 30).toFixed(2) + ' a min · DS2 ' + (n2 / 30).toFixed(2) + ' a min'
+         && /^10\.0 min · DS1 /.test(txt('.er-rate', cards()[1])), txt('.er-rate', cards()[0]));
+    }
+    // Contacts interpolated by hand (2026-11-13).
+    ok('each new-round card can interpolate contacts, and says how',
+       cards().every((c) => !!c.querySelector('.er-interp-in')
+         && /^For bad wires inside the band: .*\(a cubic, so the CSD keeps its shape\)/.test(txt('.er-interp-words', c))),
+       txt('.er-interp-words', cards()[0]));
+    {
+      const n0 = sent.length;
+      cards()[0].querySelector('.er-interp-in').value = '8-9';
+      btn(/^Interpolate$/, cards()[0]).click();
+      await until(() => sent.slice(n0).some((x) => x[0] === '/api/extraction/interp'), 3000, 'the interpolation');
+      const ib = (sent.slice(n0).find((x) => x[0] === '/api/extraction/interp') || [])[1] || {};
+      await until(() => /^Contacts 8, 9 are interpolated/.test(txt('.er-interp-words', cards()[0])), 3000, 'the card again');
+      ok('“8-9” asks for contacts 8 and 9 on this recording, and the card comes back saying so, and by whom',
+         JSON.stringify(ib.contacts) === '[8,9]' && ib.gid === 'harness-c1' && ib.version === 5
+         && txt('.er-interp-words', cards()[0]) === 'Contacts 8, 9 are interpolated: made again from the two good contacts '
+           + 'above and below, in every set · by Debug_Bot.'
+         && cards()[0].querySelector('.er-interp-in').value === '8, 9', JSON.stringify(ib) + ' | ' + txt('.er-interp-words', cards()[0]));
+      ok('and the card wears a corner banner saying so; the other card has none',
+         txt('.er-ipflag', cards()[0]) === 'Interpolated · 8, 9' && cards()[0].classList.contains('has-ip')
+         && (() => { const b = cards()[0].querySelector('.er-ipflag').getBoundingClientRect(), c = cards()[0].getBoundingClientRect();
+              return Math.abs(b.right - c.right) < 3 && Math.abs(b.top - c.top) < 3; })()
+         && !cards()[1].querySelector('.er-ipflag'), txt('.er-ipflag', cards()[0]));
+      const alerts = [];
+      const was = W.alert;
+      W.alert = (m) => alerts.push(m);
+      cards()[0].querySelector('.er-interp-in').value = '99';
+      btn(/^Interpolate$/, cards()[0]).click();
+      await until(() => alerts.length > 0, 3000, 'the refusal');
+      W.alert = was;
+      ok('a contact the server refuses is said, and the card keeps what it had',
+         alerts[0] === 'Not interpolated: Contact 99 is not on this shank (1-16).'
+         && /^Contacts 8, 9 are interpolated/.test(txt('.er-interp-words', cards()[0])), alerts.join(' | '));
+      const n1 = sent.length;
+      btn(/^Put them back$/, cards()[0]).click();
+      await until(() => sent.slice(n1).some((x) => x[0] === '/api/extraction/interp')
+        && /^For bad wires/.test(txt('.er-interp-words', cards()[0])), 3000, 'put back');
+      ok('Put them back asks for none, and the card is as it was',
+         JSON.stringify(((sent.slice(n1).find((x) => x[0] === '/api/extraction/interp') || [])[1] || {}).contacts) === '[]'
+         && !btn(/^Put them back$/, cards()[0]) && !cards()[0].querySelector('.er-ipflag'));
+    }
+    // DS3, the trim and the mix-up on the cards (2026-11-13).
+    {
+      const seg3 = () => D().querySelector('#erEvMode');
+      ok('each card says its mix-up three ways, with the pass or fail; the set has one switch for its events',
+         /^Mix-upas split8% \(5%–12%\) cleanDS3 out4% \(2%–7%\) cleantrimmed2% \(1%–4%\) clean$/.test(txt('.er-mixbar', cards()[0]))
+         && !!cards()[0].querySelector('.er-mixbit.mx-clean.on') && !!seg3()
+         && Array.from(seg3().querySelectorAll('button')).map((b) => b.textContent).join('|') === 'as split|with DS3 (hybrid)|unsure trimmed',
+         txt('.er-mixbar', cards()[0]));
+      const n0 = sent.length;
+      btn(/^with DS3 \(hybrid\)$/, seg3()).click();
+      await until(() => cards().length === 2 && !!cards()[0].querySelector('.er-ds3say'), 5000, 'DS3 on');
+      const mb = (sent.slice(n0).find((x) => x[0] === '/api/extraction/mode') || [])[1] || {};
+      ok('DS3 switched on for the set: every card gains a green DS3 class, says how it was found, and cites the paper',
+         mb.mode === 'ds3' && mb.folder === 'xm-hd'
+         && Array.from(cards()[0].querySelectorAll('.pics .cap b')).map((b) => b.textContent).join() === 'DS1,DS2,DS3 (hybrid)'
+         && txt('.er-ds3say', cards()[0]) === 'DS3 (hybrid): 20 of 120 events, 5 from DS1 and 15 from DS2: relative-sink score within '
+           + '±0.50, OML at contact 5, MML at 8. 4 unscorable (sink under the baseline’s 99th percentile; DS1 1, DS2 3) keep their '
+           + 'split’s class. Tarcsay et al. 2025.'
+         && / · DS3 /.test(txt('.er-rate', cards()[0])) && !!D().querySelector('#erCut'),
+         JSON.stringify(mb) + ' | ' + txt('.er-ds3say', cards()[0]));
+      btn(/^unsure trimmed$/, seg3()).click();
+      await until(() => cards().length === 2 && !!cards()[0].querySelector('.er-trimsay'), 5000, 'the trim on');
+      ok('the trim instead: the unsure counted and said; DS3 is off (one at a time)',
+         txt('.er-trimsay', cards()[0]) === '10 unsure (under 80% for both classes): shown grey, out of DS1’s and DS2’s numbers.'
+         && !cards()[0].querySelector('.er-ds3say'), txt('.er-trimsay', cards()[0]));
+      btn(/^as split$/, seg3()).click();
+      await until(() => cards().length === 2 && !cards()[0].querySelector('.er-trimsay') && MODE_D.mode === 'plain', 5000, 'as split');
+    }
+    // No DS1 (2026-11-13).
+    ok('an uncalled card can be called separable, not separable, or no DS1',
+       !!btn(/^Call it separable$/, cards()[1]) && !!btn(/^Call it not separable$/, cards()[1])
+       && !!btn(/^Call it no DS1$/, cards()[1]));
+    {
+      const n0 = sent.length;
+      btn(/^Call it no DS1$/, cards()[1]).click();
+      await until(() => cards()[1] && cards()[1].dataset.state === 'nods1', 4000, 'no DS1');
+      const sb = (sent.slice(n0).find((x) => x[0] === '/api/extraction/sep') || [])[1] || {};
+      const c1 = cards()[1];
+      ok('called no DS1: saved for this recording in this set, and the card comes back all DS2, in DS2’s colour',
+         sb.verdict === 'no_ds1' && sb.gid === 'harness-p1' && sb.folder === 'xm-hd'
+         && c1.classList.contains('st-nods1') && /^No DS1: every event is DS2/.test(txt('.state-tag', c1))
+         && /^no DS1 · by hand$/.test(txt('.sepchip', c1))
+         && Array.from(c1.querySelectorAll('.pics .cap b')).map((b) => b.textContent).join() === 'DS2'
+         && /^10\.0 min · DS1 0\.00 a min · DS2 12\.00 a min$/.test(txt('.er-rate', c1)),
+         [sb.verdict, c1.className, txt('.state-tag', c1), txt('.sepchip', c1), txt('.er-rate', c1)].join(' | '));
+      ok('the key counts it apart; and from there it can be called separable, not separable, or uncalled again',
+         /No DS1 · 1/.test(txt('#erStateKey')) && !!btn(/^Call it separable$/, c1) && !!btn(/^Call it not separable$/, c1)
+         && !!btn(/^Not called yet$/, c1) && !btn(/^Call it no DS1$/, c1), txt('#erStateKey'));
+      btn(/^Not called yet$/, cards()[1]).click();
+      await until(() => cards()[1] && cards()[1].dataset.state === 'open', 4000, 'uncalled again');
+      ok('uncalled again, its two classes come back', cards()[1].querySelectorAll('.pics .cap b').length === 2);
+    }
+    W.__pr = W.prompt;
+    W.prompt = () => 'harness impression';
+    const ni = sent.length;
+    btn(/^Take the impression$/).click();
+    await until(() => sent.slice(ni).some((x) => x[0] === '/api/extraction/impression'), 3000, 'the impression');
+    W.prompt = W.__pr;
+    const im = (sent.slice(ni).find((x) => x[0] === '/api/extraction/impression') || [])[1] || {};
+    ok('Take the impression locks this version in, with the note', im.artifact_id === 'erH' && im.version === 5
+       && im.note === 'harness impression', JSON.stringify(im));
+    await until(() => /^Impression v2 taken: 2 recordings locked in, 2 of them not called yet/.test(txt('.er-note')),
+                3000, 'its words');
+    ok('and says what it locked in', /^Impression v2 taken: 2 recordings locked in, 2 of them not called yet/.test(
+       txt('.er-note')), txt('.er-note'));
+
+    head('BLOB ANALYSIS, CAST FROM THE IMPRESSION');
+    await until(() => W.erRoom.state().sub === 'blobs' && D().querySelectorAll('#erbRecs .erb-rec').length === 8,
+                6000, 'the blob tab');
+    ok('the impression opens Blob Analysis: its recordings measured, once',
+       sent.filter((x) => x[0] === '/api/extraction/blobs').length === 1
+       && ((sent.find((x) => x[0] === '/api/extraction/blobs') || [])[1] || {}).artifact_id === 'imH'
+       && D().querySelectorAll('#erbRecs .erb-rec').length === 8);
+    ok('the filter note is always there', /might be worth redoing with other filters/.test(txt('#erbFilter')),
+       txt('#erbFilter'));
+    ok('who was left out is said, with why', /PTEN x9 s2 \(harness\)/.test(txt('#erbLeft'))
+       && /not called yet/.test(txt('#erbLeft')), txt('#erbLeft'));
+    await until(() => sent.some((x) => x[0] === '/api/extraction/blobs/compare'), 4000, 'the first comparison');
+    const bc0 = (sent.find((x) => x[0] === '/api/extraction/blobs/compare') || [])[1] || {};
+    ok('first, peak sink of the top blob, every DS, CTL against PTEN',
+       bc0.measure === 'peak' && bc0.blob === 'top' && bc0.cls === 'all' && bc0.by === 'group', JSON.stringify(bc0));
+    await until(() => D().querySelectorAll('#erbAll tr.erb-row').length === 18, 5000, 'the averages table');
+    ok('the averages table: every measure of both blobs, a finding marked, a lead kept a lead',
+       D().querySelectorAll('#erbAll tr.erb-row').length === 18
+       && !!D().querySelector('#erbAll tr.erb-row.erb-find[data-measure="fwhm_ms"][data-blob="top"]')
+       && !!D().querySelector('#erbAll tr.erb-row.erb-lead[data-measure="peak"][data-blob="bottom"]')
+       && !D().querySelector('#erbAll tr.erb-row.erb-find[data-measure="peak"][data-blob="bottom"]')
+       && /a lead, not a finding/.test(txt('#erbAll')));
+    ok('and how many tests were corrected together', /18/.test(txt('#erbFamily')), txt('#erbFamily'));
+    await until(() => Array.from(D().querySelectorAll('#erBlobs canvas')).filter((c) => inked(c) > 100).length >= 6,
+                5000, 'the pictures');
+    ok('the curves, histograms, ECDFs and shift function are drawn',
+       Array.from(D().querySelectorAll('#erBlobs canvas')).filter((c) => inked(c) > 100).length >= 6);
+    // The measure on each card (2026-11-13: picking a measure "isn't
+    // changing" the cards under it).
+    {
+      const card0 = () => D().querySelector('#erbRecs .erb-rec');
+      const hash = (cv) => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        let h = 0; for (let i = 0; i < d.length; i += 31) h = (h * 33 + d[i]) % 1000003; return h; };
+      ok('each card says the measure picked, and marks its row',
+         /^Peak sink \(CSD\): DS1, top blob \S+ \[.*\] · DS2, top blob \S/.test(txt('.erb-mline', card0()))
+         && !!card0().querySelector('table.erb-mt tr.erb-cur[data-m="peak"]')
+         && card0().querySelectorAll('table.erb-mt tr.erb-cur').length === 1, txt('.erb-mline', card0()));
+      const cv0 = card0().querySelector('canvas.erb-rc');
+      const h0 = hash(cv0);
+      const sel = D().querySelector('#erbMeasure');
+      sel.value = 'fwhm_ms';
+      sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+      await until(() => /^How long the sink lasts \(ms\): DS1, top blob \S/.test(txt('.erb-mline', card0())), 3000, 'the cards');
+      await sleep(250);
+      ok('another measure picked: every card says it, its row is marked, its curve marks it -- in place, not built again',
+         Array.from(D().querySelectorAll('#erbRecs .erb-rec:not(.erb-off) .erb-mline')).every((p) => /^How long the sink lasts \(ms\): /.test(p.textContent))
+         && !!card0().querySelector('table.erb-mt tr.erb-cur[data-m="fwhm_ms"]')
+         && card0().querySelectorAll('table.erb-mt tr.erb-cur').length === 1
+         && card0().querySelector('canvas.erb-rc') === cv0 && hash(cv0) !== h0,
+         txt('.erb-mline', card0()));
+      sel.value = 'peak';
+      sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+      await until(() => /^Peak sink/.test(txt('.erb-mline', card0())), 3000, 'back to peak');
+    }
+    const nb = sent.length;
+    btn(/^DS1$/, D().querySelector('#erbCls')).click();
+    await until(() => sent.slice(nb).some((x) => x[0] === '/api/extraction/blobs/compare'), 4000, 'DS1');
+    ok('DS1 asks for the separable recordings’ own DS1, and the not separable cards step back',
+       ((sent.slice(nb).find((x) => x[0] === '/api/extraction/blobs/compare') || [])[1] || {}).cls === 1
+       && D().querySelectorAll('#erbRecs .erb-rec.erb-off').length === 3);
+    ok('and still only one measuring of the set', sent.filter((x) => x[0] === '/api/extraction/blobs').length === 1);
+    if (W.erRoom.state().sub !== 'recordings') await goSub('recordings');
+    const na = sent.length;
+    btn(/^Archive this set$/).click();
+    await until(() => sent.slice(na).some((x) => x[0] === '/api/extraction/set_archive'), 3000, 'the archive');
+    ok('a set can be archived', ((sent.slice(na).find((x) => x[0] === '/api/extraction/set_archive') || [])[1] || {})
+       .folder === 'xm-hd');
+    ok('nothing went anywhere but the stub', sent.every((x) => /^\/api\/extraction/.test(x[0])));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message) + ' | ' + String((err && err.stack) || '').split('\n').slice(0, 3).join(' | '), 'bad');
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'extraction: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

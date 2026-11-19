@@ -134,9 +134,12 @@ def styled():
     reported all ten of its classes as unstyled.
     """
     css = ""
-    with open(os.path.join(WEB, "app.css"), encoding="utf-8",
-              errors="replace") as fh:
-        css += fh.read()
+    # Every stylesheet the page loads, not only app.css: solid.css,
+    # syncchip.css and inside.css hold rules of their own.
+    for name in sorted(n for n in os.listdir(WEB) if n.endswith(".css")):
+        with open(os.path.join(WEB, name), encoding="utf-8",
+                  errors="replace") as fh:
+            css += "\n" + fh.read()
     with open(os.path.join(WEB, "index.html"), encoding="utf-8",
               errors="replace") as fh:
         for m in re.finditer(r"<style[^>]*>(.*?)</style>", fh.read(), re.S):

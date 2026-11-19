@@ -3751,6 +3751,8 @@ function repaintThemedSurfaces() {
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
   // The explainer's figures, if it happens to be open.
   if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
+  // Inside Jarvis's pictures, if the showcase is open on them.
+  if (BARRY.inside && BARRY.inside.repaint) BARRY.inside.repaint();
 }
 
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own

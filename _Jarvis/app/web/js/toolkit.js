@@ -170,6 +170,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'lock') { BARRY.lock.paint(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
+    if (q.tool === 'extraction') { BARRY.extractionStep.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
     if (q.tool === 'horizon') { await loadHorizon(); return; }
@@ -278,6 +279,8 @@ BARRY.views.toolkit = (function () {
           // Root Canal and X-ray pick a banked set too, and own the pane.
           || q.tool === 'rootcanal'
           || q.tool === 'dspca'
+          // The Extraction Room reads what X-ray kept, not a recording.
+          || q.tool === 'extraction'
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
@@ -385,6 +388,9 @@ BARRY.views.toolkit = (function () {
        interictal discharges Incisor let through still in them. */
     ['rootcanal', 'Root Canal', 'take the P-spikes out'],
     ['dspca', 'X-ray', 'tell them apart'],
+    /* The last (2026-11-10): what X-ray split, taken out of Jarvis into a
+       room of its own -- a page like the Monolith's (web/extraction.html). */
+    ['extraction', 'The Extraction Room', 'take them out'],
   ];
 
   /* The Arc -- the DEWEY RATs pipeline, named after Dewey's 1896 paper
@@ -812,6 +818,10 @@ BARRY.views.toolkit = (function () {
     // Two clouds of points with the line that tells them apart.
     dspca: 'M3 4.5h.01M5.2 3h.01M4.6 6.6h.01M2.6 7.6h.01M11.4 9h.01'
            + 'M13 11.6h.01M10.6 12.4h.01M12.8 8.4h.01M1.8 13.5L14.2 2.5',
+    // A tooth, its root lifting out of the gum line: an extraction.
+    extraction: 'M2 10.5h12M4.6 2.6c1.5-1 5.3-1 6.8 0 .9.7.9 2.1.5 3.3l-.9 3.4'
+                + 'M5.1 9.3L4.2 5.9c-.4-1.2-.4-2.6.4-3.3M6.3 12.2l.6 1.8M9.7 12.2'
+                + 'l-.6 1.8M8 6v-2.4M6.8 4.8L8 3.6l1.2 1.2',
     // A tooth with a wire across it, which is what braces are.
     braces: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
             + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
@@ -4221,6 +4231,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'lock') { BARRY.lock.paint(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
+    if (q.tool === 'extraction') { BARRY.extractionStep.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'horizon') { BARRY.horizon.paint(); return; }

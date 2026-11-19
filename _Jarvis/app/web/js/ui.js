@@ -745,13 +745,18 @@ BARRY.ui = (function () {
         noteOf(v) ? el('span', { class: 'vtree-note', text: noteOf(v) }) : null,
         said ? el('span', { class: 'vtree-line', text: said }) : null,
         /* THE SIDE BRANCH (2026-11-05): where this version's events went --
-           a Root Canal workflow's entry -- said off the row rather than
-           made a version, which would move the set's tip. */
+           a Root Canal workflow's entry, or (2026-11-07) an X-ray bundle --
+           said off the row rather than made a version, which would move
+           the set's tip. `kind` says which; a link without one is Root
+           Canal's, as every link was before. */
         ...(v.went_into || []).map((w) => el('span', { class: 'vtree-branch',
           text: '↳ ' + (w.n != null ? Number(w.n).toLocaleString() + ' events ' : '')
-                + 'went into the Root Canal entry ‘' + (w.name || w.entry_id) + '’'
-                + (w.workflow ? ' (workflow ‘' + w.workflow + '’'
-                   + (w.workflow_version ? ' v' + w.workflow_version : '') + ')' : '')
+                + (w.kind === 'xray'
+                  ? 'went into the X-ray bundle ‘' + (w.name || w.artifact_id) + '’'
+                    + (w.version ? ' v' + w.version : '')
+                  : 'went into the Root Canal entry ‘' + (w.name || w.entry_id) + '’'
+                    + (w.workflow ? ' (workflow ‘' + w.workflow + '’'
+                       + (w.workflow_version ? ' v' + w.workflow_version : '') + ')' : ''))
                 + (w.archived ? ', archived' : '') })),
       ].filter(Boolean));
     });

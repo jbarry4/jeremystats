@@ -1,0 +1,304 @@
+{
+  "_at": {
+    "added": "2026-11-10T21:07:05.977306+00:00",
+    "deleted": "2026-11-12T19:58:05.159916+00:00",
+    "id": "2026-11-10T21:07:05.977306+00:00",
+    "kind": "2026-11-10T21:07:05.977306+00:00",
+    "name": "2026-11-10T21:07:05.977306+00:00",
+    "nickname": "2026-11-12T19:58:05.159916+00:00",
+    "schema": "2026-11-10T21:07:05.977306+00:00",
+    "subject": "2026-11-10T21:07:05.977306+00:00",
+    "subject_key": "2026-11-10T21:07:05.977306+00:00",
+    "version": "2026-11-12T19:58:05.159916+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "0c560e454fc6": [
+        "set",
+        "2026-11-12T19:58:05.159916+00:00"
+      ],
+      "9e560e5bd512": [
+        "set",
+        "2026-11-10T21:07:05.977306+00:00"
+      ],
+      "cd3e694f9793": [
+        "set",
+        "2026-11-11T20:01:03.120282+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-12T19:58:05.159916+00:00",
+    "machine": "ip0af5523d.int.uvm.edu-f987",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-10T16:07:05-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "980b57eab496",
+  "kind": "extraction",
+  "name": "The Extraction Room \u00b7 Dentate Spike",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s14510e30e1bd",
+      "s37c7c8edfe10",
+      "s38b9e61c5684",
+      "s43b16cd74bcb",
+      "s45bae70722f2",
+      "s4a67210fc7ac",
+      "s500a5aec223e",
+      "s6cdd64d005c4",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sba57286bdee3",
+      "sc74c98b2495d",
+      "sd0d0bded958b",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "room": "dentate_spike",
+    "room_name": "Dentate Spike"
+  },
+  "subject_key": "extraction|dentate_spike",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.11.09.4",
+      "at": "2026-11-10T16:07:05-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "385a92ee75cd",
+      "id": "9e560e5bd512",
+      "inputs": [
+        {
+          "artifact_id": "a2adb22d4117",
+          "version": 1
+        },
+        {
+          "artifact_id": "c10e4a88a1ee",
+          "version": 1
+        },
+        {
+          "artifact_id": "73ae47033181",
+          "version": 1
+        },
+        {
+          "artifact_id": "77c2eb87d10c",
+          "version": 1
+        },
+        {
+          "artifact_id": "a26829e83be5",
+          "version": 1
+        },
+        {
+          "artifact_id": "9e79c070b596",
+          "version": 1
+        },
+        {
+          "artifact_id": "ad517da3962b",
+          "version": 1
+        },
+        {
+          "artifact_id": "3680e5770f28",
+          "version": 1
+        },
+        {
+          "artifact_id": "585b41909962",
+          "version": 1
+        },
+        {
+          "artifact_id": "6a4eef723f7b",
+          "version": 1
+        },
+        {
+          "artifact_id": "44eff9499234",
+          "version": 1
+        },
+        {
+          "artifact_id": "8037fa4c833e",
+          "version": 1
+        },
+        {
+          "artifact_id": "5637ba2e9c32",
+          "version": 1
+        },
+        {
+          "artifact_id": "5b3cdc54cbbd",
+          "version": 1
+        },
+        {
+          "artifact_id": "0d853b7c0507",
+          "version": 1
+        },
+        {
+          "artifact_id": "89c0929ee38c",
+          "version": 1
+        },
+        {
+          "artifact_id": "b38e3ee7fcdd",
+          "version": 1
+        },
+        {
+          "artifact_id": "18c220cc8fb9",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4617,
+        "folder": "Verified DS 5%",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-df8f89c45c34-v2"
+      },
+      "params_hash": "7fb76575d1ea",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.10.1",
+      "at": "2026-11-11T11:28:44-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "confirmed": [
+        {
+          "app_version": "2026.11.11.1",
+          "at": "2026-11-11T15:01:02-05:00",
+          "by": "Shahriar Tafti",
+          "commit": "11fcd58a",
+          "machine": "Bluebarry",
+          "note": null,
+          "params_hash": "57eb7b3b5937"
+        }
+      ],
+      "digest": "e8b5f13bec90",
+      "id": "cd3e694f9793",
+      "inputs": [
+        {
+          "artifact_id": "0c8c9a4c6de5",
+          "version": 1
+        },
+        {
+          "artifact_id": "1238623d5f41",
+          "version": 1
+        },
+        {
+          "artifact_id": "d377a6ab29d5",
+          "version": 1
+        },
+        {
+          "artifact_id": "5722f735c98e",
+          "version": 1
+        },
+        {
+          "artifact_id": "aada4a6db6b9",
+          "version": 1
+        },
+        {
+          "artifact_id": "4d76499b71be",
+          "version": 1
+        },
+        {
+          "artifact_id": "cac81876d0c0",
+          "version": 1
+        },
+        {
+          "artifact_id": "e5ebea7cb630",
+          "version": 1
+        },
+        {
+          "artifact_id": "d39e86564473",
+          "version": 1
+        },
+        {
+          "artifact_id": "0de852504121",
+          "version": 1
+        },
+        {
+          "artifact_id": "6b89b14a134e",
+          "version": 1
+        },
+        {
+          "artifact_id": "70dadb904a3f",
+          "version": 1
+        },
+        {
+          "artifact_id": "887027bc979f",
+          "version": 1
+        },
+        {
+          "artifact_id": "fd1ac7bde890",
+          "version": 1
+        },
+        {
+          "artifact_id": "0d3c3b579520",
+          "version": 1
+        },
+        {
+          "artifact_id": "c1138ee5a194",
+          "version": 1
+        },
+        {
+          "artifact_id": "de816bb9adaa",
+          "version": 1
+        },
+        {
+          "artifact_id": "2e89bd39e0af",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4263,
+        "folder": "Verified DS 10%",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-f7e3cb9cee38-v2"
+      },
+      "params_hash": "57eb7b3b5937",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.12.4",
+      "at": "2026-11-12T14:56:39-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "13d078436647",
+      "id": "0c560e454fc6",
+      "inputs": [
+        {
+          "artifact_id": "bac8eaf5dfa8",
+          "version": 3
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4201,
+        "folder": "CTL Baseline (Optimized Paramters/Snap/10% Grace))",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": "The new round (2026-11-12): fitted here, no X-ray.",
+      "params": {
+        "folder": "xm-500fa6c3c5",
+        "round": "direct"
+      },
+      "params_hash": "99cccae343a5",
+      "v": 3
+    }
+  ]
+}

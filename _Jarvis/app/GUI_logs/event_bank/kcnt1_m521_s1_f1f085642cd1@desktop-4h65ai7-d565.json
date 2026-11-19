@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-11-04T20:22:15.130201+00:00",
+    "added": "2026-11-04T20:19:36.999364+00:00",
     "by_label": "2026-11-04T20:22:15.130201+00:00",
     "curation_label": "2026-11-04T20:22:15.130201+00:00",
     "duration_s": "2026-11-04T20:22:15.130201+00:00",
@@ -31,23 +31,23 @@
     "versions": {
       "1bf94e489974": [
         "set",
-        "2026-11-04T20:22:19.767440+00:00"
+        "2026-11-11T20:31:49.680922+00:00"
       ],
       "5fe00056b0b5": [
         "set",
-        "2026-11-04T20:22:15.130201+00:00"
+        "2026-11-04T20:23:08.827538+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-04T20:22:19.767440+00:00",
+    "at": "2026-11-11T20:31:49.680922+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-04T15:22:15-05:00",
+    "at": "2026-11-04T15:19:36-05:00",
     "by": "Rain Younger",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 266
@@ -1819,26 +1819,6 @@
       "machine": "BarryLab",
       "n": 266,
       "note": "The detector\u2019s own list, nothing decided about it yet. Banked when the run landed.",
-      "snap_elsewhere": true,
-      "v": 0
-    },
-    {
-      "at": "2026-11-04T15:22:15-05:00",
-      "by": "Rain Younger",
-      "by_label": {
-        "unspecified": 266
-      },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
-      "id": "5fe00056b0b5",
-      "imported": true,
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {},
-      "n": 266,
-      "note": "Imported from Doppler (line length). 266 candidates, none decided yet.",
       "snap": [
         [
           15.082632,
@@ -2905,6 +2885,20 @@
           null
         ]
       ],
+      "v": 0
+    },
+    {
+      "at": "2026-11-04T15:22:15-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 266
+      },
+      "id": "5fe00056b0b5",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 266,
+      "note": "Imported from Doppler (line length). 266 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]

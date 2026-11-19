@@ -1,0 +1,554 @@
+{
+ "definition": {
+  "ambiguous": {
+   "artifact_id": "2ba64f7dec44",
+   "nickname": "Ambiguous Dataset"
+  },
+  "grace": 0.05,
+  "name": "Fewest ambiguous · 5% grace"
+ },
+ "result": {
+  "at": "2026-11-12T11:25:29-05:00",
+  "best": {
+   "band_hi": 420.0,
+   "band_lo": 240.0,
+   "cross_ms": 75.0,
+   "filter": [
+    "custom",
+    10.0,
+    150.0
+   ],
+   "filter_words": "10–150 Hz",
+   "params": {
+    "band_hi": 420.0,
+    "band_lo": 240.0,
+    "cross_ms": 75.0,
+    "filt": "custom",
+    "hi_hz": 150.0,
+    "lo_hz": 10.0,
+    "mains_out": true,
+    "order": 3,
+    "win_ms": 33.0
+   },
+   "score": {
+    "box_ds": {
+     "hi": [
+      1902.8678590725767,
+      24.5241528708831,
+      25.52478323037238
+     ],
+     "lo": [
+      224.8518140813082,
+      1.9298969435090763,
+      4.9579458405154355
+     ]
+    },
+    "box_p": {
+     "hi": [
+      2071.153715798339,
+      43.45629595426643,
+      11.345834396749751
+     ],
+     "lo": [
+      353.9025756519853,
+      23.684105484581394,
+      3.840478883163172
+     ]
+    },
+    "ds": 2384,
+    "measured": {
+     "ctl": 2183,
+     "p": 39,
+     "tgt": 3017
+    },
+    "n": 3018,
+    "neither": 303,
+    "none": 1,
+    "ok": true,
+    "pspike": 288,
+    "purple": 42,
+    "why": null
+   },
+   "win_ms": 33.0,
+   "words": "10–150 Hz · peak ±33 ms · half-width search ±75 ms · HF 240–420 Hz"
+  },
+  "by": "Shahriar Tafti",
+  "check": {
+   "ctl": {
+    "n": 2185,
+    "same_measured": 2185,
+    "worst": 0.0
+   },
+   "tgt": {
+    "n": 3018,
+    "same_measured": 3018,
+    "worst": 0.0
+   }
+  },
+  "dataset": {
+   "artifact_id": "2ba64f7dec44",
+   "counts": {
+    "both": 1334,
+    "ds": 1209,
+    "neither": 233,
+    "pspike": 241
+   },
+   "grace": 0.05,
+   "nickname": "Ambiguous Dataset",
+   "purple": 1334,
+   "version": 7
+  },
+  "eligible": 738,
+  "evaluated": 767,
+  "fingerprint": "77f7d12c1a65dbb7",
+  "grace": 0.05,
+  "guard": 0.95,
+  "kept": 176,
+  "measure": {
+   "band_hi": 1000.0,
+   "band_lo": 500.0,
+   "cross_ms": 100.0,
+   "filt": "ds",
+   "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+   "hi_hz": 100.0,
+   "lo_hz": 5.0,
+   "mains_out": true,
+   "order": 3,
+   "win_ms": 25.0
+  },
+  "mismatch": [],
+  "near": [
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 75.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 75.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 55.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 55.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 65.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 65.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 70.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 70.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 73.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 73.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 77.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 77.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 80.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 80.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   },
+   {
+    "neither": 303,
+    "purple": 42,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 85.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 85.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    }
+   }
+  ],
+  "passes": 125,
+  "pools": {
+   "ctl": {
+    "artifact_id": "07cdcb084c86",
+    "n": 2185,
+    "nickname": "CTL Baseline v2",
+    "version": 1
+   },
+   "p": {
+    "n": 39,
+    "sets": 5
+   },
+   "tgt": {
+    "artifact_id": "105b40acbbb0",
+    "n": 3018,
+    "nickname": "PTEN Baseline v2",
+    "version": 1
+   }
+  },
+  "seconds": 2257.2,
+  "seconds_total": 2260.1,
+  "today": {
+   "band_hi": 1000.0,
+   "band_lo": 500.0,
+   "cross_ms": 100.0,
+   "filter": [
+    "ds"
+   ],
+   "filter_words": "DS filter, 5–100 Hz",
+   "params": {
+    "band_hi": 1000.0,
+    "band_lo": 500.0,
+    "cross_ms": 100.0,
+    "filt": "ds",
+    "win_ms": 25.0
+   },
+   "score": {
+    "box_ds": {
+     "hi": [
+      2388.7619826309356,
+      22.141585202238403,
+      47.25424322238166
+     ],
+     "lo": [
+      291.05683276871883,
+      -0.09617336044344386,
+      6.803739240362972
+     ]
+    },
+    "box_p": {
+     "hi": [
+      2665.7831928715223,
+      38.9830085278379,
+      29.121018143089003
+     ],
+     "lo": [
+      400.51150697399237,
+      10.824583346788593,
+      7.05272863566222
+     ]
+    },
+    "ds": 1209,
+    "measured": {
+     "ctl": 2183,
+     "p": 39,
+     "tgt": 3017
+    },
+    "n": 3018,
+    "neither": 233,
+    "none": 1,
+    "ok": true,
+    "pspike": 241,
+    "purple": 1334,
+    "why": null
+   },
+   "win_ms": 25.0
+  },
+  "trail": [
+   {
+    "purple": 1334,
+    "setting": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "cross_ms": 100.0,
+     "filter": [
+      "ds"
+     ],
+     "filter_words": "DS filter, 5–100 Hz",
+     "params": {
+      "band_hi": 1000.0,
+      "band_lo": 500.0,
+      "cross_ms": 100.0,
+      "filt": "ds",
+      "win_ms": 25.0
+     },
+     "win_ms": 25.0
+    },
+    "stage": "today",
+    "tried": 1,
+    "words": "Today's settings"
+   },
+   {
+    "purple": 72,
+    "setting": {
+     "band_hi": 500.0,
+     "band_lo": 200.0,
+     "cross_ms": 100.0,
+     "filter": [
+      "ds"
+     ],
+     "filter_words": "DS filter, 5–100 Hz",
+     "params": {
+      "band_hi": 500.0,
+      "band_lo": 200.0,
+      "cross_ms": 100.0,
+      "filt": "ds",
+      "win_ms": 25.0
+     },
+     "win_ms": 25.0
+    },
+    "stage": "coarse",
+    "tried": 213,
+    "words": "Each knob alone, coarse"
+   },
+   {
+    "purple": 59,
+    "setting": {
+     "band_hi": 500.0,
+     "band_lo": 200.0,
+     "cross_ms": 75.0,
+     "filter": [
+      "custom",
+      10.0,
+      200.0
+     ],
+     "filter_words": "10–200 Hz",
+     "params": {
+      "band_hi": 500.0,
+      "band_lo": 200.0,
+      "cross_ms": 75.0,
+      "filt": "custom",
+      "hi_hz": 200.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 25.0
+     },
+     "win_ms": 25.0
+    },
+    "stage": "together",
+    "tried": 288,
+    "words": "The best few of each, together"
+   },
+   {
+    "purple": 42,
+    "round": 1,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 75.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 75.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    },
+    "stage": "refine",
+    "tried": 155,
+    "words": "Round 1, each knob finer"
+   },
+   {
+    "purple": 42,
+    "round": 2,
+    "setting": {
+     "band_hi": 420.0,
+     "band_lo": 240.0,
+     "cross_ms": 75.0,
+     "filter": [
+      "custom",
+      10.0,
+      150.0
+     ],
+     "filter_words": "10–150 Hz",
+     "params": {
+      "band_hi": 420.0,
+      "band_lo": 240.0,
+      "cross_ms": 75.0,
+      "filt": "custom",
+      "hi_hz": 150.0,
+      "lo_hz": 10.0,
+      "mains_out": true,
+      "order": 3,
+      "win_ms": 33.0
+     },
+     "win_ms": 33.0
+    },
+    "stage": "refine",
+    "tried": 149,
+    "words": "Round 2, each knob finer"
+   }
+  ]
+ },
+ "schema": "rootcanal_meta/1"
+}

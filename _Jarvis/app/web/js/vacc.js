@@ -43,9 +43,15 @@ BARRY.vacc = (function () {
   }
 
   function paintChip() {
+    const d = last || {};
+    /* Sessions' "Everything VACC knows" tab follows the same answer. It was
+       only shown or hidden when Sessions opened -- and on a first start
+       Sessions opens before this answer arrives, so the tab stayed hidden
+       until somebody left Sessions and came back (2026-11-07). */
+    const tab = $('#sessModeVacc');
+    if (tab) tab.hidden = !d.configured;
     const btn = $('#vaccToggle');
     if (!btn) return;
-    const d = last || {};
     // Visible when there is a cluster to talk to -- or when somebody already
     // turned the mode on, because a control that vanishes from under a
     // person is worse than one that is merely useless.

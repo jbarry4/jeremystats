@@ -128,9 +128,47 @@ def pip_install(packages):
     cmd = [sys.executable, "-m", "pip", "install", "--upgrade"] + packages
     print("\n  Running: " + " ".join(cmd) + "\n")
     try:
-        return subprocess.call(cmd) == 0
+        ok_ = subprocess.call(cmd) == 0
     except Exception as exc:
         bad("Could not run pip: %s" % exc)
+        return False
+    see_new_packages()
+    return ok_
+
+
+def see_new_packages():
+    """Make what pip just installed importable in THIS process.
+
+    The reason Setup had to be run twice (2026-11-07). Where Python's own
+    folder cannot be written -- the Microsoft Store's Python, the Mac's
+    system one, a Python installed for all users -- pip installs into the
+    per-user folder instead, and on a new computer that folder does not
+    exist until pip makes it. Python only puts it on the path at start-up
+    IF it exists, so everything pip installed was invisible to the Setup
+    that installed it: "Still missing after install", the accounts step
+    never ran (so the VACC password was never asked), and the second run
+    worked because by then the folder was there.
+    """
+    import importlib
+    import site
+    try:
+        user = site.getusersitepackages()
+        if user and os.path.isdir(user) and user not in sys.path:
+            site.addsitedir(user)
+    except Exception:                                    # noqa: BLE001
+        pass
+    importlib.invalidate_caches()
+
+
+def fresh_python_sees(modules):
+    """Whether a new Python process can import `modules` -- the check that
+    tells "not installed" from "installed, but this process cannot see it"."""
+    code = "import " + ", ".join(modules)
+    try:
+        return subprocess.call([sys.executable, "-c", code],
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL) == 0
+    except Exception:                                    # noqa: BLE001
         return False
 
 
@@ -239,11 +277,21 @@ def check_packages():
 
     still = [n for n, spec, why, required in rows
              if required and installed_version(n) is None]
+    if still and fresh_python_sees([IMPORT_NAME.get(n.lower(), n.lower())
+                                    for n in still]):
+        # Installed, and a new Python sees them; this one cannot. Carry on
+        # in a new one rather than telling somebody to run Setup again.
+        ok("Packages installed.")
+        raise Resume()
     if still:
         bad("Still missing after install: " + ", ".join(still))
         return False
     ok("Packages installed.")
     return True
+
+
+class Resume(Exception):
+    """Carry on in a fresh Python: see `see_new_packages`."""
 
 
 def check_matlab():
@@ -392,33 +440,47 @@ def check_accounts():
 
 
 def main():
-    print(BANNER)
-    print("  Setting up Jarvis in:\n     " + HERE)
+    resumed = "--resumed" in sys.argv
+    if resumed:
+        print(c("\n  Carrying on in a fresh Python, which can see the packages "
+                "just installed.", "dim"))
+    else:
+        print(BANNER)
+        print("  Setting up Jarvis in:\n     " + HERE)
 
-    # The launchers' folder: what the move from "BARRY GUI" left behind, the
-    # Mac launchers' run bit, this machine's shortcut. backend/launchers.py.
-    try:
-        from backend import launchers
-        left = launchers.leftovers()
-        if left and left["moved"]:
-            ok("Moved %d leftover item(s) across from the old folder." % left["moved"])
-        for name in launchers.make_runnable():
-            ok('"%s" can be double-clicked again.' % name)
-        launchers.make_shortcut()
-    except Exception as exc:                       # noqa: BLE001
-        print("     (could not tidy the launchers: %s)" % exc)
+        # The launchers' folder: what the move from "BARRY GUI" left behind,
+        # the Mac launchers' run bit, this machine's shortcut.
+        # backend/launchers.py.
+        try:
+            from backend import launchers
+            left = launchers.leftovers()
+            if left and left["moved"]:
+                ok("Moved %d leftover item(s) across from the old folder." % left["moved"])
+            for name in launchers.make_runnable():
+                ok('"%s" can be double-clicked again.' % name)
+            launchers.make_shortcut()
+        except Exception as exc:                       # noqa: BLE001
+            print("     (could not tidy the launchers: %s)" % exc)
 
     py_ok = check_python()
 
     # Every check runs even when an earlier one failed. Bailing out early is
     # exactly wrong here: if packages are missing you still want to know
     # whether MATLAB and ffmpeg are present before you go fix things.
-    pkg_ok = check_packages() if py_ok else False
+    try:
+        pkg_ok = check_packages() if py_ok else False
+    except Resume:
+        if resumed:
+            bad("A fresh Python still cannot see the packages. Close this "
+                "window and run Setup again.")
+            finish(1)
+            return 1
+        return subprocess.call([sys.executable, os.path.abspath(__file__),
+                                "--resumed"])
     matlab = check_matlab()
     ffmpeg = check_ffmpeg()
     check_repo()
-    if py_ok and pkg_ok:
-        check_accounts()
+    accounts = check_accounts() if (py_ok and pkg_ok) else {}
 
     print(c("\n" + "=" * 66, "dim"))
     if py_ok and pkg_ok:
@@ -440,13 +502,41 @@ def main():
             pass
 
     if py_ok and pkg_ok:
+        mark_setup(accounts)
         if os.name == "nt":
-            print('\n  Activate Jarvis by double-clicking "Activate Jarvis.bat"')
+            print('\n  From now on, open Jarvis with "Activate Jarvis.bat"')
         else:
-            print('\n  Activate Jarvis by double-clicking "Activate Jarvis.command"')
+            print('\n  From now on, open Jarvis with "Activate Jarvis.command"')
     print(c("=" * 66, "dim"))
+    if py_ok and pkg_ok and sys.stdin and sys.stdin.isatty():
+        # Straight on into the app, where the first sync, the recordings
+        # and the caches are got ready with the whole story on screen
+        # (web/js/welcome.js). The accounts above are not asked again.
+        if ask("Open Jarvis now? It finishes getting this computer ready.",
+               True):
+            return subprocess.call([sys.executable,
+                                    os.path.join(HERE, "start.py")])
+        return 0
     finish(0 if (py_ok and pkg_ok) else 1)
     return 0 if (py_ok and pkg_ok) else 1
+
+
+def mark_setup(accounts):
+    """Tell the app that Setup ran here, and what it did.
+
+    The app's welcome (web/js/welcome.js) reads it through /api/firstrun:
+    the steps Setup finished are shown done and not asked again, and the
+    app's "getting ready" stage runs once, on the first opening after it.
+    Machine-local, in GUI_logs/.cache, which git ignores.
+    """
+    import time
+    try:
+        from backend import firstrun
+        # A Setup run again on purpose gets the getting-ready stage again.
+        firstrun.update(os.path.join(HERE, "GUI_logs"), setup_at=time.time(),
+                        accounts=dict(accounts or {}), ready_at=None)
+    except Exception as exc:                             # noqa: BLE001
+        warn("Could not note that Setup ran: %s" % exc)
 
 
 def finish(code):

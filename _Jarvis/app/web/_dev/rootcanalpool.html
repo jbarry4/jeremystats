@@ -109,11 +109,17 @@ const NL = String.fromCharCode(10);
      here is filed into a folder as it is saved, and that is a shared
      preference. Held in the page, the folders read as they really are
      until the suite files something, and put back in the finally. */
+  /* And nothing archived (2026-11-06), whatever this machine's are: an
+     archived pool, single or folder leaves the lists this suite reads. */
   ev('(function(){ var W = window; if (W.__rcpPrefSet) return;'
-     + ' W.__rcpPrefSet = BARRY.prefs.set; W.__rcpPrefGet = BARRY.prefs.get; W.__rcpMem = {};'
+     + ' W.__rcpPrefSet = BARRY.prefs.set; W.__rcpPrefGet = BARRY.prefs.get;'
+     + ' W.__rcpMem = { rootcanal_pool_archive: {}, rootcanal_single_archive: {} };'
      + ' BARRY.prefs.set = function(k, v) { W.__rcpMem[k] = v; return v; };'
      + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcpMem) return W.__rcpMem[k];'
-     + '   return W.__rcpPrefGet.apply(BARRY.prefs, arguments); }; })()');
+     + '   var v = W.__rcpPrefGet.apply(BARRY.prefs, arguments);'
+     + '   if (k === "rootcanal_pool_folders" && v) { var o = {};'
+     + '     for (var f in v) o[f] = Object.assign({}, v[f], { archived: false }); return o; }'
+     + '   return v; }; })()');
 
   /* Every request the panel makes for a pool fit, and the save and the
      reopen answered from here. Wrapped once, for the frame's fetch only,
@@ -177,8 +183,8 @@ const NL = String.fromCharCode(10);
   await until(() => D().querySelector('.rc-viewseg'), 10000, 'the bar');
   const segBtns = Array.from(D().querySelectorAll('.rc-viewseg button'));
   // And Workflow since 2026-11-05 (web/_dev/rcworkflow.html).
-  eq('a bar under the header, Single | Pooled | Workflow',
-     segBtns.map((b) => b.textContent), ['Single', 'Pooled', 'Workflow']);
+  eq('a bar under the header, Single | Pooled | Workflow | Meta Workflow',
+     segBtns.map((b) => b.textContent), ['Single', 'Pooled', 'Workflow', 'Meta Workflow']);
   ok('built as the shared seg control', !!D().querySelector('.seg.rc-viewseg'));
   ok('directly under the step header',
      !!D().querySelector('.step-head + .rc-viewbar'));
@@ -245,19 +251,205 @@ const NL = String.fromCharCode(10);
   const multi = Array.from(byRec.entries()).filter(([, cs]) =>
     cs.filter((c) => c.kind !== 'single').length > 1
     || (cs.some((c) => !c.kind) && cs.some((c) => c.kind === 'single')));
+  /* THE CHOICE OF ANSWER IS A VERSION TREE (2026-11-06: "No drop down.
+     Follow the modern UI Git selection look with branch history"): a
+     button in the row, which opens the recording's set as a tree -- newest
+     version at the top, a lane per branch -- with each answer a node on the
+     version it is about. Pressing a node uses it. */
+  const popOpen = () => D().querySelector('#bigModal:not(.hidden) .rc-ans-pop');
+  const popRows = () => Array.from(D().querySelectorAll(
+    '#bigModal:not(.hidden) .rc-ans-pop .vtree-row'));
+  const openPop = async (tr) => {
+    const b = tr && tr.querySelector('.rc-ans-btn');
+    if (!b) return false;
+    b.click();
+    return until(() => popOpen() && popRows().length > 0, 5000, 'the answer tree');
+  };
+  const closePop = async () => {
+    if (popOpen()) ev('closeModal()');
+    await until(() => !popOpen(), 3000, 'the tree to close');
+  };
+  // The answer a row should hold, chosen the way a person does: in its tree.
+  const pickIn = async (tr, key) => {
+    if (!(await openPop(tr))) return false;
+    const row = popRows().find((r) => r.dataset.ref === key);
+    if (!row) { await closePop(); return false; }
+    row.click();
+    await until(() => !popOpen(), 3000, 'the tree to close');
+    return until(() => tr.dataset.key === key, 3000, 'the row to take it');
+  };
+  const recInfo = (id) => JSON.parse(ev('JSON.stringify(' + RC + '._poolRecs())'))
+    .find((r) => r.id === id) || null;
+  const vkeyH = (s) => String(s || '').replace(/^v/, '').split('.')
+    .map((x) => parseInt(x, 10));
+  const vcmpH = (a, b) => {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (a[i] === undefined) return -1;
+      if (b[i] === undefined) return 1;
+      if (a[i] !== b[i]) return a[i] - b[i];
+    }
+    return 0;
+  };
+  ok('no recording’s answer is a drop-down any more',
+     !D().querySelector('.rc-pool-cands select'));
+  ok('each row has a button for its answer, saying which version of the set '
+     + 'it is about', rows().every((r) => !!r.querySelector('.rc-ans-btn'))
+     && rows().some((r) => /^v[\d.]+$/.test(((r.querySelector('.rc-ans-btn .vbtn-n')
+       || {}).textContent) || '')));
   if (multi.length) {
     const [mid, mcs] = multi[0];
-    const msrc = D().querySelector('tr.rc-rec-row[data-rec="' + mid + '"] .rc-rec-src');
-    ok('a recording with more than one answer has a choice of which, in its row',
-       !!msrc && msrc.options.length >= mcs.length,
-       msrc ? Array.from(msrc.options).map((o) => o.textContent).join(' | ') : 'none');
-    const mb = mcs.find((c) => c.banked);
-    if (mb) eq('the banked one unless another is chosen', msrc && msrc.value, mb.key);
-    ok('two answers of one kind are told apart in it', !msrc
-       || new Set(Array.from(msrc.options).map((o) => o.textContent)).size
-          === msrc.options.length);
+    const mtr = D().querySelector('tr.rc-rec-row[data-rec="' + mid + '"]');
+    const mbtn = mtr && mtr.querySelector('.rc-ans-btn');
+    const mi = recInfo(mid);
+    ok('a recording with more than one answer says how many, on its button',
+       !!mbtn && !!mi && ((mbtn.querySelector('.vbtn-more') || {}).textContent
+         === mi.keys.length + ' answers'), mbtn && mbtn.textContent);
+    const mb = mcs.find((c) => c.banked && !c.older);
+    if (mb) eq('the banked one unless another is chosen', mbtn && mbtn.dataset.key, mb.key);
+    await openPop(mtr);
+    const prs = popRows();
+    eq('pressed, it opens every answer about it, one node each',
+       prs.map((r) => r.dataset.ref).sort(), mi ? mi.keys.slice().sort() : []);
+    const tree = D().querySelector('#bigModal .rc-ans-pop .vtree');
+    await until(() => tree && tree.querySelectorAll('circle.vt-node').length
+                     === tree.querySelectorAll('.vtree-row').length, 5000, 'the graph');
+    ok('drawn as a git graph: a node on a line for each, with its version, what it '
+       + 'is and its events', !!tree
+       && tree.querySelectorAll('circle.vt-node').length
+          === tree.querySelectorAll('.vtree-row').length
+       && Array.from(tree.querySelectorAll('.vtree-row')).every((r) =>
+         /^v[\d.]+$/.test((r.querySelector('.vtree-n') || {}).textContent || '')
+         && !!r.querySelector('.rc-ans-kind-chip')
+         && !!r.querySelector('.vtree-line')),
+       tree ? tree.querySelectorAll('circle.vt-node').length + ' nodes, '
+              + tree.querySelectorAll('.vtree-row').length + ' rows' : 'no tree');
+    const vs = tree ? Array.from(tree.querySelectorAll('.vtree-row .vtree-n'))
+      .map((n) => vkeyH(n.textContent)) : [];
+    ok('newest version at the top', vs.every((k, j) => !j || vcmpH(vs[j - 1], k) >= 0),
+       JSON.stringify(vs));
+    eq('the one in use is lit', prs.filter((r) => r.classList.contains('on'))
+      .map((r) => r.dataset.ref), [mbtn && mbtn.dataset.key]);
+    ok('two answers are told apart in it: by their version, or by what they are',
+       new Set(prs.map((r) => ((r.querySelector('.vtree-n') || {}).textContent || '')
+         + '|' + ((r.querySelector('.rc-ans-kind-chip') || {}).textContent || '')))
+         .size === prs.length);
+    const newestM = (mcs.find((c) => c.set_newest != null) || {}).set_newest;
+    const anyOld = prs.some((r) => ((r.querySelector('.vtree-n') || {}).textContent
+                                    || '') !== 'v' + newestM);
+    ok('the ones about earlier versions of the set sit under their own heading',
+       !anyOld || /Older: about earlier versions of the set/.test(
+         (D().querySelector('#bigModal .rc-ans-pop .rc-ans-older') || {}).textContent || ''));
+    ok('each node says what picking it does, in its hover too',
+       prs.every((r) => (r.getAttribute('title') || '').length > 0));
+    // Another answer, picked in the tree: the row's button and its events follow.
+    const other = mi && mi.keys.find((k, j) => k !== mbtn.dataset.key
+                                         && mi.ns[j] != null);
+    if (other) {
+      const was = mbtn.dataset.key;
+      const nOther = mi.ns[mi.keys.indexOf(other)];
+      const trBefore = mtr;
+      await closePop();
+      ok('picking another node uses it, in the row where it stands',
+         await pickIn(mtr, other) && mtr.isConnected && mtr === trBefore
+         && mbtn.dataset.key === other);
+      eq('and the events column says that answer’s events',
+         (mtr.querySelector('.rc-rec-n-v') || {}).textContent,
+         Number(nOther).toLocaleString());
+      ok('nothing is ticked by choosing', !P().sel.length);
+      await pickIn(mtr, was);
+      eq('picked back, it is the answer it was', mbtn.dataset.key, was);
+    } else {
+      await closePop();
+    }
   } else {
     note('no recording here has two answers; the choice is not exercised');
+  }
+  /* THE TICKS (2026-11-06: "odd check boxes -- make it nicer"): still real
+     checkboxes -- labelled, focusable, clicked here as before -- drawn in
+     the theme. Transitions off for the look, so what is measured is where
+     they end and not a frame of them (virtual time stalls them). */
+  ev('(function(){ var s = document.createElement("style"); s.id = "rcpNoTrans";'
+     + ' s.textContent = ".rc-tick, .rc-tick::before { transition: none !important; }";'
+     + ' document.head.appendChild(s); })()');
+  const tick0 = rows()[0] && rows()[0].querySelector('.rc-pool-pick');
+  if (tick0) {
+    const cs0 = W.getComputedStyle(tick0);
+    ok('each row’s tick is a real checkbox, labelled, drawn in the theme',
+       tick0.type === 'checkbox' && tick0.classList.contains('rc-tick')
+       && /^Pool /.test(tick0.getAttribute('aria-label') || '')
+       && (cs0.appearance === 'none' || cs0.webkitAppearance === 'none'),
+       cs0.appearance);
+    const bg0 = cs0.backgroundColor;
+    tick0.click();
+    await sleep(80);
+    const bg1 = W.getComputedStyle(tick0).backgroundColor;
+    const tf1 = W.getComputedStyle(tick0, '::before').transform;
+    ok('ticked, it fills with the accent and shows its tick',
+       tick0.checked && P().sel.length === 1 && bg1 !== bg0
+       && /^matrix\(1, 0, 0, 1/.test(tf1), bg0 + ' -> ' + bg1 + ', ' + tf1);
+    tick0.click();
+    await sleep(80);
+    ok('and unticked, it is empty again', !tick0.checked && !P().sel.length
+       && /^matrix\(0, 0, 0, 0/.test(W.getComputedStyle(tick0, '::before').transform));
+  }
+  ok('“every event is DS” wears the same tick',
+     !!D().querySelector('label.rc-all-ds > input[type=checkbox].rc-all-ds-box.rc-tick'));
+  ev('(function(){ var s = document.getElementById("rcpNoTrans"); if (s) s.remove(); })()');
+
+  /* EVERY VERSION OF THE SET (2026-11-06: "allow pool recordings to be
+     able of things when the single version doesn't exist... but indicate it
+     so and let it exist"). A version of a listed recording's set that
+     nobody has read and no single is about is offered under the key its
+     read will have: said as such, never the default, and pickable; its
+     events are the bank's count, said as such. Pooling one is further on. */
+  const unr = cands.find((c) => c.unread
+                                && rows().some((r) => r.dataset.rec === recOfC(c)));
+  if (!unr) {
+    note('no listed recording has a version nobody has read; not exercised');
+  } else {
+    const utr = rows().find((r) => r.dataset.rec === recOfC(unr));
+    const ui0 = recInfo(recOfC(unr));
+    ok('a version with no single and no read is offered, under the key its read '
+       + 'will have', /^u:/.test(unr.key) && unr.here === false && unr.n > 0
+       && unr.from_name != null && !!ui0 && ui0.keys.indexOf(unr.key) >= 0,
+       JSON.stringify(unr).slice(0, 240));
+    ok('and is never the row’s default', !!ui0 && ui0.def !== unr.key
+       && utr.dataset.key !== unr.key);
+    await openPop(utr);
+    const urow = popRows().find((r) => r.dataset.ref === unr.key);
+    ok('it is a node in its recording’s tree, on its version, flagged “no single '
+       + 'yet — read when pooled”', !!urow
+       && urow.classList.contains('rc-ans-unread-row')
+       && (urow.querySelector('.vtree-n') || {}).textContent === 'v' + unr.from_name
+       && /no single yet/.test(urow.textContent)
+       && /read when pooled/.test(urow.textContent), urow ? urow.textContent : 'none');
+    const uwas = utr.dataset.key;
+    if (urow) urow.click(); else await closePop();
+    await until(() => !popOpen() && utr.dataset.key === unr.key, 3000, 'the row');
+    ok('picked, it is the row’s answer, in place, and says so',
+       utr.isConnected && utr.dataset.key === unr.key
+       && /no single yet/.test((utr.querySelector('.rc-ans-btn') || {}).textContent || '')
+       && !!utr.querySelector('.rc-cand-unread'));
+    eq('its events are the bank’s count, said as such',
+       (utr.querySelector('.rc-rec-n') || {}).textContent,
+       Number(unr.n).toLocaleString() + 'in the bank, not read yet');
+    utr.querySelector('.rc-pool-pick').click();
+    await sleep(80);
+    const uent = P().sel.find((m) => m.key === unr.key);
+    const spU = ev(RC + '._fitBody()');
+    ok('ticked, it is in the pool, to be read and fitted at Single’s settings',
+       P().sel.length === 1 && !!uent && !!uent.params
+       && uent.params.lo_hz === spU.lo_hz && uent.params.band_lo === spU.band_lo,
+       JSON.stringify(uent));
+    const bct = (D().querySelector('.rc-build-card') || {}).textContent || '';
+    ok('the card counts its events and says one is not read yet',
+       bct.indexOf(Number(unr.n).toLocaleString() + ' events') >= 0
+       && /1 not read yet/.test(bct), bct);
+    utr.querySelector('.rc-pool-pick').click();
+    await sleep(80);
+    await pickIn(utr, uwas);
+    eq('unticked and picked back, it is as it was',
+       [P().sel.length, utr.dataset.key], [0, uwas]);
   }
   /* Select all shown: one answer per recording, ticked where the rows
      stand -- the table is not rebuilt. */
@@ -267,23 +459,62 @@ const NL = String.fromCharCode(10);
       && String(k).indexOf('s:' + x.artifact_id + ':') === 0);
     return c ? recOfC(c) : k;
   };
+  /* One per RECORDING, by gid (2026-11-07): a recording with a DS set and a
+     Panning set is two rows, and goes in once -- as its Panning set. */
+  const gidOfRec = new Map();
+  for (const c of cands) if (!gidOfRec.has(recOfC(c))) gidOfRec.set(recOfC(c), c.gid || recOfC(c));
+  const nGid = new Set(Array.from(byRec.keys()).map((k) => gidOfRec.get(k))).size;
   D().querySelector('.rc-sel-all').click();
   await sleep(120);
-  eq('Select all shown ticks one answer per recording',
-     [P().sel.length, new Set(P().sel.map((m) => recOfKey(m.key))).size],
-     [byRec.size, byRec.size]);
-  ok('the rows are ticked where they stand: the table is the same table',
+  eq('Select all shown ticks one answer per recording (a DS set and a Panning set of one recording count once)',
+     [P().sel.length, new Set(P().sel.map((m) => gidOfRec.get(recOfKey(m.key)) || recOfKey(m.key))).size],
+     [nGid, nGid]);
+  const tickedByGid = new Map();
+  for (const r of rows()) {
+    const g = gidOfRec.get(r.dataset.rec) || r.dataset.rec;
+    const on = r.querySelector('.rc-pool-pick').checked && r.classList.contains('on');
+    tickedByGid.set(g, (tickedByGid.get(g) || 0) + (on ? 1 : 0));
+  }
+  ok('the rows are ticked where they stand, one row per recording: the table is the same table',
      D().querySelector('.rc-pool-cands') === tbl0
-     && rows().every((r) => r.querySelector('.rc-pool-pick').checked
-                            && r.classList.contains('on')),
+     && Array.from(tickedByGid.values()).every((n) => n === 1),
      JSON.stringify([D().querySelector('.rc-pool-cands') === tbl0,
-       rows().filter((r) => !(r.querySelector('.rc-pool-pick').checked
-                              && r.classList.contains('on')))
-         .map((r) => r.dataset.rec + ' ' + r.textContent.slice(0, 80))]));
+       Array.from(tickedByGid.entries()).filter(([, n]) => n !== 1)]));
+  const twinRows = rows().filter((r) => /Panning set/.test(r.textContent)
+    && rows().some((o) => o !== r && gidOfRec.get(o.dataset.rec) === gidOfRec.get(r.dataset.rec)));
+  ok('a recording with both sets goes in as its Panning set',
+     twinRows.every((r) => r.querySelector('.rc-pool-pick').checked), twinRows.length + ' twins');
+  ok('the count says recordings, and the rows when they differ',
+     new RegExp('^' + nGid + ' of \\d+ recordings shown').test(D().querySelector('.rc-sel-n').textContent)
+     && D().querySelector('.rc-sel-all').textContent === 'Select all ' + nGid + ' shown',
+     D().querySelector('.rc-sel-n').textContent + ' | ' + D().querySelector('.rc-sel-all').textContent);
   ok('and none is warned of being in twice', !D().querySelector('.rc-rec-dup'));
   D().querySelector('.rc-sel-none').click();
   await sleep(120);
   eq('Unselect all clears it', P().sel.length, 0);
+  /* AN ARCHIVED SINGLE IS NOT OFFERED (2026-11-06), unless it is in the
+     pool already. Archived here in the page only. */
+  const recKeys = () => [].concat(...JSON.parse(ev('JSON.stringify(' + RC + '._poolRecs())'))
+    .map((r) => r.keys));
+  const sKey = recKeys().find((k) => /^s:/.test(k));
+  if (!sKey) {
+    note('no saved single is offered here; archiving one is not exercised');
+  } else {
+    const aid = sKey.split(':')[1];
+    const ofIt = () => recKeys().filter((k) => k.indexOf('s:' + aid + ':') === 0);
+    ev('window.__rcpMem.rootcanal_single_archive = ' + JSON.stringify(
+      { [aid]: { at: '2026-11-06T00:00:00Z', by: 'Debug_Bot' } }));
+    ok('an archived single’s versions are not offered to pool', !ofIt().length,
+       JSON.stringify(ofIt()));
+    ev(RC + '._pool().sel = ' + JSON.stringify([{ key: sKey }]));
+    ok('unless one is in the pool already: that one stays',
+       JSON.stringify(ofIt()) === JSON.stringify([sKey]), JSON.stringify(ofIt()));
+    ev(RC + '._pool().sel = []');
+    ev('window.__rcpMem.rootcanal_single_archive = {}');
+    ok('put back, it is offered again', ofIt().indexOf(sKey) >= 0, JSON.stringify(ofIt()));
+    ev(RC + '._render()');
+    await sleep(150);
+  }
   /* A pool saved with two answers about one recording, as one opened from
      the shelf can be: the row warns, and one press keeps one. */
   if (multi.length) {
@@ -316,11 +547,16 @@ const NL = String.fromCharCode(10);
      from their reads at Single's settings, so the fit is the bar's. */
   const reads = cands.filter((c) => /^u:/.test(c.key) && c.here !== false)
     .sort((a, b) => (a.n || 0) - (b.n || 0));
+  /* Three RECORDINGS, by gid: since Panning's sets are offered too
+     (2026-11-06), one recording can have two rows -- its DS set and its
+     Panning set -- and the server refuses a pool holding it twice. */
   const seenR = new Set();
   let picks = [];
   for (const c of reads) {
-    if (seenR.has(recOfC(c))) continue;
+    const g = c.gid || recOfC(c);
+    if (seenR.has(recOfC(c)) || seenR.has(g)) continue;
     seenR.add(recOfC(c));
+    seenR.add(g);
     picks.push(c);
   }
   let three = picks.slice(0, 3);
@@ -336,12 +572,8 @@ const NL = String.fromCharCode(10);
     const box = tr && tr.querySelector('.rc-pool-pick');
     ok('ticking ' + c.session_label, !!box);
     if (box) { box.click(); await sleep(60); }
-    const src = tr && tr.querySelector('.rc-rec-src');
-    if (src && src.value !== c.key) {
-      src.value = c.key;
-      src.dispatchEvent(new W.Event('change', { bubbles: true }));
-      await sleep(60);
-    }
+    // Its read here, picked in its tree when the row offers another first.
+    if (tr && tr.dataset.key !== c.key) await pickIn(tr, c.key);
   }
   eq('three members are in the pool, one answer each', P().sel.map((m) => m.key),
      picks.map((c) => c.key));
@@ -1563,13 +1795,16 @@ const NL = String.fromCharCode(10);
   D().querySelector('.rc-shelf .rc-new-pool').click();
   await until(() => D().querySelector('.rc-members'), 5000, 'the choosing screen');
   /* A saved single, as another machine's would arrive: two versions, the
-     newer holding a named cluster. */
+     newer holding a named cluster -- each placed, as the server places
+     them, on the version of its set whose stamps it read: v1 on the set's
+     v2, v2 on its v3, the newest (2026-11-06). */
   const hv = (v, nick, names) => ({ v, id: 'hs' + v, nickname: nick,
     at: '2026-10-06T12:00:00', by: 'Harness', machine: 'Elsewhere',
     measure: { filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in',
                band_lo: 500, band_hi: 1000, win_ms: 25, cross_ms: 50 },
     k: 2, n_summary: { events: 40, ds: 30, ied: 10, names }, confirmed: 0,
-    here: true, inputs: [{}] });
+    here: true, inputs: [{}], set_name: String(v + 1), set_newest: '3',
+    set_ver: { aligned: true } });
   ev(RC + '._pool().cands.push(' + JSON.stringify({ key: 's:harness-s1:2',
     kind: 'single', artifact_id: 'harness-s1', version: 2, nickname: 'named',
     versions: [hv(1, 'first', []), hv(2, 'named', ['DS slow'])],
@@ -1607,34 +1842,47 @@ const NL = String.fromCharCode(10);
   await until(() => selRows().length === nAll, 5000, 'the chip off');
   D().querySelector('.rc-sel-all').click();
   await sleep(100);
-  ok('select all shown ticks one answer for every recording shown',
-     P().sel.length === nAll && P().sel.some((m) => m.key === 's:harness-s1:2'),
-     P().sel.length + ' of ' + nAll);
+  const nAllRec = Number((D().querySelector('.rc-sel-all').textContent.match(/\d+/) || [])[0]);
+  ok('select all shown ticks one answer for every recording shown (one per recording, not per row)',
+     P().sel.length === nAllRec && nAllRec <= nAll
+     && P().sel.some((m) => m.key === 's:harness-s1:2'),
+     P().sel.length + ' of ' + nAllRec + ' recordings (' + nAll + ' rows)');
   D().querySelector('.rc-sel-none').click();
   await sleep(100);
   eq('unselect all clears it', P().sel.length, 0);
 
   /* Versions: the latest unless another is picked -- each version one of
-     the row's answers. */
-  const vSel = () => hsRow() && hsRow().querySelector('.rc-rec-src');
-  ok('a saved single offers its versions, latest first, each with its hover',
-     !!vSel() && Array.from(vSel().options).map((o) => o.textContent)
-       .join('|') === 'saved v2 · named|saved v1 · first'
-     && /Settings: k2 · LFP filter/.test(vSel().options[0].title),
-     vSel() ? Array.from(vSel().options).map((o) => o.textContent).join('|') : 'none');
+     the row's answers, a node in its tree on the version of the set it
+     read (2026-11-06: the tree, not a drop-down). */
+  ok('its row says the version of the set and which saved version, on its button',
+     /^v3$/.test((hsRow().querySelector('.rc-ans-btn .vbtn-n') || {}).textContent || '')
+     && /saved v2 · named/.test((hsRow().querySelector('.rc-ans-btn') || {})
+       .textContent || ''), (hsRow().querySelector('.rc-ans-btn') || {}).textContent);
+  await openPop(hsRow());
+  const hsNodes = popRows().map((r) => [
+    (r.querySelector('.vtree-n') || {}).textContent,
+    (r.querySelector('.rc-ans-kind-chip') || {}).textContent]);
+  eq('a saved single offers its versions in its tree, newest first, each on the '
+     + 'version of the set it read', hsNodes,
+     [['v3', 'saved v2 · named'], ['v2', 'saved v1 · first']]);
+  ok('each with its settings in its hover',
+     /Settings: k2 · LFP filter/.test(popRows()[0].getAttribute('title') || ''));
+  ok('the earlier one under the heading of its own, after the newest',
+     !!D().querySelector('#bigModal .rc-ans-pop .rc-ans-older + .vtree-row[data-ref="s:harness-s1:1"]'));
+  await closePop();
   hsRow().querySelector('.rc-pool-pick').click();
   await sleep(100);
   eq('ticked, it is its latest version', P().sel.map((m) => m.key),
      ['s:harness-s1:2']);
-  vSel().value = 's:harness-s1:1';
-  vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
-  await sleep(100);
+  await pickIn(hsRow(), 's:harness-s1:1');
   eq('picking another version pools that one, in its place',
      P().sel.map((m) => m.key), ['s:harness-s1:1']);
+  ok('and the row says so: v2 of the set, its saved v1',
+     /^v2$/.test((hsRow().querySelector('.rc-ans-btn .vbtn-n') || {}).textContent || '')
+     && hsRow().dataset.key === 's:harness-s1:1');
   ok('v1 holds no name, so no name chip is offered for it',
      !D().querySelector('.rc-name-chip'));
-  vSel().value = 's:harness-s1:2';
-  vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
+  await pickIn(hsRow(), 's:harness-s1:2');
   await until(() => D().querySelector('.rc-name-chip'), 5000, 'the name chip');
 
   /* A name chip: every saved single holding the name, that name only --
@@ -1667,6 +1915,54 @@ const NL = String.fromCharCode(10);
   ev(RC + '._poolClose()');
 
   /* ================================================================== */
+  head('A VERSION WITH NO SINGLE YET IS READ WHEN IT IS POOLED');
+
+  /* The server refuses it by name -- it has no numbers to pool -- and the
+     panel reads it at once, here or on the VACC, at Single's settings, and
+     pools again when it lands. The refusal and the read are answered from
+     here: nothing is read, and no error is filed on this machine. */
+  const unr2 = (P().cands || []).find((c) => c.unread);
+  if (!unr2) {
+    note('no version nobody has read is offered here; pooling one is not exercised');
+  } else {
+    D().querySelector('.rc-shelf .rc-new-pool').click();
+    await until(() => D().querySelector('.rc-members'), 5000, 'the choosing screen');
+    ev(RC + '._poolToggle(' + JSON.stringify(unr2.key) + ', true)');
+    ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 400, body: {
+      ok: false, away: [unr2.key],
+      error: 'This version of a set has not been read yet: ' + unr2.session_label
+        + ', v' + unr2.from_name + '. A version with no read has no numbers to '
+        + 'pool, so it is read first.' } }));
+    ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+      ok: true, job: null, here: [],
+      refused: [{ key: unr2.key, why: 'harness: not read here' }] } }));
+    const nRrU = sent().filter(([k]) => k === 'reread').length;
+    D().querySelector('.rc-pool-run').click();
+    await until(() => sent().filter(([k]) => k === 'reread').length > nRrU, 8000,
+                'its read asked for');
+    const rrU = (sent().filter(([k]) => k === 'reread').pop() || [null, {}])[1];
+    eq('pooled, it is read first, by itself, without being asked: by its key',
+       rrU.members, [{ key: unr2.key }]);
+    await until(() => { const r = ev(RC + '._poolRedo()'); return !!(r && r.ended); },
+                8000, 'the read to end');
+    await until(() => /no single and no read yet/.test(
+      (D().querySelector('.rc-redo-say') || {}).textContent || ''), 5000, 'the sentence');
+    const say = (D().querySelector('.rc-redo-say') || {}).textContent || '';
+    ok('and when it cannot be read, the pool says so in words, naming its version, '
+       + 'with the press to try again', /no single and no read yet/.test(say)
+       && say.indexOf('(v' + unr2.from_name + ')') >= 0
+       && !!D().querySelector('.rc-redo-go'), say);
+    ok('with why, from the read', /harness: not read here/.test(
+      (D().querySelector('.rc-redo-rows') || {}).textContent || ''));
+    ok('and the refusal beside it', /not been read yet/.test(
+      (D().querySelector('.rc-pool-refused') || {}).textContent || ''));
+    ev('delete window.__rcpReply.fit');
+    ev('delete window.__rcpReply.reread');
+    await until(() => !P().fitting, 8000, 'settled');
+    ev(RC + '._poolClose()');
+  }
+
+  /* ================================================================== */
   head('ONE MEASUREMENT FOR A POOL, AND ITS IDENTITY BACK INTO ITS SINGLES');
 
   ev(RC + '._poolClose()');
@@ -1684,8 +1980,9 @@ const NL = String.fromCharCode(10);
      /LFP filter/.test((hsRow().querySelector('.rc-cand-filter') || {})
        .textContent || ''));
   ok('and the same answer offered twice is one answer in its row',
-     !hsRow().querySelector('.rc-rec-src')
-     || hsRow().querySelector('.rc-rec-src').options.length === 2);
+     ((hsRow().querySelector('.rc-ans-btn .vbtn-more') || {}).textContent || '')
+       === '2 answers'
+     && (recInfo('harness-e1') || { keys: [] }).keys.length === 2);
   const lfp = { filt: 'lfp', mains_out: false, lo_hz: 1, hi_hz: 100, order: 4,
     filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in', win_ms: 25,
     cross_ms: 50, band_lo: 500, band_hi: 1000 };

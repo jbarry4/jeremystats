@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-11-03T20:54:38.984042+00:00",
+    "added": "2026-11-03T20:01:43.018030+00:00",
     "by_label": "2026-11-03T20:54:38.984042+00:00",
     "curation_label": "2026-11-03T20:54:38.984042+00:00",
     "duration_s": "2026-11-03T20:54:38.984042+00:00",
@@ -31,23 +31,23 @@
     "versions": {
       "6337a6281cf6": [
         "set",
-        "2026-11-03T20:54:41.448264+00:00"
+        "2026-11-11T20:31:41.497641+00:00"
       ],
       "b3ac2f4eafd7": [
         "set",
-        "2026-11-03T20:54:38.984042+00:00"
+        "2026-11-03T20:59:36.539459+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-03T20:54:41.448264+00:00",
+    "at": "2026-11-11T20:31:41.497641+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-03T15:54:38-05:00",
+    "at": "2026-11-03T15:01:43-05:00",
     "by": "Rain Younger",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 520
@@ -2805,27 +2805,6 @@
       "machine": "BarryLab",
       "n": 520,
       "note": "Junction's pool: 217 from Incisor, 194 from Doppler, 109 merged within 20 ms.",
-      "snap_elsewhere": true,
-      "tag": "junction",
-      "v": 0
-    },
-    {
-      "at": "2026-11-03T15:54:38-05:00",
-      "by": "Rain Younger",
-      "by_label": {
-        "unspecified": 520
-      },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
-      "id": "b3ac2f4eafd7",
-      "imported": true,
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {},
-      "n": 520,
-      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 520 candidates, none decided yet.",
       "snap": [
         [
           1.603161,
@@ -4908,6 +4887,21 @@
           null
         ]
       ],
+      "tag": "junction",
+      "v": 0
+    },
+    {
+      "at": "2026-11-03T15:54:38-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 520
+      },
+      "id": "b3ac2f4eafd7",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 520,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 520 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]

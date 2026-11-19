@@ -22,7 +22,7 @@
     "schema": "2026-09-18T15:46:11.116053+00:00",
     "session": "2026-09-18T15:46:11.116053+00:00",
     "start": "2026-09-18T15:46:11.116053+00:00",
-    "updated": "2026-11-05T21:36:04.575295+00:00",
+    "updated": "2026-11-11T20:26:50.920154+00:00",
     "view_state": "2026-11-05T19:35:38.657837+00:00"
   },
   "_keys": {
@@ -42,8 +42,8 @@
         "2026-09-18T19:25:26.613897+00:00"
       ],
       "Z:\\harness\\split-me": [
-        "gone",
-        "2026-11-04T21:07:28.153924+00:00"
+        "set",
+        "2026-11-11T20:26:50.920154+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM2\\KCNTM2_S3_03182022\\2022-03-18_16-19-08": [
         "set",
@@ -58,7 +58,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-05T21:36:04.575295+00:00",
+    "at": "2026-11-11T20:26:50.920154+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -106,7 +106,8 @@
   "note": "",
   "paths": [
     "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM2\\KCNTM2_S3_03182022\\2022-03-18_16-19-08"
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM2\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+    "Z:\\harness\\split-me"
   ],
   "probe": "dual",
   "probe_source": "manual",
@@ -128,9 +129,9 @@
   "session": 3,
   "start": "2022-03-18T20:19:08+00:00",
   "updated": {
-    "app_version": "2026.11.05.5",
-    "at": "2026-11-05T16:36:04-05:00",
-    "commit": "f85d2b51",
+    "app_version": "2026.11.11.4",
+    "at": "2026-11-11T15:26:50-05:00",
+    "commit": "11fcd58a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

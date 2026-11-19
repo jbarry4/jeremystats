@@ -1,7 +1,7 @@
 {
   "_at": {
     "added": "2026-11-05T21:24:10.693320+00:00",
-    "deleted": "2026-11-05T22:05:53.446513+00:00",
+    "deleted": "2026-11-09T15:14:37.364475+00:00",
     "id": "2026-11-05T21:24:10.693320+00:00",
     "kind": "2026-11-05T21:24:10.693320+00:00",
     "name": "2026-11-05T21:24:10.693320+00:00",
@@ -9,13 +9,55 @@
     "schema": "2026-11-05T21:24:10.693320+00:00",
     "subject": "2026-11-05T21:24:10.693320+00:00",
     "subject_key": "2026-11-05T21:24:10.693320+00:00",
-    "version": "2026-11-05T22:05:53.446513+00:00"
+    "version": "2026-11-09T15:14:37.364475+00:00"
   },
   "_keys": {
+    "cited": {
+      "abe99ac5d1b6:af5e613110d6>2ba64f7dec44:2": [
+        "set",
+        "2026-11-06T20:54:43.610129+00:00"
+      ],
+      "abe99ac5d1b6:bfb558fb77ee>2ba64f7dec44:4": [
+        "set",
+        "2026-11-06T21:23:30.912473+00:00"
+      ],
+      "abe99ac5d1b6:bfb558fb77ee>7677889ca85c:2": [
+        "set",
+        "2026-11-06T21:32:22.162773+00:00"
+      ],
+      "abe99ac5d1b6:f6aad8a6f8bc>2ba64f7dec44:6": [
+        "set",
+        "2026-11-06T22:30:36.604924+00:00"
+      ],
+      "abe99ac5d1b6:f6aad8a6f8bc>2ba64f7dec44:7": [
+        "set",
+        "2026-11-09T15:14:37.364475+00:00"
+      ],
+      "abe99ac5d1b6:f6aad8a6f8bc>7677889ca85c:4": [
+        "set",
+        "2026-11-06T22:30:36.604924+00:00"
+      ],
+      "abe99ac5d1b6:f6aad8a6f8bc>7677889ca85c:5": [
+        "set",
+        "2026-11-09T15:14:37.364475+00:00"
+      ]
+    },
     "versions": {
+      "2344c50f42d6": [
+        "set",
+        "2026-11-06T22:30:36.604924+00:00"
+      ],
+      "4f38f2a3109b": [
+        "set",
+        "2026-11-09T15:14:37.364475+00:00"
+      ],
       "af5e613110d6": [
         "set",
         "2026-11-05T22:05:53.446513+00:00"
+      ],
+      "bfb558fb77ee": [
+        "set",
+        "2026-11-06T21:23:30.912473+00:00"
       ],
       "c6016c596724": [
         "set",
@@ -24,11 +66,19 @@
       "cbf708771d79": [
         "set",
         "2026-11-05T22:05:53.446513+00:00"
+      ],
+      "f6aad8a6f8bc": [
+        "set",
+        "2026-11-06T22:30:36.604924+00:00"
+      ],
+      "fe840793926f": [
+        "set",
+        "2026-11-06T21:23:30.912473+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T22:05:53.446513+00:00",
+    "at": "2026-11-09T15:14:37.364475+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -37,7 +87,71 @@
     "by": "Shahriar Tafti",
     "machine": "Bluebarry"
   },
-  "cited": [],
+  "cited": [
+    {
+      "at": "2026-11-06T20:53:56+00:00",
+      "by_id": "2ba64f7dec44",
+      "by_version": 2,
+      "digest": "a07e278e261f",
+      "id": "abe99ac5d1b6:af5e613110d6>2ba64f7dec44:2",
+      "version": 2,
+      "version_id": "af5e613110d6"
+    },
+    {
+      "at": "2026-11-06T21:08:29+00:00",
+      "by_id": "2ba64f7dec44",
+      "by_version": 4,
+      "digest": "9ab708da8bc2",
+      "id": "abe99ac5d1b6:bfb558fb77ee>2ba64f7dec44:4",
+      "version": 5,
+      "version_id": "bfb558fb77ee"
+    },
+    {
+      "at": "2026-11-06T21:30:59+00:00",
+      "by_id": "7677889ca85c",
+      "by_version": 2,
+      "digest": "9ab708da8bc2",
+      "id": "abe99ac5d1b6:bfb558fb77ee>7677889ca85c:2",
+      "version": 5,
+      "version_id": "bfb558fb77ee"
+    },
+    {
+      "at": "2026-11-06T21:45:53+00:00",
+      "by_id": "2ba64f7dec44",
+      "by_version": 6,
+      "digest": "5030a5a275de",
+      "id": "abe99ac5d1b6:f6aad8a6f8bc>2ba64f7dec44:6",
+      "version": 7,
+      "version_id": "f6aad8a6f8bc"
+    },
+    {
+      "at": "2026-11-06T21:45:56+00:00",
+      "by_id": "7677889ca85c",
+      "by_version": 4,
+      "digest": "5030a5a275de",
+      "id": "abe99ac5d1b6:f6aad8a6f8bc>7677889ca85c:4",
+      "version": 7,
+      "version_id": "f6aad8a6f8bc"
+    },
+    {
+      "at": "2026-11-07T18:02:59+00:00",
+      "by_id": "2ba64f7dec44",
+      "by_version": 7,
+      "digest": "5030a5a275de",
+      "id": "abe99ac5d1b6:f6aad8a6f8bc>2ba64f7dec44:7",
+      "version": 7,
+      "version_id": "f6aad8a6f8bc"
+    },
+    {
+      "at": "2026-11-07T18:03:06+00:00",
+      "by_id": "7677889ca85c",
+      "by_version": 5,
+      "digest": "5030a5a275de",
+      "id": "abe99ac5d1b6:f6aad8a6f8bc>7677889ca85c:5",
+      "version": 7,
+      "version_id": "f6aad8a6f8bc"
+    }
+  ],
   "deleted": null,
   "id": "abe99ac5d1b6",
   "kind": "rootcanal_workflow",
@@ -50,7 +164,7 @@
     "workflow_key": "640618793d514cbf8fe662596eba2580"
   },
   "subject_key": "rootcanal_workflow|640618793d514cbf8fe662596eba2580",
-  "version": 3,
+  "version": 8,
   "versions": [
     {
       "app_version": "2026.11.05.5",
@@ -135,6 +249,152 @@
       },
       "params_hash": "c95d844db2c3",
       "v": 3
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:08:22-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "63fe8e232b06",
+      "id": "fe840793926f",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "pspike",
+        "ran": false,
+        "target": "PTEN Baseline"
+      },
+      "note": "Definition changed",
+      "params": {
+        "kind": "pspike"
+      },
+      "params_hash": "c95d844db2c3",
+      "v": 4
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:08:27-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "9ab708da8bc2",
+      "id": "bfb558fb77ee",
+      "inputs": [
+        {
+          "artifact_id": "0fb7e710f1b9",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2198,
+        "grace": 0.05,
+        "kept": 1381,
+        "kind": "pspike",
+        "ran": true,
+        "target": "PTEN Baseline"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "pspike"
+      },
+      "params_hash": "63d2107536ad",
+      "v": 5
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:45:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "974ab7f82603",
+      "id": "2344c50f42d6",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "pspike",
+        "ran": false,
+        "target": "PTEN Baseline v2"
+      },
+      "note": "Definition changed",
+      "params": {
+        "kind": "pspike"
+      },
+      "params_hash": "c95d844db2c3",
+      "v": 6
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:45:50-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "5030a5a275de",
+      "id": "f6aad8a6f8bc",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3018,
+        "grace": 0.05,
+        "kept": 1575,
+        "kind": "pspike",
+        "ran": true,
+        "target": "PTEN Baseline v2"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "pspike"
+      },
+      "params_hash": "63d2107536ad",
+      "v": 7
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-07T13:02:55-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "fc1923687057",
+      "id": "4f38f2a3109b",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3018,
+        "grace": 0.05,
+        "kept": 1575,
+        "kind": "pspike",
+        "ran": true,
+        "target": "PTEN Baseline v2"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "pspike"
+      },
+      "params_hash": "63d2107536ad",
+      "v": 8
     }
   ]
 }

@@ -1,0 +1,383 @@
+{
+ "id": "20261109-171921-c485",
+ "shard": "desktop-4h65ai7-d565",
+ "machine": "Bluebarry",
+ "who": "Shahriar Tafti",
+ "at": "2026-11-09T17:19:21-05:00",
+ "since": "2026-11-02T17:19:21-05:00",
+ "until": "2026-11-09T17:19:21-05:00",
+ "status": "printed",
+ "numbers": {
+  "versions": 27,
+  "commits": 39,
+  "lines_added": 37666,
+  "lines_removed": 2469,
+  "files": 198,
+  "events_banked": 39410,
+  "entries_banked": 43,
+  "bank_versions": 116,
+  "calls_people": 434,
+  "calls_models": 16587,
+  "recordings_new": 0,
+  "procedures": 6,
+  "people": 3,
+  "bench_people": 4
+ },
+ "code": {
+  "commits": 39,
+  "authors": {
+   "maliajaff": 22,
+   "Rain Younger": 15,
+   "Shahriar Akhavan Tafti": 2
+  },
+  "areas": {
+   "the server": {
+    "added": 17502,
+    "removed": 612,
+    "files": 59
+   },
+   "the interface": {
+    "added": 11532,
+    "removed": 1196,
+    "files": 53
+   },
+   "the scripts": {
+    "added": 3527,
+    "removed": 142,
+    "files": 38
+   },
+   "the checks": {
+    "added": 3341,
+    "removed": 177,
+    "files": 37
+   },
+   "the notes and docs": {
+    "added": 1742,
+    "removed": 328,
+    "files": 7
+   },
+   "elsewhere": {
+    "added": 22,
+    "removed": 14,
+    "files": 4
+   }
+  },
+  "files": 198,
+  "added": 37666,
+  "removed": 2469,
+  "records_changed": 12707,
+  "uncommitted": 53
+ },
+ "versions": [
+  {
+   "v": "2026.11.02.1",
+   "day": "2026-11-02",
+   "title": "Monolith tab 12: J Charles's four power tiers"
+  },
+  {
+   "v": "2026.11.02.2",
+   "day": "2026-11-02",
+   "title": "Monolith tabs 11 and 12: leave J3, J4 or both out"
+  },
+  {
+   "v": "2026.11.02.3",
+   "day": "2026-11-02",
+   "title": "Thanksgiving, for everyone, all November; sync stops blaming your clock"
+  },
+  {
+   "v": "2026.11.02.4",
+   "day": "2026-11-02",
+   "title": "Joe's site: the publication set and the methods for his dissertation"
+  },
+  {
+   "v": "2026.11.03.1",
+   "day": "2026-11-03",
+   "title": "Solid ground: the folder is _Jarvis, a click is a click, and the backend says what it is doing"
+  },
+  {
+   "v": "2026.11.03.2",
+   "day": "2026-11-03",
+   "title": "Folders of headers only are not recordings"
+  },
+  {
+   "v": "2026.11.04.1",
+   "day": "2026-11-04",
+   "title": "Joe's figures: stars back, a statistics PDF for each, only what is significant"
+  },
+  {
+   "v": "2026.11.04.2",
+   "day": "2026-11-04",
+   "title": "Joe's figures: axes per set (or fitted), stars on the ring, a note on Granger, tab 13's sanity check report"
+  },
+  {
+   "v": "2026.11.04.3",
+   "day": "2026-11-04",
+   "title": "Prospector: Panning's own model, swept the way Tooth Fairy sweeps Checkup"
+  },
+  {
+   "v": "2026.11.04.4",
+   "day": "2026-11-04",
+   "title": "One list of recordings, one channel picker, and Junction's versions"
+  },
+  {
+   "v": "2026.11.05.1",
+   "day": "2026-11-05",
+   "title": "A renamed folder says so, tab 10 survives a redraw, a long poll is not \"stuck\""
+  },
+  {
+   "v": "2026.11.05.2",
+   "day": "2026-11-05",
+   "title": "Volume conduction: how it was handled, in tab 11 and on Joe's site"
+  },
+  {
+   "v": "2026.11.05.3",
+   "day": "2026-11-05",
+   "title": "\"IED\" is \"P-spike\" everywhere you read it; DS blue, P-spikes red"
+  },
+  {
+   "v": "2026.11.05.4",
+   "day": "2026-11-05",
+   "title": "Prospector and Tooth Fairy sweep recordings only the cluster has; Prospector's calls are loud in Panning; feedback arrives live; a mode's keys work from its support window"
+  },
+  {
+   "v": "2026.11.05.5",
+   "day": "2026-11-05",
+   "title": "Root Canal: a Workflow tab (define a border, apply it, extract)"
+  },
+  {
+   "v": "2026.11.05.6",
+   "day": "2026-11-05",
+   "title": "Workflow: banking you can see, P-spike sets made ready by themselves, Root Canal's own click panel"
+  },
+  {
+   "v": "2026.11.06.1",
+   "day": "2026-11-06",
+   "title": "A check that Ambiguous borrows the run before an edit"
+  },
+  {
+   "v": "2026.11.06.2",
+   "day": "2026-11-06",
+   "title": "Hater of AI, a bug fixer anyone can ask"
+  },
+  {
+   "v": "2026.11.06.3",
+   "day": "2026-11-06",
+   "title": "Root Canal's Many reads on the VACC"
+  },
+  {
+   "v": "2026.11.06.4",
+   "day": "2026-11-06",
+   "title": "Tab 14, Joe Prompt: Joe's final round of Aim 2 follow-ups"
+  },
+  {
+   "v": "2026.11.07.1",
+   "day": "2026-11-07",
+   "title": "Pooled PCA, the v2 PTEN data, and Root Canal's pools tidied"
+  },
+  {
+   "v": "2026.11.07.2",
+   "day": "2026-11-07",
+   "title": "DS-PCA opens on a set it can read"
+  },
+  {
+   "v": "2026.11.07.3",
+   "day": "2026-11-07",
+   "title": "Setup once, then a first opening that gets everything ready"
+  },
+  {
+   "v": "2026.11.09.1",
+   "day": "2026-11-09",
+   "title": "X-ray Many: a grid of average CSDs, and every result kept"
+  },
+  {
+   "v": "2026.11.09.2",
+   "day": "2026-11-09",
+   "title": "Inside Jarvis, and a printout of the week for the PI"
+  },
+  {
+   "v": "2026.11.09.3",
+   "day": "2026-11-09",
+   "title": "A one-time optimisation update on computers already set up"
+  },
+  {
+   "v": "2026.11.09.4",
+   "day": "2026-11-09",
+   "title": "The week's printout, emailed to the lab every Friday"
+  }
+ ],
+ "data": {
+  "bank": {
+   "entries": 43,
+   "events": {
+    "ds": 17858,
+    "pooled": 18421,
+    "ied": 3131
+   },
+   "versions": 116,
+   "by": {
+    "Rain Younger": 90,
+    "Prospector (AI)": 17,
+    "Shahriar Tafti": 8,
+    "Aggie Krempasky": 1
+   }
+  },
+  "calls": {
+   "people": {
+    "Rain Younger": 418,
+    "Aggie Krempasky": 16
+   },
+   "models": {
+    "Prospector (AI)": 16587
+   },
+   "labels": {
+    "likely_garbage": 8910,
+    "likely_spike": 4128,
+    "spike": 3947,
+    "garbage": 31,
+    "flag": 5
+   },
+   "sets": 14
+  },
+  "recordings": {},
+  "activity": {
+   "people": {
+    "Shahriar Tafti": 1725
+   },
+   "areas": {
+    "link": 416,
+    "client": 238,
+    "rootcanal": 213,
+    "bank": 134,
+    "session": 116,
+    "mode": 81,
+    "events": 72,
+    "tour": 52,
+    "welcome": 37,
+    "registry": 36,
+    "guides": 36,
+    "curation": 29
+   },
+   "actions": 1725
+  },
+  "floss": {}
+ },
+ "bench": {
+  "events": [
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1652",
+    "cage": "CC-30817-1",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1658",
+    "cage": "CC-30818-1",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-06",
+    "what": "Active avoidance",
+    "mouse": "1663",
+    "cage": "CC-30796-2",
+    "lead": "Angelina, Daphne, Avery, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1652",
+    "cage": "CC-30817-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1658",
+    "cage": "CC-30818-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-07",
+    "what": "Active avoidance #2",
+    "mouse": "1663",
+    "cage": "CC-30796-2",
+    "lead": "Angelina",
+    "sessions": ""
+   }
+  ],
+  "colony": {
+   "alive": 80,
+   "roles": {
+    "Stock": 76,
+    "Mating": 4
+   }
+  },
+  "procedures": [
+   "Tail Snip #1",
+   "Inject",
+   "Active avoidance",
+   "Active avoidance #2",
+   "Headplate",
+   "H3 probe (L)",
+   "H3 probe (R)",
+   "H10 probe (L)",
+   "H10 probe (R)",
+   "H10 opto (L)",
+   "H10 opto (R)",
+   "Perfuse",
+   "Euthanize",
+   "Tail Snip #2",
+   "Hippocampus Sectioning",
+   "M2 Sectioning"
+  ],
+  "url": "https://docs.google.com/spreadsheets/d/1SDXG1GpRhkjq2aKri3n06nOuR8TGio9QuQsyN656ERo/edit#gid=1444923131",
+  "counts": {
+   "Active avoidance": 3,
+   "Active avoidance #2": 3
+  },
+  "leads": {
+   "Angelina": 6,
+   "Daphne": 3,
+   "Avery": 3,
+   "Samara": 3
+  }
+ },
+ "note": {
+  "headline": "A productive week: 27 versions of Jarvis shipped, 39,410 events banked, and 434 calls made by people.",
+  "summary": "Work went in on the code all week: 39 commits changed 40,135 lines across 198 files. The most recent changes: Inside Jarvis, and a printout of the week for the PI; A one-time optimisation update on computers already set up; The week's printout, emailed to the lab every Friday. The data grew alongside it, and every call in the curation sets is kept with who made it.",
+  "progress": [
+   "DS-PCA opens on a set it can read (v2026.11.07.2).",
+   "Setup once, then a first opening that gets everything ready (v2026.11.07.3).",
+   "X-ray Many: a grid of average CSDs, and every result kept (v2026.11.09.1).",
+   "Inside Jarvis, and a printout of the week for the PI (v2026.11.09.2).",
+   "A one-time optimisation update on computers already set up (v2026.11.09.3).",
+   "The week's printout, emailed to the lab every Friday (v2026.11.09.4)."
+  ],
+  "bench": [
+   "Active avoidance: 3 entries, on 3 mice, led by Angelina, Avery, Daphne and Samara.",
+   "Active avoidance #2: 3 entries, on 3 mice, led by Angelina.",
+   "The colony stands at 80 live mice."
+  ],
+  "data": [
+   "43 new bank entries, and 116 new versions of entries already banked.",
+   "Calls in the curation sets: 434 by people and 16,587 by models, across 14 sets."
+  ],
+  "next": [],
+  "watch": []
+ },
+ "writer": "Jarvis",
+ "why_plain": "Hater of AI could not finish: You've hit your 5-hour limit · resets 7:30pm (America/New_York)",
+ "run": {
+  "model": "sonnet",
+  "turns": 1,
+  "cost_usd": 0,
+  "seconds": 0.5
+ }
+}

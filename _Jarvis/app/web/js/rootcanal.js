@@ -287,7 +287,7 @@ BARRY.rootcanal = (function () {
   let viewMode = (() => {
     try {
       const v = localStorage.getItem(VIEW_KEY);
-      return v === 'pooled' || v === 'workflow' ? v : 'single';
+      return v === 'pooled' || v === 'workflow' || v === 'meta' ? v : 'single';
     } catch (e) { return 'single'; }
   })();
 
@@ -1066,6 +1066,11 @@ BARRY.rootcanal = (function () {
       box.appendChild(BARRY.rcWorkflow.node(workflowHelpers()));
       return;
     }
+    // The Meta Workflow (2026-11-11): its own module, its own part.
+    if (viewMode === 'meta') {
+      box.appendChild(BARRY.rcMeta.node({ render }));
+      return;
+    }
     if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
@@ -1368,9 +1373,14 @@ BARRY.rootcanal = (function () {
     return doneNode;
   }
 
+  /* A set whose saved single is archived (2026-11-06) leaves this list
+     unless Show archived is on. */
+  const doneArchived = (r) => !!(r && r.saved && singleShelved(r.saved.artifact_id));
+
   function doneToggle() {
     const n = doneQ.rows && doneQ.ctx === (inConfluence() ? 'pooled' : 'ds')
-      ? doneQ.rows.length : null;
+      ? doneQ.rows.filter((r) => archShow.singles || !doneArchived(r)).length
+      : null;
     const open = doneOpen();
     return el('button', {
       type: 'button',
@@ -1413,23 +1423,31 @@ BARRY.rootcanal = (function () {
           + 'read it; it is listed here from then on.',
         doneQ.err ? 'rc-warn' : null);
     }
-    const shown = rows.filter(doneShown).sort(doneOrder);
-    const fs = JSON.stringify([doneQ.filt, doneQ.show, doneQ.sort]);
+    const nArch = doneQ.rows.filter(doneArchived).length;
+    const all = rows;
+    const live = archShow.singles ? all : all.filter((r) => !doneArchived(r));
+    const shown = live.filter(doneShown).sort(doneOrder);
+    const fs = JSON.stringify([doneQ.filt, doneQ.show, doneQ.sort,
+                               archShow.singles]);
     return [
       { key: 'find', enter: false, sig: 'find', build: doneFind },
       { key: 'show', enter: false, sig: [doneQ.rev, doneQ.show],
-        build: () => doneShowChips(rows) },
+        build: () => doneShowChips(live) },
       { key: 'chips', enter: false, sig: [doneQ.rev, fs],
-        build: () => bulkChips(rows, doneQ.filt, doneFill) },
-      { key: 'count', enter: false, sig: [shown.length, rows.length],
-        build: () => el('div', { class: 'hint rc-done-count', text:
-          shown.length === rows.length
-            ? rows.length + ' set' + (rows.length === 1 ? '' : 's')
-            : shown.length + ' of ' + rows.length }) },
+        build: () => bulkChips(live, doneQ.filt, doneFill) },
+      { key: 'count', enter: false,
+        sig: [shown.length, live.length, nArch, archShow.singles],
+        build: () => el('div', { class: 'rc-done-countrow' }, [
+          el('div', { class: 'hint rc-done-count', text:
+            shown.length === live.length
+              ? live.length + ' set' + (live.length === 1 ? '' : 's')
+              : shown.length + ' of ' + live.length }),
+          archToggle(nArch, 'singles', 'rc-done-show-arch'),
+        ].filter(Boolean)) },
       { key: 'cols', enter: false, sig: 'cols', build: doneCols },
       { key: 'list', enter: false,
         sig: [doneQ.rev, fs, q.entry || '', viewing ? viewing.v : null],
-        build: () => doneList(shown) },
+        build: () => doneList(shown, !live.length && nArch > 0) },
     ];
   }
 
@@ -1499,11 +1517,13 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
-  function doneList(shown) {
+  function doneList(shown, allArchived) {
     const box = el('div', { class: 'cur-shelf-list rc-done-list' });
     if (!shown.length) {
-      box.appendChild(el('div', { class: 'hint', text:
-        'Nothing matches that. Clear the search, or press All.' }));
+      box.appendChild(el('div', { class: 'hint', text: allArchived
+        ? 'Every set here has its saved versions archived. Show archived '
+          + 'puts them on show.'
+        : 'Nothing matches that. Clear the search, or press All.' }));
       return box;
     }
     for (const r of shown) box.appendChild(doneRow(r));
@@ -1581,8 +1601,11 @@ BARRY.rootcanal = (function () {
     }
     const last = r.last || {};
     const can = !!sv || r.readable !== false;
+    const isArch = doneArchived(r);
+    if (isArch) did.push(BARRY.ui.chip('archived', { extra: 'rc-done-is-archived' }));
     return el('div', {
-      class: 'cur-shelf-row rc-done-row' + (on ? ' on' : ''),
+      class: 'cur-shelf-row rc-done-row' + (on ? ' on' : '')
+             + (isArch ? ' archived' : ''),
       'data-entry': r.entry_id,
     }, [
       el('span', { class: 'csr-name', text: doneSetName(r) }),
@@ -1606,7 +1629,19 @@ BARRY.rootcanal = (function () {
           title: can ? doneOpenWhat(r)
                      : (r.why_not || 'It cannot be read on this machine.'),
           onclick: () => openDone(r) }),
-      ]),
+        // Only a set with saved versions: they are what is archived.
+        r.saved && r.saved.artifact_id ? BARRY.ui.button({ kind: 'ghost',
+          size: 'sm', text: isArch ? 'Put back' : 'Archive',
+          extra: isArch ? 'rc-done-unarchive' : 'rc-done-archive',
+          title: isArch
+            ? 'Back in this list and in Pooled’s recordings, on every '
+              + 'machine once it syncs.'
+            : 'Archive its saved versions: the set leaves this list and '
+              + 'Pooled’s recordings stop offering them -- everyone’s, once '
+              + 'it syncs. Nothing is deleted, and a pool that has them '
+              + 'keeps them.',
+          onclick: () => archiveSingle(r, !isArch) }) : null,
+      ].filter(Boolean)),
     ]);
   }
 
@@ -3198,10 +3233,10 @@ BARRY.rootcanal = (function () {
   }
 
   function setArchived(id, on) {
-    const m = Object.assign({}, archivedBorders());
-    if (on) m[id] = { at: new Date().toISOString() };
-    else delete m[id];
-    BARRY.prefs.set(ARCH_KEY, m);
+    // Just this border (2026-11-06): the whole map was this page's copy
+    // from boot, and sending it un-archived a colleague's newer ones.
+    BARRY.prefs.mergeKey(ARCH_KEY, id,
+                         on ? { at: new Date().toISOString() } : null);
     const r = (borders || []).find((x) => x.artifact_id === id) || {};
     toast((on ? 'Archived ‘' : 'Put back ‘') + (r.nickname || r.name || id)
           + (on ? '’. It is listed under Archived borders, and can be put '
@@ -7207,7 +7242,7 @@ BARRY.rootcanal = (function () {
      artifact of its own, under a label somebody types.
      ================================================================== */
   function setView(mode) {
-    const want = mode === 'pooled' || mode === 'workflow' ? mode : 'single';
+    const want = mode === 'pooled' || mode === 'workflow' || mode === 'meta' ? mode : 'single';
     viewMode = want;
     try { localStorage.setItem(VIEW_KEY, want); } catch (e) { /* fine */ }
     press = null;
@@ -7227,6 +7262,8 @@ BARRY.rootcanal = (function () {
         ['workflow', 'Workflow', 'Define a border, apply it to a pool, extract '
                                + 'what is inside: verified dentate spikes, '
                                + 'verified P-spikes, and the ambiguous ones.'],
+        ['meta', 'Meta Workflow', 'The measurement settings that leave the fewest '
+                                + 'events ambiguous, at a grace: one answer.'],
       ], viewMode, setView, { extra: 'rc-viewseg' }),
       el('span', { class: 'hint', text: viewMode === 'pooled'
         ? 'Root Canal singles pooled into one space. Nothing here is banked; '
@@ -7234,6 +7271,9 @@ BARRY.rootcanal = (function () {
         : viewMode === 'workflow'
         ? 'Each workflow is versioned and pinned to what it read; its results '
           + 'go to the Bank as one entry.'
+        : viewMode === 'meta'
+        ? 'Each meta workflow searches the settings and keeps one answer per run, '
+          + 'as a version. Nothing is banked or changed.'
         : 'One aligned set at a time, banked as the next version of that set.' }),
     ]);
   }
@@ -7385,16 +7425,114 @@ BARRY.rootcanal = (function () {
      newest saved single, else the read here. Only one answer about a
      recording goes into a pool; the server refuses a second by name. */
   const recOf = (c) => String((c && (c.entry_id || c.gid || c.key)) || '');
-  const KIND_ORDER = { single: 0, banked: 1, read: 2, saved: 3 };
+  const KIND_ORDER = { single: 0, banked: 1, read: 2, saved: 3, unread: 4 };
   let recMemo = { sig: null, list: [], byKey: new Map(), byId: new Map(),
-                  byArt: new Map() };
+                  byArt: new Map(), mixed: false };
+  // The keys of versions nobody has read, per list of candidates.
+  let unreadMemo = { cs: null, n: -1, keys: new Set() };
+
+  /* WHICH SET A ROW IS (2026-11-06). Panning's pooled sets are offered
+     beside the DS sets, so one recording can have two rows with one
+     session label: its DS set and its Panning set. Each row says which. */
+  const SET_WORDS = { ds: 'DS set', pooled: 'Panning set' };
+  const setTypeOf = (rec) => ((rec && rec.facts.find((f) => f && f.set_type))
+                              || {}).set_type || null;
+  /* The recording a row or a member is about, as the server tells a member
+     in a pool twice: by its gid, else its bank entry. A DS set and a
+     Panning set of one recording share it. */
+  const recGid = (rec) => {
+    const f = rec && rec.facts.find((x) => x && (x.gid || x.entry_id));
+    return f ? String(f.gid || f.entry_id) : '';
+  };
+  function gidOfKey(k) {
+    const c = candOf(k)
+      || (pool.savedMembers || []).find((x) => x.key === k) || null;
+    if (c && (c.gid || c.entry_id)) return String(c.gid || c.entry_id);
+    return recGid(recOfKey(k));
+  }
+
+  /* EVERY VERSION OF A RECORDING'S SET (2026-11-06: "allow pool recordings
+     to be able of things when the single version doesn't exist... but
+     indicate it so and let it exist"). The server offers a listed
+     recording at each version of its set that nobody has read and no saved
+     single is about, under the key its read will have. It is an answer
+     like the others -- pickable, said as "no single yet" -- and pools by
+     being read first: the fit names it, the panel reads it here or on the
+     VACC at Single's settings, and pools again (`startRedo`). */
+  function unreadAnswer(c) {
+    const v = c.from_name != null ? 'v' + c.from_name : 'a version';
+    return {
+      key: c.key, kind: 'unread', cand: c, n: c.n, older: !!c.older,
+      words: 'no single yet · ' + v + ' of the set',
+      title: v + ' of the set' + (c.n != null ? ', ' + c.n + ' events in the bank' : '')
+        + ': no saved single, and no read ' + (c.read_elsewhere
+          ? 'on this machine (it was read on another)' : 'of it yet')
+        + '. It can be pooled all the same: Jarvis reads it first -- here if '
+        + 'the recording is on this computer, otherwise on the VACC -- at '
+        + 'Single’s settings as they stand, then pools.',
+    };
+  }
+
+  /* Where an answer sits on its set's history, from what the server
+     placed it at (`set_name`): a banked result at the version it was
+     banked as, a read or a saved single at the version whose stamps it
+     read. With the few words that say what it is, for the row's button and
+     its node in the picker's tree. */
+  const KIND_WORDS = { banked: 'banked', read: 'read here, not banked',
+                       unread: 'no single yet' };
+  function placeAnswer(a) {
+    const c = a.cand || {};
+    const x = a.kind === 'single' ? (a.ver || {}) : null;
+    const name = x && x.set_name !== undefined ? x.set_name : c.set_name;
+    a.set = name != null ? String(name) : null;
+    const newest = x && x.set_newest != null ? x.set_newest : c.set_newest;
+    a.setNewest = newest != null ? String(newest) : null;
+    a.setVer = (x && x.set_name !== undefined ? x.set_ver : c.set_ver) || null;
+    a.at = (x && x.at) || c.at || null;
+    a.by = (x && x.by) || c.by || null;
+    a.baseWords = a.words;
+    a.kindWords = KIND_WORDS[a.kind] || a.words;
+  }
+
+  /* What an answer is, in a few words: its kind, and whatever its row's
+     twins needed to be told apart by (a filter, a k, its events). */
+  function faceWords(a) {
+    if (!a) return '';
+    const base = a.baseWords || a.words || '';
+    const tail = a.words && base && a.words.indexOf(base) === 0
+      ? a.words.slice(base.length) : '';
+    return (a.kindWords || a.words || '') + tail;
+  }
+
+  const NO_ROWS = Object.freeze([]);   // one empty list, so the memo can match
 
   function recordings() {
-    const cs = pool.cands || [];
-    const sm = pool.savedMembers || [];
-    const sig = [cs, cs.length, sm, sm.length];
+    const cs = pool.cands || NO_ROWS;
+    const sm = pool.savedMembers || NO_ROWS;
+    /* An archived single (2026-11-06) is not offered, unless a version of
+       it is in the pool already: what is in a pool stays in it. */
+    const sArch = prefMap(SINGLE_ARCH_KEY);
+    /* Remembered by WHAT it was built from, as words (2026-11-06): the
+       archive's ids, and only the ticked answers that change the list --
+       a version of an archived single, a version nobody has read. Built
+       from the archive's object and every tick, it was rebuilt on every
+       call, and a row's tick, compared with the row it was made for,
+       never matched: ticks flipped back and Select all ticked twice. */
+    if (unreadMemo.cs !== cs || unreadMemo.n !== cs.length) {
+      unreadMemo = { cs, n: cs.length, keys: new Set(cs.filter((c) => c && c.unread)
+        .map((c) => String(c.key))) };
+    }
+    const archOf = (k) => {
+      const m = /^s:([^:]+):/.exec(k);
+      return !!(m && sArch[m[1]]);
+    };
+    const archSig = Object.keys(sArch).filter((k) => sArch[k]).sort().join('\n');
+    const selSig = pool.sel.map((m) => String(m.key))
+      .filter((k) => unreadMemo.keys.has(k) || archOf(k)).sort().join('\n');
+    const sig = [cs, cs.length, sm, sm.length, archSig, selSig];
     const was = recMemo.sig;
     if (was && sig.every((x, j) => x === was[j])) return recMemo.list;
+    const selSet = new Set(pool.sel.map((m) => String(m.key)));
     const byId = new Map(), byKey = new Map(), byArt = new Map();
     const recFor = (id, facts) => {
       let r = byId.get(id);
@@ -7426,6 +7564,9 @@ BARRY.rootcanal = (function () {
     const savedAs = new Map();           // banked key -> [saved versions]
     for (const c of cs) {
       const r = recFor(recOf(c), c);
+      /* A version of its set nobody has read yet (2026-11-06): offered so
+         the recording can be pooled at it, and read when it is pooled. */
+      if (c.unread) { add(r, unreadAnswer(c)); continue; }
       if (c.kind === 'single') {
         byArt.set(c.artifact_id, r);
         const vs = (c.versions || []).filter((x) => x.here !== false)
@@ -7441,6 +7582,8 @@ BARRY.rootcanal = (function () {
             continue;
           }
           const ns = x.n_summary || {};
+          if (sArch[c.artifact_id]
+              && !selSet.has('s:' + c.artifact_id + ':' + x.v)) continue;
           add(r, { key: 's:' + c.artifact_id + ':' + x.v, kind: 'single', cand: c,
                    ver: x, n: ns.events != null ? ns.events : c.n,
                    filt: (x.measure || {}).filter_label || null, k: x.k,
@@ -7493,6 +7636,7 @@ BARRY.rootcanal = (function () {
         session_label: m.session_label, entry_id: m.entry_id, gid: m.gid,
         mouse_key: m.mouse_key, project: m.project, banked: !!m.banked,
         mouse_type: m.mouse_type_default || m.mouse_type, kind: 'saved', n: m.n,
+        set_type: m.set_type || null,
       });
       add(r, { key: m.key, kind: 'saved', member: m, n: m.n,
                read_on: fm.read_on || 'another machine',
@@ -7502,6 +7646,8 @@ BARRY.rootcanal = (function () {
                     + 'exactly as they were saved, so it pools as saved. '
                     + 'Measuring it another way needs its read.' });
     }
+    // Where each answer sits on its set's history, for the picker's tree.
+    for (const r of byId.values()) for (const a of r.answers) placeAnswer(a);
     /* Two answers that read the same are told apart by WHAT DIFFERS
        (2026-10-20): the filter they were measured on, then how many
        clusters, then their events -- and only failing all three by a name
@@ -7509,6 +7655,24 @@ BARRY.rootcanal = (function () {
     const twins = (r) => r.answers.filter((a, j) => r.answers.some(
       (b, i) => i !== j && b.words === a.words));
     const differ = (xs, f) => new Set(xs.map(f)).size > 1;
+    // A recording whose only answers were archived singles is not offered --
+    // nor one left with only versions nobody has read (2026-11-06) -- unless
+    // one of its answers is in the pool: what is in a pool keeps its row, or
+    // its member stayed in with nothing on screen to take it out. A
+    // recording not offered is not found by its answers' keys either.
+    const ticked = (r) => r.answers.some((a) => selSet.has(String(a.key)))
+      || Array.from(selSet).some((k) => {
+        const m = /^s:([^:]+):/.exec(k);
+        return !!(m && byArt.get(m[1]) === r);
+      });
+    for (const [id, r] of Array.from(byId.entries())) {
+      if (r.answers.some((a) => a.kind !== 'unread') || ticked(r)) continue;
+      byId.delete(id);
+      for (const a of r.answers) if (byKey.get(a.key) === r) byKey.delete(a.key);
+    }
+    for (const [aid, r] of Array.from(byArt.entries())) {
+      if (byId.get(r.id) !== r) byArt.delete(aid);
+    }
     for (const r of byId.values()) {
       let tw = twins(r);
       if (tw.length && differ(tw, (a) => a.filt || '')) {
@@ -7532,15 +7696,33 @@ BARRY.rootcanal = (function () {
         }
       }
     }
+    /* Two rows about one recording -- its DS set and its Panning set
+       (2026-11-06) -- say which set in their answers' words too, so the
+       button, the warning and the search tell them apart. */
+    const perGid = new Map();
+    for (const r of byId.values()) {
+      r.setType = setTypeOf(r);
+      const g = recGid(r);
+      if (g) perGid.set(g, (perGid.get(g) || 0) + 1);
+    }
+    for (const r of byId.values()) {
+      r.twin = (perGid.get(recGid(r)) || 0) > 1;
+      const sw = SET_WORDS[r.setType];
+      if (r.twin && sw) for (const a of r.answers) a.words += ' · ' + sw;
+    }
     for (const r of byId.values()) {
       // The ones about earlier versions of the set last, under their fold.
       r.answers.sort((a, b) => (a.older ? 1 : 0) - (b.older ? 1 : 0)
         || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
       const now = r.answers.filter((a) => !a.older);
+      // A version nobody has read is offered, never the default.
+      const real = (a) => a.kind !== 'unread';
       r.def = (now.find((a) => a.kind === 'banked')
                || now.find((a) => a.kind === 'single')
                || now.find((a) => a.kind === 'read')
-               || now[0] || r.answers[0]).key;
+               || now.find(real) || r.answers.find(real)
+               // Kept only for a ticked version it does not list: none.
+               || now[0] || r.answers[0] || {}).key || null;
     }
     /* By project, then recording, in natural order (2026-10-20): they came
        in the server's string order, PTEN m2, m21, m22, m26, m51, m59, m6. */
@@ -7548,7 +7730,9 @@ BARRY.rootcanal = (function () {
     const list = Array.from(byId.values()).sort((a, b) =>
       natural((a.facts[0] || {}).project || '~', (b.facts[0] || {}).project || '~')
       || natural(lab(a), lab(b)));
-    recMemo = { sig, list, byKey, byId, byArt };
+    // More than one kind of set on offer: every row says which it is.
+    const mixed = new Set(list.map((r) => r.setType).filter(Boolean)).size > 1;
+    recMemo = { sig, list, byKey, byId, byArt, mixed };
     return recMemo.list;
   }
 
@@ -7556,6 +7740,11 @@ BARRY.rootcanal = (function () {
      listed (one measured again just now) is found by its artifact. */
   function recOfKey(key) {
     recordings();
+    return recByKey(key);
+  }
+
+  // The same, from the list as it stands (the caller brought it up to date).
+  function recByKey(key) {
     const k = String(key || '');
     if (recMemo.byKey.has(k)) return recMemo.byKey.get(k);
     const m = /^s:([^:]+):/.exec(k);
@@ -7563,16 +7752,25 @@ BARRY.rootcanal = (function () {
   }
 
   /* What of one recording is in the pool: one answer, or -- in a pool
-     opened from the shelf that was saved with two -- more. */
+     opened from the shelf that was saved with two -- more. By the
+     recording's id (2026-11-06), not the object: the list is rebuilt when
+     a tick changes it, and a row holds the recording it was drawn for. */
   function recSel(rec) {
-    return rec ? pool.sel.filter((m) => recOfKey(m.key) === rec) : [];
+    if (!rec) return [];
+    recordings();
+    return pool.sel.filter((m) => {
+      const r = recByKey(m.key);
+      return !!r && r.id === rec.id;
+    });
   }
 
   function curKey(rec) {
     const mine = recSel(rec);
     if (mine.length) return mine[0].key;
-    const want = pool.pickSrc[rec.id];
-    return want && rec.keys.has(want) ? want : rec.def;
+    // The list as it is now: the row may hold the one it was drawn from.
+    const r = recMemo.byId.get(rec.id) || rec;
+    const want = pool.pickSrc[r.id];
+    return want && r.keys.has(want) ? want : r.def;
   }
 
   /* Its answers, and any in the pool that the list does not name. */
@@ -7620,9 +7818,13 @@ BARRY.rootcanal = (function () {
     swap('.rc-sel', selectBar());
   }
 
-  /* One answer about the recording kept, the others taken out. */
-  function keepOnly(rec, key) {
-    const mine = recSel(rec);
+  /* One answer about the recording kept, the others taken out. By its id,
+     looked up when pressed (2026-11-06): the warning was drawn from a list
+     that a tick since may have rebuilt. */
+  function keepOnly(recId, key) {
+    recordings();
+    const mine = recSel(recMemo.byId.get(recId) || { id: recId });
+    if (!mine.length) return;
     const keep = mine.find((m) => m.key === key) || mine[0];
     pool.sel = pool.sel.filter((m) => m === keep || mine.indexOf(m) < 0);
     touched();
@@ -7645,14 +7847,34 @@ BARRY.rootcanal = (function () {
      about a recording that already has one in swaps it in where the other
      stood; unticking takes every answer about it out. Said in place. */
   function toggleMember(key, on) {
+    if (key == null || key === '') return;
     const rec = recOfKey(key);
     const mine = rec ? recSel(rec) : pool.sel.filter((m) => m.key === key);
     if (on) {
       if (mine.length === 1 && mine[0].key === key) return;
+      /* A recording is in a pool ONCE, as the server counts it -- by its
+         gid (2026-11-06) -- so ticking its DS set's row takes its Panning
+         set's out, and the other way about, where the two would have been
+         refused as "in this pool twice". Said, since another row unticks. */
+      const g = gidOfKey(key);
+      const other = g ? pool.sel.filter((m) => mine.indexOf(m) < 0
+                                         && gidOfKey(m.key) === g) : [];
+      if (other.length) {
+        const was = SET_WORDS[setTypeOf(recOfKey(other[0].key))];
+        const now = SET_WORDS[setTypeOf(rec)];
+        const lab = ((rec && rec.facts[0]) || {}).session_label
+          || labelOfKey(key);
+        toast(lab + ' can be in a pool once: '
+          + (now && was && now !== was
+            ? 'its ' + now + ' is in now, in place of its ' + was
+            : 'this answer is in now, in place of the other') + '.', 'ok', 6000);
+      }
+      const out = mine.concat(other);
       const entry = entryFor(key);
-      if (mine.length) {
-        pool.sel = pool.sel.filter((m) => m === mine[0] || mine.indexOf(m) < 0);
-        pool.sel.splice(pool.sel.indexOf(mine[0]), 1, entry);
+      if (out.length) {
+        const first = pool.sel.find((m) => out.indexOf(m) >= 0);
+        pool.sel = pool.sel.filter((m) => m === first || out.indexOf(m) < 0);
+        pool.sel.splice(pool.sel.indexOf(first), 1, entry);
       } else {
         pool.sel.push(entry);
       }
@@ -7669,7 +7891,9 @@ BARRY.rootcanal = (function () {
     ['subgroup', 'subgroup', (c) => c.subgroup],
     ['condition', 'condition', (c) => c.condition],
     ['project', 'project', (c) => c.project],
-    ['kind', 'kind', (c) => (c.kind === 'single' ? 'saved'
+    // A version nobody has read is no kind of answer a chip could pick out:
+    // every recording has some (2026-11-06).
+    ['kind', 'kind', (c) => (c.unread ? null : c.kind === 'single' ? 'saved'
                              : c.banked ? 'banked' : 'read here')],
   ];
 
@@ -7694,7 +7918,8 @@ BARRY.rootcanal = (function () {
       const hay = rec.facts.map((c) => [c.session_label, c.mouse_key, c.group,
                                          c.subgroup, c.condition, c.project,
                                          c.nickname, c.entry_id]
-        .filter(Boolean).join(' ')).concat(rec.answers.map((a) => a.words))
+        .filter(Boolean).join(' ')).concat(rec.answers
+          .filter((a) => a.kind !== 'unread').map((a) => a.words))
         .join(' ').toLowerCase();
       if (text.split(/\s+/).some((w) => hay.indexOf(w) < 0)) return false;
     }
@@ -7757,7 +7982,6 @@ BARRY.rootcanal = (function () {
     }).filter(Boolean);
     const names = Array.from(new Set([].concat(...cs.map(namesOf)))).sort();
     const recs = recordings();
-    const nShown = recs.filter(recShown).length;
     return el('div', { class: 'rc-sel' }, [
       el('div', { class: 'rc-sel-top' }, [
         BARRY.ui.searchField({ placeholder: 'Find a recording, mouse or nickname',
@@ -7769,17 +7993,39 @@ BARRY.rootcanal = (function () {
             swap('.rc-pool-cands', membersTable());
             shownCount();
           } }),
-        el('span', { class: 'hint rc-sel-n', text: nShown + ' of '
-                     + recs.length + ' recordings shown' }),
+        el('span', { class: 'hint rc-sel-n', text: shownWords(recs) }),
         el('span', { class: 'spacer' }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
-          text: 'Select all ' + nShown + ' shown', extra: 'rc-sel-all',
+          text: 'Select all ' + nRecs(recs.filter(recShown)) + ' shown', extra: 'rc-sel-all',
           title: 'Tick every recording the search and the chips show, one '
                + 'answer each: the one its row offers. Ones they hide keep '
-               + 'whatever they had.',
+               + 'whatever they had. A recording with a DS set and a Panning '
+               + 'set goes in once: as its Panning set -- the newer, curated '
+               + 'one -- unless its DS set is ticked already.',
+          /* In by the recording's id and its gid, as the server counts
+             (2026-11-06): compared with rows from a list each tick
+             rebuilt, every one looked unticked and went in again ("same
+             member twice"), and a DS set and a Panning set of one
+             recording both went in ("in this pool twice"). */
           onclick: () => {
-            for (const rec of recordings().filter(recShown)) {
-              if (!recSel(rec).length) pool.sel.push(entryFor(curKey(rec)));
+            const ids = new Set(), gids = new Set();
+            for (const m of pool.sel) {
+              const r = recOfKey(m.key);
+              if (r) ids.add(r.id);
+              const g = gidOfKey(m.key);
+              if (g) gids.add(g);
+            }
+            const shown = recordings().filter(recShown);
+            const order = shown.filter((r) => r.setType === 'pooled')
+              .concat(shown.filter((r) => r.setType !== 'pooled'));
+            for (const rec of order) {
+              const g = recGid(rec);
+              if (ids.has(rec.id) || (g && gids.has(g))) continue;
+              const k = curKey(rec);
+              if (!k) continue;
+              pool.sel.push(entryFor(k));
+              ids.add(rec.id);
+              if (g) gids.add(g);
             }
             touched();
           } }),
@@ -7800,16 +8046,28 @@ BARRY.rootcanal = (function () {
     ].filter(Boolean));
   }
 
+  /* Recordings, not rows (2026-11-07): a recording with a DS set and a
+     Panning set is two rows and one recording, and goes into a pool once. */
+  function nRecs(list) {
+    return new Set(list.map((r) => recGid(r) || r.id)).size;
+  }
+  function shownWords(recs) {
+    const sh = recs.filter(recShown);
+    const nr = nRecs(sh);
+    return nr + ' of ' + nRecs(recs) + ' recordings shown'
+      + (sh.length !== nr ? ' (' + sh.length + ' rows: some have a DS set and a '
+         + 'Panning set)' : '');
+  }
+
   /* The counts the search changes, where they stand. */
   function shownCount() {
     const box = host();
     if (!box) return;
     const recs = recordings();
-    const n = recs.filter(recShown).length;
     const say = box.querySelector('.rc-sel-n');
-    if (say) say.textContent = n + ' of ' + recs.length + ' recordings shown';
+    if (say) say.textContent = shownWords(recs);
     const all = box.querySelector('.rc-sel-all');
-    if (all) all.textContent = 'Select all ' + n + ' shown';
+    if (all) all.textContent = 'Select all ' + nRecs(recs.filter(recShown)) + ' shown';
   }
 
   /* The recordings, one row each (2026-10-19), and under a row that holds
@@ -7835,19 +8093,35 @@ BARRY.rootcanal = (function () {
     const f = rec.facts[0] || {};
     const label = f.session_label || f.entry_id || rec.id;
     const fromSave = rec.answers.every((a) => a.kind === 'saved');
+    /* Which set it is (2026-11-06): said wherever a Panning set is on
+       offer, so a recording's DS set and Panning set, one label each, are
+       told apart at a glance. */
+    const sw = SET_WORDS[rec.setType] || null;
+    const showSet = !!sw && (recMemo.mixed || rec.twin || rec.setType === 'pooled');
     const tr = el('tr', { class: 'rc-rec-row' + (fromSave ? ' rc-from-save' : ''),
                           'data-rec': rec.id }, [
-      el('td', {}, [el('input', {
-        type: 'checkbox', class: 'rc-pool-pick', 'aria-label': 'Pool ' + label,
+      // A real checkbox, drawn as the house's tick (`.rc-tick`, 2026-11-06).
+      el('td', { class: 'rc-tick-cell' }, [el('input', {
+        type: 'checkbox', class: 'rc-pool-pick rc-tick',
+        'aria-label': 'Pool ' + label + (showSet ? ', its ' + sw : ''),
         onchange: (ev2) => toggleMember(curKey(rec), ev2.target.checked),
       })]),
       el('td', { class: 'rc-rec-name', text: label,
-        title: [f.session_label, f.group ? 'Group ' + f.group : null,
+        title: [f.session_label, showSet ? 'Its ' + sw : null,
+                f.group ? 'Group ' + f.group : null,
                 f.subgroup ? 'Subgroup ' + f.subgroup : null,
                 f.condition ? 'Condition ' + f.condition
                   + (f.condition_from ? ' (' + f.condition_from + ')' : '') : null,
                 f.facts_from ? 'Group from the ' + f.facts_from : null]
-          .filter(Boolean).join('\n') }),
+          .filter(Boolean).join('\n') }, showSet ? [' ', BARRY.ui.chip(sw, {
+            flag: true, extra: 'rc-rec-set rc-rec-set-' + rec.setType,
+            title: (rec.setType === 'pooled'
+              ? 'Panning’s pooled set of this recording.'
+              : 'The DS set of this recording.')
+              + (rec.twin ? ' Another row is about this recording too, and a '
+                + 'recording can be in a pool once: ticking one takes the '
+                + 'other out.' : '') })]
+          : []),
       el('td', { text: f.mouse_key || '' }),
       el('td', { text: [f.group, f.subgroup && f.subgroup !== f.group
                         ? f.subgroup : null].filter(Boolean).join(' · ')
@@ -7861,8 +8135,8 @@ BARRY.rootcanal = (function () {
   }
 
   /* A row brought up to date in place: its tick, which answer it shows,
-     the chips saying what that answer is, and its events. The choice is
-     only rebuilt when its options change, so it keeps its focus. */
+     the chips saying what that answer is, and its events. Its button is
+     made once and only its face is said again, so it keeps its focus. */
   function fillRow(tr, rec) {
     const mine = recSel(rec);
     const key = curKey(rec);
@@ -7871,49 +8145,31 @@ BARRY.rootcanal = (function () {
     const sig = JSON.stringify([mine.map((m) => m.key), key,
                                 as.map((x) => x.key)]);
     if (tr.__sig === sig) return;
-    const optsSig = JSON.stringify(as.map((x) => x.key));
     const on = mine.length > 0;
     tr.classList.toggle('on', on);
-    tr.dataset.key = key;
+    tr.dataset.key = key || '';
     const cb = tr.querySelector('.rc-pool-pick');
     if (cb && cb.checked !== on) cb.checked = on;
     const cell = tr.querySelector('.rc-rec-answer');
-    const pick = cell && cell.querySelector('.rc-rec-src');
-    if (cell && (!pick || tr.__opts !== optsSig)) {
+    let btn = cell && cell.querySelector('.rc-ans-btn');
+    if (cell && !btn) {
       cell.innerHTML = '';
-      const opt = (x) => el('option', { value: x.key, title: x.title || null,
-                                        text: x.words });
-      const now = as.filter((x) => !x.older);
-      const old = as.filter((x) => x.older);
-      /* Answers about earlier versions of the set -- banked from an older
-         version, a read of older stamps -- under a fold of their own at the
-         bottom (2026-10-20), so the ones about the set as it is come first. */
-      cell.appendChild(as.length > 1
-        ? el('select', {
-            class: 'rc-in rc-rec-src',
-            'aria-label': 'Which answer about '
-                          + ((rec.facts[0] || {}).session_label || rec.id),
-            onchange: (ev2) => setRecAnswer(rec, ev2.target.value),
-          }, now.map(opt).concat(old.length ? [el('optgroup', {
-            label: 'Older: about earlier versions of the set' },
-            old.map(opt))] : []))
-        : el('span', { class: 'rc-rec-one' }, [answerChip(a)]));
+      btn = el('button', { type: 'button', class: 'vbtn rc-ans-btn',
+                           'aria-haspopup': 'dialog',
+                           onclick: () => answerPop(rec.id) });
+      cell.appendChild(btn);
       cell.appendChild(el('span', { class: 'rc-rec-chips' }));
     }
-    const sel2 = cell && cell.querySelector('.rc-rec-src');
-    if (sel2) {
-      if (sel2.value !== key) sel2.value = key;
-      sel2.title = (a && a.title) || '';
-    }
+    if (btn) answerFace(btn, rec, a, as);
     const chips = cell && cell.querySelector('.rc-rec-chips');
     if (chips) {
       chips.innerHTML = '';
       for (const n of answerChips(a)) chips.appendChild(n);
     }
+    // Its events, the chosen answer's: a version not read yet says so.
     const ev = tr.querySelector('.rc-rec-n');
-    if (ev) ev.textContent = a && a.n != null ? String(a.n) : '';
+    if (ev) fillEvents(ev, a);
     tr.__sig = sig;
-    tr.__opts = optsSig;
     // Two answers about it in the pool: the warning under the row.
     const next = tr.nextElementSibling;
     const dup = next && next.classList.contains('rc-rec-dup') ? next : null;
@@ -7925,19 +8181,188 @@ BARRY.rootcanal = (function () {
     }
   }
 
-  /* An answer that is the only one, said as a chip. */
-  function answerChip(a) {
-    if (!a) return null;
+  /* THE ROW'S CHOICE OF ANSWER (2026-11-06: "No drop down. Follow the
+     modern UI Git selection look with branch history"). A button saying
+     which version of the set the answer is about and what it is -- "v16
+     saved v2 · named", "v8 no single yet" -- with how many answers there
+     are; pressed, it opens the set's versions as a tree (`answerPop`). It
+     was a <select> whose options were long sentences. */
+  function answerFace(btn, rec, a, as) {
+    const label = (rec.facts[0] || {}).session_label || rec.id;
+    const words = faceWords(a);
+    btn.innerHTML = '';
+    [a && a.set != null ? el('strong', { class: 'vbtn-n', text: 'v' + a.set })
+                        : null,
+     el('span', { class: 'rc-ans-kind' + (a && a.kind === 'unread'
+                    ? ' rc-ans-unread' : a && a.kind === 'read' ? ' rc-ans-read' : ''),
+                  text: words || 'choose an answer' }),
+     el('span', { class: 'vbtn-more', text: as.length > 1
+                    ? as.length + ' answers' : 'its only answer' }),
+     el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }),
+    ].filter(Boolean).forEach((k) => btn.appendChild(k));
+    btn.dataset.key = a ? a.key : '';
+    btn.setAttribute('aria-label', 'Which answer about ' + label + ': '
+                     + (a && a.set != null ? 'v' + a.set + ', ' : '') + words);
+    btn.title = ((a && a.title) ? a.title + '\n\n' : '')
+      + 'Press for every version of this recording’s set, as a tree, with '
+      + 'each answer on the version it is about.';
+  }
+
+  /* The events column: the chosen answer's events. A version nobody has
+     read is its count in the bank, said as such. */
+  function fillEvents(td, a) {
+    td.innerHTML = '';
+    td.title = '';
+    if (!a || a.n == null) return;
+    td.appendChild(el('span', { class: 'rc-rec-n-v',
+                                text: Number(a.n).toLocaleString() }));
+    if (a.kind === 'unread') {
+      td.appendChild(el('span', { class: 'rc-rec-n-say',
+                                  text: 'in the bank, not read yet' }));
+      td.title = a.n + ' events in ' + (a.set != null ? 'v' + a.set : 'this version')
+        + ' of the set, as the bank holds them. Nothing has read it yet: '
+        + 'this is the count it will be read with.';
+    }
+  }
+
+  /* What picking an answer does, in a line under its node. */
+  function answerLine(a) {
+    const c = a.cand || {};
+    if (a.kind === 'unread') {
+      return 'No single yet — read when pooled: Jarvis reads '
+        + (a.set != null ? 'v' + a.set + '’s' : 'its') + ' stamps here (or on '
+        + 'the VACC) at Single’s settings, then pools.';
+    }
+    if (a.kind === 'banked') {
+      return 'Its banked result' + (c.from_name ? ', read from v' + c.from_name : '')
+        + (c.filter_label ? ', on ' + String(c.filter_label).split(',')[0] : '')
+        + ': pools the banked numbers and reads no recording.';
+    }
+    if (a.kind === 'single') {
+      const f = a.filt ? ', measured on ' + String(a.filt).split(',')[0] : '';
+      return 'A saved single' + f + ': pools its own saved numbers.';
+    }
     if (a.kind === 'read') {
-      return BARRY.ui.chip('read here, not banked', { flag: true, kind: 'warn',
-                                                      title: a.title });
+      return 'A read cached here, not banked: fitted at Single’s settings '
+        + 'when it is pooled.';
     }
     if (a.kind === 'saved') {
-      return BARRY.ui.chip(a.member && a.member.banked ? 'banked' : 'not banked',
-                           { flag: true, kind: a.member && a.member.banked
-                             ? null : 'warn', title: a.title });
+      return 'Read on ' + (a.read_on || 'another machine') + ': pools from the '
+        + 'saved pool, number for number.';
     }
-    return BARRY.ui.chip(a.words, { flag: true, title: a.title });
+    return '';
+  }
+
+  /* THE TREE (2026-11-06). Every version of the recording's set, newest at
+     the top and drawn as the house draws a lineage (`BARRY.ui.versionTree`,
+     constitution §6e) -- a lane per line, a branch joined to the version it
+     was worked from -- with each answer as a node on the version it is
+     about: its banked result, a saved single, a read here, or, where there
+     is none, the version itself, "no single yet", read when it is pooled.
+     The one in use is lit; pressing another uses it (`setRecAnswer`). The
+     ones about earlier versions of the set sit under their own heading, as
+     the old fold had them. An answer the server could not place on the
+     history (a member read elsewhere, kept in a saved pool) is listed
+     under the tree. */
+  function answerPop(recId) {
+    recordings();
+    const rec = recMemo.byId.get(recId);
+    if (!rec) return;
+    const as = answersOf(rec);
+    const key = curKey(rec);
+    const label = (rec.facts[0] || {}).session_label || rec.id;
+    const byKey = new Map(as.map((a) => [a.key, a]));
+    const inPool = new Set(recSel(rec).map((m) => m.key));
+    const ticked = inPool.size > 0;
+    const placed = as.filter((a) => a.set != null);
+    const loose = as.filter((a) => a.set == null);
+    const newest = (as.find((a) => a.setNewest != null) || {}).setNewest || null;
+    const pick = (k) => {
+      closeModal();
+      recordings();
+      const r2 = recMemo.byId.get(recId);
+      if (r2) setRecAnswer(r2, k);
+      const b = host() && host().querySelector('tr.rc-rec-row[data-rec="'
+        + CSS.escape(recId) + '"] .rc-ans-btn');
+      if (b) b.focus();
+    };
+    const kindChip = (a) => BARRY.ui.chip(faceWords(a), {
+      flag: true, extra: 'rc-ans-kind-chip',
+      kind: a.kind === 'unread' || a.kind === 'read' ? 'warn' : null });
+    const kids = [];
+    if (placed.length) {
+      const tree = BARRY.ui.versionTree({
+        versions: placed.map((a) => Object.assign({}, a.setVer || {}, {
+          name: a.set, key: a.key, n: a.n,
+          at: a.at || (a.setVer || {}).at || null,
+          by: a.by || (a.setVer || {}).by || null,
+          note: null, archived: false, snap_elsewhere: false })),
+        value: key,
+        idOf: (v) => v.key,
+        unit: 'events',
+        disabled: () => null,
+        state: (v) => (inPool.has(v.key) ? ['in the pool'] : []),
+        line: (v) => answerLine(byKey.get(v.key) || {}),
+        onpick: (v) => pick(v.key),
+      });
+      const rows = Array.from(tree.querySelectorAll('.vtree-row'));
+      rows.forEach((row) => {
+        const a = byKey.get(row.dataset.ref);
+        if (!a) return;
+        row.classList.add('rc-ans-row');
+        if (a.kind === 'unread') row.classList.add('rc-ans-unread-row');
+        row.title = a.title || '';
+        const n = row.querySelector('.vtree-n');
+        row.insertBefore(kindChip(a), n ? n.nextSibling : row.firstChild);
+      });
+      /* The ones about earlier versions under a heading of their own: where
+         the tree's order puts every one of them after the newest. */
+      const at = rows.findIndex((row) => (byKey.get(row.dataset.ref) || {}).set
+                                         !== newest);
+      if (newest != null && at > 0 && rows.slice(at).every((row) =>
+        (byKey.get(row.dataset.ref) || {}).set !== newest)) {
+        rows[at].parentNode.insertBefore(el('div', { class: 'rc-ans-older',
+          text: 'Older: about earlier versions of the set' }), rows[at]);
+      }
+      kids.push(tree);
+      requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
+    }
+    if (loose.length) {
+      kids.push(el('div', { class: 'rc-ans-older', text: placed.length
+        ? 'Not placed on the set’s history here' : 'Its answers' }));
+      kids.push(el('div', { class: 'vtree rc-ans-loose', role: 'radiogroup' },
+        loose.map((a) => el('button', {
+          type: 'button', role: 'radio',
+          class: 'vtree-row rc-ans-row' + (a.key === key ? ' on' : ''),
+          'aria-checked': a.key === key ? 'true' : 'false',
+          'data-ref': a.key, title: a.title || null,
+          onclick: () => pick(a.key),
+        }, [
+          kindChip(a),
+          a.n != null ? el('span', { class: 'vtree-count',
+            text: Number(a.n).toLocaleString() + ' events' }) : null,
+          inPool.has(a.key) ? el('span', { class: 'vtree-state',
+                                           text: 'in the pool' }) : null,
+          el('span', { class: 'vtree-line', text: answerLine(a) }),
+        ].filter(Boolean)))));
+    }
+    showModal(el('div', { class: 'vpop rc-ans-pop', 'data-rec': recId }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Which answer about ' + label }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint vpop-how', text: 'Every version of this '
+          + 'recording’s set, newest at the top, with each answer about it on '
+          + 'its version; a branch sits in a lane of its own, joined to the '
+          + 'version it was worked from. A version with no single yet can be '
+          + 'pooled too: it is read first, at Single’s settings. Press one to '
+          + (ticked ? 'pool it in place of the one in the pool.'
+                    : 'use it; ticking the row pools it.') }),
+      ].concat(kids)),
+      BARRY.ui.modalFoot([], [BARRY.ui.button({ kind: 'ghost', text: 'Close',
+                                                onclick: () => closeModal() })]),
+    ]));
   }
 
   /* What else is worth knowing about the answer shown: the filter a saved
@@ -7961,7 +8386,11 @@ BARRY.rootcanal = (function () {
       a.older
         ? BARRY.ui.chip('older version', { flag: true, kind: 'warn',
             extra: 'rc-cand-older', title: a.title }) : null,
-      c && c.here === false
+      // A version nobody has read: said, and still pooled (2026-11-06).
+      a.kind === 'unread'
+        ? BARRY.ui.chip('read when pooled', { flag: true, kind: 'warn',
+            extra: 'rc-cand-unread', title: a.title }) : null,
+      c && c.here === false && a.kind !== 'unread'
         ? BARRY.ui.chip('read elsewhere', { flag: true,
             title: 'Its numbers can be pooled; its traces are on another '
                  + 'machine, and Jarvis reads it here when they are asked '
@@ -7972,10 +8401,15 @@ BARRY.rootcanal = (function () {
     ].filter(Boolean);
   }
 
-  /* The warning under a row holding two answers about one recording. */
-  function dupRow(rec, mine) {
+  /* The warning under a row holding two answers about one recording. Its
+     words from the list as it is now, and its presses name the recording
+     by id (2026-11-06), not the row object it was drawn for. */
+  function dupRow(rec0, mine) {
+    recordings();
+    const rec = recMemo.byId.get(rec0.id) || rec0;
     const ws = mine.map((m) => (answerOf(rec, m.key) || { words: m.key }).words);
     const n = mine.length;
+    const recId = rec.id;
     return el('tr', { class: 'rc-rec-dup', 'data-rec': rec.id }, [
       el('td', { colspan: '7' }, [el('div', { class: 'rc-dup' }, [
         el('p', { class: 'rc-dup-say', text: 'This pool holds ' + n
@@ -7986,7 +8420,7 @@ BARRY.rootcanal = (function () {
           kind: 'mini', extra: 'rc-dup-keep', text: 'Keep this one: ' + ws[j],
           title: 'Keeps ' + ws[j] + ' and takes the other answer'
                + (n === 2 ? '' : 's') + ' about this recording out of the pool.',
-          onclick: () => keepOnly(rec, m.key) }))),
+          onclick: () => keepOnly(recId, m.key) }))),
       ])]),
     ]);
   }
@@ -8351,11 +8785,19 @@ BARRY.rootcanal = (function () {
       if (toRead.length && toRead.length === away.length
           && pool.autoRedoFor !== ask) {
         pool.autoRedoFor = ask;
-        toast('Reading ' + toRead.length + ' recording'
+        // Versions nobody has read yet are read for the first time.
+        const nNew = toRead.filter(isUnreadKey).length;
+        toast(nNew === toRead.length
+          ? 'Reading ' + nNew + ' version' + (nNew === 1 ? '' : 's') + ' with no '
+            + 'single yet, here or on the VACC, at Single’s settings. The pool '
+            + 'fits again when ' + (nNew === 1 ? 'it lands' : 'they land') + '.'
+          : 'Reading ' + toRead.length + ' recording'
               + (toRead.length === 1 ? '' : 's') + ' here so '
               + (toRead.length === 1 ? 'it' : 'they') + ' can be measured the '
-              + 'pool’s way -- ' + (toRead.length === 1 ? 'its read was' : 'their '
-              + 'reads were') + ' made on another machine. The pool fits again '
+              + 'pool’s way -- ' + (nNew ? nNew + ' with no read yet, the '
+                + 'others read on another machine'
+                : (toRead.length === 1 ? 'its read was' : 'their reads were')
+                  + ' made on another machine') + '. The pool fits again '
               + 'when ' + (toRead.length === 1 ? 'it lands' : 'they land') + '.',
               null, 9000);
         render();
@@ -9237,7 +9679,7 @@ BARRY.rootcanal = (function () {
                       + 'pools, pool them, and save that under a label.' }),
       ]));
     } else {
-      kids.push(foldersBar());
+      kids.push(foldersBar(list));
       kids.push(folderedList(list, 'rc-dshelf-list', (p, folders) => {
         const id = p.artifact_id || p.id;
         const cur = p.current || {};
@@ -9285,13 +9727,22 @@ BARRY.rootcanal = (function () {
         + 'called it (its v0); the identity switch below is counted against '
         + 'that, and against what its single called it. Pools measured '
         + 'differently, or sharing a session, are refused by name.' })];
-    const list = pool.shelf || [];
-    if (!list.length) {
-      kids.push(el('p', { class: 'hint', text: 'No pool has been saved yet. '
-        + 'Pool recordings first, and save the pools.' }));
-    }
     const selOfPool = (id) => pool.sel.find((m) => String(m.key)
       .indexOf('P:' + id + ':') === 0) || null;
+    // An archived pool, or one in an archived folder, is not offered --
+    // unless it is ticked already: what is in a pool stays in it.
+    const folders = poolFolders();
+    const list = (pool.shelf || []).filter((p) => {
+      const id = p.artifact_id || p.id;
+      return !poolHidden(id, folders) || !!selOfPool(id);
+    });
+    if (!list.length) {
+      kids.push(el('p', { class: 'hint', text: (pool.shelf || []).length
+        ? 'Every saved pool is archived. Put one back from the saved pools '
+          + 'of recordings (Show archived).'
+        : 'No pool has been saved yet. Pool recordings first, and save the '
+          + 'pools.' }));
+    }
     if (list.length) {
       kids.push(el('table', { class: 'tbl rc-pool-pools' }, [
         el('thead', {}, [el('tr', {}, ['', 'pool', 'version', 'recordings',
@@ -9307,7 +9758,9 @@ BARRY.rootcanal = (function () {
           const pp = (vrow && vrow.params) || {};
           const tr = el('tr', { class: sm ? 'on' : null, 'data-pool': id }, [
             /* A tick changes its row where it stands (2026-10-19). */
-            el('td', {}, [el('input', { type: 'checkbox', class: 'rc-pool-pick',
+            el('td', { class: 'rc-tick-cell' }, [el('input', { type: 'checkbox',
+              class: 'rc-pool-pick rc-tick',
+              'aria-label': 'Pool ' + (p.nickname || p.name || id),
               checked: sm ? 'checked' : null,
               onchange: (ev2) => {
                 if (ev2.target.checked && !selOfPool(id)) {
@@ -9457,11 +9910,17 @@ BARRY.rootcanal = (function () {
   const foldShut = {};          // folders folded shut, this sitting
   let foldEdit = null;          // { id: null for a new one, text }
 
+  /* ONE EMPTY MAP for every pref nobody has set (2026-11-06). A fresh {}
+     each call made the pool's list of recordings, which remembers what it
+     was built from, never the same twice: ticks flipped back. Frozen,
+     because every writer copies it first (`writeArchived`, `putInFolder`). */
+  const PREF_EMPTY = Object.freeze({});
+
   function prefMap(k) {
     try {
-      return (BARRY.prefs && BARRY.prefs.get(k, {})) || {};
+      return (BARRY.prefs && BARRY.prefs.get(k, PREF_EMPTY)) || PREF_EMPTY;
     } catch (e) {
-      return {};
+      return PREF_EMPTY;
     }
   }
 
@@ -9472,8 +9931,9 @@ BARRY.rootcanal = (function () {
     for (const id of Object.keys(m)) {
       const f = m[id];
       if (!f || f.gone) continue;
+      // An archived one is still a folder: its pools stay in it.
       out.push({ id: id, name: f.name || 'Untitled folder', at: f.at,
-                 by: f.by });
+                 by: f.by, archived: !!f.archived });
     }
     if (!m[PRELIM.id]) out.push({ id: PRELIM.id, name: PRELIM.name });
     out.sort((a, b) => natural(a.name, b.name));
@@ -9499,9 +9959,9 @@ BARRY.rootcanal = (function () {
   }
 
   function putInFolder(id, fid, quiet) {
-    const m = Object.assign({}, prefMap(IN_KEY));
-    m[id] = fid || '';
-    BARRY.prefs.set(IN_KEY, m);
+    // Just this pool (2026-11-06): the whole map was this page's copy from
+    // boot, and sending it undid a colleague's newer filings.
+    BARRY.prefs.mergeKey(IN_KEY, id, fid || '');
     BARRY.activity.log('rootcanal.pool_folder', { artifact: id,
                                                   folder: fid || null });
     if (!quiet) {
@@ -9514,17 +9974,119 @@ BARRY.rootcanal = (function () {
   }
 
   function writeFolder(id, fields) {
-    const m = Object.assign({}, prefMap(FOLD_KEY));
-    m[id] = Object.assign({}, m[id] || {}, fields, {
-      at: new Date().toISOString(),
-      by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
-          || null });
-    BARRY.prefs.set(FOLD_KEY, m);
+    // Just this folder's record (2026-11-06), not the whole map from boot,
+    // which deleted every folder a colleague had made since.
+    BARRY.prefs.mergeKey(FOLD_KEY, id,
+      Object.assign({}, prefMap(FOLD_KEY)[id] || {}, fields, {
+        at: new Date().toISOString(),
+        by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+            || null }));
   }
 
   function newFolderId() {
     return 'f' + Date.now().toString(36)
       + Math.floor(Math.random() * 1679616).toString(36);
+  }
+
+  /* ARCHIVED POOLS, SINGLES AND FOLDERS (2026-11-06: "add an archive
+     option for all the Root Canal single/pools/folders"). The borders'
+     way: an archived one leaves its lists -- everyone's, once it syncs --
+     and nothing is deleted; Show archived puts it back on show, faded,
+     with Put back. Kept in shared preferences merged per id
+     (backend/store.py PREFS_SPEC):
+       rootcanal_pool_archive    {pool artifact id: {at, by}}
+       rootcanal_single_archive  {single artifact id: {at, by}}
+     and a folder as `archived: true` (with `archived_at`) on its own record
+     in rootcanal_pool_folders -- not `gone`, which is a delete. An archived
+     folder keeps its pools: they are out of sight with it, and back with
+     it. */
+  const POOL_ARCH_KEY = 'rootcanal_pool_archive';
+  const SINGLE_ARCH_KEY = 'rootcanal_single_archive';
+  const archShow = { pools: false, singles: false };   // this sitting
+
+  const whoNow = () => (BARRY.profile && BARRY.profile.who
+                        && BARRY.profile.who()) || null;
+
+  function writeArchived(key, id, on) {
+    // Just this id (2026-11-06): the whole map was this page's copy from
+    // boot, and sending it un-archived what a colleague archived since.
+    BARRY.prefs.mergeKey(key, id,
+                         on ? { at: new Date().toISOString(), by: whoNow() }
+                            : null);
+  }
+
+  /* Out of sight: archived itself, or in a folder that is. */
+  function poolHidden(id, folders) {
+    if (prefMap(POOL_ARCH_KEY)[id]) return true;
+    const fs = folders || poolFolders();
+    const fid = folderOf(id, fs);
+    const f = fid ? fs.find((x) => x.id === fid) : null;
+    return !!(f && f.archived);
+  }
+
+  function archivePool(p, on) {
+    const id = p.artifact_id || p.id;
+    writeArchived(POOL_ARCH_KEY, id, on);
+    const name = p.nickname || p.name || id;
+    toast(on ? 'Archived ‘' + name + '’. It is out of the saved pools -- '
+               + 'everyone’s, once it syncs -- and nothing is deleted: '
+               + 'Show archived puts it back on show.'
+             : 'Put back ‘' + name + '’.', 'ok', 6000);
+    BARRY.activity.log('rootcanal.pool_archive', { artifact: id,
+                                                   archived: !!on });
+    render();
+  }
+
+  function archiveFolder(f, on) {
+    writeFolder(f.id, on ? { name: f.name, archived: true,
+                             archived_at: new Date().toISOString() }
+                         : { name: f.name, archived: false,
+                             archived_at: null });
+    toast(on ? 'Archived the folder ‘' + f.name + '’. Its pools stay in '
+               + 'it and are out of sight with it; nothing is deleted. '
+               + 'Show archived puts it back on show.'
+             : 'Put back the folder ‘' + f.name + '’, with its pools.',
+          'ok', 6000);
+    BARRY.activity.log('rootcanal.pool_folder_archive', {
+      folder: f.id, name: f.name, archived: !!on });
+    render();
+  }
+
+  /* A saved single is archived by its artifact: in Single's list of what
+     was done it is that set's row, and in Pooled's recordings it is no
+     longer offered (one already in a pool stays in it). */
+  const singleShelved = (aid) => !!(aid && prefMap(SINGLE_ARCH_KEY)[aid]);
+
+  function archiveSingle(r, on) {
+    const aid = r.saved && r.saved.artifact_id;
+    if (!aid) return;
+    writeArchived(SINGLE_ARCH_KEY, aid, on);
+    toast(on ? 'Archived the saved versions of ‘' + doneLabel(r) + '’. They '
+               + 'are out of this list and out of Pooled’s recordings -- '
+               + 'everyone’s, once it syncs -- and nothing is deleted: '
+               + 'Show archived puts them back on show.'
+             : 'Put back the saved versions of ‘' + doneLabel(r) + '’.',
+          'ok', 6000);
+    BARRY.activity.log('rootcanal.single_archive', { artifact: aid,
+                                                     entry: r.entry_id,
+                                                     archived: !!on });
+    doneQ.rev += 1;
+    doneFill();
+  }
+
+  /* Show archived · N, for a shelf: its archived pools and every archived
+     folder. Shown only while there is something archived. */
+  function archToggle(n, which, extra) {
+    if (!n && !archShow[which]) return null;
+    return BARRY.ui.button({ kind: 'ghost', size: 'sm',
+      text: (archShow[which] ? 'Hide' : 'Show') + ' archived · ' + n,
+      extra: extra,
+      title: archShow[which] ? 'Hide the archived ones again.'
+        : 'Show the archived ones, faded, each with Put back.',
+      onclick: () => {
+        archShow[which] = !archShow[which];
+        if (which === 'singles') { doneQ.rev += 1; doneFill(); } else render();
+      } });
   }
 
   /* Made or renamed from the line it is typed on. A name already taken is
@@ -9573,9 +10135,13 @@ BARRY.rootcanal = (function () {
     render();
   }
 
-  /* Above the folders: making one. */
-  function foldersBar() {
+  /* Above the folders: making one, and Show archived · N -- the shelf's
+     archived pools and every archived folder. */
+  function foldersBar(list) {
     const typing = foldEdit && !foldEdit.id;
+    const arch = prefMap(POOL_ARCH_KEY);
+    const nArch = (list || []).filter((p) => arch[p.artifact_id || p.id]).length
+      + poolFolders().filter((f) => f.archived).length;
     return el('div', { class: 'rc-folders-bar' }, [
       typing ? folderInput('Name the new folder') : null,
       typing ? BARRY.ui.button({ kind: 'mini', text: 'Make it',
@@ -9587,6 +10153,7 @@ BARRY.rootcanal = (function () {
         title: 'A folder for saved pools, on this shelf and the pools-of-'
              + 'pools one. Drag pools onto it.',
         onclick: () => { foldEdit = { id: null, text: '' }; render(); } }),
+      typing ? null : archToggle(nArch, 'pools', 'rc-show-arch'),
       el('span', { class: 'hint', text: typing ? ''
         : 'Drag a pool onto a folder to file it.' }),
     ].filter(Boolean));
@@ -9619,17 +10186,22 @@ BARRY.rootcanal = (function () {
   const FOLDER_OPEN_SVG = '<path d="M1.5 3.5h4.5l1.5 1.5h6v2M1.5 3.5v9h11.2'
     + 'l2-5.5H3.7l-2.2 5.5" />';
 
-  /* A shelf's pools, in their folders, and the ones in none last. */
+  /* A shelf's pools, in their folders, and the ones in none last. An
+     archived pool, and an archived folder with every pool in it, are left
+     out unless Show archived is on. */
   function folderedList(list, cls, rowOf) {
     const folders = poolFolders();
+    const arch = prefMap(POOL_ARCH_KEY);
     const groups = new Map(folders.map((f) => [f.id, []]));
     const loose = [];
     for (const p of list) {
+      if (arch[p.artifact_id || p.id] && !archShow.pools) continue;
       const fid = folderOf(p.artifact_id || p.id, folders);
       (fid && groups.has(fid) ? groups.get(fid) : loose).push(p);
     }
     const box = el('div', { class: 'rc-folders ' + cls });
     for (const f of folders) {
+      if (f.archived && !archShow.pools) continue;
       box.appendChild(folderBox(f, groups.get(f.id), rowOf, folders));
     }
     box.appendChild(folderBox({ id: '', name: 'Not in a folder' }, loose,
@@ -9660,7 +10232,20 @@ BARRY.rootcanal = (function () {
         onclick: () => { foldEdit = null; render(); } }) : null,
       el('span', { class: 'flagchip rc-folder-n',
                    text: n + ' pool' + (n === 1 ? '' : 's') }),
+      f.archived ? BARRY.ui.chip('archived', { extra: 'rc-folder-is-archived',
+        title: 'Archived, with its pools. Put back brings them both back.' })
+        : null,
       el('span', { class: 'spacer' }),
+      f.id && !editing ? BARRY.ui.button({ kind: 'mini',
+        text: f.archived ? 'Put back' : 'Archive',
+        extra: f.archived ? 'rc-folder-unarchive' : 'rc-folder-archive',
+        title: f.archived
+          ? 'Back on the shelves with its pools, on every machine once it '
+            + 'syncs.'
+          : 'Archive the folder: it and its pools leave the shelves -- '
+            + 'everyone’s, once it syncs -- and nothing is deleted. Show '
+            + 'archived puts it back on show.',
+        onclick: () => archiveFolder(f, !f.archived) }) : null,
       f.id && !editing ? BARRY.ui.button({ kind: 'mini', text: 'Rename',
         extra: 'rc-folder-rename', title: 'Rename this folder',
         onclick: () => { foldEdit = { id: f.id, text: f.name }; render(); } })
@@ -9677,7 +10262,8 @@ BARRY.rootcanal = (function () {
             ? 'Empty. Drag a pool here.'
             : 'Every pool is in a folder. Drag one here to take it out.' })]);
     const box = el('div', {
-      class: 'rc-folder' + (shut ? ' shut' : '') + (f.id ? '' : ' loose'),
+      class: 'rc-folder' + (shut ? ' shut' : '') + (f.id ? '' : ' loose')
+             + (f.archived ? ' archived' : ''),
       'data-folder': f.id,
     }, [head, body].filter(Boolean));
     dropTarget(box, f.id);
@@ -9711,12 +10297,26 @@ BARRY.rootcanal = (function () {
     });
   }
 
-  /* A row on a shelf: dragged by any part of it that is not a control. */
+  /* A row on a shelf: dragged by any part of it that is not a control.
+     Last on it, Archive -- or, shown archived and faded, Put back. */
   function shelfRow(p, folders, cells) {
     const id = p.artifact_id || p.id;
     const on = !!(pool.open && pool.open.artifact_id === id);
+    const isArch = !!prefMap(POOL_ARCH_KEY)[id];
+    cells = cells.concat([
+      isArch ? BARRY.ui.chip('archived', { extra: 'rc-shelf-is-archived' })
+             : null,
+      BARRY.ui.button({ kind: 'mini', text: isArch ? 'Put back' : 'Archive',
+        extra: isArch ? 'rc-shelf-unarchive' : 'rc-shelf-archive',
+        title: isArch
+          ? 'Back on the shelf, on every machine once it syncs.'
+          : 'Archive it: it leaves the shelf -- everyone’s, once it syncs -- '
+            + 'and nothing is deleted. Show archived puts it back on show.',
+        onclick: () => archivePool(p, !isArch) }),
+    ]);
     const row = el('div', {
-      class: 'bm-row rc-shelf-row' + (on ? ' on' : ''),
+      class: 'bm-row rc-shelf-row' + (on ? ' on' : '')
+             + (isArch ? ' archived' : ''),
       draggable: 'true', 'data-pool': id,
       title: 'Drag it onto a folder to file it.',
       ondragstart: (e) => {
@@ -9747,11 +10347,15 @@ BARRY.rootcanal = (function () {
      or a folder scrolled out of reach. */
   function moveSelect(id, folders) {
     const here = folderOf(id, folders);
+    // An archived folder is not somewhere to move a pool to, unless it is
+    // where the pool already is.
     return el('select', {
       class: 'rc-in rc-move-folder', title: 'Move it to another folder',
       'aria-label': 'Folder',
       onchange: (e) => { putInFolder(id, e.target.value); render(); },
-    }, folders.map((f) => el('option', { value: f.id, text: f.name,
+    }, folders.filter((f) => !f.archived || f.id === here)
+      .map((f) => el('option', { value: f.id,
+      text: f.name + (f.archived ? ' (archived)' : ''),
       selected: f.id === here ? 'selected' : null }))
       .concat([el('option', { value: '', text: 'Not in a folder',
                               selected: here ? null : 'selected' })]));
@@ -9781,7 +10385,7 @@ BARRY.rootcanal = (function () {
                       + 'label.' }),
       ]));
     } else {
-      kids.push(foldersBar());
+      kids.push(foldersBar(pool.shelf));
       kids.push(folderedList(pool.shelf, 'rc-shelf-list', (p, folders) => {
         const id = p.artifact_id || p.id;
         return shelfRow(p, folders, [
@@ -9911,12 +10515,32 @@ BARRY.rootcanal = (function () {
         const sm = (pool.savedMembers || []).find((x) => x.key === m.key);
         return (c && c.mouse_key) || (sm && sm.mouse_key) || null;
       }).filter(Boolean));
+      /* Its events, each recording's chosen answer's -- a version nobody
+         has read by its count in the bank (2026-11-06). Not while a name
+         chip keeps only some of each one's events. */
+      let nEv = 0, nNew = 0;
+      for (const m of pool.sel) {
+        const r2 = recOfKey(m.key);
+        const a2 = r2 ? answerOf(r2, m.key) : null;
+        if (a2 && a2.n != null) nEv += Number(a2.n) || 0;
+        if (a2 && a2.kind === 'unread') nNew += 1;
+      }
       count = n + ' recording' + (n === 1 ? '' : 's') + ' ticked · ' + mice.size
-              + ' mice';
+              + ' mice' + (n && !pool.name ? ' · ' + nEv.toLocaleString()
+                                             + ' events' : '');
       chips.push(unbankedChip(pool.sel.filter((m) => {
         const c = candOf(m.key);
         return c && !c.banked;
       }).length));
+      if (nNew) {
+        chips.push(BARRY.ui.chip(nNew + ' not read yet', { flag: true,
+          kind: 'warn', extra: 'rc-unread-n',
+          title: nNew + ' of the ticked recording' + (nNew === 1 ? ' is a version'
+            : 's are versions') + ' of its set with no single and no read yet. '
+            + 'Pooling reads ' + (nNew === 1 ? 'it' : 'them') + ' first -- here '
+            + 'if the recording is on this computer, otherwise on the VACC -- at '
+            + 'Single’s settings.' }));
+      }
     }
     if (pool.open) {
       chips.unshift(BARRY.ui.chip('v' + pool.open.version + ' open',
@@ -9997,11 +10621,11 @@ BARRY.rootcanal = (function () {
       title: 'Every event of this pool is a dentate spike: one cluster, '
            + 'called DS, saved with the pool -- the controls. In a pool of '
            + 'pools its events go in as DS.' }, [
-      el('input', { type: 'checkbox', class: 'rc-all-ds-box',
+      el('input', { type: 'checkbox', class: 'rc-all-ds-box rc-tick',
         checked: pool.all_ds ? 'checked' : null,
         onchange: (ev2) => { pool.all_ds = ev2.target.checked;
                              pool.dirty = true; membersRefresh(); } }),
-      el('span', { text: ' every event is DS (the controls)' }),
+      el('span', { text: 'every event is DS (the controls)' }),
     ]));
     kids.push(membersFoot());
     return el('div', { class: 'card rc-members' }, kids);
@@ -10127,16 +10751,22 @@ BARRY.rootcanal = (function () {
   }
 
   /* A key is a SECOND COPY when its recording has more than one answer in
-     the pool and it is not the first. */
+     the pool and it is not the first. The recording as the server counts
+     it (2026-11-06): by gid, else bank entry, in the pool's order -- a DS
+     set and a Panning set of one recording are two rows but one recording,
+     and the server names the later one. */
   function isSecondCopy(k) {
-    const rec = pool.level === 'double' ? null : recOfKey(k);
-    if (!rec) return false;
-    const mine = recSel(rec);
-    return mine.length > 1 && mine[0].key !== k;
+    if (pool.level === 'double') return false;
+    const g = gidOfKey(k);
+    const same = g ? pool.sel.filter((m) => gidOfKey(m.key) === g)
+                   : recSel(recOfKey(k));
+    return same.length > 1 && same[0].key !== k;
   }
 
   const readKeys = (r) => ((r && r.away) || []).filter((k) => !isSecondCopy(k));
   const copyKeys = (r) => ((r && r.away) || []).filter(isSecondCopy);
+  // A version of a set nobody has read yet: read for the first time.
+  const isUnreadKey = (k) => !!((candOf(k) || {}).unread);
 
   function labelOfKey(k) {
     const m = poolMemberByKey(k)
@@ -10255,14 +10885,30 @@ BARRY.rootcanal = (function () {
     }
     if (!running && keys.length) {
       const names = keys.map(labelOfKey);
-      const one = keys.length === 1;
-      kids.push(el('p', { class: 'rc-redo-say', text: names.join(', ')
-        + (one ? ' has' : ' have') + ' to be measured again for this, and '
-        + (one ? 'its read is' : 'their reads are') + ' not on this machine. '
-        + 'Jarvis can read ' + (one ? 'it' : 'them') + ' here — from a drive '
-        + 'on this computer if the recording is on one, otherwise on the '
-        + 'VACC — exactly as ' + (one ? 'it was' : 'they were') + ' read, '
-        + 'and then redo the analysis.' }));
+      // Versions with no read yet (2026-11-06) are read for the first time.
+      const fresh = keys.filter(isUnreadKey);
+      const again = keys.filter((k) => !isUnreadKey(k));
+      const nameOf = (k) => labelOfKey(k) + ((candOf(k) || {}).from_name != null
+        ? ' (v' + candOf(k).from_name + ')' : '');
+      const say = [];
+      if (fresh.length) {
+        const one1 = fresh.length === 1;
+        say.push(fresh.map(nameOf).join(', ') + (one1 ? ' has' : ' have')
+          + ' no single and no read yet. Jarvis can read ' + (one1 ? 'it' : 'them')
+          + ' — from a drive on this computer if the recording is on one, '
+          + 'otherwise on the VACC — at Single’s settings, and then pool.');
+      }
+      if (again.length) {
+        const one2 = again.length === 1;
+        say.push(again.map(labelOfKey).join(', ') + (one2 ? ' has' : ' have')
+          + ' to be measured again for this, and '
+          + (one2 ? 'its read is' : 'their reads are') + ' not on this machine. '
+          + 'Jarvis can read ' + (one2 ? 'it' : 'them') + ' here — from a drive '
+          + 'on this computer if the recording is on one, otherwise on the '
+          + 'VACC — exactly as ' + (one2 ? 'it was' : 'they were') + ' read, '
+          + 'and then redo the analysis.');
+      }
+      kids.push(el('p', { class: 'rc-redo-say', text: say.join(' ') }));
       kids.push(BARRY.ui.actions([
         BARRY.ui.button({ kind: 'primary', extra: 'rc-redo-go',
           text: 'Read them here and redo the analysis',
@@ -11464,7 +12110,8 @@ BARRY.rootcanal = (function () {
        last pool opened was in, unless another is picked. A new version of
        one stays where its pool is. */
     const isNew = !pool.open;
-    const folders = isNew ? poolFolders() : [];
+    // Not into an archived folder: the new pool would be out of sight.
+    const folders = isNew ? poolFolders().filter((f) => !f.archived) : [];
     const hint = pool.folderHint != null && (pool.folderHint === ''
       || folders.some((f) => f.id === pool.folderHint)) ? pool.folderHint : '';
     const folderPick = isNew ? el('select', {
@@ -12250,6 +12897,10 @@ BARRY.rootcanal = (function () {
     _poolRecs: () => recordings().map((r) => ({ id: r.id, def: r.def,
       cur: curKey(r), keys: r.answers.map((a) => a.key),
       words: r.answers.map((a) => a.words),
+      // Each answer's events, kind and version of the set (2026-11-06).
+      ns: r.answers.map((a) => (a.n == null ? null : a.n)),
+      kinds: r.answers.map((a) => a.kind),
+      sets: r.answers.map((a) => a.set),
       label: (r.facts[0] || {}).session_label || r.id })),
     _poolRedo: () => pool.redo && { state: pool.redo.state, ended: pool.redo.ended,
                                     rows: rereadRows(pool.redo) },

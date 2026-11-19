@@ -119,9 +119,9 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('one of them is The Arc', !!arcCard);
   const dentCard = cards.find((c) => /The Dentist/.test(txt(c)));
   check('the other is still The Dentist', !!dentCard);
-  /* Five since Root Canal went in between Braces and X-ray. */
-  check('The Dentist still has its five steps',
-        dentCard && dentCard.querySelectorAll('.tk-step').length === 5,
+  /* Six since The Extraction Room went in after X-ray (2026-11-10). */
+  check('The Dentist has its six steps',
+        dentCard && dentCard.querySelectorAll('.tk-step').length === 6,
         dentCard ? dentCard.querySelectorAll('.tk-step').length : 'no card');
 
   const arcSteps = arcCard

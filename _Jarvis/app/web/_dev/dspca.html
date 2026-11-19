@@ -140,6 +140,24 @@ const NL = String.fromCharCode(10);
      rcd(vset.map((v) => ({ name: v.name, ref: v.ref, usable: true }))),
      'null');
 
+  /* The set the panel opens on when nobody has picked one. It took the
+     newest, readable or not, and on 2026-11-07 that was a harness's seed
+     banked a moment before with no registry id: the panel opened on a
+     refusal and filed it as a real fault. */
+  const fr = (cs) => ev('JSON.stringify(BARRY.dspca._firstReadable('
+                        + JSON.stringify(cs) + '))');
+  eq('it opens on the newest set that can be read, not the newest',
+     (JSON.parse(fr([{ id: 'seed', readable: false, n_good: 5 },
+                     { id: 'none', readable: true, n_good: 0 },
+                     { id: 'real', readable: true, n_good: 3 }])) || {}).id,
+     'real');
+  eq('a readable set with no spikes left beats an unreadable one',
+     (JSON.parse(fr([{ id: 'seed', readable: false, n_good: 5 },
+                     { id: 'none', readable: true, n_good: 0 }])) || {}).id,
+     'none');
+  eq('and with nothing readable it opens on nothing',
+     fr([{ id: 'seed', readable: false, n_good: 5 }]), undefined);
+
   /* And through the panel: a set with Root Canal versions in it, picked,
      lands on the newest of them rather than on the newest aligned one.
 
@@ -623,9 +641,12 @@ const NL = String.fromCharCode(10);
   ok('which is the mode the workbench is in',
      !!D().querySelector('.dp-panes'));
   seg[1].click();
-  await until(() => !!D().querySelector('.dp-bulk-card'), 15000, 'the queue');
-  ok('switching to many opens the queue',
-     !!D().querySelector('.dp-bulk-card'));
+  /* Many is X-ray Many now (2026-11-07): folders of recordings, a grid of
+     average CSDs to draw each box on (web/js/dspcamany.js, its own
+     harness _dev/dspcamany.html). */
+  await until(() => !!D().querySelector('.xm'), 15000, 'X-ray Many');
+  ok('switching to many opens X-ray Many',
+     !!D().querySelector('.xm'));
   ok('and the workbench is not underneath it, competing for the panel',
      !D().querySelector('.dp-panes'));
   ok('the switch says which mode it is in',
@@ -647,28 +668,11 @@ const NL = String.fromCharCode(10);
      the expensive half and it is finished for that one; waiting for the
      whole batch is, on a cohort, the difference between a coffee and an
      afternoon. */
-  D().querySelectorAll('.dp-mode .seg button')[1].click();
-  await until(() => !!D().querySelector('.dp-bulk-card') && !!st().plan,
-              20000, 'the queue');
-  await until(() => !!ev('BARRY.dspca._bulk().plan'), 20000, 'the batch plan');
-  const bplan = ev('BARRY.dspca._bulk().plan');
-  ok('the queue lists what has already been read',
-     (bplan.done || []).length > 0, (bplan.done || []).length + ' done');
-  const doneBtns = D().querySelectorAll('.dp-done-list .mini');
-  ok('and each one is a way in, not just a count',
-     doneBtns.length === Math.min(24, (bplan.done || []).length),
-     doneBtns.length + ' buttons for ' + (bplan.done || []).length);
-  if (doneBtns.length) {
-    doneBtns[0].click();
-    await until(() => !D().querySelector('.dp-bulk-card'), 15000,
-                'the workbench');
-    ok('clicking one opens it', !ev('BARRY.dspca._bulk().on'));
-    await until(() => st().q.read, 25000, 'its read');
-    ok('with its read already in hand, so nothing is re-read',
-       !!st().q.read);
-  }
-  D().querySelectorAll('.dp-mode .seg button')[0].click();
-  await until(() => !!D().querySelector('.dp-panes'), 20000, 'back');
+  /* What has been read is reached from Single's "Previously processed"
+     now (2026-11-07), and Many's grid; the batch route below still reads
+     a cohort of bank sets, and is checked as a route. */
+  ok('back in one at a time, the reads on file are a way in',
+     !!D().querySelector('.dp-panes'));
 
   /* AND THE QUEUE KEEPS REPORTING ITSELF while you look at one of its
      results.
@@ -927,27 +931,74 @@ const NL = String.fromCharCode(10);
   /* It was two <select>s: one listing every curated set in the lab, which
      is a list you scroll rather than one you search, and one beside it for
      the version that looked exactly the same. Braces had already answered
-     this -- a recording you type the name of, then radios. */
+     this -- a recording you type the name of, then radios. Since
+     2026-11-07 ("the advanced version select, not the radio button") a
+     row per entry with Root Canal Many's version button on it. */
   ok('the recording is typed, not scrolled',
      !!D().querySelector('.dp-choose .sp-input'));
-  const entryRadios = D().querySelectorAll('.dp-choose input[name="dpEntry"]');
-  ok('the banked entries are radios', entryRadios.length > 0,
-     entryRadios.length + ' found');
-  /* The versions are the version tree now (constitution §6e): rows with
-     aria-checked, "as they are now" first. */
-  const verRows = D().querySelectorAll('.dp-choose .vtree-row');
-  ok('and the versions are the version tree', verRows.length > 0
-     && !!D().querySelector('.dp-choose .vtree-lead'),
-     verRows.length + ' found');
-  ok('exactly one entry is chosen',
-     Array.from(entryRadios).filter((r) => r.checked).length === 1);
-  /* The bug this replaced: the option carried a ref and the selected test
-     compared a name, so the moment anybody used the picker nothing was
-     marked and the box showed the first version instead of theirs. */
-  const onRows = Array.from(verRows)
+  const entryRows = D().querySelectorAll('.dp-choose .dp-entry');
+  ok('each banked entry is a row of its own', entryRows.length > 0,
+     entryRows.length + ' found');
+  ok('and none of them is a radio button any more',
+     !D().querySelector('.dp-choose input[type="radio"]'));
+  const onEntries = Array.from(entryRows)
     .filter((r) => r.getAttribute('aria-checked') === 'true');
-  ok('and exactly one version is chosen, whichever way it was named',
-     onRows.length === 1, onRows.length + ' checked');
+  ok('exactly one entry is chosen', onEntries.length === 1,
+     onEntries.length + ' chosen');
+  const vbtn = onEntries[0] && onEntries[0].querySelector('.vbtn');
+  ok('the chosen entry picks its version with the version button', !!vbtn);
+  if (vbtn) {
+    /* The versions are the version tree (constitution §6e), in the
+       button's pop-up: rows with aria-checked, "as they are now" among
+       them as the choice that is not a version. */
+    vbtn.click();
+    await until(() => D().querySelector('.vpop .vtree-row'), 8000,
+                'the version tree');
+    const verRows = D().querySelectorAll('.vpop .vtree-row');
+    ok('which opens the whole version tree', verRows.length > 0
+       && !!D().querySelector('.vpop .vtree-lead'),
+       verRows.length + ' found');
+    /* The bug this replaced: the option carried a ref and the selected
+       test compared a name, so the moment anybody used the picker nothing
+       was marked and the box showed the first version instead of theirs. */
+    const onRows = Array.from(verRows)
+      .filter((r) => r.getAttribute('aria-checked') === 'true');
+    ok('and exactly one version is chosen, whichever way it was named',
+       onRows.length === 1, onRows.length + ' checked');
+    ev('closeModal()');
+    await until(() => !D().querySelector('.vpop'), 5000, 'the pop-up to close');
+  }
+
+  /* ================================================================== */
+  head('THE CHOICES ARE SEGMENTS, NOT RADIOS');
+
+  /* How to split them, what the PCA sees and which one is DS1 were radio
+     lists; they are BARRY.ui.seg now (2026-11-07). Pressing one has to do
+     what the radio did: set it and recompute. */
+  ok('no radio is left in the controls',
+     !D().querySelector('.dp-controls input[type="radio"]'));
+  ok('the method and the DS1 rule are segments',
+     !!D().querySelector('.dp-controls .seg.dp-seg-method')
+     && !!D().querySelector('.dp-controls .seg.dp-seg-rule'));
+  const m0 = st().q.method;
+  const mTo = m0 === 'pca_gap' ? 'delta' : 'pca_gap';
+  const mName = mTo === 'pca_gap' ? 'PCA + gap' : 'delta only, no PCA';
+  const mBtn = Array.from(D().querySelectorAll(
+    '.dp-controls .dp-seg-method > button'))
+    .find((b) => b.textContent.trim() === mName);
+  ok('the segment names the method', !!mBtn, mName);
+  if (mBtn) {
+    mBtn.click();
+    const act = (D().querySelector('.dp-seg-method > button.active') || {})
+      .textContent;
+    eq('pressing it marks it at once, before the fit is back', act, mName);
+    await until(() => st().fit && st().fit.ok && st().fit.method === mTo,
+                25000, 'the fit under ' + mTo);
+    eq('and recomputes under it', st().fit.method, mTo);
+  }
+  ev('BARRY.dspca._method(' + JSON.stringify(m0) + ')');
+  await until(() => st().fit && st().fit.ok && st().fit.method === m0,
+              25000, 'back to ' + m0);
 
   /* ================================================================== */
   head('THE PANELS SHOW THE WHOLE SHANK');
@@ -1951,6 +2002,199 @@ const NL = String.fromCharCode(10);
        (n) => Math.round(n.getBoundingClientRect().height))));
 
   ev('closeModal()');
+
+  /* ================================================================== */
+  head('PREVIOUSLY PROCESSED, AND A BUNDLE OPENED IN SINGLE');
+
+  /* "Have everything that was previously processed be visible"
+     (2026-11-07): the X-ray bundles Many saved, the calls banked through
+     Commit and the reads on file, each with Open. Both routes are
+     read-only, so they are asked for real. */
+  const safeGet = (u) => ev('api(' + JSON.stringify(u) + ').catch(function (e)'
+                            + ' { return { ok: false, error: e.message }; })');
+  const realRes = await safeGet('/api/dspca/results');
+  ok('the calls and reads are listed', !!(realRes && realRes.ok
+     && Array.isArray(realRes.classified) && Array.isArray(realRes.reads)),
+     JSON.stringify(realRes).slice(0, 160));
+  const realBun = await safeGet('/api/dspca/bundles');
+  ok('and so are the bundles', !!(realBun && realBun.ok),
+     JSON.stringify(realBun).slice(0, 160));
+  await until(() => !ev('BARRY.dspca._done().loading'), 15000, 'the list');
+  // Below the Read button since 2026-11-09 ("just make it a list below the
+  // read button"), not inside the chooser above it.
+  {
+    const doneEl = D().querySelector('.dp-done');
+    const readEl = D().querySelector('.dp-read') || D().querySelector('.dp-choose');
+    ok('"Previously processed" is a list below the Read button',
+       !!doneEl && !!readEl && !readEl.contains(doneEl)
+       && !!(readEl.compareDocumentPosition(doneEl) & 4)
+       && getComputedStyle(doneEl.querySelector('.dp-done-list') || doneEl)
+            .flexWrap !== 'wrap');
+  }
+
+  /* A BUNDLE, WITHOUT ONE. Nothing may be written to the artifacts from
+     here, so the bundle, its record and the run that saves its next
+     version are answered in the frame (fetch, stubbed after a probe), on
+     the demo recording's real read -- the fit that follows is the real
+     one. Every number in the stub is a fixture, not a measurement. The
+     shared box write is caught too: a harness pressing Save must not put
+     a box in everybody's prefs. */
+  const W = frame.contentWindow;
+  const AID = 'harness-xray-bundle';
+  const realGid = st().q.gid;
+  const realRead = st().q.read;
+  const fb0 = st().fit.box;
+  const runs = [];
+  const fixSep = { verdict: 'weak', dbic: 4.2, min_share: 0.33, n: 15,
+                   words: 'harness fixture' };
+  const fixSinks = [{ cls: 1, csc: fb0.lo, value: -1.23, sem: 0.1,
+                      unit: 'µA/mm² (CSD, 5–100 Hz)' }];
+  const fixVer = (v) => ({ v, id: 'hv' + v, at: '2026-11-07T12:00:00Z',
+                           by: 'Debug_Bot', n_summary: { events: 15 } });
+  const fixArt = () => ({
+    id: AID, kind: 'xray_single',
+    subject: { folder: 'harness-folder', folder_name: 'Harness folder',
+               gid: realGid, session_label: 'demo (harness bundle)',
+               group: 'CTL',
+               source: { artifact_id: 'harness-wf', version: 1,
+                         nickname: 'harness workflow' } },
+    versions: [fixVer(1), fixVer(2)].concat(runs.length ? [fixVer(3)] : []),
+    current: fixVer(runs.length ? 3 : 2),
+  });
+  const fixPayload = {
+    schema: 'xray.single/1', read: realRead,
+    params: { method: 'pca_gap', rule: 'tort', features: 'sign',
+              notch: true, min_sep: 5, gap_weight: 1, nclasses: 2 },
+    box: { sel_lo: fb0.lo, sel_hi: fb0.hi, t_lo_ms: 0, t_hi_ms: 0 },
+    counts: { 1: 10, 2: 5 }, separation: fixSep, sinks: fixSinks,
+    cols: { t: Array.from({ length: 15 }, (_, i) => i) },
+  };
+  const keepFetch = W.fetch;
+  const reply = (o) => Promise.resolve(new W.Response(JSON.stringify(o), {
+    status: 200, headers: { 'Content-Type': 'application/json' } }));
+  W.fetch = function (u, init) {
+    const p = String(u);
+    if (p.startsWith('/api/dspca/bundle/' + AID)) {
+      return reply({ ok: true, payload: fixPayload, artifact: fixArt() });
+    }
+    if (p.startsWith('/api/artifacts/' + AID)) {
+      return reply({ ok: true, artifact: fixArt() });
+    }
+    if (p.startsWith('/api/dspca/bundles')) {
+      const a = fixArt();
+      return reply({ ok: true, bundles: [{
+        artifact_id: AID, version: a.current.v, at: a.current.at,
+        by: a.current.by, gid: realGid, folder: 'harness-folder',
+        folder_name: 'Harness folder', session_label: 'demo (harness bundle)',
+        counts: fixPayload.counts, separation: fixSep, sinks: fixSinks,
+        versions: a.versions }] });
+    }
+    if (p.startsWith('/api/dspca/many/')) {
+      const body = JSON.parse((init && init.body) || '{}');
+      runs.push({ path: p, body });
+      if (!p.startsWith('/api/dspca/many/run')) {
+        return reply({ ok: false, error: 'stubbed by the harness' });
+      }
+      return reply({ ok: true, results: [{
+        gid: realGid, ok: true, bundle: { artifact_id: AID, version: 3 },
+        counts: { 1: 9, 2: 6 }, separation: fixSep, sinks: fixSinks,
+        box: body.boxes && body.boxes[realGid] }] });
+    }
+    return keepFetch.call(W, u, init);
+  };
+  ev('window.__xrMerges = []; window.__xrKeepMerge = BARRY.prefs.mergeKey;'
+     + ' BARRY.prefs.mergeKey = function (k, id, v) {'
+     + ' window.__xrMerges.push([k, id, v]); };');
+  try {
+    const probe = await safeGet('/api/dspca/bundle/' + AID);
+    ok('the stub answers in the frame (probed before it is relied on)',
+       !!(probe && probe.payload && probe.payload.read === realRead),
+       JSON.stringify(probe).slice(0, 120));
+
+    // A listing already on its way was asked for before the stub.
+    await until(() => !ev('BARRY.dspca._done().loading'), 15000, 'the list');
+    ev('BARRY.dspca._loadDone()');
+    await until(() => D().querySelector(
+      '.dp-done-bundle[data-artifact="' + AID + '"]'), 15000, 'the bundle row');
+    const bRow = D().querySelector('.dp-done-bundle[data-artifact="' + AID + '"]');
+    ok('a bundle is listed with its separation, in words and numbers',
+       !!bRow && /weak/.test(bRow.textContent)
+       && /ΔBIC 4\.2/.test(bRow.textContent)
+       && /33% in the smaller/.test(bRow.textContent),
+       bRow ? bRow.textContent.slice(0, 200) : 'no row');
+    ok('with its sinks in the unit it states', !!bRow
+       && bRow.textContent.indexOf('µA/mm²') >= 0);
+    ok('and its versions behind the version button',
+       !!(bRow && bRow.querySelector('.vbtn')));
+    const openBtn = bRow && Array.from(bRow.querySelectorAll('button'))
+      .find((b) => b.textContent === 'Open');
+    ok('it has Open', !!openBtn);
+    if (openBtn) openBtn.click();
+    await until(() => ev('!!BARRY.dspca._bundle()'), 10000, 'the bundle');
+    const bq = st().q;
+    ok('opening it puts its recording and read into the workbench',
+       bq.gid === realGid && bq.read === realRead,
+       bq.gid + ' ' + bq.read);
+    ok('and its settings and its box',
+       bq.method === 'pca_gap' && bq.features === 'sign'
+       && bq.sel_lo === fb0.lo && bq.sel_hi === fb0.hi
+       && bq.t_lo_ms === 0 && bq.t_hi_ms === 0, JSON.stringify(
+         { m: bq.method, f: bq.features, lo: bq.sel_lo, hi: bq.sel_hi,
+           a: bq.t_lo_ms, b: bq.t_hi_ms }));
+    eq('with no banked set under it', bq.entry, null);
+    await until(() => st().fit && st().fit.ok && st().fit.method === 'pca_gap'
+                      && st().fit.box.n_samples === 1, 25000, 'its fit');
+    ok('and fits', !!(st().fit && st().fit.ok
+                      && st().fit.method === 'pca_gap'));
+    ok('the chooser is the bundle’s card, not the bank’s sets',
+       !!D().querySelector('.dp-bundle')
+       && !D().querySelector('.dp-choose .dp-entry'));
+    ok('with the bundle’s version button on it',
+       !!D().querySelector('.dp-bundle .vbtn'));
+    const save = () => D().querySelector('.dp-bundle-save button');
+    eq('the bank button saves the bundle’s next version instead',
+       save() && save().textContent, 'Save as the next version of this bundle');
+    ok('and can be pressed', !!save() && !save().disabled);
+
+    /* Saving goes through X-ray Many's run with this one recording: the
+       server fits again from these settings and the box on screen. */
+    const fbNow = st().fit.box;
+    if (save()) save().click();
+    await until(() => runs.some((r) => r.path.startsWith('/api/dspca/many/run')),
+                10000, 'the run');
+    const run = (runs.find((r) => r.path.startsWith('/api/dspca/many/run'))
+                 || {}).body || {};
+    eq('it runs that one recording of that folder',
+       [run.folder, run.gids], ['harness-folder', [realGid]]);
+    eq('with the box the answer on screen was fitted with',
+       run.boxes && run.boxes[realGid],
+       { sel_lo: fbNow.lo, sel_hi: fbNow.hi,
+         t_lo_ms: fbNow.t_lo_ms, t_hi_ms: fbNow.t_hi_ms });
+    eq('and the settings on screen',
+       run.params && [run.params.method, run.params.features],
+       ['pca_gap', 'sign']);
+    await until(() => (ev('BARRY.dspca._bundle()') || {}).version === 3,
+                10000, 'the new version');
+    eq('the workbench is now on the version it made',
+       (ev('BARRY.dspca._bundle()') || {}).version, 3);
+    const merges = JSON.parse(ev('JSON.stringify(window.__xrMerges)'));
+    ok('and the box goes to Many’s shared boxes for that tile',
+       merges.some((m) => m[0] === 'dspca_many_boxes'
+                          && m[1] === 'harness-folder|' + realGid),
+       JSON.stringify(merges).slice(0, 160));
+
+    ev('BARRY.dspca._leaveBundle()');
+    await until(() => !ev('!!BARRY.dspca._bundle()')
+                      && D().querySelector('.dp-choose .dp-entry'),
+                15000, 'the banked sets');
+    ok('"Back to the banked sets" leaves it',
+       !ev('!!BARRY.dspca._bundle()')
+       && !!D().querySelector('.dp-choose .dp-entry'));
+  } finally {
+    W.fetch = keepFetch;
+    ev('BARRY.prefs.mergeKey = window.__xrKeepMerge;'
+       + ' delete window.__xrKeepMerge;');
+  }
 
   } catch (err) {
     /* A throw used to end the suite in silence.

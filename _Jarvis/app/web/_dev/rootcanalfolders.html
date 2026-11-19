@@ -70,7 +70,9 @@ async function until(fn, ms, what) {
 
   ev('(function(){ var W = window; if (W.__rcfPrefSet) return;'
      + ' W.__rcfPrefSet = BARRY.prefs.set; W.__rcfPrefGet = BARRY.prefs.get;'
-     + ' W.__rcfMem = { rootcanal_pool_folders: {}, rootcanal_pool_in: {} };'
+     + ' W.__rcfMem = { rootcanal_pool_folders: {}, rootcanal_pool_in: {},'
+     // Nothing archived either (2026-11-06), whatever this machine's are.
+     + '   rootcanal_pool_archive: {}, rootcanal_single_archive: {} };'
      + ' BARRY.prefs.set = function(k, v) { W.__rcfMem[k] = JSON.parse(JSON.stringify(v)); return v; };'
      + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcfMem) return JSON.parse(JSON.stringify(W.__rcfMem[k]));'
      + '   return W.__rcfPrefGet.apply(BARRY.prefs, arguments); };'
@@ -248,6 +250,71 @@ async function until(fn, ms, what) {
     ok('a pool of pools is filed the same way', mem('rootcanal_pool_in')[drow.dataset.pool] === fidA);
     ev(RC + '._setLevel("pool")');
     await until(() => D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folders'), 20000, 'back');
+
+    /* ARCHIVED (2026-11-06: "add an archive option for all the Root Canal
+       single/pools/folders"): out of the shelf, nothing deleted, Show
+       archived puts it back on show with Put back. */
+    head('A POOL ARCHIVED, AND PUT BACK');
+    const rowOf = (id) => D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="' + id + '"]');
+    const archBtn = () => D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-show-arch');
+    const idP = rowsIn(boxOf('Preliminary analysis'))[0];
+    ok('precondition: nothing is archived (held empty for the run), and a pool to archive',
+       !Object.keys(mem('rootcanal_pool_archive')).length && !!idP && !archBtn());
+    rowOf(idP).querySelector('.rc-shelf-archive').click();
+    await until(() => mem('rootcanal_pool_archive')[idP], 4000, 'the archive');
+    const pa = mem('rootcanal_pool_archive')[idP];
+    ok('Archive on its row keeps it in the shared preference, with when and by whom',
+       !!pa && !!pa.at && 'by' in pa && JSON.stringify(Object.keys(mem('rootcanal_pool_archive')))
+         === JSON.stringify([idP]), JSON.stringify(mem('rootcanal_pool_archive')));
+    await until(() => !rowOf(idP), 4000, 'it leaves');
+    ok('it leaves the shelf, and nothing is deleted', !rowOf(idP)
+       && (P().shelf || []).some((p) => (p.artifact_id || p.id) === idP));
+    ok('Show archived · 1 is offered', !!archBtn() && archBtn().textContent === 'Show archived · 1',
+       archBtn() && archBtn().textContent);
+    archBtn().click();
+    await until(() => rowOf(idP), 4000, 'shown');
+    ok('shown: faded, said archived, with Put back', rowOf(idP).classList.contains('archived')
+       && !!rowOf(idP).querySelector('.rc-shelf-unarchive')
+       && /archived/.test(rowOf(idP).textContent));
+    rowOf(idP).querySelector('.rc-shelf-unarchive').click();
+    await until(() => !mem('rootcanal_pool_archive')[idP], 4000, 'put back');
+    ok('Put back takes it out of the preference, and it is on the shelf as it was',
+       !Object.keys(mem('rootcanal_pool_archive')).length && !!rowOf(idP)
+       && !rowOf(idP).classList.contains('archived')
+       && rowsIn(boxOf('Preliminary analysis')).indexOf(idP) >= 0);
+    if (archBtn()) archBtn().click();             // Hide archived · 0
+    await sleep(200);
+
+    head('A FOLDER ARCHIVED, WITH ITS POOLS, AND PUT BACK');
+    const inB = rowsIn(boxOf('Harness folder B')).slice().sort();
+    boxOf('Harness folder B').querySelector('.rc-folder-archive').click();
+    await until(() => (mem('rootcanal_pool_folders')[fidA] || {}).archived === true, 4000, 'the archive');
+    const fa = mem('rootcanal_pool_folders')[fidA];
+    ok('kept on the folder’s own record as archived, and not deleted',
+       fa.archived === true && !!fa.archived_at && !fa.gone && fa.name === 'Harness folder B',
+       JSON.stringify(fa));
+    await until(() => !boxOf('Harness folder B'), 4000, 'it leaves');
+    ok('it leaves the shelf with its pools, which stay filed in it',
+       !boxOf('Harness folder B') && inB.every((id) => !rowOf(id))
+       && inB.every((id) => mem('rootcanal_pool_in')[id] === fidA) && inB.length === 2);
+    ok('no row offers to move a pool into it',
+       Array.from(D().querySelectorAll('.rc-shelf:not(.rc-dshelf) .rc-move-folder option'))
+         .every((o) => o.value !== fidA));
+    ok('Show archived · 1 counts the folder', !!archBtn() && archBtn().textContent === 'Show archived · 1',
+       archBtn() && archBtn().textContent);
+    archBtn().click();
+    await until(() => boxOf('Harness folder B'), 4000, 'shown');
+    ok('shown: faded, with its pools in it, and Put back',
+       boxOf('Harness folder B').classList.contains('archived')
+       && JSON.stringify(rowsIn(boxOf('Harness folder B')).sort()) === JSON.stringify(inB)
+       && !!boxOf('Harness folder B').querySelector('.rc-folder-unarchive'));
+    boxOf('Harness folder B').querySelector('.rc-folder-unarchive').click();
+    await until(() => mem('rootcanal_pool_folders')[fidA].archived === false, 4000, 'put back');
+    if (archBtn()) archBtn().click();             // Hide archived · 0
+    await until(() => boxOf('Harness folder B') && !archBtn(), 4000, 'back');
+    ok('put back, with both its pools, and nothing archived left to show',
+       !boxOf('Harness folder B').classList.contains('archived')
+       && JSON.stringify(rowsIn(boxOf('Harness folder B')).sort()) === JSON.stringify(inB) && !archBtn());
 
     head('A FOLDER DELETED DELETES NO POOL');
     boxOf('Harness folder B').querySelector('.rc-folder-delete').click();

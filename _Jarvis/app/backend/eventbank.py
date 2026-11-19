@@ -207,7 +207,33 @@ class EventBank:
             "versions": shards.BYID,
         }, store)
         self.book.absorb_legacy()
+        # Where else a set's events went, from outside the bank (2026-11-07:
+        # X-ray bundles). See `add_link_source`.
+        self._link_sources = []
         self._drop_cache()
+
+    def add_link_source(self, fn):
+        """Another store's side branches onto the listing (2026-11-07).
+
+        `fn()` returns (stamp, links): `stamp` changes whenever its links
+        do, and each link is {"entry_id", "version", "link"} -- `version`
+        None for the set's newest. The bank never stores them: an X-ray
+        bundle is an artifact, and a note on the set would be a version
+        that moved its tip."""
+        self._link_sources.append(fn)
+
+    def _links(self):
+        """(stamps, links) from every link source. One that fails is left
+        out rather than taking the whole listing down with it."""
+        stamps, links = [], []
+        for fn in self._link_sources:
+            try:
+                st, got = fn()
+            except Exception:                            # noqa: BLE001
+                continue
+            stamps.append(st)
+            links.extend(got or [])
+        return tuple(stamps), links
 
     # ------------------------------------------------------------------
     # Reading
@@ -302,7 +328,10 @@ class EventBank:
         request -- and every write drops the cache, which is why the request
         right after a delete was the slow one.
         """
-        stamp = self._fingerprint()
+        # The link sources' stamps too, so a new X-ray bundle shows on the
+        # listing without waiting for the bank itself to change.
+        ext_stamp, ext_links = self._links()
+        stamp = (self._fingerprint(), ext_stamp)
         if self._summaries is not None and stamp == self._sum_stamp:
             return self._summaries
         out = []
@@ -333,21 +362,38 @@ class EventBank:
                     "IED", "IEDs", "ied", ""):
                 row["type_name"] = "P-spike"
             out.append(row)
-        self._went_into(out)
+        self._went_into(out, ext_links)
         self._summaries = out
         self._sum_stamp = stamp
         return out
 
     @staticmethod
-    def _went_into(rows):
+    def _went_into(rows, extra=()):
         """THE SIDE BRANCH (2026-11-05: "a side branch that mentions it
         went into a Root Canal entry"). An entry a Root Canal workflow
         extracted names the sets it took its events from; each of those
         sets is told, on the listing, where its events went -- on the row,
         and on the version they came from. Worked out on read, never
         stored: a stored note would be a version, and a version would move
-        the set's tip."""
+        the set's tip.
+
+        `extra` is the same from outside the bank (2026-11-07): X-ray
+        bundles, as {"entry_id", "version", "link"}. Each link says its
+        `kind` ("rootcanal" or "xray"), which is how ui.js words it."""
         by_id = {r.get("id"): r for r in rows}
+
+        def attach(src, want, link):
+            src.setdefault("went_into", []).append(link)
+            vers = src.get("versions") or []
+            for ver in vers:
+                hit = (want is None and ver is vers[-1]) or (
+                    want is not None and str(want) in (
+                        str(ver.get("id")), str(ver.get("v")),
+                        str(ver.get("label")),
+                        str(EventBank.version_key(ver))))
+                if hit:
+                    ver.setdefault("went_into", []).append(link)
+
         for r in rows:
             prm = ((r.get("source") or {}).get("parameters")
                    or r.get("parameters") or {})
@@ -358,23 +404,18 @@ class EventBank:
                 src = by_id.get(s.get("entry_id"))
                 if not src:
                     continue
-                link = {"entry_id": r.get("id"), "name": r.get("name"),
-                        "n": s.get("n"), "workflow": wf.get("nickname"),
-                        "workflow_id": wf.get("artifact_id"),
-                        "workflow_version": wf.get("version"),
-                        "from_version": s.get("version"),
-                        "archived": bool(r.get("archived"))}
-                src.setdefault("went_into", []).append(link)
-                want = s.get("version")
-                for ver in src.get("versions") or []:
-                    hit = (want is None and ver is (src.get("versions")
-                                                    or [None])[-1]) or (
-                        want is not None and str(want) in (
-                            str(ver.get("id")), str(ver.get("v")),
-                            str(ver.get("label")),
-                            str(EventBank.version_key(ver))))
-                    if hit:
-                        ver.setdefault("went_into", []).append(link)
+                attach(src, s.get("version"), {
+                    "kind": "rootcanal",
+                    "entry_id": r.get("id"), "name": r.get("name"),
+                    "n": s.get("n"), "workflow": wf.get("nickname"),
+                    "workflow_id": wf.get("artifact_id"),
+                    "workflow_version": wf.get("version"),
+                    "from_version": s.get("version"),
+                    "archived": bool(r.get("archived"))})
+        for x in extra or ():
+            src = by_id.get((x or {}).get("entry_id"))
+            if src and isinstance(x.get("link"), dict):
+                attach(src, x.get("version"), dict(x["link"]))
 
     @staticmethod
     def repaired(rec):
