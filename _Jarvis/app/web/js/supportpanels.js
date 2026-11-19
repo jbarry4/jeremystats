@@ -302,6 +302,32 @@ BARRY.supportPanels = (function () {
     } catch (e) { return {}; }
   }
 
+  /* The lab's default (2026-11-19: "make my current set ups the default
+     ones"). Used for any add-on somebody has not set up themselves, before
+     the add-on's own built-in windows. A SHARED preference, merged across
+     computers by newest (store.py: it is not in PREFS_LOCAL), so it reaches
+     everyone -- a new computer included -- by the usual sync. Set with
+     "Make mine the lab default" in the sharing bar. */
+  const LAB_KEY = 'support_panels_lab';
+  function labDefaults() {
+    try {
+      const got = BARRY.prefs.get(LAB_KEY, {});
+      return (got && typeof got === 'object' && got.addons
+              && typeof got.addons === 'object') ? got.addons : {};
+    } catch (e) { return {}; }
+  }
+  function labInfo() {
+    try { return BARRY.prefs.get(LAB_KEY, null); } catch (e) { return null; }
+  }
+  /* Whose choice an add-on is using: this person's, the lab's, or none
+     (the add-on's own). */
+  function sourceOf(mode) {
+    if (all()[mode]) return 'mine';
+    return labDefaults()[mode] ? 'lab' : 'addon';
+  }
+  const base = (mode) => all()[mode] || labDefaults()[mode] || null;
+  const clone = (x) => (x == null ? x : JSON.parse(JSON.stringify(x)));
+
   function addon(mode) { return ADDONS.find((a) => a.mode === mode) || null; }
 
   /* A panel as kept: an old choice was just its id. */
@@ -316,7 +342,7 @@ BARRY.supportPanels = (function () {
   /* What this person chose for an add-on, filled in from its defaults. */
   function choice(mode) {
     const a = addon(mode) || { panels: [], shape: null };
-    const c = all()[mode] || {};
+    const c = base(mode) || {};
     const panels = (Array.isArray(c.panels) && c.panels.length
       ? c.panels : a.panels).slice(0, MAX).map(entry)
       .filter((e) => e.panel);
@@ -330,11 +356,18 @@ BARRY.supportPanels = (function () {
       span: +c.span > 0 ? +c.span : null,
       overview: c.overview === true || c.overview === false ? c.overview : null,
       custom: hasAid(c),
+      from: sourceOf(mode),
     };
   }
 
   function save(mode, c) {
     const every = Object.assign({}, all());
+    /* Changing one window of an add-on that is on the lab's default makes
+       it this person's own: the other window comes along as the lab has
+       it, rather than dropping back to the add-on's built-in one. */
+    if (!every[mode] && c !== null && labDefaults()[mode]) {
+      every[mode] = clone(labDefaults()[mode]);
+    }
     const main = (every[mode] || {}).main;
     if (c === null) {
       // Back to the add-on's own second window; a main-window choice stays.
@@ -347,13 +380,14 @@ BARRY.supportPanels = (function () {
     }
     try { BARRY.prefs.set(KEY, every); } catch (e) { /* this session only */ }
     publishSoon();
+    announce([mode]);
   }
 
   /* The main window's choice: the same fields, no `open` (it is always
      there) and no overview (its More menu has its own). Its first panel is
      the traces, whatever is stored. */
   function choiceMain(mode) {
-    const m = (all()[mode] || {}).main || {};
+    const m = (base(mode) || {}).main || {};
     let panels = (Array.isArray(m.panels) && m.panels.length ? m.panels
       : MAIN_DEFAULT).slice(0, MAX).map(entry).filter((e) => e.panel);
     if (!panels.length || panels[0].panel !== 'traces') {
@@ -367,12 +401,15 @@ BARRY.supportPanels = (function () {
       layout: fitLayout(m.layout, panels.length),
       span: +m.span > 0 ? +m.span : null,
       custom: Array.isArray(m.panels) && m.panels.length > 0,
+      from: sourceOf(mode),
     };
   }
 
   function saveMain(mode, m) {
     const every = Object.assign({}, all());
-    const cur = Object.assign({}, every[mode] || {});
+    // As in save(): the second window comes along as the lab has it.
+    const cur = Object.assign({}, every[mode]
+      || (m !== null ? clone(labDefaults()[mode]) : null) || {});
     if (m === null) delete cur.main;
     else {
       cur.main = { panels: m.panels, shape: m.shape, layout: m.layout || null,
@@ -381,6 +418,7 @@ BARRY.supportPanels = (function () {
     if (Object.keys(cur).length) every[mode] = cur; else delete every[mode];
     try { BARRY.prefs.set(KEY, every); } catch (e) { /* this session only */ }
     publishSoon();
+    announce([mode]);
   }
 
   /* One panel's spec, as setPanes takes it: the add-on's own spec for that
@@ -414,7 +452,19 @@ BARRY.supportPanels = (function () {
     return sp;
   }
 
+  let liveMain = null;               // {mode, defaults, sess, split, fill}
+  let liveAid = null;                // {mode, defaults, sess, win, o, asked}
+
+  /* What an add-on asked for, so a change while it is open shows at once
+     rather than the next time it opens (2026-11-19: Aggie copied Rain's
+     support panels while in Panning, saw nothing change, and copied again).
+     `liveAid.win` is its second window, told to us by popOutPanes. */
   function plan(mode, defaults, sess) {
+    liveAid = { mode, defaults, sess, win: null, o: null, asked: Date.now() };
+    return planOf(mode, defaults, sess);
+  }
+
+  function planOf(mode, defaults, sess) {
     const c = choice(mode);
     if (!c.open) return null;
     const byId = {};
@@ -447,6 +497,7 @@ BARRY.supportPanels = (function () {
     const X = BARRY.views && BARRY.views.xplore;
     if (!X) return null;
     restoreMain(true);
+    liveMain = { mode, defaults, sess, split, fill };
     const p = mainPlan(mode, defaults, sess);
     if (!p) { X.setPanes(defaults, split); return null; }
     if (typeof fill === 'function') fill(p.specs);
@@ -473,6 +524,8 @@ BARRY.supportPanels = (function () {
      the band lock is put back, and the window returns to its one traces
      pane, as every add-on has always left it. */
   function restoreMain(quiet) {
+    // Leaving the add-on (quiet is applyMain's own redo): nothing is live.
+    if (!quiet) { liveMain = null; liveAid = null; }
     if (!mainSnap) return;
     const X = BARRY.views && BARRY.views.xplore;
     const snap = mainSnap;
@@ -505,6 +558,110 @@ BARRY.supportPanels = (function () {
     if (p.overview === false) o.overview = 'off';
     else if (p.overview === true) o.overview = 'on';
     return o;
+  }
+
+  /* ---------- a change shows at once ---------- */
+
+  /* popOutPanes tells us each window it opens. The one just after an
+     add-on asked for its plan is that add-on's second window. */
+  function noteWindow(win, o) {
+    if (!win || !liveAid || liveAid.win) return;
+    if (Date.now() - (liveAid.asked || 0) > 5000) return;
+    liveAid.win = win;
+    liveAid.o = Object.assign({}, o || {});
+  }
+
+  /* Lay the open add-on's windows out again from what is stored now: the
+     main window in place, the second window sent to its new address (the
+     same window, so nothing new is opened and no pop-up blocker is asked).
+     Returns the add-on's name, or null when none of `modes` is open. */
+  const PLAN_OPTS = ['shape', 'layout', 'span', 'flock', 'overview'];
+  function refreshNow(modes) {
+    const hit = (m) => !modes || modes.indexOf(m) >= 0;
+    const X = BARRY.views && BARRY.views.xplore;
+    let did = null;
+    if (liveMain && hit(liveMain.mode)) {
+      const L = liveMain;
+      try {
+        applyMain(L.mode, L.defaults, L.sess, L.split, L.fill);
+        did = L.mode;
+      } catch (e) { /* the next opening will lay it out */ }
+    }
+    if (liveAid && hit(liveAid.mode) && liveAid.win && !liveAid.win.closed
+        && X && X.paneUrl) {
+      const A = liveAid;
+      try {
+        const p = planOf(A.mode, A.defaults, A.sess);
+        if (!p) {
+          A.win.close();
+          A.win = null;
+        } else {
+          const o = Object.assign({}, A.o || {});
+          for (const k of PLAN_OPTS) delete o[k];
+          Object.assign(o, opts(p));
+          A.o = o;
+          A.win.location.replace(X.paneUrl(A.sess, p.specs, o));
+        }
+        did = A.mode;
+      } catch (e) { /* the next opening will lay it out */ }
+    }
+    return did;
+  }
+
+  let liveTimer = null;
+  let liveModes = null;
+  /* Several changes in a row (typing a gain, dragging a size) are one
+     re-layout, a moment after the last. */
+  function refreshLive(modes) {
+    // null: every add-on (a whole copy); else the ones named, added up.
+    if (modes == null || liveModes === 'all') liveModes = 'all';
+    else liveModes = (liveModes || []).concat(modes);
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      const want = liveModes === 'all' ? null : liveModes;
+      liveModes = null;
+      const did = refreshNow(want);
+      if (did) {
+        toast((addon(did) || {}).name + '’s windows now use these support panels.',
+              'ok', 4000);
+      }
+    }, 450);
+  }
+
+  /* Every window of this app hears of a change: a support window is a copy
+     of the app, with its own copy of the preferences, and the Profile can be
+     opened in it. The main window (where the add-on lives) takes the new
+     value into its copy and lays the add-on out again. Never from or into a
+     check page's frame. */
+  const harnessed = () => {
+    try { return inTest() || (typeof HARNESS_FRAME !== 'undefined' && HARNESS_FRAME); }
+    catch (e) { return false; }
+  };
+  let chan = null;
+  try {
+    if (typeof BroadcastChannel === 'function') {
+      chan = new BroadcastChannel('barry-support-panels');
+      chan.onmessage = (ev) => {
+        // A check page's frame hears only when it asks to (`__sppHear`).
+        if (harnessed() && !window.__sppHear) return;
+        const d = ev.data || {};
+        try {
+          if (d.every) BARRY.prefs.take(KEY, d.every);
+          if (d.lab !== undefined) BARRY.prefs.take(LAB_KEY, d.lab);
+        } catch (e) { /* an older prefs module: the next boot reads it */ }
+        refreshLive(d.modes || null);
+      };
+    }
+  } catch (e) { chan = null; }
+
+  function announce(modes, withLab) {
+    refreshLive(modes || null);
+    if (!chan || harnessed()) return;
+    try {
+      const msg = { modes: modes || null, every: all() };
+      if (withLab) msg.lab = labInfo();
+      chan.postMessage(JSON.parse(JSON.stringify(msg)));
+    } catch (e) { /* other windows read it when they next open */ }
   }
 
   /* ---------- the arrangement editor: the mini window you drag ---------- */
@@ -890,10 +1047,29 @@ BARRY.supportPanels = (function () {
       if (BARRY.prefs.flush) await BARRY.prefs.flush();
     } catch (e) { /* this session only */ }
     publishSoon();
+    // An add-on open now takes it at once, in this window or the main one.
+    announce(names);
     toast('Copied ' + ownerOf(p).name + '’s '
           + (mode ? ((addon(mode) || {}).name || mode) : 'support panels')
           + ' (' + (p.label || p.name) + ').', 'ok', 5000);
     return true;
+  }
+
+  /* Mine becomes the lab's default: what everyone who has not set an add-on
+     up themselves gets, a new computer included. */
+  async function makeLabDefault() {
+    const who = me();
+    const mine = all();
+    if (!Object.keys(mine).length) {
+      throw new Error('You have not set any add-on up yet, so there is nothing '
+                      + 'to make the default.');
+    }
+    const rec = { addons: clone(mine), by: who.name || null,
+                  email: who.email || null, at: new Date().toISOString() };
+    BARRY.prefs.set(LAB_KEY, rec);
+    if (BARRY.prefs.flush) await BARRY.prefs.flush();
+    announce(null, true);
+    return rec;
   }
 
   /* The sharing bar: quiet, one line on a wide screen. */
@@ -964,11 +1140,30 @@ BARRY.supportPanels = (function () {
             paintBar();
           } catch (e) { toast(e.message, 'err', 6000); }
         } }, [svgIcon(SET_ICON.save), el('span', { text: 'Save mine' })]);
+      const lab = labInfo();
+      const labBtn = el('button', { type: 'button', class: 'btn ghost sm spp-labdef',
+        title: 'Everyone who has not set an add-on up themselves gets yours, '
+          + 'new computers included'
+          + (lab && lab.by ? '. Now: ' + lab.by + '’s, from '
+             + String(lab.at || '').slice(0, 10) : ''),
+        onclick: async () => {
+          const ok = !BARRY.confirm || await BARRY.confirm(
+            'Make yours the lab’s default?',
+            'Everyone who has not set an add-on up themselves, and every new '
+            + 'computer, opens each add-on with your support panels. Anyone '
+            + 'who has their own keeps theirs.', 'Make it the default');
+          if (!ok) return;
+          try {
+            await makeLabDefault();
+            toast('Yours are the lab’s default now.', 'ok', 5000);
+            paint(host);
+          } catch (e) { toast(e.message, 'err', 6000); }
+        } }, [el('span', { text: 'Make mine the lab default' })]);
       box.appendChild(el('div', { class: 'spp-share-row' }, [
         el('span', { class: 'spp-share-ico', title: 'Someone else’s' }, [svgIcon(SET_ICON.share)]),
         from, into, go,
         el('span', { class: 'spp-share-gap' }),
-        nm, keep,
+        nm, keep, labBtn,
       ].concat(mine.filter((p) => !p.auto && p.label !== 'current').map((p) =>
         el('span', { class: 'spp-mine-chip', title: 'Shared by you' }, [
           el('span', { text: p.label || p.name }),
@@ -1196,14 +1391,19 @@ BARRY.supportPanels = (function () {
       el('div', { class: 'spp-bhead' }, [
         el('span', { class: 'spp-bname' }, [svgIcon(SET_ICON[isMain ? 'main' : 'second']),
           el('span', { text: isMain ? 'Main window' : 'Second window' })]),
-        isMain ? el('span', { class: 'spp-bsay', text: c.custom ? 'as chosen here'
-                                                                 : 'as the add-on lays it out' })
+        isMain ? el('span', { class: 'spp-bsay', text: !c.custom ? 'as the add-on lays it out'
+                                                     : c.from === 'lab' ? 'the lab’s default'
+                                                     : 'as chosen here' })
           : BARRY.ui.seg([['on', 'Opens'], ['off', 'Off']],
               c.open ? 'on' : 'off', (v) => set({ open: v === 'on' }), { extra: 'sm' }),
         el('span', { class: 'spacer' }),
-        c.custom ? el('button', { class: 'linkish spp-reset', type: 'button',
-          title: 'Back to the add-on’s own', onclick: () => { put(null); paint(host); } },
+        // Only one's own can be put back; the lab's default is already that.
+        c.custom && c.from === 'mine' ? el('button', { class: 'linkish spp-reset', type: 'button',
+          title: labDefaults()[a.mode] ? 'Back to the lab’s default' : 'Back to the add-on’s own',
+          onclick: () => { put(null); paint(host); } },
           [svgIcon(SET_ICON.reset), el('span', { text: 'Defaults' })]) : null,
+        c.from === 'lab' && c.custom && !isMain ? el('span', { class: 'spp-bsay spp-labsay',
+          text: 'the lab’s default' }) : null,
       ].filter(Boolean)),
       c.open ? el('div', { class: 'spp-body' }, [
         // Left: the window, drawn small, and its whole-window settings.
@@ -1314,7 +1514,8 @@ BARRY.supportPanels = (function () {
       box.appendChild(el('button', {
         type: 'button', role: 'tab', class: 'spp-tile' + (on ? ' on' : '') + (custom ? ' custom' : ''),
         'aria-selected': String(on), 'data-tool': ADDON_TOOL[a.mode] || a.mode, 'data-mode': a.mode,
-        title: a.name + (custom ? ' · set up by you' : ' · the add-on’s own'),
+        title: a.name + (!custom ? ' · the add-on’s own'
+          : sourceOf(a.mode) === 'lab' ? ' · the lab’s default' : ' · set up by you'),
         onclick: () => {
           picked = a.mode;
           try { localStorage.setItem(PICK_KEY, a.mode); } catch (e) { /* this view only */ }
@@ -1323,7 +1524,8 @@ BARRY.supportPanels = (function () {
       }, [
         el('span', { class: 'spp-tile-head' }, [el('span', { class: 'spp-tmark' }, [toolMark(a.mode)]),
           el('span', { class: 'spp-tile-name', text: a.name }),
-          custom ? el('span', { class: 'spp-tile-dot', title: 'Set up by you' }) : null].filter(Boolean)),
+          custom ? el('span', { class: 'spp-tile-dot', title: sourceOf(a.mode) === 'lab'
+            ? 'The lab’s default' : 'Set up by you' }) : null].filter(Boolean)),
         el('span', { class: 'spp-tile-wins' }, [
           el('span', { class: 'spp-tile-win', title: 'Main window' }, [svgIcon(SET_ICON.main), marks(m)]),
           s ? el('span', { class: 'spp-tile-win' + (s.open ? '' : ' off'), title: s.open
@@ -1347,8 +1549,9 @@ BARRY.supportPanels = (function () {
       el('summary', { class: 'section-label', text: 'Support panel preferences' }),
       el('p', { class: 'hint spp-lede', title: 'Up to ' + MAX + ' panels a window, the same kind '
           + 'more than once if you like; each with its channels, filter, band, colours and gain; '
-          + 'the span; and the arrangement, to the percent. Saved as you change it, used the next '
-          + 'time the add-on opens. Yours are shared as a preset anyone can copy.',
+          + 'the span; and the arrangement, to the percent. Saved as you change it, and used '
+          + 'at once by an add-on that is open. An add-on you have not set up opens with the '
+          + 'lab’s default. Yours are shared as a preset anyone can copy.',
         text: 'What each add-on’s windows open with. Pick an add-on; changes save as you go.' }),
       shareBar(list),
       list,
@@ -1358,7 +1561,9 @@ BARRY.supportPanels = (function () {
   }
 
   return { plan, opts, choice, choiceMain, mainPlan, applyMain, restoreMain,
-           section, ADDONS, copyFrom, loadShared,
+           section, ADDONS, copyFrom, loadShared, noteWindow, refreshLive,
+           labDefaults, makeLabDefault, sourceOf, LAB_KEY,
            _test: { positions, filterOf, bandOf, parseList, toRows, fromRows,
-                    shapeLayout, gridLayout, specFor, publish } };
+                    shapeLayout, gridLayout, specFor, publish, refreshNow,
+                    live: () => ({ main: liveMain, aid: liveAid }) } };
 })();
