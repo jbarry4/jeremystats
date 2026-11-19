@@ -19,8 +19,8 @@
     "schema": "2026-09-03T00:08:56.992263+00:00",
     "session": "2026-09-03T00:08:56.992263+00:00",
     "start": "2026-09-03T00:08:56.992263+00:00",
-    "updated": "2026-11-19T21:32:14.867300+00:00",
-    "view_state": "2026-11-19T21:32:14.867300+00:00"
+    "updated": "2026-11-19T22:20:36.506382+00:00",
+    "view_state": "2026-11-19T22:20:36.506382+00:00"
   },
   "_keys": {
     "paths": {
@@ -53,7 +53,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-19T21:32:14.867300+00:00",
+    "at": "2026-11-19T22:20:36.506382+00:00",
     "machine": "ip0af5d200.int.uvm.edu-f987",
     "schema": 1
   },
@@ -122,8 +122,8 @@
   "start": "2026-07-27T13:49:16",
   "updated": {
     "app_version": "2026.11.18.2",
-    "at": "2026-11-19T16:32:14-05:00",
-    "commit": "1539eadc",
+    "at": "2026-11-19T17:20:36-05:00",
+    "commit": "6dd0c573",
     "email": "akrempas@uvm.edu",
     "machine": "ip0af5d200.int.uvm.edu",
     "os": "Darwin",
@@ -133,9 +133,7 @@
     "channels": [
       0,
       1,
-      2,
       3,
-      4,
       5,
       6,
       7,
@@ -166,20 +164,20 @@
     ],
     "climBy": null,
     "fdefault": null,
-    "flock": true,
+    "flock": false,
     "gain": 3.75,
-    "hp": 0,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
     "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 43.17220665702397,
+    "span": 0.5,
     "stft_mode": null,
-    "t0": 2177.713126676309,
+    "t0": 2220.111012665032,
     "ylim": null
   }
 }
