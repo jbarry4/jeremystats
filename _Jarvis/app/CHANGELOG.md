@@ -15,6 +15,59 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.19.2 - Root Canal: bank by label (Project Evolve, phase 1)
+
+Restart Jarvis (backend changes), then reload the page.
+
+- **Bank by label…** in a Root Canal workflow. An Ambiguous run's Extract
+  stage (and its Halo card, once a halo is saved) banks by label: **DS**,
+  **P-spike**, **Twilight Zone** (inside both borders, plus the Halo's
+  extended zone) and **Outside both borders**. Each label shows its count and
+  how many of its events the Halo captured. Press the labels you want in the
+  bank dialog.
+- **One label banks a plain entry, two or more bank a Root Canal bundle.**
+  - DS alone or P-spike alone is the same entry as before: type Dentate spike
+    or P-spike, with the same labels. Banking DS alone from Ambiguous Dataset
+    v3 gives exactly the 4,824 events of the set banked on 11-12.
+  - Twilight Zone alone banks as its own type.
+  - A bundle is one entry of the new type **Root Canal bundle**. Each event
+    says its label, the class it came from, and whether the Halo captured it.
+  - X-ray and the Extraction Room don't read bundles yet.
+- **Run and bank… on a Verified run** offers the border's inside, as always,
+  and also what it leaves outside.
+- A bundle never writes over a DS or P-spike entry. Each kind continues its
+  own entry.
+- **Twilight Zone** replaces "ambiguous" wherever the workflow tab names the
+  purple class. The workflow kind is still called Ambiguous.
+
+## 2026.11.19.1 - StrataScope Beta: Consult
+
+Restart Jarvis (a new backend module and routes), then reload the page.
+
+- **[Steps | Beta] in StrataScope's step row.** Beta is the same
+  StrataScope, with every step, the rail, the strip and Accept, plus a
+  **Consult** button and a Consult card at the top of the drawer.
+- **Consult** sends what the window shows to this computer's Claude Code
+  session: the sheet, the open step, the proposed lines where they are now,
+  every step's anchors and votes, the depth curves, the checks, ICA, the
+  question typed in the card, and pictures of the traces with the rail, the
+  depth strip and the evidence window. Then say "consult" in Claude Code.
+- **The reply arrives in the card by itself** (over /api/link, no refresh).
+  It is a list of notes, line moves, relabels, confidence changes, curves to
+  show, steps to open and parameter changes, each with its reason. Apply
+  them one at a time or with **Apply one by one**, which walks the list with
+  a pause between so each change can be seen landing. Anything applied can
+  be undone from its row. Moved lines stay proposals until the step is
+  Accepted, and relabels save at once, the same as painting the rail.
+- Kept on this computer only, in `GUI_logs/.cache/strata_consult`.
+  `tools/strata_consult.py` is Claude's side (`show`, `push`, `schema`).
+  Harness: `web/_dev/strataconsult.html`.
+- **Fixed: after Accept, the next step opened on stale proposals.** Step 3
+  was cut between the fissure and hilus proposed before Steps 1 and 2 were
+  accepted, not the accepted ones. Accept now asks for the next step's
+  proposal again. A consult's record of a moved line also now keeps where
+  the line was before, not where it went.
+
 ## 2026.11.18.2 - Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes
 
 Restart Jarvis (new backend modules and routes), then reload the page.

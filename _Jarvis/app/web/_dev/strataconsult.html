@@ -1,0 +1,260 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — StrataScope Beta Consult</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:26vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:74vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* StrataScope Beta's Consult (web/js/strataconsult.js,
+   backend/strataconsult.py), on the demo recording. Checks that:
+
+     - the step row has [Steps | Beta]; Beta adds the Consult card
+     - Consult primes a consult on the server, with the note and pictures
+     - a reply pushed to the server reaches the open window by itself
+       (over /api/link -- this page never asks for it)
+     - "Apply one by one" moves the line, rates it, relabels channels and
+       sets the strip's curves, and every decision is recorded
+     - Undo puts a relabel and a move back
+     - Steps puts the card away
+
+   Restores the demo's sheet and the Beta switch as it found them. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+const GID = 'demo-ds-tutorial';
+const PATH = 'demo:ds-tutorial';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null, before = null, betaWas = null;
+  const post = (url, body) => W().fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Barry-Test': '1' },
+    body: JSON.stringify(body || {}),
+  }).then((r) => r.json());
+  const get = (url) => W().fetch(url, { headers: { 'X-Barry-Test': '1' } }).then((r) => r.json());
+
+  const restore = async () => {
+    if (!before) return;
+    try {
+      if (!before.existed) {
+        await post('/api/layers/' + GID + '/delete', {});
+        return;
+      }
+      await post('/api/layers/' + GID + '/clear', {});
+      if (Object.keys(before.labels || {}).length) {
+        await post('/api/layers/' + GID + '/set', { labels: before.labels });
+      }
+      const now = (await get('/api/layers/' + GID)).sheet.strata || {};
+      const was = before.strata || {};
+      const patch = {
+        states: was.states || {}, wheel: was.wheel || [],
+        checks: was.checks || [], signed: was.signed || {},
+      };
+      for (const k of ['params', 'confidence', 'steps', 'anchors']) {
+        const m = {};
+        for (const key of Object.keys(now[k] || {})) m[key] = null;
+        Object.assign(m, was[k] || {});
+        patch[k] = m;
+      }
+      await post('/api/strata/' + GID + '/state', { patch });
+    } catch (e) { p('restore failed: ' + e.message); }
+  };
+
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    await untilN(() => typeof W().setView === 'function');
+    await sleep(900);
+    const run = (src) => W().eval(src);
+    const val = (expr) => run('(' + expr + ')');
+    const SS = () => val('BARRY.strataSteps');
+    const SC = () => val('BARRY.strataConsult');
+
+    try { betaWas = W().localStorage.getItem('barry.strataBeta'); } catch (e) { /* none */ }
+    try { W().localStorage.setItem('barry.strataBeta', 'off'); } catch (e) { /* none */ }
+
+    run("setView('xplore')");
+    await run('BARRY.views.xplore.open(' + JSON.stringify(PATH) + ')');
+    await sleep(1500);
+    const got = await get('/api/layers/' + GID);
+    before = got.ok ? { existed: true, labels: got.sheet.labels || {},
+                        strata: got.sheet.strata || {} }
+                    : { existed: false, labels: {}, strata: {} };
+
+    hd('entering');
+    run('window.__aid = null; window.open = function (u) { window.__aid = u; return null; };');
+    run("window.__errs = []; window.addEventListener('error', function (e) { window.__errs.push(e.message); }); window.addEventListener('unhandledrejection', function (e) { window.__errs.push(String(e.reason && e.reason.stack || e.reason)); });");
+    const entered = await run('BARRY.strata.enter(' + JSON.stringify(GID) + ')');
+    ck('StrataScope opens on the demo', entered === true);
+    await untilN(() => SS().active && SS()._state().status, 200);
+    let st = SS()._state().status || {};
+    if (!(st.scanned && st.current)) {
+      const btn = Array.from(D().querySelectorAll('.ss-read button'))
+        .find((b) => /Read/.test(b.textContent));
+      if (btn) btn.click();
+      await untilN(() => {
+        const s = SS()._state().status || {};
+        return s.scanned && s.current && SS()._state().sug;
+      }, 1200, 100);
+    } else {
+      await untilN(() => SS()._state().sug, 300);
+    }
+    ck('the recording is read and proposals are back', !!SS()._state().sug);
+
+    hd('the Beta switch');
+    const seg = () => D().querySelector('.ss-beta-seg');
+    ck('the step row has Steps | Beta', !!seg()
+       && /Steps/.test(seg().textContent) && /Beta/.test(seg().textContent));
+    ck('Steps is pressed, and there is no Consult card',
+       /Steps/.test((seg().querySelector('.active') || {}).textContent || '')
+       && !D().querySelector('.ssc'));
+    Array.from(seg().querySelectorAll('button')).find((b) => /Beta/.test(b.textContent)).click();
+    await untilN(() => D().querySelector('.ssc'), 50);
+    ck('Beta shows the Consult card in the drawer', !!D().querySelector('.ss-drawer .ssc'));
+    ck('... and a Consult button in the step row', !!D().querySelector('.ss-consult-btn'));
+
+    hd('priming');
+    D().querySelectorAll('.ss-step')[1].click();
+    await untilN(() => SS()._state().ghost && SS()._state().ghost.step === '1', 100);
+    ck('Step 1 opens under the card', !!D().querySelector('.ss-drawer .ssc')
+       && !!D().querySelector('.ss-drawer .ss-anchors'));
+    // Some labels, so the picture has a rail to draw (restored at the end).
+    const sg0 = SS()._state().sug;
+    const seed = {};
+    sg0.channels.slice(0, 4).forEach((c) => { seed[c] = 'ca1_sp'; });
+    sg0.channels.slice(4, 10).forEach((c) => { seed[c] = 'ca1_rad'; });
+    await SS()._consult.host().setLabels(seed);
+    const ta = D().querySelector('.ssc-note');
+    ta.value = 'harness: is the fissure right?';
+    ta.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+    D().querySelector('.ss-consult-btn').click();
+    await untilN(() => SC()._state().cur && SC()._state().cur.id && !SC()._state().busy, 200);
+    const cid = SC()._state().cur && SC()._state().cur.id;
+    ck('Consult primes a consult', !!cid, cid);
+    const c1 = (await get('/api/strata/' + GID + '/consult')).consult || {};
+    ck('the server has it, with the note', c1.id === cid && /fissure/.test(c1.note || ''),
+       JSON.stringify(c1).slice(0, 160));
+    ck('... and pictures of the traces and the strip',
+       (c1.images || []).includes('screen.png') && (c1.images || []).includes('strip.png'),
+       (c1.images || []).join(','));
+    ck('the card says it is waiting', !!D().querySelector('.ssc-wait'));
+
+    hd('the reply arrives by itself');
+    const sug = SS()._state().sug;
+    const gh = SS()._state().ghost;
+    const L = gh.lines.find((l) => l.at != null && l.at + 2 < sug.channels.length);
+    const fromAt = L.at;
+    const toRow = L.at + 2;
+    const labRows = [sug.channels.length - 2, sug.channels.length - 1];
+    const labChs = labRows.map((r) => sug.channels[r]);
+    const labWas = labChs.map((c) => (SS()._consult.host().sheet().labels || {})[String(c)] || null);
+    const reply = {
+      summary: 'Harness reply.',
+      items: [
+        { kind: 'note', title: 'A note', why: 'Nothing to do.' },
+        { kind: 'move', step: '1', line: L.id, to_ch: sug.channels[toRow], why: 'test move' },
+        { kind: 'confidence', step: '1', line: L.id, value: 'guess', why: 'test' },
+        { kind: 'label', channels: labChs, region: 'thal', why: 'test label' },
+        { kind: 'show', step: '1', curves: ['mid_gamma', 'theta_phase'], why: 'look' },
+      ],
+    };
+    const pushed = await post('/api/strata/' + GID + '/consult/reply', { id: cid, reply });
+    ck('the server takes the reply', pushed.ok && pushed.rev === 1, JSON.stringify(pushed));
+    const badReply = await post('/api/strata/' + GID + '/consult/reply',
+      { id: cid, reply: { items: [{ kind: 'move', line: 'x' }] } });
+    ck('... and refuses one it could not apply', badReply.ok === false
+       && /to_ch/.test(badReply.error || ''), JSON.stringify(badReply));
+    const arrived = await untilN(() => D().querySelectorAll('.ssc-item').length === 5, 200, 100);
+    ck('the five items appear without a refresh', arrived >= 0,
+       D().querySelectorAll('.ssc-item').length);
+
+    hd('Apply one by one');
+    const walkBtn = Array.from(D().querySelectorAll('.ssc-walk button'))
+      .find((b) => /one by one/.test(b.textContent));
+    ck('there is an Apply one by one', !!walkBtn);
+    if (walkBtn) walkBtn.click();
+    await untilN(() => SC()._state().walking, 30, 50);
+    const sawNow = await untilN(() => D().querySelector('.ssc-item.now'), 60, 50);
+    ck('the item being applied is marked as it goes', sawNow >= 0);
+    await untilN(() => !SC()._state().walking, 300, 100);
+    const ln = SS()._state().ghost.lines.find((l) => l.id === L.id);
+    ck('the line moved to the channel named', ln && ln.at === toRow,
+       ln && (fromAt + ' -> ' + ln.at + ', wanted ' + toRow));
+    ck('... and is rated guess', ln && ln.confidence === 'guess', ln && ln.confidence);
+    const labs = SS()._consult.host().sheet().labels || {};
+    ck('the channels were relabelled', labChs.every((c) => labs[String(c)] === 'thal'),
+       labChs.map((c) => labs[String(c)]).join(','));
+    const shown = SS()._consult.shown().slice().sort().join(',');
+    ck('the strip shows the curves named', shown === 'mid_gamma,theta_phase', shown);
+    const c2 = (await get('/api/strata/' + GID + '/consult')).consult || {};
+    const states = Object.values(c2.decisions || {}).map((d) => d.state).sort().join(',');
+    ck('every decision is recorded', states === 'applied,applied,applied,applied,read', states);
+
+    hd('Undo');
+    const undoOf = (i) => D().querySelector('.ssc-item[data-i="' + i + '"] .ssc-btns button');
+    undoOf(3).click();
+    await untilN(() => labChs.every((c, k) =>
+      ((SS()._consult.host().sheet().labels || {})[String(c)] || null) === labWas[k]), 100);
+    const labs2 = SS()._consult.host().sheet().labels || {};
+    ck('undoing the relabel puts the channels back',
+       labChs.every((c, k) => (labs2[String(c)] || null) === labWas[k]),
+       labChs.map((c) => labs2[String(c)]).join(','));
+    undoOf(1).click();
+    await untilN(() => SS()._state().ghost.lines.find((l) => l.id === L.id).at === fromAt, 50);
+    ck('undoing the move puts the line back',
+       SS()._state().ghost.lines.find((l) => l.id === L.id).at === fromAt);
+    // The record is written after the line moves back: give the POST its turn.
+    let undone = 0;
+    for (let i = 0; i < 30 && undone < 2; i++) {
+      const c3 = (await get('/api/strata/' + GID + '/consult')).consult || {};
+      undone = Object.values(c3.decisions || {}).filter((d) => d.state === 'undone').length;
+      if (undone < 2) await sleep(100);
+    }
+    ck('... and both undos are recorded', undone === 2, undone);
+
+    hd('back to Steps');
+    Array.from(seg().querySelectorAll('button')).find((b) => /Steps/.test(b.textContent)).click();
+    await untilN(() => !D().querySelector('.ssc'), 50);
+    ck('Steps puts the card away', !D().querySelector('.ssc'));
+    ck('no page errors', !(val('window.__errs') || []).length,
+       (val('window.__errs') || []).join(' | ').slice(0, 300));
+    run('BARRY.strata.exit()');
+    await sleep(300);
+  } catch (e) {
+    ck('no exception', false, e && (e.stack || e.message));
+  } finally {
+    await restore();
+    try {
+      if (betaWas == null) W().localStorage.removeItem('barry.strataBeta');
+      else W().localStorage.setItem('barry.strataBeta', betaWas);
+    } catch (e) { /* none */ }
+    const after = await get('/api/layers/' + GID).catch(() => null);
+    if (before && !before.existed) {
+      ck('the sheet this run made is gone again', !(after && after.ok));
+    } else if (after && after.ok && before) {
+      ck('the sheet’s labels are back as they were',
+         JSON.stringify(after.sheet.labels || {}) === JSON.stringify(before.labels || {}));
+    }
+    p('\n' + (bad ? bad + ' FAILED' : 'all ok'));
+    document.title = bad ? 'FAIL ' + bad : 'PASS';
+    f.src = 'about:blank';
+  }
+})();
+</script>

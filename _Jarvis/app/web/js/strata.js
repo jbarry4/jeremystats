@@ -361,6 +361,8 @@ BARRY.strata = (function () {
       },
       setLabels: (map) => applyLabels(map),
       openAids: () => { aidWin = null; openAids(); },
+      // StrataScope Beta's Consult photographs the evidence window too.
+      aidWindow: () => (aidWin && !aidWin.closed ? aidWin : null),
       focusAids: () => {
         if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return true; }
         return false;

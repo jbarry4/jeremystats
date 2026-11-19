@@ -1,30 +1,38 @@
 {
   "_at": {
     "added": "2026-11-13T17:24:17.323672+00:00",
-    "deleted": "2026-11-13T17:24:19.572135+00:00",
-    "id": "2026-11-13T17:24:17.323672+00:00",
-    "kind": "2026-11-13T17:24:17.323672+00:00",
-    "name": "2026-11-13T17:24:17.323672+00:00",
-    "nickname": "2026-11-13T17:24:17.323672+00:00",
-    "schema": "2026-11-13T17:24:17.323672+00:00",
-    "subject": "2026-11-13T17:24:17.323672+00:00",
-    "subject_key": "2026-11-13T17:24:17.323672+00:00",
-    "version": "2026-11-13T17:24:19.572135+00:00"
+    "deleted": "2026-11-19T20:04:47.250918+00:00",
+    "id": "2026-11-13T20:38:27.970708+00:00",
+    "kind": "2026-11-13T20:38:27.970708+00:00",
+    "name": "2026-11-13T20:38:27.970708+00:00",
+    "nickname": "2026-11-13T20:38:27.970708+00:00",
+    "schema": "2026-11-13T20:38:27.970708+00:00",
+    "subject": "2026-11-13T20:38:27.970708+00:00",
+    "subject_key": "2026-11-13T20:38:27.970708+00:00",
+    "version": "2026-11-19T20:04:47.250918+00:00"
   },
   "_keys": {
     "versions": {
       "1f261da47215": [
         "set",
-        "2026-11-13T17:24:17.323672+00:00"
+        "2026-11-13T20:38:27.970708+00:00"
+      ],
+      "47788c126a4c": [
+        "set",
+        "2026-11-19T20:04:47.250918+00:00"
+      ],
+      "83fbde24df26": [
+        "set",
+        "2026-11-19T17:09:04.568522+00:00"
       ],
       "d9786c166765": [
         "set",
-        "2026-11-13T17:24:19.572135+00:00"
+        "2026-11-13T20:38:27.970708+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-13T17:24:19.572135+00:00",
+    "at": "2026-11-19T20:04:47.250918+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -46,7 +54,7 @@
     "workflow_key": "61e56096eaef4e179ab2314542d8055b"
   },
   "subject_key": "rootcanal_workflow|61e56096eaef4e179ab2314542d8055b",
-  "version": 2,
+  "version": 4,
   "versions": [
     {
       "app_version": "2026.11.13.2",
@@ -116,6 +124,90 @@
       },
       "params_hash": "d641b95abdb1",
       "v": 2
+    },
+    {
+      "app_version": "2026.11.18.2",
+      "at": "2026-11-19T12:09:04-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "a5e56299",
+      "digest": "54ab9f55ac42",
+      "id": "83fbde24df26",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 3
+        },
+        {
+          "artifact_id": "4a29af93e601",
+          "kind": "rootcanal_workflow",
+          "version": 3
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": null,
+        "kept": 827,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 3
+    },
+    {
+      "app_version": "2026.11.19.1",
+      "at": "2026-11-19T15:04:46-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "8c18a666",
+      "digest": "adb6916095ab",
+      "id": "47788c126a4c",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 4
+        },
+        {
+          "artifact_id": "4a29af93e601",
+          "kind": "rootcanal_workflow",
+          "version": 4
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5100,
+        "grace": null,
+        "kept": 807,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 4
     }
   ]
 }

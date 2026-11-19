@@ -18145,24 +18145,24 @@ def _wf_halo_apply(run, h, from_version=None):
     return run
 
 
-def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
-                     name=None, user_note=None):
-    """Bank what a run extracted: ONE entry for the whole target pool
-    (decided 2026-11-05), each event carrying the recording and the set it
-    came from. A classifier's call, not a person's."""
-    kind = defn["kind"]
-    col = run["cols"]
-    gids = col["gids"]
-    by_gid = {m["gid"]: m for m in run["members"]}
-    lab = ({"label_id": "spike", "label": "Dentate Spike"} if kind == "ds"
-           else {"label_id": "solid", "label": "Solid"})
+def _wf_label_events(run, kind, labels):
+    """A run's events in the labels picked (rcworkflow.BANK_LABELS), as the
+    bank takes them: each with its time, recording and set, and its label
+    -- in a bundle its class and the Halo too. Returns (events, sources,
+    shape); `shape` says the entry's type, whether it is a bundle, and how
+    many each label holds."""
+    col = run.get("cols") or {}
+    gids = col.get("gids") or []
+    ts = col.get("t") or []
+    by_gid = {m["gid"]: m for m in run.get("members") or []}
+    picks, shape = rcworkflow.bank_pick(kind, col.get("cls") or [], labels)
+    picks = [p for p in picks if ts[p[0]] is not None]
     events, srcs = [], {}
-    for n, c in enumerate(col["cls"]):
-        if c != "inside" or col["t"][n] is None:
-            continue
+    for n, lid, word, c in picks:
         g = gids[col["g"][n]] if 0 <= col["g"][n] < len(gids) else None
         m = by_gid.get(g) or {}
-        events.append(dict(lab, start=col["t"][n], gid=g,
+        events.append(dict(rcworkflow.bank_event(lid, word, c, shape),
+                           start=ts[n], gid=g,
                            src_entry=m.get("entry_id"),
                            src_version=m.get("from_version")))
         s = srcs.setdefault(m.get("entry_id"), {
@@ -18170,8 +18170,37 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
             "version": m.get("from_version"),
             "session_label": m.get("session_label"), "n": 0})
         s["n"] += 1
+    # The counts again, of the events that have a time: what is written.
+    for lab in shape["labels"]:
+        mine = [p for p in picks if p[1] == lab["id"]]
+        lab["n"] = len(mine)
+        lab["halo"] = sum(1 for p in mine if str(p[3]).startswith("halo_"))
+    return events, srcs, shape
+
+
+def _wf_bank_label_names(shape):
+    """{label id: label} of a bundle, so it reads on its own in the bank."""
+    return ({lab["id"]: lab["label"] for lab in shape["labels"]}
+            if shape.get("bundle") else None)
+
+
+def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
+                     name=None, user_note=None, labels=None):
+    """Bank what a run extracted: ONE entry for the whole target pool
+    (decided 2026-11-05), each event carrying the recording and the set it
+    came from. A classifier's call, not a person's. `labels` (2026-11-19):
+    inside the border, as always, and/or what it left outside; two make a
+    Root Canal bundle."""
+    kind = defn["kind"]
+    want = list(labels or []) or [kind]
+    events, srcs, shape = _wf_label_events(run, kind, want)
     if not events:
         return None
+    # A different kind of entry is a new entry: a DS set never turns into a
+    # bundle under the readers pinned to it.
+    if prior_entry and (BANK.get(prior_entry) or {}).get("type") \
+            != shape["type"]:
+        prior_entry = None
     nick = rec.get("nickname") or rec.get("name")
     projects = sorted({str(e.get("project")) for e in
                        (BANK.get(s["entry_id"]) or {} for s in srcs.values()
@@ -18181,16 +18210,20 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
         "id": prior_entry,
         "project": projects[0] if len(projects) == 1 else (
             ", ".join(projects) or "Unfiled"),
-        "type": "ds" if kind == "ds" else "ied",
-        "type_name": "Dentate spike" if kind == "ds" else "P-spike",
+        "type": shape["type"],
+        "type_name": shape["type_name"],
+        "label_names": _wf_bank_label_names(shape),
         "name": (name or "").strip() or "%s · %s" % (rcworkflow.WORDS[kind],
                                                       nick),
         "note": ("Extracted by the Root Canal workflow ‘%s’ v%s: every event "
-                 "of ‘%s’ v%s inside the border at grace %s. %s A border's "
-                 "call, not a person's. %d recordings in one entry; each "
-                 "event says which."
+                 "of ‘%s’ v%s %s at grace %s. %s A border's call, not a "
+                 "person's. %d recordings in one entry; each event says "
+                 "which."
                  % (nick, version_next, run["target"].get("nickname"),
                     run["target"].get("version"),
+                    "inside the border" if want == [kind] else
+                    "by the labels picked (%s)" % rcworkflow.labels_words(
+                        shape),
                     rcborder.grace_words(run["grace"]), run["rule"],
                     len(srcs))
                  + ((" " + user_note.strip()) if (user_note or "").strip()
@@ -18203,6 +18236,8 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
                        "workflow": {"artifact_id": rec["id"],
                                     "version": version_next,
                                     "nickname": nick, "kind": kind},
+                       "labels": shape["labels"],
+                       "bundle": shape["bundle"],
                        "grace": run["grace"],
                        "border": run.get("border_ref"),
                        "target": run["target"],
@@ -18214,7 +18249,10 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
             "name": made.get("name") if isinstance(made, dict) else None,
             "version": versionsmod.tip_next(vers)[0] if vers else None,
             "new": not prior_entry,
-            "recordings": len(srcs)}
+            "recordings": len(srcs),
+            "type": shape["type"], "bundle": shape["bundle"],
+            "labels": [{k: lab[k] for k in ("id", "label", "n", "halo")}
+                       for lab in shape["labels"]]}
 
 
 def _wf_border_save(rec, run, prior):
@@ -18591,19 +18629,28 @@ def api_rootcanal_workflow_run(artifact_id):
             # BANKED ONLY WHEN ASKED (2026-11-05: "not sure what to hit to
             # bank"): Run and bank says so on its button and in a dialog
             # that names the entry; a run without it banks nothing.
-            prior_bank = None
+            # The entry banked last, and (2026-11-19) the last one of each
+            # type: a DS set and a bundle of the same workflow are two
+            # entries, each continued by a bank of its own kind.
+            prior_bank, prior_of = None, {}
             for v in range(int(rec.get("version") or 1), 0, -1):
                 pb = ((ARTIFACTS.payload(artifact_id, v) or {}).get("run")
                       or {}).get("bank")
-                if pb and pb.get("entry_id") and BANK.get(pb["entry_id"]):
-                    prior_bank = pb
-                    break
+                got = BANK.get(pb["entry_id"]) if pb and pb.get(
+                    "entry_id") else None
+                if got:
+                    prior_bank = prior_bank or pb
+                    prior_of.setdefault(got.get("type"), pb["entry_id"])
             if body.get("bank", True):
+                want = list(body.get("bank_labels") or []) or [defn["kind"]]
+                _p, shape0 = rcworkflow.bank_pick(
+                    defn["kind"], run["cols"]["cls"], want)
                 run["bank"] = _wf_extract_bank(
                     rec, defn, run, nxt,
-                    (prior_bank or {}).get("entry_id"),
+                    prior_of.get(shape0["type"]),
                     name=body.get("bank_name"),
-                    user_note=body.get("bank_note"))
+                    user_note=body.get("bank_note"),
+                    labels=body.get("bank_labels"))
             else:
                 run["bank"] = None
                 run["banked_before"] = prior_bank
@@ -18698,6 +18745,82 @@ def api_rootcanal_workflow_one(artifact_id):
                     "artifact": ARTIFACTS.summary(artifact_id)})
 
 
+def _wf_bank_by_labels(rec, ver, run, kind, body):
+    """A saved run banked by the labels ticked (PROJECT EVOLVE phase 1,
+    2026-11-19): ONE entry for the whole pool, as every workflow bank is.
+    One label is a plain entry of its type; two or more one Root Canal
+    bundle, every event saying its label, its class and whether the Halo
+    captured it. Body: {labels, name, note, entry_id}. A border's and a
+    halo's call, not a person's: never marked curated."""
+    if kind not in rcworkflow.BANK_LABELS or not run.get("cols"):
+        raise rcworkflow.WorkflowError(
+            "v%s of this workflow has no run to bank by label." % ver)
+    events, srcs, shape = _wf_label_events(run, kind, body.get("labels"))
+    if not events:
+        raise rcworkflow.WorkflowError(
+            "None of the labels picked has an event with a time.")
+    nick = rec.get("nickname") or rec.get("name")
+    # Banking over an entry continues it only when it is the same kind.
+    eid = str(body.get("entry_id") or "").strip() or None
+    if eid and (BANK.get(eid) or {}).get("type") != shape["type"]:
+        eid = None
+    halo = run.get("halo")
+    gw = lambda g: "?" if g is None else rcborder.grace_words(g)  # noqa: E731
+    if kind == "ambiguous":
+        rule = ("both borders (DS at grace %s, P-spike at grace %s)%s" % (
+            gw(((run.get("borders") or {}).get("ds") or {}).get("grace")),
+            gw(((run.get("borders") or {}).get("pspike") or {}).get("grace")),
+            ("; " + rcworkflow.halo_words(halo)) if halo
+            else "; no Halo on this version"))
+    else:
+        rule = "its border at grace %s" % gw(run.get("grace"))
+    projects = sorted({str(e.get("project")) for e in
+                       (BANK.get(s["entry_id"]) or {} for s in srcs.values()
+                        if s.get("entry_id")) if e.get("project")})
+    made = BANK.add({
+        "id": eid,
+        "project": projects[0] if len(projects) == 1 else (
+            ", ".join(projects) or "Unfiled"),
+        "type": shape["type"], "type_name": shape["type_name"],
+        "label_names": _wf_bank_label_names(shape),
+        "name": (str(body.get("name") or "").strip()
+                 or "%s · %s v%s" % (" + ".join(
+                     lab["label"] for lab in shape["labels"]), nick, ver)),
+        "note": ("From the Root Canal workflow ‘%s’ v%s, by %s: %s. %s A "
+                 "border's call, not a person's. %d recordings in one entry; "
+                 "each event says which."
+                 % (nick, ver, rule, rcworkflow.labels_words(shape),
+                    "Each event says its label, the class it came from and "
+                    "whether the Halo captured it." if shape["bundle"]
+                    else "", len(srcs))).replace("  ", " ")
+                + ((" " + str(body.get("note")).strip())
+                   if str(body.get("note") or "").strip() else ""),
+        "events": events, "curated": False, "pipeline": WF_PIPELINE,
+        "added_by": (STORE.provenance() or {}).get("user"),
+        "parameters": {"tool": "rootcanal_workflow",
+                       "workflow": {"artifact_id": rec["id"], "version": ver,
+                                    "nickname": nick, "kind": kind},
+                       "labels": shape["labels"], "bundle": shape["bundle"],
+                       "halo": ({k: halo.get(k) for k in
+                                 ("reach", "margin", "captured",
+                                  "from_version")} if halo else None),
+                       "target": run.get("target"),
+                       "grace": run.get("grace"),
+                       "border": run.get("border_ref"),
+                       "borders": {k: {"workflow": (v or {}).get("workflow"),
+                                       "grace": (v or {}).get("grace")}
+                                   for k, v in (run.get("borders") or {})
+                                   .items()} or None,
+                       "sources": sorted(srcs.values(), key=lambda s: str(
+                           s.get("session_label") or ""))},
+    })
+    return {"entry_id": made["id"], "n": len(events),
+            "name": made.get("name"), "type": shape["type"],
+            "bundle": shape["bundle"], "recordings": len(srcs),
+            "labels": [{k: lab[k] for k in ("id", "label", "n", "halo")}
+                       for lab in shape["labels"]]}
+
+
 @app.route("/api/rootcanal/workflow/<artifact_id>/bank", methods=["POST"])
 def api_rootcanal_workflow_bank(artifact_id):
     """Bank the events a person picked out of an ambiguous run, as one
@@ -18710,8 +18833,15 @@ def api_rootcanal_workflow_bank(artifact_id):
             raise rcworkflow.WorkflowError("There is no workflow %s."
                                            % artifact_id)
         ver = body.get("version") or rec.get("version")
-        run = (ARTIFACTS.payload(artifact_id, ver) or {}).get("run") or {}
+        pay = ARTIFACTS.payload(artifact_id, ver) or {}
+        run = pay.get("run") or {}
         col = run.get("cols") or {}
+        # BY LABEL (PROJECT EVOLVE, 2026-11-19): the labels ticked in the
+        # bank dialog -- one a plain entry, two or more a Root Canal bundle.
+        if body.get("labels") is not None:
+            out = _wf_bank_by_labels(rec, ver, run, (pay.get(
+                "definition") or {}).get("kind"), body)
+            return jsonify(dict(out, ok=True))
         # A WHOLE SIDE (2026-11-12): every event of one border alone, and
         # what its halo captured -- a border's and a halo's call, not a
         # person's picks.
@@ -18747,7 +18877,7 @@ def api_rootcanal_workflow_bank(artifact_id):
         made = BANK.add({
             "type": etype,
             "type_name": {"ds": "Dentate spike", "ied": "P-spike"}.get(
-                etype, "Ambiguous DS / P-spike"),
+                etype, "Twilight Zone"),
             "name": name,
             "id": (str(body.get("entry_id") or "").strip() or None)
             if side else None,
@@ -18759,8 +18889,9 @@ def api_rootcanal_workflow_bank(artifact_id):
                           rcworkflow.halo_words(run["halo"])
                           if run.get("halo") else "no halo on this version"))
                      if side else
-                     ("Picked by hand from the ambiguous events of the Root "
-                      "Canal workflow ‘%s’ v%s." % (nick, ver)))
+                     ("Picked by hand from the Twilight Zone and outside-both "
+                      "events of the Root Canal workflow ‘%s’ v%s."
+                      % (nick, ver)))
             + ((" " + str(body.get("note")).strip())
                if str(body.get("note") or "").strip() else ""),
             "events": events, "curated": not side, "pipeline": WF_PIPELINE,
@@ -31155,6 +31286,10 @@ weeklymod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user")
                   machine=_vacc_device, shard=shardsmod_id, reg=lambda: REG,
                   bank=lambda: BANK, curate=lambda: CURATE, is_test=peoplemod.is_test_name,
                   save=lambda blob, name: save_output(blob, name, subdir="Weekly"))
+# StrataScope Beta's Consult (2026-11-19): the page primes a consult, Claude
+# Code answers it (tools/strata_consult.py), the reply lands over /api/link.
+from . import strataconsult as strataconsultmod               # noqa: E402
+strataconsultmod.install(app, sys.modules[__name__])
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
