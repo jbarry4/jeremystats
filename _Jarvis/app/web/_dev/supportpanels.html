@@ -72,6 +72,8 @@ async function until(fn, ms = 20000) {
     const realGet = B.prefs.get, realSet = B.prefs.set;
     B.prefs.get = (k, d) => (k in kept ? kept[k] : realGet.call(B.prefs, k, d));
     B.prefs.set = (k, v) => { kept[k] = JSON.parse(JSON.stringify(v)); };
+    // From the add-ons' own defaults, not this computer's lab default.
+    kept.support_panels_lab = {};
     const realApi = W().api;
     W().api = async (path, opts) => (path === '/api/session/state'
       ? { ok: true } : realApi(path, opts));
@@ -341,7 +343,10 @@ async function until(fn, ms = 20000) {
     const sec3 = SP.section();
     sec3.open = true;
     D().body.appendChild(sec3);
-    await until(() => sec3.querySelector('.spp-from optgroup'), 5000);
+    /* The bar draws first from the presets already read (an earlier section
+       read the real ones), then again from the answer above: wait for that
+       one, or this reads whoever is first in this computer's real list. */
+    await until(() => (sec3.querySelector('.spp-from optgroup') || {}).label === 'Rain Younger', 5000);
     const grp = sec3.querySelector('.spp-from optgroup');
     check('the people who shared theirs are listed by name',
           grp && grp.label === 'Rain Younger' && /current/.test(grp.textContent),

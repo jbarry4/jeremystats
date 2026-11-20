@@ -428,7 +428,7 @@ BARRY.rcWorkflow = (function () {
     null: 'not measured',
     halo_ds: 'outside both, captured by the DS halo',
     halo_pspike: 'outside both, captured by the P-spike halo',
-    halo_amb: 'outside both, in the extended ambiguous zone',
+    halo_amb: 'outside both, in the extended Twilight Zone',
     halo_far: 'outside both, beyond both halos',
   };
 
@@ -449,7 +449,7 @@ BARRY.rcWorkflow = (function () {
      ================================================================== */
   const HALO_DEFAULT = { reach: 2, margin: 1.5 };
   const HALO_WORDS = { halo_ds: 'captured DS', halo_pspike: 'captured P-spike',
-                       halo_amb: 'extended ambiguous', halo_far: 'far out' };
+                       halo_amb: 'extended Twilight Zone', halo_far: 'far out' };
   const AMB_KEPT = new Set(['both', 'neither', 'halo_amb', 'halo_far']);
   function haloClass(c, ga, gb, R, M) {
     if (c !== 'neither' || !finite(ga) || !finite(gb)) return c;
@@ -632,8 +632,8 @@ BARRY.rcWorkflow = (function () {
       el('p', { class: 'hint', text: 'Each border is grown into a dotted halo about its '
         + 'own centre. An event outside both goes to a side when it is inside that '
         + 'side’s halo and clearly nearer that border than the other, each measured in '
-        + 'its own border’s size. Inside a halo but near both, it stays ambiguous (the '
-        + 'extended zone); beyond both halos, it is far out. Inside a border, or both, '
+        + 'its own border’s size. Inside a halo but near both, it is in the extended '
+        + 'Twilight Zone; beyond both halos, it is far out. Inside a border, or both, '
         + 'is left as it was.' }),
       el('div', { class: 'wf-halo-sls' }, [
         slider('reach', 'Reach', 1.1, 4, 0.1, 'how far out a halo goes, in its '
@@ -659,50 +659,188 @@ BARRY.rcWorkflow = (function () {
           onclick: () => haloSave(run) }),
         el('span', { class: 'hint', text: dirty ? 'Saving makes the next version; this one '
           + 'stays as it is.' : (saved ? 'Saved with this halo.' : 'Turn it on to try it.') }),
-        // A side, banked whole: one border alone and what its halo captured.
-        saved && !dirty ? BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'wf-halo-bank-ds',
-          text: 'Bank the DS side…', disabled: W.busy ? 'disabled' : null,
-          onclick: () => bankSide('ds', run) }) : null,
-        saved && !dirty ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
-          extra: 'wf-halo-bank-p', text: 'Bank the P-spike side…',
-          disabled: W.busy ? 'disabled' : null,
-          onclick: () => bankSide('pspike', run) }) : null,
+        // By label (2026-11-19): DS, P-spike, Twilight Zone, outside both,
+        // each with what its halo captured -- picked in the bank dialog.
+        saved && !dirty ? BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'wf-halo-bank',
+          text: 'Bank by label…', disabled: W.busy ? 'disabled' : null,
+          title: 'Pick which labels go to the Event Bank: one is a plain entry of '
+                 + 'its type, two or more one Root Canal bundle.',
+          onclick: () => bankLabels('ambiguous', base) }) : null,
       ].filter(Boolean)) : el('p', { class: 'hint', text: 'Save the workflow first; the '
         + 'halo is tried on a saved run.' }),
     ].filter(Boolean));
   }
-  /* One side of a halo'd run into the Bank as one entry: the border's own
-     events and the ones its halo captured. */
-  async function bankSide(side, run) {
+  /* ==================================================================
+     BANK BY LABEL (PROJECT EVOLVE phase 1, 2026-11-19: keep every kind
+     of spike, and the purple ones are the Twilight Zone). A run's events
+     fall in the labels rcworkflow.BANK_LABELS names; a person ticks which
+     go to the Bank. ONE label is a plain entry of its type -- for DS and
+     P-spike exactly what a run has always banked, so every reader takes
+     it. TWO OR MORE are one Root Canal bundle: every event says its label,
+     the class it came from and whether the Halo captured it. A Verified
+     run's labels are inside and outside its one border.
+     ================================================================== */
+  const BANK_LABELS = {
+    ambiguous: [['ds', 'DS', ['ds', 'halo_ds']],
+                ['pspike', 'P-spike', ['pspike', 'halo_pspike']],
+                ['twilight', 'Twilight Zone', ['both', 'halo_amb']],
+                ['outside', 'Outside both borders', ['neither']]],
+    ds: [['ds', 'DS', ['inside']], ['outside', 'Outside the DS border', ['outside']]],
+    pspike: [['pspike', 'P-spike', ['inside']],
+             ['outside', 'Outside the P-spike border', ['outside']]],
+  };
+  const PLAIN_TYPE = { ds: 'Dentate spike', pspike: 'P-spike' };
+  const labelColour = (id) => (id === 'ds' ? tok('--call-ds') : id === 'pspike'
+    ? tok('--call-p') : id === 'twilight' ? tok('--call-amb') : tok('--text-3'));
+  /* {id: {label, n, halo}} of a run's classes. */
+  function labelCounts(kind, cls) {
+    const out = {};
+    for (const [id, label, classes] of BANK_LABELS[kind] || []) {
+      const want = new Set(classes);
+      let n = 0, h = 0;
+      for (const c of cls || []) {
+        if (!want.has(c)) continue;
+        n += 1;
+        if (String(c).indexOf('halo_') === 0) h += 1;
+      }
+      out[id] = { label, n, halo: h };
+    }
+    return out;
+  }
+  /* The labels as pills, and a line saying what Bank would make of the
+     ones pressed. A press changes that pill and the line, nothing else.
+     `onChange` hears the labels picked. */
+  function labelPicker(kind, cls, initial, onChange) {
+    const counts = labelCounts(kind, cls);
+    const order = (BANK_LABELS[kind] || []).map(([id]) => id);
+    const on = new Set((initial || []).filter((id) => counts[id] && counts[id].n));
+    const say = el('p', { class: 'hint wf-bank-say' });
+    const picked = () => order.filter((id) => on.has(id));
+    const tell = () => {
+      const ids = picked();
+      const n = ids.reduce((s, id) => s + counts[id].n, 0);
+      say.classList.toggle('wf-warn', !ids.length);
+      say.textContent = !ids.length ? 'Pick at least one label.'
+        : ids.length === 1
+          ? n.toLocaleString() + ' events as one plain entry of type '
+            + (PLAIN_TYPE[ids[0]] || counts[ids[0]].label) + (PLAIN_TYPE[ids[0]]
+              ? ', which every ' + (ids[0] === 'ds' ? 'DS' : 'P-spike') + ' tool reads.'
+              : '.')
+          : n.toLocaleString() + ' events as ONE Root Canal bundle: each says its '
+            + 'label, the class it came from and whether the Halo captured it. X-ray '
+            + 'and the Extraction Room do not read bundles yet; bank one label for them.';
+      if (onChange) onChange(ids);
+    };
+    const pills = order.map((id) => {
+      const c = counts[id];
+      const b = el('button', {
+        type: 'button', class: 'pill wf-bank-l' + (on.has(id) ? ' active' : ''),
+        'data-label': id, 'aria-pressed': on.has(id) ? 'true' : 'false',
+        disabled: c.n ? null : 'disabled',
+        title: c.n ? null : 'None of this run’s events are ' + c.label + '.',
+        onclick: () => {
+          if (on.has(id)) on.delete(id); else on.add(id);
+          b.classList.toggle('active', on.has(id));
+          b.setAttribute('aria-pressed', on.has(id) ? 'true' : 'false');
+          tell();
+        } }, [
+        el('i', { class: 'wf-lg-dot', style: 'background:' + labelColour(id) }),
+        el('span', { text: c.label }),
+        el('b', { text: c.n.toLocaleString() }),
+        c.halo ? el('span', { class: 'wf-bank-halo',
+          text: c.halo.toLocaleString() + ' by the Halo' }) : null,
+      ].filter(Boolean));
+      return b;
+    });
+    tell();
+    return {
+      // The dialog's own field, as Name and Note are.
+      node: BARRY.ui.field({ label: 'Labels', extra: 'wf-bank-pick',
+        control: el('div', {}, [el('div', { class: 'wf-bank-labels' }, pills), say]) }),
+      picked,
+    };
+  }
+  /* The dialog's Name follows the labels until it is typed in. */
+  function nameFollows(node, make) {
+    let auto = null;
+    return (ids) => {
+      const box = node && node.closest && node.closest('.bank-dlg')
+        && node.closest('.bank-dlg').querySelector('.bank-dlg-name');
+      const next = ids.length ? make(ids) : null;
+      if (box && next && (auto === null || box.value === auto)) box.value = next;
+      if (next) auto = next;
+    };
+  }
+  const labelWords = (kind, ids) => ids.map((id) => ((BANK_LABELS[kind] || [])
+    .find(([k]) => k === id) || [])[1]).join(' + ');
+
+  /* A saved run into the Bank by the labels ticked. `base` is the saved
+     run of the version on show -- never a Halo being tried. */
+  async function bankLabels(kind, base) {
     const d = W.data[W.openId] || {};
     const v = d.shown || d.version;
     const row = (W.list || []).find((r) => r.artifact_id === W.openId) || {};
-    const c = run.counts || {};
-    const own = c[side] || 0, cap = c['halo_' + side] || 0;
-    const word = side === 'ds' ? 'DS' : 'P-spike';
+    const nick = row.nickname || row.name || '';
+    const h = base && base.halo;
+    let follow = () => {};
+    const pick = labelPicker(kind, ((base || {}).cols || {}).cls,
+      [kind === 'ambiguous' ? 'ds' : kind], (ids) => follow(ids));
+    const make = (ids) => labelWords(kind, ids) + ' · ' + nick + ' v' + v;
+    follow = nameFollows(pick.node, make);
     await BARRY.ui.bankDialog({
-      title: 'Bank the ' + word + ' side of ‘' + (row.nickname || '') + '’ v' + v,
-      name: (side === 'ds' ? 'Dentate spikes' : 'P-spikes') + ' · ' + (row.nickname || '')
-        + ' · halo ' + run.halo.reach + '×/' + run.halo.margin + '×',
-      what: 'Banks the ' + (own + cap).toLocaleString() + ' events on the ' + word
-        + ' side as ONE Event Bank entry: ' + own.toLocaleString() + ' inside the '
-        + word + ' border only, and ' + cap.toLocaleString() + ' outside both that the '
-        + word + ' halo captured (reach ' + run.halo.reach + '×, margin '
-        + run.halo.margin + '×).',
+      title: 'Bank ‘' + nick + '’ v' + v + ' by label',
+      name: make(pick.picked()),
+      what: 'Banks the events of the labels pressed below as ONE Event Bank entry for '
+        + 'the whole pool.',
+      extra: pick.node,
       facts: [
-        'Inside both, the extended ambiguous zone and the far out ones stay out.',
-        'Type ' + (side === 'ds' ? 'Dentate spike' : 'P-spike') + ', pipeline “Root Canal '
-          + 'workflow”: a border’s and a halo’s call, not a person’s, so not marked curated.',
+        h ? 'Halo on this version: reach ' + h.reach + '×, margin ' + h.margin + '×. “By '
+            + 'the Halo” counts the events outside both that it put in a label.'
+          : (kind === 'ambiguous' ? 'No Halo on this version.' : null),
+        'Pipeline “Root Canal workflow”: a border’s call' + (h ? ' and a halo’s' : '')
+          + ', not a person’s, so not marked curated.',
         'Each event says which recording and set it came from; the entry names this '
-          + 'workflow version, its borders and its halo.',
-      ],
-      okText: 'Bank ' + (own + cap).toLocaleString() + ' events',
+          + 'workflow version and its borders.',
+        'An event missing a number is in no label, and is not banked.',
+      ].filter(Boolean),
+      okText: 'Bank',
       onBank: async (b) => {
+        const ids = pick.picked();
+        if (!ids.length) throw new Error('Pick at least one label.');
         const out = await apiPost('/api/rootcanal/workflow/' + encodeURIComponent(W.openId)
-          + '/bank', { version: v, side, name: b.name, note: b.note });
-        toast('Banked ' + out.n.toLocaleString() + ' events as ‘' + b.name + '’.', 'ok', 7000);
+          + '/bank', { version: v, labels: ids, name: b.name, note: b.note });
+        toast('Banked ' + out.n.toLocaleString() + ' events as ‘' + (out.name || b.name)
+          + '’' + (out.bundle ? ', a Root Canal bundle.' : '.'), 'ok', 8000);
+        BARRY.activity.log('rootcanal.workflow_bank', { artifact: W.openId, version: v,
+                                                        labels: ids, entry: out.entry_id });
       },
     });
+  }
+
+  /* On the Extract stage of an Ambiguous run: what each label holds, and
+     the button that banks them. */
+  function labelBankCard(row, base) {
+    const c = labelCounts('ambiguous', ((base || {}).cols || {}).cls);
+    return el('div', { class: 'wf-bankcard' }, [
+      el('strong', { text: 'To the Bank, by label' }),
+      el('div', { class: 'wf-key' }, BANK_LABELS.ambiguous.map(([id, w]) =>
+        el('span', { class: 'wf-lg' }, [
+          el('i', { class: 'wf-lg-dot', style: 'background:' + labelColour(id) }),
+          el('span', { text: w }), el('b', { text: (c[id].n || 0).toLocaleString() }),
+          c[id].halo ? el('span', { class: 'hint',
+            text: '(' + c[id].halo.toLocaleString() + ' by the Halo)' }) : null,
+        ].filter(Boolean)))),
+      el('span', { class: 'hint', text: 'Press the labels you want in the bank dialog: '
+        + 'one is a plain entry of its type; two or more make one Root Canal bundle. The '
+        + 'table below still banks events picked by hand.' }),
+      el('div', { class: 'wf-bankcard-btns' }, [
+        BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Bank by label…',
+          extra: 'wf-bank-labels-go',
+          disabled: W.preview || W.busy || !base ? 'disabled' : null,
+          title: W.preview ? 'Save and run the workflow first.' : null,
+          onclick: () => bankLabels('ambiguous', base) }),
+      ]),
+    ]);
   }
 
   /* A Pooled PCA's dot, by the call chosen to colour it: the one pool's
@@ -717,7 +855,7 @@ BARRY.rcWorkflow = (function () {
   }
   const dotCls = (run, kind, p) => (kind === 'pca' ? pcaCls(run, p) : p.cls);
   const PCA_WORDS = { ds: 'DS', ied: 'P-spike', pspike: 'P-spike',
-    both: 'ambiguous: inside both borders', neither: 'ambiguous: outside both borders',
+    both: 'Twilight Zone: inside both borders', neither: 'outside both borders',
     null: 'not measured', undefined: 'not measured' };
 
   /* COLOUR BY MOUSE OR RECORDING (2026-11-06: "add to the PCA and any other
@@ -948,8 +1086,8 @@ BARRY.rcWorkflow = (function () {
           ? ne + ' hand-sorted set' + (ne === 1 ? '' : 's') : nm(s) || 'its source') + ')';
     }
     if (stage === 'extract') {
-      return 'the ' + n(S.shown.length) + (kind === 'ambiguous' ? ' ambiguous' : ' extracted')
-        + ', of the target’s ' + n(S.pts.length);
+      return 'the ' + n(S.shown.length) + (kind === 'ambiguous' ? ' in the Twilight Zone or outside both'
+        : ' extracted') + ', of the target’s ' + n(S.pts.length);
     }
     const t = nm(run.target || def.target);
     const tw = 'the target’s ' + n(S.pts.length) + ' events' + (t ? ' (' + t + ')' : '');
@@ -2422,7 +2560,7 @@ BARRY.rcWorkflow = (function () {
     } else {
       line1 = kind === 'ambiguous' ? 'Shown, for you to choose' : 'To the Bank';
       line2 = run ? (run.kept || 0).toLocaleString() + ' of ' + (run.n || 0).toLocaleString()
-        + (kind === 'ambiguous' ? ' ambiguous' : ' extracted') : '—';
+        + (kind === 'ambiguous' ? ' Twilight Zone or outside both' : ' extracted') : '—';
     }
     return el('button', { class: 'wf-stage', type: 'button',
       title: 'Open this stage in 3D',
@@ -2515,8 +2653,9 @@ BARRY.rcWorkflow = (function () {
           + 'its PCA drawn. Nothing was banked.'
         : (run.kept || 0).toLocaleString()
             + ' of ' + (run.n || 0).toLocaleString()
-            + (r.kind === 'ambiguous' ? ' events are ambiguous; nothing was banked — '
-               + 'tick the ones you want and press Bank the ticked.'
+            + (r.kind === 'ambiguous' ? ' events are in the Twilight Zone or outside both; '
+               + 'nothing was banked — press Bank by label… on its Extract stage, '
+               + 'or tick the ones you want and press Bank the ticked.'
                : ' events inside the border. ' + (b ? 'Banked as '
                  + (b.new ? 'a new entry' : 'v' + (b.version || '?') + ' of')
                  + ' ‘' + (b.name || b.entry_id) + '’.'
@@ -2572,35 +2711,42 @@ BARRY.rcWorkflow = (function () {
     refresh();
     const run = pv.run || {};
     const kept = run.kept || 0;
-    const recs = new Set((run.cols || {}).g ? run.cols.g.filter((g, j) =>
-      run.cols.cls[j] === 'inside') : []).size;
     const prior = r.bank && r.bank.entry_id ? r.bank : null;
     const word = r.kind === 'ds' ? 'dentate spikes' : 'P-spikes';
     const def = pv.definition || dd;
     const src = def.source || {};
+    // BY LABEL (2026-11-19): inside the border, as always, and what it
+    // leaves outside, if that is wanted too.
+    const pick = labelPicker(r.kind, (run.cols || {}).cls, [r.kind]);
     await BARRY.ui.bankDialog({
-      title: 'Run ‘' + nick + '’ and bank ' + kept.toLocaleString() + ' verified ' + word,
+      title: 'Run ‘' + nick + '’ and bank',
       name: (prior && prior.name) || (KIND_WORDS[r.kind] + ' · ' + nick),
       what: 'This draws the border around ' + (src.type === 'sets'
         ? (src.entries || []).length + ' hand-sorted sets' : '‘' + src.nickname
           + '’ v' + src.version) + ' at grace ' + graceWords(def.grace)
         + ', applies it to ‘' + ((def.target || {}).nickname || '') + '’ v'
-        + ((def.target || {}).version || '') + ', and banks the '
-        + kept.toLocaleString() + ' of ' + (run.n || 0).toLocaleString()
-        + ' events inside it as ONE Event Bank entry.',
+        + ((def.target || {}).version || '') + ' (' + kept.toLocaleString() + ' of '
+        + (run.n || 0).toLocaleString() + ' events inside), and banks the labels '
+        + 'pressed below as ONE Event Bank entry.',
+      extra: pick.node,
       facts: [
-        prior ? 'Banked as the NEXT VERSION of ‘' + (prior.name || prior.entry_id)
-                + '’ (entry ' + prior.entry_id + '). The version before stays.'
+        prior ? (r.kind === 'ds' ? 'DS' : 'P-spike') + ' alone continues ‘'
+                + (prior.name || prior.entry_id) + '’ (entry ' + prior.entry_id + ') as '
+                + 'its next version; the version before stays. A bundle is an entry of '
+                + 'its own, continued by the next bundle.'
               : 'Banked as a NEW entry.',
-        kept.toLocaleString() + ' events from ' + recs + ' recording'
-          + (recs === 1 ? '' : 's') + '; each says which recording and set it came from.',
-        'Type ' + (r.kind === 'ds' ? 'Dentate spike' : 'P-spike') + ', pipeline “Root '
-          + 'Canal workflow” — a border’s call, not a person’s, so not marked curated.',
+        'Each event says which recording and set it came from.',
+        'Pipeline “Root Canal workflow”: a border’s call, not a person’s, so not '
+          + 'marked curated.',
         'The workflow keeps this run as its next version, and its border as a '
           + 'Root Canal border.',
       ],
-      okText: 'Run and bank ' + kept.toLocaleString() + ' events',
-      onBank: async (b) => { await go({ bank_name: b.name, bank_note: b.note }); },
+      okText: 'Run and bank',
+      onBank: async (b) => {
+        const ids = pick.picked();
+        if (!ids.length) throw new Error('Pick at least one label.');
+        await go({ bank_name: b.name, bank_note: b.note, bank_labels: ids });
+      },
     });
   }
 
@@ -2762,6 +2908,7 @@ BARRY.rcWorkflow = (function () {
       // THE HALO (2026-11-12), on the Apply stage of an Ambiguous run.
       kind === 'ambiguous' && W.stage === 'apply' ? haloCard(shownBase(), run) : null,
       W.stage === 'extract' && kind !== 'ambiguous' ? bankCard(row, run, kind) : null,
+      W.stage === 'extract' && kind === 'ambiguous' ? labelBankCard(row, shownBase()) : null,
       el('div', { class: 'wf-views' }, [
         el('div', { class: 'wf-3d-wrap' }, [big,
           el('span', { class: 'hint', text: 'Drag to turn it. Scroll to zoom in on '
@@ -2806,7 +2953,7 @@ BARRY.rcWorkflow = (function () {
             later(() => drawFlow(cv, run, kind, st)); return cv; })(),
           'Showing ' + stageWords(run, kind, st) + '.'),
         kind === 'ambiguous' ? panel('Conflicts', 'Events inside both borders '
-          + 'are ambiguous (decided 2026-11-05) and drawn purple.',
+          + 'are the Twilight Zone (decided 2026-11-05), drawn purple.',
           venn(run)) : null,
         panel('Every mouse', 'Each mouse on its own: amplitude across, HF up, '
           + 'the border’s box drawn in; under it how many '
@@ -2936,7 +3083,7 @@ BARRY.rcWorkflow = (function () {
                                                     && finite(p.pc[1])))
       : mode === 'verified'
       ? [dot('ds', 'inside the DS border only'), dot('pspike', 'inside the P-spike border only'),
-         dot('both', 'ambiguous: inside both'), dot('neither', 'ambiguous: outside both')]
+         dot('both', 'Twilight Zone: inside both'), dot('neither', 'outside both')]
       : [dot('ds', 'DS'), dot('ied', 'P-spike')];
     if (!cm && (n.null || n.undefined)) dots.push(dot(null, 'not measured, so not drawn'));
     const marks = [
@@ -3023,8 +3170,8 @@ BARRY.rcWorkflow = (function () {
       return 'DS border from ‘' + (((b.ds || {}).workflow) || {}).nickname
         + '’ at grace ' + graceWords((b.ds || {}).grace) + ', P-spike border from ‘'
         + (((b.pspike || {}).workflow) || {}).nickname + '’ at grace '
-        + graceWords((b.pspike || {}).grace) + '. Ambiguous: outside both, or '
-        + 'inside both.' + (run.halo ? ' Halo: reach ' + run.halo.reach + '×, margin '
+        + graceWords((b.pspike || {}).grace) + '. Inside both is the Twilight Zone; '
+        + 'outside both is said apart.' + (run.halo ? ' Halo: reach ' + run.halo.reach + '×, margin '
           + run.halo.margin + '×' + (run.halo.saved === false ? ', being tried, not saved.'
             : ', saved with this version.') : '');
     }
@@ -3057,15 +3204,15 @@ BARRY.rcWorkflow = (function () {
                 dot(A('pspike'), 'P-spike border only', 'pspike'),
                 dot(A('halo_pspike'), 'outside both, captured by the P-spike halo',
                     'halo_pspike'),
-                dot(A('both'), 'inside both: ambiguous', 'both'),
-                dot(A('halo_amb'), 'outside both, near both halos: extended ambiguous',
+                dot(A('both'), 'inside both: Twilight Zone', 'both'),
+                dot(A('halo_amb'), 'outside both, near both halos: extended Twilight Zone',
                     'halo_amb'),
                 dot(A('halo_far'), 'outside both, beyond both halos: far out', 'halo_far'));
     } else if (kind === 'ambiguous') {
       dots.push(dot(tok('--call-ds'), 'DS border only', 'ds'),
                 dot(tok('--call-p'), 'P-spike border only', 'pspike'),
-                dot(tok('--call-amb'), 'inside both: ambiguous', 'both'),
-                dot(tok('--call-amb-2'), 'outside both: ambiguous', 'neither'));
+                dot(tok('--call-amb'), 'inside both: Twilight Zone', 'both'),
+                dot(tok('--call-amb-2'), 'outside both', 'neither'));
     } else {
       const grp = kind === 'ds' ? tok('--call-ds') : tok('--call-p');
       const w = kind === 'ds' ? 'DS' : 'P-spike';
@@ -3096,7 +3243,7 @@ BARRY.rcWorkflow = (function () {
       stage === 'extract' ? el('div', { class: 'wf-legend-row' }, [
         el('span', { class: 'wf-lg-h', text: 'Faded' }),
         el('span', { class: 'hint', text: kind === 'ambiguous'
-          ? 'not ambiguous: they are inside exactly one border'
+          ? 'not undecided: they are inside exactly one border'
           : 'not extracted: outside the border' })]) : null,
     ].filter(Boolean));
   }
@@ -3141,7 +3288,7 @@ BARRY.rcWorkflow = (function () {
       run.halo
         ? el('span', { class: 'hint wf-venn-halo', text: 'Outside both, with the halo: '
             + n('halo_ds') + ' captured by DS, ' + n('halo_pspike') + ' captured by P-spike, '
-            + n('halo_amb') + ' extended ambiguous, ' + n('halo_far') + ' far out.' })
+            + n('halo_amb') + ' extended Twilight Zone, ' + n('halo_far') + ' far out.' })
         : el('span', { class: 'hint', text: 'Outside both: ' + n('neither') + '.' }),
     ]);
   }
@@ -3172,7 +3319,7 @@ BARRY.rcWorkflow = (function () {
       const said = kind === 'pca'
         ? (r.ds || 0) + ' DS · ' + (r.ied || 0) + ' P-spike'
         : kept + (st === 'extract' ? ' extracted of '
-                  : S.own ? ' inside of ' : kind === 'ambiguous' ? ' ambiguous of '
+                  : S.own ? ' inside of ' : kind === 'ambiguous' ? ' undecided of '
                   : ' inside of ') + mine.length
           + (S.own ? ', its own' : '') + ' · ' + pct(mine.length ? kept / mine.length : null);
       return el('div', { class: 'wf-mouse' }, [
@@ -3357,7 +3504,7 @@ BARRY.rcWorkflow = (function () {
         hist.push('Under the verified borders (‘' + ((b.ds || {}).workflow || {}).nickname
           + '’, ‘' + ((b.pspike || {}).workflow || {}).nickname + '’): '
           + (CLASS_WORDS[p.ver] || p.ver) + (p.ver === 'both' || p.ver === 'neither'
-            ? ', so ambiguous' : '') + '.');
+            ? (p.ver === 'both' ? ', so the Twilight Zone' : ', so undecided') : '') + '.');
       }
       if (p.pc) hist.push('In the PCA: PC1 ' + fmt(p.pc[0], 2) + ', PC2 ' + fmt(p.pc[1], 2)
         + ' (each number z-scored over the one pool).');
@@ -3516,9 +3663,9 @@ BARRY.rcWorkflow = (function () {
     const shown = pts.slice(0, MAX);
     return el('div', { class: 'card wf-amb' }, [
       el('div', { class: 'wf-amb-head' }, [
-        el('strong', { text: 'Ambiguous events, to choose from' }),
+        el('strong', { text: 'The Twilight Zone and outside both, to choose from' }),
         BARRY.ui.seg(run.halo
-          ? [['all', 'all'], ['halo_amb', 'extended'], ['halo_far', 'far out'],
+          ? [['all', 'all'], ['halo_amb', 'extended Twilight Zone'], ['halo_far', 'far out'],
              ['both', 'inside both']]
           : [['all', 'all'], ['neither', 'outside both'], ['both', 'inside both']],
         show, (v) => { W.ambShow = v; refresh(); }),
@@ -3527,7 +3674,7 @@ BARRY.rcWorkflow = (function () {
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Untick all',
           onclick: () => { picks.clear(); refresh(); } }),
         el('span', { class: 'hint', text: picks.size + ' ticked' }),
-        BARRY.ui.seg([['ied', 'as P-spikes'], ['ds', 'as DS'], ['other', 'as ambiguous']],
+        BARRY.ui.seg([['ied', 'as P-spikes'], ['ds', 'as DS'], ['other', 'as Twilight Zone']],
                      W.ambType, (v) => { W.ambType = v; refresh(); }),
         BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Bank the ticked',
           disabled: !picks.size || !!W.preview,
@@ -3565,7 +3712,7 @@ BARRY.rcWorkflow = (function () {
     const id = W.openId;
     const d = W.data[id];
     if (!id || !d) return;
-    const typeWord = { ied: 'P-spikes', ds: 'dentate spikes', other: 'ambiguous' }[W.ambType];
+    const typeWord = { ied: 'P-spikes', ds: 'dentate spikes', other: 'Twilight Zone' }[W.ambType];
     const ok = await BARRY.ui.bankDialog({
       title: 'Bank ' + W.ambPick.size + ' picked events as ' + typeWord,
       name: 'Picked ' + typeWord + ' · ' + ((W.list || []).find((r) => r.artifact_id === id) || {}).nickname,
@@ -4263,8 +4410,9 @@ BARRY.rcWorkflow = (function () {
         B.ambTargetSet ? null : el('span', { class: 'hint wf-amb-default',
           text: 'The DS workflow’s own target, until you pick another.' }),
       ].filter(Boolean)));
-      rows.push(el('p', { class: 'hint', text: 'Outside both borders, or inside '
-        + 'both, is ambiguous: shown, not banked, for you to choose from.' }));
+      rows.push(el('p', { class: 'hint', text: 'Inside both borders is the '
+        + 'Twilight Zone. Every event is shown; Bank by label… on the Extract stage '
+        + 'banks the labels you pick.' }));
     }
     rows.push(el('div', { class: 'wf-b-row' }, [
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Preview',

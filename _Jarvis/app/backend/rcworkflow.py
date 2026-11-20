@@ -186,7 +186,7 @@ HALO_CLASSES = ("halo_ds", "halo_pspike", "halo_amb")
 CLASS_WORDS.update({
     "halo_ds": "outside both, captured by the DS halo",
     "halo_pspike": "outside both, captured by the P-spike halo",
-    "halo_amb": "outside both, in the extended ambiguous zone",
+    "halo_amb": "outside both, in the extended Twilight Zone",
 })
 
 
@@ -244,9 +244,121 @@ def halo_words(h):
     return ("Halo: of the events outside both borders, one within %g× a "
             "border's size and %g× nearer it than the other border (each in "
             "its own size) is captured by that side; one within %g× of "
-            "either but near both is in the extended ambiguous zone; one "
+            "either but near both is in the extended Twilight Zone; one "
             "beyond both halos stays outside both."
             % (h["reach"], h["margin"], h["reach"]))
+
+
+# --------------------------------------------------------------------------
+# WHAT A RUN IS BANKED AS (PROJECT EVOLVE phase 1, 2026-11-19: "keep
+# everything", and the purple ones are the Twilight Zone). A run's events
+# fall in labels a person picks from when banking. ONE label is a plain
+# entry of that label's type, exactly what every reader already reads; TWO
+# OR MORE are one Root Canal bundle, every event saying its label, the class
+# it came from and whether the Halo captured it. The stored class ids stay
+# as they are; "Twilight Zone" is the word for inside both borders and the
+# Halo's extended zone. A Verified run's labels are inside and outside its
+# one border (asked 2026-11-19), so what a border leaves out can be kept.
+# Events with no numbers (class None) are in no label.
+# --------------------------------------------------------------------------
+BANK_LABELS = {
+    "ambiguous": (("ds", "DS", ("ds", "halo_ds")),
+                  ("pspike", "P-spike", ("pspike", "halo_pspike")),
+                  ("twilight", "Twilight Zone", ("both", "halo_amb")),
+                  ("outside", "Outside both borders", ("neither",))),
+    "ds": (("ds", "DS", ("inside",)),
+           ("outside", "Outside the DS border", ("outside",))),
+    "pspike": (("pspike", "P-spike", ("inside",)),
+               ("outside", "Outside the P-spike border", ("outside",))),
+}
+BUNDLE_TYPE = {"id": "rcbundle", "name": "Root Canal bundle"}
+# One label alone: the type it is banked as, and the label its events carry
+# -- for DS and P-spike the very ones a run has always banked.
+PLAIN = {"ds": ("ds", "Dentate spike", {"label_id": "spike",
+                                        "label": "Dentate Spike"}),
+         "pspike": ("ied", "P-spike", {"label_id": "solid", "label": "Solid"})}
+
+
+def bank_labels(kind):
+    """[{id, label, classes}] a run of `kind` can be banked as."""
+    if kind not in BANK_LABELS:
+        raise WorkflowError("A %s run banks nothing." % WORDS.get(kind, kind))
+    return [{"id": i, "label": w, "classes": list(c)}
+            for i, w, c in BANK_LABELS[kind]]
+
+
+def label_counts(kind, cls):
+    """{label id: {label, n, halo}}: how many of a run's events each label
+    holds, and how many of those the Halo captured."""
+    out = {}
+    for lab in bank_labels(kind):
+        want = set(lab["classes"])
+        n = sum(1 for c in cls if c in want)
+        h = sum(1 for c in cls if c in want and str(c).startswith("halo_"))
+        out[lab["id"]] = {"label": lab["label"], "n": n, "halo": h}
+    return out
+
+
+def bank_pick(kind, cls, labels):
+    """The events of a run in the labels picked, and what they bank as.
+
+    Returns (picks, shape): picks is [(event number, label id, label word,
+    class)]; shape is {type, type_name, bundle, labels}. Refuses a label the
+    kind does not have, and none at all."""
+    known = {lab["id"]: lab for lab in bank_labels(kind)}
+    want = [i for i in dict.fromkeys(labels or []) if i]
+    bad = [i for i in want if i not in known]
+    if bad:
+        raise WorkflowError("A %s run has no label %s; it has %s."
+                            % (WORDS[kind], ", ".join(map(repr, bad)),
+                               ", ".join(known)))
+    if not want:
+        raise WorkflowError("Pick at least one label to bank.")
+    # In the kind's own order, whatever order they were ticked in.
+    want = [i for i in known if i in want]
+    by_cls = {c: known[i] for i in want for c in known[i]["classes"]}
+    picks = [(n, by_cls[c]["id"], by_cls[c]["label"], c)
+             for n, c in enumerate(cls) if c in by_cls]
+    if len(want) > 1:
+        shape = {"type": BUNDLE_TYPE["id"], "type_name": BUNDLE_TYPE["name"],
+                 "bundle": True}
+    elif want[0] in PLAIN:
+        t, tn, _l = PLAIN[want[0]]
+        shape = {"type": t, "type_name": tn, "bundle": False}
+    else:
+        shape = {"type": "other", "type_name": known[want[0]]["label"],
+                 "bundle": False}
+    shape["labels"] = [{"id": i, "label": known[i]["label"],
+                        "classes": known[i]["classes"],
+                        "n": sum(1 for p in picks if p[1] == i),
+                        "halo": sum(1 for p in picks if p[1] == i
+                                    and str(p[3]).startswith("halo_"))}
+                       for i in want]
+    return picks, shape
+
+
+def bank_event(label_id, word, c, shape):
+    """What one picked event carries into the bank, beside its time and
+    where it came from. A plain DS or P-spike entry's label is the one such
+    entries have always had; anything else says its label by name. In a
+    bundle the class and the Halo ride along too."""
+    if not shape["bundle"] and label_id in PLAIN:
+        return dict(PLAIN[label_id][2])
+    ev = {"label_id": label_id, "label": word}
+    if shape["bundle"]:
+        ev["rc_class"] = c
+        if str(c).startswith("halo_"):
+            ev["halo"] = True
+    return ev
+
+
+def labels_words(shape):
+    """'DS 4,824 (357 captured by the Halo) · P-spike 157 (17 ...)'."""
+    return " · ".join(
+        "%s %s%s" % (lab["label"], format(lab["n"], ","),
+                     " (%s captured by the Halo)" % format(lab["halo"], ",")
+                     if lab["halo"] else "")
+        for lab in shape["labels"])
 
 
 def distances(events, border, grace):
