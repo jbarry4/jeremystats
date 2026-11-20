@@ -135,6 +135,25 @@ BARRY.spotter = (function () {
     if (set_) exit();
 
     let want = (opts && opts.kind) || 'ied';
+    /* A KCNT1 dual recording, and an entry that covers both arrays
+       (stormregion.js): which array -- or both, as two entries. Not asked
+       of an entry that already has a set: that work is going on as it is,
+       and its unbanked decisions are not in the bank to split. */
+    if (entryId && BARRY.stormRegion) {
+      let has = null;
+      try { has = await BARRY.ui.setForEntry(gid, 'ied', entryId); }
+      catch (e) { /* none is the ordinary case */ }
+      if (!has) {
+        const got = await BARRY.stormRegion.choose(gid, entryId, 'Spotter');
+        if (!got) return false;
+        entryId = got.entry;
+        if (got.others.length) {
+          toast(got.others.map((m) => '“' + m.name + '”').join(', ')
+                + ' is waiting in Spotter’s list for its own pass.',
+                null, 9000);
+        }
+      }
+    }
     if (entryId) {
       const made = await ensureSet(gid, entryId);
       if (!made) return false;

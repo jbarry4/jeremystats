@@ -181,8 +181,128 @@ def _slug(text):
 _MACHINE = None
 
 
-def machine_id():
-    """A short, stable, unique name for this computer.
+# ==========================================================================
+# The practice layer (2026-11-20, pisafe.py)
+# ==========================================================================
+# When it is on, this machine writes under a second name --
+# "pisafe-<machine>" -- and reads its own shards with those on top. Every
+# record keeps working exactly as before, because to the merge the layer is
+# just one more machine, and the newest one. Nothing under that name is
+# committed (.gitignore), pushed (cloud.py refuses every write while it is
+# on), or read by anyone else: other machines skip it outright. Throwing it
+# away is deleting its files.
+#
+# Deleting a record has no shard to write, so the layer keeps a list of
+# what it hides instead (`_HIDDEN`), and the real files are never touched.
+#
+# A thread can step out of the layer with `real_view()`: the cloud pull, the
+# Data Bank mirror and the tombstone sweep run there, so what arrives from
+# colleagues lands in the real records as it always did, and nothing from
+# the layer is ever copied into a file that travels.
+SAFE_PREFIX = "pisafe-"
+_SAFE = {"on": False, "dir": None, "gen": 0, "touched": set()}
+_HIDDEN = {}          # abs dir -> {base: "*" or [machine, ...]}
+_VIEW = threading.local()
+
+
+def safe_on():
+    """Is the practice layer on for this computer at all?"""
+    return bool(_SAFE["on"])
+
+
+def layered():
+    """Does THIS thread see (and write) the practice layer?"""
+    return bool(_SAFE["on"]) and not getattr(_VIEW, "real", False)
+
+
+class real_view:
+    """`with real_view():` -- this thread reads and writes the real records
+    only, as though the layer did not exist."""
+
+    def __enter__(self):
+        self._was = getattr(_VIEW, "real", False)
+        _VIEW.real = True
+        return self
+
+    def __exit__(self, *exc):
+        _VIEW.real = self._was
+        return False
+
+
+def is_safe_tag(machine):
+    return str(machine or "").startswith(SAFE_PREFIX)
+
+
+def configure_safe(on, state_dir=None):
+    """Turn the layer on or off. `state_dir` holds its bookkeeping
+    (GUI_logs/.pisafe): the hidden list and which folders it wrote in."""
+    with _LOCK:
+        _SAFE["on"] = bool(on)
+        if state_dir:
+            _SAFE["dir"] = os.path.abspath(state_dir)
+        _HIDDEN.clear()
+        _SAFE["touched"] = set()
+        if _SAFE["dir"]:
+            got = _read_json(os.path.join(_SAFE["dir"], "hidden.json"))
+            if isinstance(got, dict):
+                for d, table in got.items():
+                    if isinstance(table, dict):
+                        _HIDDEN[os.path.abspath(d)] = dict(table)
+            got = _read_json(os.path.join(_SAFE["dir"], "touched.json"))
+            if isinstance(got, list):
+                _SAFE["touched"] = {os.path.abspath(d) for d in got}
+        _SAFE["gen"] += 1
+
+
+def safe_touched():
+    """Folders the layer has written in (where `revert` has to look)."""
+    return sorted(_SAFE["touched"])
+
+
+def _note_touched(dirpath):
+    d = os.path.abspath(dirpath)
+    if d in _SAFE["touched"] or not _SAFE["dir"]:
+        return
+    _SAFE["touched"].add(d)
+    try:
+        _write_json(os.path.join(_SAFE["dir"], "touched.json"),
+                    sorted(_SAFE["touched"]))
+    except OSError:
+        pass
+
+
+def _hide(dirpath, base, machine="*"):
+    """Hide `base` in `dirpath` from the layered view: every real shard of
+    it ("*"), or one machine's."""
+    d = os.path.abspath(dirpath)
+    table = _HIDDEN.setdefault(d, {})
+    have = table.get(base)
+    if machine == "*" or have == "*":
+        table[base] = "*"
+    else:
+        table[base] = sorted(set(have or []) | {machine})
+    _SAFE["gen"] += 1
+    if _SAFE["dir"]:
+        try:
+            _write_json(os.path.join(_SAFE["dir"], "hidden.json"), _HIDDEN)
+        except OSError:
+            pass
+    _note_touched(d)
+
+
+def _is_hidden(dirpath, base, machine):
+    table = _HIDDEN.get(dirpath)
+    if not table:
+        return False
+    rule = table.get(base)
+    if not rule:
+        return False
+    return rule == "*" or machine in rule
+
+
+def real_machine_id():
+    """A short, stable, unique name for this computer, whatever the practice
+    layer is doing.
 
     Stable because it is derived, not stored: a fresh clone of the repo on the
     same machine keeps writing to the same shards instead of orphaning them.
@@ -205,6 +325,15 @@ def machine_id():
     tag = hashlib.sha1(str(uuid.getnode()).encode("utf-8")).hexdigest()[:4]
     _MACHINE = "%s-%s" % (node, tag)
     return _MACHINE
+
+
+def machine_id():
+    """The name this machine WRITES under: its own, or -- with the practice
+    layer on and this thread inside it -- the layer's."""
+    real = real_machine_id()
+    return SAFE_PREFIX + real if layered() else real
+
+
 
 
 def split_name(filename, ext=".json"):
@@ -448,7 +577,23 @@ class Book:
         identity: it hands whoever typed most recently everybody else's
         name.
         """
-        return _read_json(self.mine(base)) or {}
+        return _read_json(self.own_path(base)) or {}
+
+    def real_path(self, base):
+        """This machine's real shard of `base`, layer or no layer."""
+        return os.path.join(self.dir, "%s%s%s%s" % (
+            base, SIGIL, real_machine_id(), self.ext))
+
+    def own_path(self, base):
+        """The file that holds this machine's own view of `base`: the
+        practice layer's copy once it has one, the real shard until then
+        (and none at all once the layer has deleted it)."""
+        path = self.mine(base)
+        if not layered() or os.path.exists(path):
+            return path
+        if _is_hidden(self.dir, base, real_machine_id()):
+            return path
+        return self.real_path(base)
 
     def _scan(self):
         """One directory pass: every shard grouped by base, and the stamp.
@@ -480,6 +625,11 @@ class Book:
             back unchanged.
         """
         rows, sig = [], []
+        # The practice layer: its own shards only when this thread is in
+        # it, and never anybody else's; what it has hidden, left out.
+        lay = layered()
+        safe_me = SAFE_PREFIX + real_machine_id()
+        hid = _HIDDEN.get(self.dir) if lay else None
         for k, d in enumerate([self.dir] + self.extra):
             try:
                 with os.scandir(d) as it:
@@ -494,6 +644,11 @@ class Book:
                         base, machine = split_name(name, self.ext)
                         if not base:
                             continue
+                        if machine.startswith(SAFE_PREFIX):
+                            if not lay or k or machine != safe_me:
+                                continue
+                        elif hid and _is_hidden(self.dir, base, machine):
+                            continue
                         # Sorted by name first, then the tracked folder
                         # before the pulled one, so the order within a base
                         # is the one it always was.
@@ -506,6 +661,10 @@ class Book:
                 continue                 # no pulled folder yet: nothing pulled
         rows.sort()
         sig.sort()
+        if _SAFE["on"]:
+            # Which view, and which hidden list: the same files read two
+            # ways are two different answers, and must not share a cache.
+            sig.append(("~layer", lay, _SAFE["gen"]))
         idx = {}
         for name, _k, base, machine, path in rows:
             idx.setdefault(base, []).append((machine, path))
@@ -597,7 +756,12 @@ class Book:
             snap = sync.get("snap") or {}
 
             path = self.mine(base)
-            prev = _read_json(path) or {}
+            # In the practice layer the first write starts from this
+            # machine's real shard, so the fields it carries forward are
+            # the ones the machine already held -- the same file, a copy.
+            prev = _read_json(self.own_path(base)) or {}
+            if layered():
+                _note_touched(self.dir)
             at = stamp or _now()
 
             body = {k: v for k, v in rec.items() if k not in META}
@@ -702,6 +866,12 @@ class Book:
         """Drop this machine's shard. Other machines keep theirs."""
         with _LOCK:
             path = self.mine(base)
+            if layered():
+                # The real shard stays on disk; the layer stops seeing it.
+                _quiet_remove(path)
+                _hide(self.dir, base, real_machine_id())
+                self._all_sig = None
+                return True
             try:
                 os.remove(path)
             except OSError:
@@ -719,6 +889,17 @@ class Book:
         never as a side effect.
         """
         with _LOCK:
+            if layered():
+                # Hidden, not deleted: every real shard stays where it is.
+                files = self.shard_files(base)
+                for m, path in files:
+                    if is_safe_tag(m):
+                        _quiet_remove(path)
+                if files:
+                    _hide(self.dir, base, "*")
+                    self._all_sig = None
+                    _changed(self)
+                return len(files)
             gone = 0
             for _m, path in self.shard_files(base):
                 try:
@@ -743,8 +924,19 @@ class Book:
         """
         with _LOCK:
             gone = 0
+            lay = layered()
             for _m, path in self.shard_files(base):
                 if not stale(_read_json(path) or {}):
+                    continue
+                if lay:
+                    # As in `erase`: the layer's own copy goes, a real
+                    # shard is only hidden.
+                    if is_safe_tag(_m):
+                        _quiet_remove(path)
+                    else:
+                        _hide(self.dir, base, _m)
+                    gone += 1
+                    self._all_sig = None
                     continue
                 try:
                     os.remove(path)
@@ -765,7 +957,14 @@ class Book:
         each added their own" -- which git resolves without asking. Modifying
         one while another deletes it would conflict, so this runs once, early,
         rather than lazily on first write.
+
+        Always under the machine's real name: it is a migration of files
+        that are already here, not anybody's edit.
         """
+        with real_view():
+            return self._absorb_legacy()
+
+    def _absorb_legacy(self):
         moved = []
         for name in sorted(_listdir(self.dir)):
             base, machine = split_name(name, self.ext)
@@ -829,6 +1028,8 @@ class DayLog:
             return 0
         day = (records[0].get("at") or _now())[:10]
         path = self.path(day, machine)
+        if machine is None and layered():
+            _note_touched(self.dir)
         n = 0
         with _LOCK:
             try:
@@ -856,10 +1057,15 @@ class DayLog:
     def files_for(self, day):
         want = str(day)[:10]
         out = []
+        safe_me = SAFE_PREFIX + real_machine_id() if layered() else None
         for name in sorted(_listdir(self.dir)):
             if not name.endswith(".jsonl"):
                 continue
-            if name[:-len(".jsonl")].rsplit(SIGIL, 1)[0] == want:
+            stem = name[:-len(".jsonl")]
+            who = stem.rsplit(SIGIL, 1)[1] if SIGIL in stem else ""
+            if who.startswith(SAFE_PREFIX) and who != safe_me:
+                continue          # the practice layer: its own, in it only
+            if stem.rsplit(SIGIL, 1)[0] == want:
                 out.append(os.path.join(self.dir, name))
         return out
 

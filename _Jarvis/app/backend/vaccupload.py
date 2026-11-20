@@ -336,6 +336,8 @@ def send(remote, local_dir, rdir, plan=None, on_bytes=None, check=None,
     `streams` files at a time, each on its own connection. The first
     failure stops the rest from starting and is raised once they finish;
     `check` raising (a cancel) does the same."""
+    from . import pisafe
+    pisafe.refuse_outward("The upload")
     plan = plan or plan_one(remote, local_dir, rdir)
     todo = list(plan["send"])
     streams = max(1, min(int(streams or 1), len(todo) or 1))

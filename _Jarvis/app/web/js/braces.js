@@ -298,8 +298,36 @@ function makeBraces(cfg) {
   /* ==================================================================
      Running
      ================================================================== */
+  /* Eye on a KCNT1 dual recording whose set covers both arrays
+     (stormregion.js): asked which array -- or both, as two entries -- and
+     the run goes on with the one picked. False when it was called off. */
+  async function pickArray() {
+    if (cfg.tool !== 'eye' || !BARRY.stormRegion) return true;
+    if (!plan || !plan.ok || plan.region || !plan.regions) return true;
+    const c = (cands || []).find((x) => x.id === q.entry);
+    const gid = (c && c.gid) || (plan.entry && plan.entry.gid);
+    if (!gid) return true;
+    const got = await BARRY.stormRegion.choose(gid, q.entry, cfg.name);
+    if (!got) return false;
+    if (got.entry === q.entry) return true;
+    try {
+      const all = (await api('/api/braces/candidates?type=' + cfg.type)).sets || [];
+      cands = cfg.sorted ? all.filter(cfg.sorted) : all;
+    } catch (e) { /* the list on screen stands */ }
+    q.entry = got.entry;
+    q.channels = null; q.from_version = null; q.hold = null;
+    plan = null;
+    await refreshPlan();
+    if (got.others.length) {
+      toast(got.others.map((m) => '“' + m.name + '”').join(', ')
+            + ' is in the list for its own run.', null, 9000);
+    }
+    return !!(plan && plan.ok);
+  }
+
   async function run(force) {
     if (!q.entry || job) return;
+    if (!(await pickArray())) return;
     let started;
     try {
       started = await apiPost('/api/braces/run', {
@@ -1293,7 +1321,10 @@ function makeBraces(cfg) {
     const all = (plan && plan.channels) || [];
     if (!all.length) return el('span');
     if (q.channels == null) {
-      q.channels = all.filter((c) => !c.bad).map((c) => c.number);
+      // The other array of a dual recording starts unticked, like a bad
+      // channel: there, and one click back (stormregion.js).
+      q.channels = all.filter((c) => !c.bad && !c.off_region)
+        .map((c) => c.number);
     }
     /* The shared picker (chanpick.js), in place (2026-10-14): a change
        updates the tiles, the count and the plan's "Measured on" line, and
@@ -1464,7 +1495,8 @@ function makeBraces(cfg) {
 
   function measuredOn() {
     return ((q.channels && q.channels.length)
-            || ((plan && plan.channels) || []).filter((c) => !c.bad).length)
+            || ((plan && plan.channels) || [])
+              .filter((c) => !c.bad && !c.off_region).length)
       + ' channels, averaged into one trace';
   }
 
