@@ -129,8 +129,8 @@ function buildCell(cell, arr, color) {
     tmp.set(Math.abs(d.x) < 0.9 ? 1 : 0, Math.abs(d.x) < 0.9 ? 0 : 1, 0);
     u.crossVectors(d, tmp).normalize();
     v.crossVectors(d, u);
-    const ra = Math.max(0.0006, Math.min(0.004, (R[p] || 0.6) / 1000 * 0.9));
-    const rb = Math.max(0.0005, Math.min(0.004, (R[i] || 0.5) / 1000 * 0.9));
+    const ra = Math.max(0.0035, Math.min(0.007, (R[p] || 0.6) / 1000 * 1.4));
+    const rb = Math.max(0.003, Math.min(0.007, (R[i] || 0.5) / 1000 * 1.4));
     const base = dpos.length / 3;
     for (let k = 0; k < SIDES; k++) {
       const ang = (k / SIDES) * Math.PI * 2, c = Math.cos(ang), s = Math.sin(ang);
@@ -171,7 +171,7 @@ function buildCell(cell, arr, color) {
   }
   // soma
   const sv = W(cell.soma_um[0], cell.soma_um[1], cell.soma_um[2]);
-  const sm = new THREE.Mesh(new THREE.SphereGeometry(0.009, 20, 14),
+  const sm = new THREE.Mesh(new THREE.SphereGeometry(0.016, 20, 14),
     new THREE.MeshStandardMaterial({ color, roughness: 0.3, emissive: new THREE.Color(color).multiplyScalar(0.35) }));
   sm.position.set(sv[0], sv[1], sv[2]);
   sm.userData = { kind: 'cell', key: cell.key, part: 'soma' };
@@ -302,7 +302,7 @@ export function create(host, opts) {
       const arr = { p: blob.arrays['p:' + c.key], t: blob.arrays['t:' + c.key], r: blob.arrays['r:' + c.key],
                     a: blob.arrays['a:' + c.key] };
       const grp = buildCell(c, arr, colorOf(c.key));
-      grp.traverse((o) => { if (o.material) o.material.clippingPlanes = null; });
+      grp.traverse((o) => { if (o.material) { o.material.clippingPlanes = null; o.material.depthTest = false; o.renderOrder = 30; } });
       groups.cells.add(grp);
       byKey.cells[c.key] = grp;
     }
@@ -354,20 +354,21 @@ export function create(host, opts) {
       Object.entries(B).forEach(([k, m]) => { m.material.uniforms.dim.value = 1; });
       groups.hpf.visible = !!o.hpf; groups.lamina.visible = false; groups.cells.visible = false;
       useSlab(false);
-      fly([8.5, 6.5, 11.5], [0, 0.2, 0.6], 1200);
+      fly([13.5, 9.5, 17.5], [0, 0.3, 0.6], 1200);
     } else if (lv === 'hpf') {
       groups.brain.visible = true;
       Object.values(B).forEach((m) => { m.material.uniforms.dim.value = 0.35; });
       if (B.HPF) B.HPF.visible = false;
-      groups.hpf.visible = true; groups.lamina.visible = !!o.lamina; groups.cells.visible = false;
+      groups.hpf.visible = true; groups.lamina.visible = true; showLamina(!!o.lamina, ['alv', 'fi']); groups.cells.visible = false;
       useSlab(false);
-      fly([5.4, 3.6, 5.4], [1.6, 1.6, 1.2], 1400);
+      fly([9.5, 6.5, -3.5], [2.1, 0.7, 1.7], 1400);
     } else if (lv === 'slab') {
       groups.brain.visible = false;
       groups.hpf.visible = false; groups.lamina.visible = true; groups.cells.visible = true;
+      showLamina(true, ['alv', 'fi']);
       useSlab(true);
       const z = -slabPlanes[0].constant;
-      fly([1.35, 2.25, z - 3.4], [1.45, 1.75, z], 1400);
+      fly([1.6, 2.0, z - 4.6], [1.6, 1.75, z], 1400);
     }
     dirty = true;
   }
@@ -380,7 +381,7 @@ export function create(host, opts) {
     tex.colorSpace = THREE.SRGBColorSpace;
     const a = W(box.ap, box.dv0, box.ml0), b = W(box.ap, box.dv1, box.ml1);
     const g = new THREE.PlaneGeometry(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
-    const m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false });
+    const m = new THREE.MeshBasicMaterial({ map: tex, transparent: false, alphaTest: 0.5, side: THREE.DoubleSide, depthWrite: true });
     facePlane = new THREE.Mesh(g, m);
     facePlane.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, a[2] - 0.001);
     facePlane.renderOrder = 0;
@@ -397,7 +398,7 @@ export function create(host, opts) {
       grp.traverse((o) => {
         if (!o.material) return;
         if (o.material.uniforms && o.material.uniforms.base) o.material.uniforms.base.value = lit ? 0.6 : 0.06;
-        else { o.material.transparent = !lit; o.material.opacity = lit ? 1 : 0.12; o.material.depthWrite = lit; }
+        else { o.material.transparent = !lit; o.material.opacity = lit ? 1 : 0.12; o.material.needsUpdate = true; }
       });
     }
     for (const [k, m] of Object.entries(byKey.lamina)) {
@@ -410,6 +411,10 @@ export function create(host, opts) {
       m.material.opacity = lit ? 0.62 : 0.08;
       if (on && f.regions.has(k)) m.visible = true;
     }
+    dirty = true;
+  }
+  function showLamina(on, except) {
+    for (const [k, m] of Object.entries(byKey.lamina)) m.visible = on && !(except || []).includes(k);
     dirty = true;
   }
   function showOnly(kind, keys, visible) {
@@ -571,7 +576,7 @@ export function create(host, opts) {
   }
 
   return { addBrain, addHpf, addLamina, addCells, setLevel, setSlab, useSlab, focus, showOnly, setVisible,
-           setOpacity, pulseCell, volley, centroid, setProbe, setFace, snapshot, theme, dispose,
+           setOpacity, showLamina, pulseCell, volley, centroid, setProbe, setFace, snapshot, theme, dispose,
            pause: stop, resume: () => { dirty = true; start(); }, has: (k) => Object.keys(byKey[k] || {}).length > 0,
            get level() { return level; }, fly, poke: () => { dirty = true; } };
 }

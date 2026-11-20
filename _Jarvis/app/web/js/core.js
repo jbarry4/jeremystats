@@ -1924,7 +1924,7 @@ BARRY.errorBadgeCount = function errorBadgeCount(data) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit', 'comod', 'spectrum'];
+               'toolkit', 'comod', 'spectrum', 'seahorse'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -4581,7 +4581,7 @@ BARRY.init = async function init() {
     // because hands that learned those keep them.
     const map = { '1': 'sessions', '2': 'xplore', '3': 'toolkit',
                   '4': 'history', '5': 'results', '6': 'eventbank',
-                  '7': 'storyboard', '8': 'misc', '0': 'misc',
+                  '7': 'storyboard', '8': 'misc', '9': 'seahorse', '0': 'misc',
                   't': 'toolkit', 'T': 'toolkit' };
     // Same as the rail: pressing 4 while already on History should not
     // reload it.

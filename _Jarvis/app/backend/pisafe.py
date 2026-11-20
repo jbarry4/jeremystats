@@ -58,8 +58,11 @@ KEEP_DAYS = 14
 HELD = [re.compile(p) for p in (
     # the shared database's own settings
     r"^/api/cloud/(key|config|mirror|active)$",
-    # the VACC: uploads, tidying, starting and stopping lab jobs
-    r"^/api/vacc/(upload|found/add|found/tidy|signout|setup)$",
+    # the VACC: uploads, tidying, starting and stopping lab jobs. NOT
+    # signing in, setting up or adding found recordings (2026-11-20: "The PI
+    # can't load recordings from the VACC"): those are this computer's own
+    # account and records, and reading from the cluster needs them.
+    r"^/api/vacc/(upload|found/tidy)$",
     r"^/api/arc/monolith/(run|upload|forget|stop|cancel)$",
     r"^/api/arc/precon/(run|resume|forget|stop)$",
     r"^/api/arc/(circuit|drift|coupling)/.*run$",

@@ -228,6 +228,20 @@ def main():
             check("a read is not", True)
         except vacc.SSHError as exc:
             check("a read is not", False, exc)
+        # 2026-11-20: "The PI can't load recordings from the VACC". The live
+        # link pushes the code first, as a tar on stdin full of the word
+        # sbatch; that is reading, and must go through.
+        try:
+            vacc._hold_outward("bash -c 'tar -x'",
+                               stdin=b"backend/vaccrun.py\x00\x00 sbatch --array")
+            check("the code push the live link needs goes through", True)
+        except vacc.SSHError as exc:
+            check("the code push the live link needs goes through", False, exc)
+        check("signing in to the VACC is not held",
+              not pisafe.held("/api/vacc/setup", "POST")
+              and not pisafe.held("/api/vacc/signin", "POST"))
+        check("adding recordings found on the VACC is not held (the layer has it)",
+              not pisafe.held("/api/vacc/found/add", "POST"))
         try:
             pisafe.refuse_outward("The upload")
             check("an upload is refused", False)

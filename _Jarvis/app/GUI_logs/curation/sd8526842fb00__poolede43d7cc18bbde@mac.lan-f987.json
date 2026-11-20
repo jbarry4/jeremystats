@@ -10,12 +10,12 @@
     "labels": "2026-11-04T21:25:30.335530+00:00",
     "name": "2026-11-04T21:25:30.335530+00:00",
     "open": "2026-11-19T21:18:09.757374+00:00",
-    "opened_at": "2026-11-20T16:53:40.771750+00:00",
+    "opened_at": "2026-11-20T18:48:43.662989+00:00",
     "opened_by": "2026-11-19T21:18:09.757374+00:00",
     "schema": "2026-11-04T21:25:30.335530+00:00",
     "session_label": "2026-11-04T21:25:30.335530+00:00",
     "source": "2026-11-04T21:25:30.335530+00:00",
-    "updated": "2026-11-20T17:18:50.029158+00:00"
+    "updated": "2026-11-20T19:10:29.793499+00:00"
   },
   "_keys": {
     "events": {
@@ -37,7 +37,7 @@
       ],
       "e005a3e8ef2": [
         "set",
-        "2026-11-20T17:17:47.648900+00:00"
+        "2026-11-20T17:18:31.007489+00:00"
       ],
       "e00847d3a16": [
         "set",
@@ -401,7 +401,7 @@
       ],
       "e093f745d62": [
         "set",
-        "2026-11-20T17:03:46.574861+00:00"
+        "2026-11-20T17:04:49.614322+00:00"
       ],
       "e09672ca5b0": [
         "set",
@@ -1081,7 +1081,7 @@
       ],
       "e1bc4769635": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:58:43.550211+00:00"
       ],
       "e1c08e1a9d9": [
         "set",
@@ -2377,7 +2377,7 @@
       ],
       "e3a1610f973": [
         "set",
-        "2026-11-20T17:18:50.029158+00:00"
+        "2026-11-20T18:49:31.143977+00:00"
       ],
       "e3a2658d827": [
         "set",
@@ -2469,7 +2469,7 @@
       ],
       "e3d53f8a7b1": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:03:30.077441+00:00"
       ],
       "e3d6b85fd5a": [
         "set",
@@ -2485,7 +2485,7 @@
       ],
       "e3d771e65f9": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:57:14.209509+00:00"
       ],
       "e3d7ac86e24": [
         "set",
@@ -2685,7 +2685,7 @@
       ],
       "e4109afae5b": [
         "set",
-        "2026-11-20T17:01:40.477827+00:00"
+        "2026-11-20T17:02:13.473370+00:00"
       ],
       "e411aa7c050": [
         "set",
@@ -2833,7 +2833,7 @@
       ],
       "e441e76d99f": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:01:33.238995+00:00"
       ],
       "e4444fba361": [
         "set",
@@ -3221,7 +3221,7 @@
       ],
       "e4c16da1125": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:57:35.701505+00:00"
       ],
       "e4c2266861e": [
         "set",
@@ -3541,7 +3541,7 @@
       ],
       "e537776c020": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:08:17.871014+00:00"
       ],
       "e538ae0d648": [
         "set",
@@ -3557,7 +3557,7 @@
       ],
       "e54000dde9c": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:59:37.262394+00:00"
       ],
       "e541c5fbad9": [
         "set",
@@ -3757,7 +3757,7 @@
       ],
       "e5878a5ccd7": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:58:56.492946+00:00"
       ],
       "e588d5ac1b7": [
         "set",
@@ -4089,7 +4089,7 @@
       ],
       "e5fbdb6ad5c": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:53:04.568009+00:00"
       ],
       "e5fd24c7aa4": [
         "set",
@@ -4777,7 +4777,7 @@
       ],
       "e70d1af4bf2": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:10:29.793499+00:00"
       ],
       "e7120c3c459": [
         "set",
@@ -4797,7 +4797,7 @@
       ],
       "e716a00d62c": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:08:25.415826+00:00"
       ],
       "e71777a7f12": [
         "set",
@@ -5057,7 +5057,7 @@
       ],
       "e7889dfab46": [
         "set",
-        "2026-11-20T17:02:36.875560+00:00"
+        "2026-11-20T17:03:13.530916+00:00"
       ],
       "e78b0c8c1a1": [
         "set",
@@ -5337,7 +5337,7 @@
       ],
       "e7f4f520341": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:03:54.255246+00:00"
       ],
       "e7f50dea96e": [
         "set",
@@ -6377,7 +6377,7 @@
       ],
       "e9972a1b7ea": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:06:14.919653+00:00"
       ],
       "e9977a49a8d": [
         "set",
@@ -6673,7 +6673,7 @@
       ],
       "ea163a2d0e0": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:06:56.050290+00:00"
       ],
       "ea16ba67d26": [
         "set",
@@ -6885,7 +6885,7 @@
       ],
       "ea5ad318401": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:07:08.080746+00:00"
       ],
       "ea61a03324a": [
         "set",
@@ -7089,7 +7089,7 @@
       ],
       "eab2fdcf085": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:10:07.164452+00:00"
       ],
       "eab3107c58e": [
         "set",
@@ -7113,7 +7113,7 @@
       ],
       "eabc18eabed": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:05:30.772538+00:00"
       ],
       "eabd0f31924": [
         "set",
@@ -7177,7 +7177,7 @@
       ],
       "eaccad4c693": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:53:26.774484+00:00"
       ],
       "eaccd77bba8": [
         "set",
@@ -7277,7 +7277,7 @@
       ],
       "eafb3047a98": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:05:40.603253+00:00"
       ],
       "eaff280b642": [
         "set",
@@ -7453,7 +7453,7 @@
       ],
       "eb44ac295c6": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:03:19.818421+00:00"
       ],
       "eb455d9f981": [
         "set",
@@ -7473,7 +7473,7 @@
       ],
       "eb51a1d3208": [
         "set",
-        "2026-11-20T17:04:50.374976+00:00"
+        "2026-11-20T17:05:15.273769+00:00"
       ],
       "eb526289dee": [
         "set",
@@ -7557,7 +7557,7 @@
       ],
       "eb757a89d19": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:01:53.016589+00:00"
       ],
       "eb777228524": [
         "set",
@@ -7693,7 +7693,7 @@
       ],
       "ebb9ff8cce5": [
         "set",
-        "2026-11-20T17:04:28.968149+00:00"
+        "2026-11-20T17:04:49.614322+00:00"
       ],
       "ebbd326e53f": [
         "set",
@@ -7793,7 +7793,7 @@
       ],
       "ebd7a400e33": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:53:59.204729+00:00"
       ],
       "ebd7dfe2ddb": [
         "set",
@@ -8189,7 +8189,7 @@
       ],
       "ec73e82747f": [
         "set",
-        "2026-11-20T17:02:09.261141+00:00"
+        "2026-11-20T17:02:47.332177+00:00"
       ],
       "ec7472f17d4": [
         "set",
@@ -8461,7 +8461,7 @@
       ],
       "ecdbff606c6": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:04:52.914770+00:00"
       ],
       "ecdc21ef5a6": [
         "set",
@@ -8777,7 +8777,7 @@
       ],
       "ed582e05653": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:52:22.783640+00:00"
       ],
       "ed589349375": [
         "set",
@@ -8841,7 +8841,7 @@
       ],
       "ed68cc59451": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:06:35.513866+00:00"
       ],
       "ed69fc3cc7e": [
         "set",
@@ -8893,7 +8893,7 @@
       ],
       "ed8255ad515": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:10:00.297802+00:00"
       ],
       "ed8297e7205": [
         "set",
@@ -9229,7 +9229,7 @@
       ],
       "edfb79b58a4": [
         "set",
-        "2026-11-20T17:07:35.315564+00:00"
+        "2026-11-20T17:09:27.796532+00:00"
       ],
       "edfd2b5b265": [
         "set",
@@ -9349,7 +9349,7 @@
       ],
       "ee1440beefd": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:06:03.552911+00:00"
       ],
       "ee1678a69de": [
         "set",
@@ -9885,7 +9885,7 @@
       ],
       "eee4f0eaf9e": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:59:51.440099+00:00"
       ],
       "eee61bc6651": [
         "set",
@@ -9961,7 +9961,7 @@
       ],
       "ef0acefdd39": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:04:38.871716+00:00"
       ],
       "ef0c72abf65": [
         "set",
@@ -10081,7 +10081,7 @@
       ],
       "ef39c0f3bda": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T18:58:28.293267+00:00"
       ],
       "ef3b6d48b60": [
         "set",
@@ -10321,7 +10321,7 @@
       ],
       "ef925f65a37": [
         "set",
-        "2026-11-20T17:15:10.705609+00:00"
+        "2026-11-20T17:15:34.062651+00:00"
       ],
       "ef9832d30cd": [
         "set",
@@ -10341,7 +10341,7 @@
       ],
       "ef9d6d3de79": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:05:18.615389+00:00"
       ],
       "ef9db5d68c0": [
         "set",
@@ -10365,7 +10365,7 @@
       ],
       "ef9f7feddfc": [
         "set",
-        "2026-11-20T17:05:08.198216+00:00"
+        "2026-11-20T17:05:44.287670+00:00"
       ],
       "ef9fd15bb6c": [
         "set",
@@ -10501,7 +10501,7 @@
       ],
       "efd05f18eae": [
         "set",
-        "2026-11-20T17:05:28.856645+00:00"
+        "2026-11-20T17:05:44.287670+00:00"
       ],
       "efd16f3a840": [
         "set",
@@ -10561,7 +10561,7 @@
       ],
       "efea29d6272": [
         "set",
-        "2026-11-04T22:11:17.483083+00:00"
+        "2026-11-20T19:07:35.657386+00:00"
       ],
       "efed1610ca6": [
         "set",
@@ -10590,7 +10590,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-20T17:18:50.029158+00:00",
+    "at": "2026-11-20T19:10:29.793499+00:00",
     "machine": "mac.lan-f987",
     "schema": 1
   },
@@ -10678,7 +10678,7 @@
     },
     {
       "amplitude": 1468.3547,
-      "at": "2026-11-20T12:01:40-0500",
+      "at": "2026-11-20T17:01:40+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "e4109afae5b",
@@ -10689,11 +10689,6 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:01:40-0500",
-          "by": "Aggie Krempasky",
-          "label": "flag"
         }
       ],
       "start": 3.34598
@@ -10751,7 +10746,7 @@
     },
     {
       "amplitude": 1454.6504,
-      "at": "2026-11-20T12:02:09-0500",
+      "at": "2026-11-20T17:02:09+00:00",
       "by": "Aggie Krempasky",
       "channel": 49,
       "id": "ec73e82747f",
@@ -10762,11 +10757,6 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:02:09-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 5.342968
@@ -10824,7 +10814,7 @@
     },
     {
       "amplitude": 768.0063,
-      "at": "2026-11-20T12:02:36-0500",
+      "at": "2026-11-20T17:02:36+00:00",
       "by": "Aggie Krempasky",
       "channel": 20,
       "id": "e7889dfab46",
@@ -10835,11 +10825,6 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:02:36-0500",
-          "by": "Aggie Krempasky",
-          "label": "flag"
         }
       ],
       "start": 10.206939
@@ -10863,7 +10848,7 @@
     },
     {
       "amplitude": 763.3307,
-      "at": "2026-11-20T12:03:46-0500",
+      "at": "2026-11-20T17:03:46+00:00",
       "by": "Aggie Krempasky",
       "channel": 50,
       "id": "e093f745d62",
@@ -10874,18 +10859,13 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
-        },
-        {
-          "at": "2026-11-20T12:03:46-0500",
-          "by": "Aggie Krempasky",
-          "label": "flag"
         }
       ],
       "start": 11.188933
     },
     {
       "amplitude": 591.7581,
-      "at": "2026-11-20T12:04:28-0500",
+      "at": "2026-11-20T17:04:28+00:00",
       "by": "Aggie Krempasky",
       "channel": 52,
       "id": "ebb9ff8cce5",
@@ -10896,18 +10876,13 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
-        },
-        {
-          "at": "2026-11-20T12:04:28-0500",
-          "by": "Aggie Krempasky",
-          "label": "garbage"
         }
       ],
       "start": 11.307932
     },
     {
       "amplitude": 1705.6175,
-      "at": "2026-11-20T12:04:50-0500",
+      "at": "2026-11-20T17:04:50+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eb51a1d3208",
@@ -10918,18 +10893,13 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:04:50-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 11.356932
     },
     {
       "amplitude": 1402.8993,
-      "at": "2026-11-20T12:05:08-0500",
+      "at": "2026-11-20T17:05:08+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ef9f7feddfc",
@@ -10940,11 +10910,6 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:05:08-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 11.868929
@@ -11036,7 +11001,7 @@
     },
     {
       "amplitude": 1633.2944,
-      "at": "2026-11-20T12:05:28-0500",
+      "at": "2026-11-20T17:05:28+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "efd05f18eae",
@@ -11047,18 +11012,13 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:05:28-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 14.711912
     },
     {
       "amplitude": 1465.2998,
-      "at": "2026-11-20T12:07:35-0500",
+      "at": "2026-11-20T17:07:35+00:00",
       "by": "Aggie Krempasky",
       "channel": 39,
       "id": "edfb79b58a4",
@@ -11069,18 +11029,13 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:07:35-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 17.980892
     },
     {
       "amplitude": 1588.9215,
-      "at": "2026-11-20T12:15:10-0500",
+      "at": "2026-11-20T17:15:10+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ef925f65a37",
@@ -11091,11 +11046,6 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:15:10-0500",
-          "by": "Aggie Krempasky",
-          "label": "flag"
         }
       ],
       "start": 18.014892
@@ -11119,7 +11069,7 @@
     },
     {
       "amplitude": 1534.627,
-      "at": "2026-11-20T12:17:47-0500",
+      "at": "2026-11-20T17:17:47+00:00",
       "by": "Aggie Krempasky",
       "channel": 41,
       "id": "e005a3e8ef2",
@@ -11130,22 +11080,17 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
-        },
-        {
-          "at": "2026-11-20T12:17:47-0500",
-          "by": "Aggie Krempasky",
-          "label": "spike"
         }
       ],
       "start": 18.740887
     },
     {
       "amplitude": 444.2189,
-      "at": "2026-11-20T12:18:50-0500",
+      "at": "2026-11-20T13:49:31-0500",
       "by": "Aggie Krempasky",
       "channel": 61,
       "id": "e3a1610f973",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -11154,43 +11099,53 @@
           "label": "likely_garbage"
         },
         {
-          "at": "2026-11-20T12:18:50-0500",
+          "at": "2026-11-20T13:49:31-0500",
           "by": "Aggie Krempasky",
-          "label": "likely_garbage"
+          "label": "garbage"
         }
       ],
       "start": 18.827887
     },
     {
       "amplitude": 1507.2375,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:52:22-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ed582e05653",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:52:22-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 19.165885
     },
     {
       "amplitude": 1454.9901,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:53:04-0500",
+      "by": "Aggie Krempasky",
       "channel": 39,
       "id": "e5fbdb6ad5c",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T13:53:04-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 19.220885
@@ -11214,17 +11169,22 @@
     },
     {
       "amplitude": 1732.7403,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:53:26-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eaccad4c693",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:53:26-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 20.216879
@@ -11334,17 +11294,22 @@
     },
     {
       "amplitude": 1471.744,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:53:59-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ebd7a400e33",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T13:53:59-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 22.900862
@@ -11368,62 +11333,77 @@
     },
     {
       "amplitude": 2498.9207,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:57:14-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "e3d771e65f9",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:57:14-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 26.340842
     },
     {
       "amplitude": 467.6501,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:57:35-0500",
+      "by": "Aggie Krempasky",
       "channel": 61,
       "id": "e4c16da1125",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T13:57:35-0500",
+          "by": "Aggie Krempasky",
+          "label": "garbage"
         }
       ],
       "start": 26.359842
     },
     {
       "amplitude": 1931.7917,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:58:28-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ef39c0f3bda",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:58:28-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 26.466841
     },
     {
       "amplitude": 3437.2932,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:58:43-0500",
+      "by": "Aggie Krempasky",
       "channel": 24,
       "id": "e1bc4769635",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "both",
       "pair_t": 26.767839,
       "reviews": [
@@ -11431,23 +11411,33 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:58:43-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 26.770839
     },
     {
       "amplitude": 3115.5036,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:58:56-0500",
+      "by": "Aggie Krempasky",
       "channel": 45,
       "id": "e5878a5ccd7",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:58:56-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 26.826839
@@ -11523,17 +11513,22 @@
     },
     {
       "amplitude": 2069.7954,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:59:37-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "e54000dde9c",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:59:37-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 31.63681
@@ -11557,45 +11552,55 @@
     },
     {
       "amplitude": 736.6444,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T13:59:51-0500",
+      "by": "Aggie Krempasky",
       "channel": 50,
       "id": "eee4f0eaf9e",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T13:59:51-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 32.428805
     },
     {
       "amplitude": 938.0365,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:01:33-0500",
+      "by": "Aggie Krempasky",
       "channel": 49,
       "id": "e441e76d99f",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T14:01:33-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 32.494805
     },
     {
       "amplitude": 2829.2963,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:01:53-0500",
+      "by": "Aggie Krempasky",
       "channel": 40,
       "id": "eb757a89d19",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "both",
       "pair_t": 32.962302,
       "reviews": [
@@ -11603,6 +11608,11 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:01:53-0500",
+          "by": "Aggie Krempasky",
+          "label": "garbage"
         }
       ],
       "start": 32.959802
@@ -11626,17 +11636,22 @@
     },
     {
       "amplitude": 1662.8154,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:03:19-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eb44ac295c6",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:03:19-0500",
+          "by": "Aggie Krempasky",
+          "label": "garbage"
         }
       ],
       "start": 34.548793
@@ -11660,17 +11675,22 @@
     },
     {
       "amplitude": 1194.102,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:03:30-0500",
+      "by": "Aggie Krempasky",
       "channel": 42,
       "id": "e3d53f8a7b1",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:03:30-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 35.300788
@@ -11695,17 +11715,22 @@
     },
     {
       "amplitude": 1391.3646,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:03:54-0500",
+      "by": "Aggie Krempasky",
       "channel": 40,
       "id": "e7f4f520341",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:03:54-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 36.70378
@@ -11746,85 +11771,110 @@
     },
     {
       "amplitude": 408.1041,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:04:38-0500",
+      "by": "Aggie Krempasky",
       "channel": 61,
       "id": "ef0acefdd39",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:04:38-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 37.701774
     },
     {
       "amplitude": 1404.6854,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:04:52-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "ecdbff606c6",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:04:52-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 38.26277
     },
     {
       "amplitude": 630.9981,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:05:18-0500",
+      "by": "Aggie Krempasky",
       "channel": 51,
       "id": "ef9d6d3de79",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:05:18-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 38.822767
     },
     {
       "amplitude": 1472.0949,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:05:30-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eabc18eabed",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:05:30-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 38.847767
     },
     {
       "amplitude": 1783.4801,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:05:40-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eafb3047a98",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:05:40-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 39.335764
@@ -11882,34 +11932,44 @@
     },
     {
       "amplitude": 947.2796,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:06:03-0500",
+      "by": "Aggie Krempasky",
       "channel": 49,
       "id": "ee1440beefd",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:06:03-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 42.976742
     },
     {
       "amplitude": 953.7858,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:06:14-0500",
+      "by": "Aggie Krempasky",
       "channel": 49,
       "id": "e9972a1b7ea",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:06:14-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 43.658738
@@ -11950,17 +12010,22 @@
     },
     {
       "amplitude": 359.1718,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:06:35-0500",
+      "by": "Aggie Krempasky",
       "channel": 3,
       "id": "ed68cc59451",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T14:06:35-0500",
+          "by": "Aggie Krempasky",
+          "label": "garbage"
         }
       ],
       "start": 44.503733
@@ -11985,17 +12050,22 @@
     },
     {
       "amplitude": 766.6417,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:06:56-0500",
+      "by": "Aggie Krempasky",
       "channel": 52,
       "id": "ea163a2d0e0",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:06:56-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 44.845731
@@ -12019,17 +12089,22 @@
     },
     {
       "amplitude": 462.3333,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:07:08-0500",
+      "by": "Aggie Krempasky",
       "channel": 61,
       "id": "ea5ad318401",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:07:08-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 46.140723
@@ -12087,28 +12162,33 @@
     },
     {
       "amplitude": 2056.0845,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:07:35-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "efea29d6272",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:07:35-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 50.128699
     },
     {
       "amplitude": 3418.1533,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:08:17-0500",
+      "by": "Aggie Krempasky",
       "channel": 22,
       "id": "e537776c020",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 50.345698,
       "reviews": [
@@ -12116,74 +12196,99 @@
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:08:17-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 50.350698
     },
     {
       "amplitude": 2646.1005,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:08:25-0500",
+      "by": "Aggie Krempasky",
       "channel": 45,
       "id": "e716a00d62c",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:08:25-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 50.396697
     },
     {
       "amplitude": 395.8324,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:10:00-0500",
+      "by": "Aggie Krempasky",
       "channel": 58,
       "id": "ed8255ad515",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:10:00-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 51.166693
     },
     {
       "amplitude": 1743.5937,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:10:07-0500",
+      "by": "Aggie Krempasky",
       "channel": 41,
       "id": "eab2fdcf085",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:10:07-0500",
+          "by": "Aggie Krempasky",
+          "label": "spike"
         }
       ],
       "start": 51.234692
     },
     {
       "amplitude": 716.4819,
-      "at": "2026-11-04T17:11:17-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T14:10:29-0500",
+      "by": "Aggie Krempasky",
       "channel": 51,
       "id": "e70d1af4bf2",
-      "label": "likely_spike",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T14:10:29-0500",
+          "by": "Aggie Krempasky",
+          "label": "flag"
         }
       ],
       "start": 53.175681
@@ -55901,7 +56006,7 @@
   ],
   "name": "KCNT1 m588 s1 2026-07-27 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "open": true,
-  "opened_at": "2026-11-20T11:53:40-0500",
+  "opened_at": "2026-11-20T13:48:43-0500",
   "opened_by": "Aggie Krempasky",
   "schema": 1,
   "session_label": "KCNT1 m588 s1 2026-07-27",
@@ -55915,8 +56020,8 @@
   },
   "updated": {
     "app_version": "2026.11.19.3",
-    "at": "2026-11-20T12:18:50-05:00",
-    "commit": "75399c6e",
+    "at": "2026-11-20T14:10:29-05:00",
+    "commit": "0c5cba9b",
     "email": "akrempas@uvm.edu",
     "machine": "mac.lan",
     "os": "Darwin",

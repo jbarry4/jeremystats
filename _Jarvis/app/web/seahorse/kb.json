@@ -1565,5 +1565,231 @@
   "iml2",
   "mml2",
   "oml2"
+ ],
+ "lamina": [
+  {
+   "code": 1,
+   "key": "oml1",
+   "label": "OML1",
+   "group": "DG",
+   "name": "outer molecular layer, upper (suprapyramidal) blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 2,
+   "key": "mml1",
+   "label": "MML1",
+   "group": "DG",
+   "name": "middle molecular layer, upper blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 3,
+   "key": "iml1",
+   "label": "IML1",
+   "group": "DG",
+   "name": "inner molecular layer, upper blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 4,
+   "key": "gcl1",
+   "label": "GCL1",
+   "group": "DG",
+   "name": "granule cell layer, upper blade",
+   "how": "derived: blade from which side of the hilus faces CA1/CA2"
+  },
+  {
+   "code": 5,
+   "key": "hil",
+   "label": "HIL",
+   "group": "DG",
+   "name": "hilus (polymorph layer)",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 6,
+   "key": "gcl2",
+   "label": "GCL2",
+   "group": "DG",
+   "name": "granule cell layer, lower (infrapyramidal) blade",
+   "how": "derived: blade from which side of the hilus faces CA1/CA2"
+  },
+  {
+   "code": 7,
+   "key": "iml2",
+   "label": "IML2",
+   "group": "DG",
+   "name": "inner molecular layer, lower blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 8,
+   "key": "mml2",
+   "label": "MML2",
+   "group": "DG",
+   "name": "middle molecular layer, lower blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 9,
+   "key": "oml2",
+   "label": "OML2",
+   "group": "DG",
+   "name": "outer molecular layer, lower blade",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 10,
+   "key": "ca1so",
+   "label": "CA1 so",
+   "group": "CA1",
+   "name": "stratum oriens",
+   "how": "derived: side of stratum pyramidale (alveus side = oriens)"
+  },
+  {
+   "code": 11,
+   "key": "ca1sp",
+   "label": "CA1 sp",
+   "group": "CA1",
+   "name": "stratum pyramidale",
+   "how": "derived: Nissl-dense sheet inside the Allen CA field"
+  },
+  {
+   "code": 12,
+   "key": "ca1sr",
+   "label": "CA1 sr",
+   "group": "CA1",
+   "name": "stratum radiatum",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 13,
+   "key": "ca1slm",
+   "label": "CA1 slm",
+   "group": "CA1",
+   "name": "stratum lacunosum-moleculare",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 14,
+   "key": "ca2so",
+   "label": "CA2 so",
+   "group": "CA2",
+   "name": "stratum oriens",
+   "how": "derived: side of stratum pyramidale (alveus side = oriens)"
+  },
+  {
+   "code": 15,
+   "key": "ca2sp",
+   "label": "CA2 sp",
+   "group": "CA2",
+   "name": "stratum pyramidale",
+   "how": "derived: Nissl-dense sheet inside the Allen CA field"
+  },
+  {
+   "code": 16,
+   "key": "ca2sr",
+   "label": "CA2 sr",
+   "group": "CA2",
+   "name": "stratum radiatum",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 17,
+   "key": "ca2slm",
+   "label": "CA2 slm",
+   "group": "CA2",
+   "name": "stratum lacunosum-moleculare",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 18,
+   "key": "ca3so",
+   "label": "CA3 so",
+   "group": "CA3",
+   "name": "stratum oriens",
+   "how": "derived: side of stratum pyramidale (alveus side = oriens)"
+  },
+  {
+   "code": 19,
+   "key": "ca3sp",
+   "label": "CA3 sp",
+   "group": "CA3",
+   "name": "stratum pyramidale",
+   "how": "derived: Nissl-dense sheet inside the Allen CA field"
+  },
+  {
+   "code": 20,
+   "key": "ca3slu",
+   "label": "CA3 slu",
+   "group": "CA3",
+   "name": "stratum lucidum",
+   "how": "derived: side of stratum pyramidale (alveus side = oriens)"
+  },
+  {
+   "code": 21,
+   "key": "ca3sr",
+   "label": "CA3 sr",
+   "group": "CA3",
+   "name": "stratum radiatum",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 22,
+   "key": "ca3slm",
+   "label": "CA3 slm",
+   "group": "CA3",
+   "name": "stratum lacunosum-moleculare",
+   "how": "derived: proportional depth (thirds) inside an Allen structure"
+  },
+  {
+   "code": 23,
+   "key": "sub",
+   "label": "SUB",
+   "group": "SUB",
+   "name": "subiculum",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 24,
+   "key": "pros",
+   "label": "ProS",
+   "group": "SUB",
+   "name": "prosubiculum",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 25,
+   "key": "fc",
+   "label": "FC",
+   "group": "HIP",
+   "name": "fasciola cinerea",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 26,
+   "key": "ig",
+   "label": "IG",
+   "group": "HIP",
+   "name": "induseum griseum",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 27,
+   "key": "alv",
+   "label": "alv",
+   "group": "tract",
+   "name": "alveus",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  },
+  {
+   "code": 28,
+   "key": "fi",
+   "label": "fi",
+   "group": "tract",
+   "name": "fimbria",
+   "how": "Allen CCFv3 2017 annotation, as is"
+  }
  ]
 }
