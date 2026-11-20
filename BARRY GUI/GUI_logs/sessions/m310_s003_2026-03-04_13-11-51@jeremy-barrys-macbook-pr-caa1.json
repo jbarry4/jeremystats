@@ -1,0 +1,64 @@
+{
+  "_at": {
+    "created": "2026-11-02T16:17:13.308522+00:00",
+    "gid": "2026-11-02T16:17:13.308522+00:00",
+    "group": "2026-11-02T16:17:13.308522+00:00",
+    "key": "2026-11-02T16:17:13.308522+00:00",
+    "label": "2026-11-02T16:17:13.308522+00:00",
+    "loose_key": "2026-11-02T16:17:13.308522+00:00",
+    "mouse": "2026-11-02T16:17:13.308522+00:00",
+    "project": "2026-11-02T16:17:13.308522+00:00",
+    "project_source": "2026-11-02T16:17:13.308522+00:00",
+    "retired": "2026-11-02T16:17:13.308522+00:00",
+    "schema": "2026-11-02T16:17:13.308522+00:00",
+    "session": "2026-11-02T16:17:13.308522+00:00",
+    "start": "2026-11-02T16:17:13.308522+00:00",
+    "updated": "2026-11-02T16:19:08.472224+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom310\\Kcnt1hom310s3mar2\\2026-03-04_13-11-34": [
+        "set",
+        "2026-11-02T16:19:08.472224+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T16:19:08.472224+00:00",
+    "machine": "jeremy-barrys-macbook-pr-caa1",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T11:17:13-05:00",
+    "commit": "9cb1c3f7",
+    "email": "jeremy.barry@uvm.edu",
+    "machine": "Jeremy-Barrys-MacBook-Pro-191.local",
+    "os": "Darwin",
+    "user": "Jeremy"
+  },
+  "gid": "sa1926ad1c266",
+  "group": null,
+  "key": "m310_s003_2026-03-04_13-11-51",
+  "label": "KCNT1 m310 s3 2026-03-04",
+  "loose_key": "m310_s003",
+  "mouse": 310,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom310\\Kcnt1hom310s3mar2\\2026-03-04_13-11-34"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2026-03-04T18:11:51+00:00",
+  "updated": {
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T11:19:08-05:00",
+    "commit": "9cb1c3f7",
+    "email": "jeremy.barry@uvm.edu",
+    "machine": "Jeremy-Barrys-MacBook-Pro-191.local",
+    "os": "Darwin",
+    "user": "Jeremy"
+  }
+}
