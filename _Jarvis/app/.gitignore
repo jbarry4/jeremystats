@@ -16,6 +16,12 @@ Output/**/_videocache/
 # records it is compiled from.
 GUI_logs/.cache/
 GUI_logs/index.json
+
+# The PI's practice layer (backend/pisafe.py): what is done on the PI's
+# computer is kept there, under its own name, and never travels. A revert
+# deletes these files; the real records were never touched.
+GUI_logs/.pisafe/
+GUI_logs/**/*@pisafe-*
 # VACC runs in flight, written at submit so a restart can re-attach to them.
 # Machine-local: a record names a job THIS machine's process was driving.
 GUI_logs/vacc_runs/

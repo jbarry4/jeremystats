@@ -1,0 +1,17 @@
+{
+  "_at": {
+    "email": "2026-11-02T16:15:04.068709+00:00",
+    "initials": "2026-11-02T16:15:04.068709+00:00",
+    "name": "2026-11-02T16:15:04.068709+00:00",
+    "role": "2026-11-02T16:15:04.068709+00:00"
+  },
+  "_shard": {
+    "at": "2026-11-02T16:15:04.068709+00:00",
+    "machine": "jeremy-barrys-macbook-pr-caa1",
+    "schema": 1
+  },
+  "email": "jeremy.barry@uvm.edu",
+  "initials": "JB",
+  "name": "Jeremy",
+  "role": "PI"
+}

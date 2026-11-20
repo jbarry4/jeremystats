@@ -41,6 +41,7 @@
 <link rel="stylesheet" href="solid.css">
 <link rel="stylesheet" href="syncchip.css">
 <link rel="stylesheet" href="inside.css">
+<link rel="stylesheet" href="seahorse.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
      the variables: those live in app.css, and the whole point of this
@@ -315,6 +316,13 @@
       <button class="nav-item" data-view="misc" data-also="pipeline explorer">
         <svg viewBox="0 0 20 20"><circle cx="5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15" cy="10" r="1.6"/></svg>
         <span>Misc</span><kbd>8</kbd>
+      </button>
+      <!-- Seahorse (2026-11-20): the mouse-brain atlas, asked for as its own
+           tab beside Sessions and ToolKit rather than as a tool (GUI
+           constitution 1 says the rail is full; the user overrode that). -->
+      <button class="nav-item" data-view="seahorse">
+        <svg viewBox="0 0 20 20"><path d="M11.4 3.2c-1.9 0-3.1 1.3-3.1 2.9 0 .9.4 1.5.9 2-1.5 1-2.6 2.6-2.6 4.5 0 2.2 1.6 3.7 3.5 3.7 1.5 0 2.5-1 2.5-2.2 0-1.1-.8-1.8-1.7-1.8-.8 0-1.3.5-1.3 1.1"/><path d="M11.4 3.2l3.6.7-2 1.5"/><path d="M9.8 8.2c1.5.6 2.5 1.9 2.5 3.5"/></svg>
+        <span>Seahorse</span><kbd>9</kbd>
       </button>
     </div>
 
@@ -734,6 +742,18 @@
       <div class="sb-body" id="sbBody"></div>
     </section>
 
+    <!-- ---------- SEAHORSE (js/seahorse.js) ---------- -->
+    <section class="view" id="view-seahorse">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Seahorse</h1>
+          <p class="sub">The mouse brain, down to the layers and cells of the hippocampus.</p>
+        </div>
+        <div class="head-actions"></div>
+      </header>
+      <div class="sh-body"></div>
+    </section>
+
     <!-- ---------- TOOLKIT ---------- -->
     <section class="view" id="view-toolkit">
       <header class="view-head">
@@ -884,6 +904,7 @@
 <script src="js/kilosort.js"></script>
 <script src="js/toolfeed.js"></script>
 <script src="js/toolkit.js"></script>
+<script src="js/seahorse.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/aibeta.js"></script>
 <script src="js/toothfairy.js"></script>
@@ -892,6 +913,7 @@
 <script src="js/strataconsult.js"></script>
 <script src="js/strata.js"></script>
 <script src="js/incisor.js"></script>
+    <script src="js/stormregion.js"></script>
     <script src="js/doppler.js"></script>
     <script src="js/chipforge.js"></script>
     <script src="js/setpicker.js"></script>

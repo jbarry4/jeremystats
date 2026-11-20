@@ -84,6 +84,10 @@ BARRY.doppler = (function () {
     preset: 'all',
     // One recording or many (constitution §6d). Both run on the VACC.
     count: 'one',
+    /* Which array of a KCNT1 dual recording (stormregion.js): 'hip' or
+       'm2' is that array's channel range, 'both' is two runs. Null on any
+       other recording, and set again for each one. */
+    region: null,
   };
 
   /* Each method's own, named once so the "changed" tag and the reset cannot
@@ -231,6 +235,13 @@ BARRY.doppler = (function () {
                   update: manyRunUpdate });
     } else {
       list.push({ key: 'pick', sig: [q.gid, rows().length], build: pickCard });
+      const regs = q.gid ? BARRY.stormRegion.known(q.gid) : null;
+      if (regs === undefined) {
+        BARRY.stormRegion.look(q.gid).then(() => paint());
+      } else if (regs) {
+        list.push({ key: 'region', sig: [q.gid, regionValue(regs)],
+                    build: () => regionCard(regs) });
+      }
       if (est) {
         list.push({ key: 'plan', sig: [q.gid], build: planShell,
                     update: (node) => planUpdate(node, qs, mine) });
@@ -292,7 +303,45 @@ BARRY.doppler = (function () {
     // Left-out channels belong to the recording they were chosen on.
     // CSC12 on the next one is a different wire.
     q.exclude = []; q.preset = 'all';
+    /* An array is a fact about the recording it was picked on: the next
+       one is asked again rather than run on the last one's range. */
+    if (q.region) { q.region = null; q.ch_lo = null; q.ch_hi = null; }
     reset();
+  }
+
+  /* ---- which array, on a KCNT1 dual recording (stormregion.js) ---- */
+
+  function regionValue(regs) {
+    if (q.region === 'both') return 'both';
+    const r = chRange();
+    const hit = r && regs.find((x) => x.first === r[0] && x.last === r[1]);
+    return hit ? hit.id : null;
+  }
+
+  function regionCard(regs) {
+    const v = regionValue(regs);
+    const [hip, m2] = regs;
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'section-label', text: 'Which array' }),
+      BARRY.ui.field({
+        label: 'This recording has two', inline: true,
+        hint: v === 'both'
+          ? 'Two runs, one per array, each banked as its own entry with its '
+            + 'own history: ' + BARRY.stormRegion.words(hip) + ' and '
+            + BARRY.stormRegion.words(m2) + '. The estimate below is the '
+            + 'hippocampal one.'
+          : v ? 'Only ' + BARRY.stormRegion.words(regs.find((x) => x.id === v))
+                + ' is read; the other array is not. Banked as its own entry.'
+              : 'A hippocampal array and an M2 array, and The Storm works on '
+                + 'one at a time. Pick one, or both for two runs.',
+        control: BARRY.stormRegion.seg(regs, v, (pick) => {
+          q.region = pick;
+          const r = regs.find((x) => x.id === (pick === 'both' ? 'hip' : pick));
+          q.ch_lo = r.first; q.ch_hi = r.last;
+          changedParams();
+        }),
+      }),
+    ]);
   }
 
   /* Open on something workable, never on nothing (§6e). State only: the
@@ -1059,15 +1108,34 @@ BARRY.doppler = (function () {
 
   async function run(force) {
     if (!q.path || myFlight()) return;
+    const regs = q.gid ? BARRY.stormRegion.known(q.gid) : null;
+    if (q.region === 'both' && regs) {
+      // Both arrays: one run each, each banked as its own entry.
+      for (const r of regs) await runOne(force, r);
+      return;
+    }
+    return runOne(force, null);
+  }
+
+  async function runOne(force, region) {
     let started;
+    const extra = region ? { channel_range: [region.first, region.last] } : {};
+    /* Channels left out by hand were picked off the estimate, which is the
+       hippocampal array's on Both: they do not carry to the M2 run. */
+    if (region && region.id !== 'hip') {
+      extra.channels = undefined; extra.left_out = undefined;
+      extra.preset = undefined;
+    }
+    const params = Object.assign(paramsBody(), extra);
     /* One submit per click (ui.submitOnce), and a duplicate the server
        refuses is followed rather than reported as a failure: the same
        recording with the same settings already on the cluster is that
        run (backend/flights.py). */
     try {
-      const p = BARRY.ui.submitOnce('doppler:' + q.path, (sid) =>
-        apiPost('/api/doppler/scan', body({ where: 'vacc', force: !!force,
-                                            submit_id: sid })));
+      const p = BARRY.ui.submitOnce(
+        'doppler:' + q.path + (region ? ':' + region.id : ''), (sid) =>
+          apiPost('/api/doppler/scan', body(Object.assign(
+            { where: 'vacc', force: !!force, submit_id: sid }, extra))));
       paint();
       started = await p;
     } catch (e) {
@@ -1077,7 +1145,7 @@ BARRY.doppler = (function () {
         if (!flights.has(dup.job_id)) {
           track({ id: dup.job_id, status: 'running' }, 'one',
                 [{ gid: q.gid, label: (q.row || {}).label || null }],
-                { path: q.path, params: paramsBody() });
+                { path: q.path, params });
         }
         paint();
         return;
@@ -1094,7 +1162,7 @@ BARRY.doppler = (function () {
     }
     track(started.job, 'one',
           [{ gid: q.gid, label: (q.row || {}).label || null }],
-          { path: q.path, params: paramsBody() });
+          { path: q.path, params });
     paint();
   }
 

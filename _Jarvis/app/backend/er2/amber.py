@@ -93,7 +93,12 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
     import around_measures as AM
     import pandas as pd
 
-    recs = [r for r in dsdata.load(event_set) if r.ok and r.landmarks is not None and r.winner]
+    # A recording without a winner is IN (user, 2026-11-20: "I don't see any
+    # reason not to include m21"): its events carry no DS type (all four type
+    # columns 0 but "too small", which is 1), and its winner-only per-mouse
+    # numbers are simply missing. m21 lost its winner when its duplicate
+    # stamps went: no classifier keeps 5 events of each type after DS3.
+    recs = [r for r in dsdata.load(event_set) if r.ok and r.landmarks is not None]
     labs = [r.lab for r in recs]
     filt = {es: {r.lab: r for r in dsdata.load(es)} for es in FILTERS}
     halo = {r.lab: r for r in dsdata.load("v6")} if event_set != "v6" else None
@@ -105,8 +110,12 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
             v = np.asarray(v, float)
             if v.shape == (r.n,):
                 cols[k] = v
-        t = r.types("winner")
-        s = np.asarray((r.ds3w.get("winner") or {}).get("score", np.full(r.n, np.nan)), float)
+        if r.winner:
+            t = r.types("winner")
+            s = np.asarray((r.ds3w.get("winner") or {}).get("score", np.full(r.n, np.nan)), float)
+        else:
+            t = np.zeros(r.n, int)
+            s = np.full(r.n, np.nan)
         d3 = np.isfinite(s) & (np.abs(s) <= 0.5)
         cols["type_ds1"] = ((t == 1) & ~d3).astype(float)
         cols["type_ds2"] = ((t == 2) & ~d3).astype(float)
@@ -182,8 +191,9 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
     srcs = [os.path.join(battery_dir, "data", "ds_v6.pkl"), os.path.join(battery_dir, "data", "ds_%s.pkl" % event_set)] + [os.path.join(battery_dir, "data", "ds_%s.pkl" % es) for es in FILTERS] + \
         [os.path.join(battery_dir, "merged", "measures.pkl"), os.path.join(battery_dir, "merged_around", "measures.pkl")]
     fp = _fingerprint(sorted(set(p for p in srcs if os.path.isfile(p))) + [os.path.join(AM.SRC, f) for f in os.listdir(AM.SRC)])
-    if event_set != "v6":
-        fp = hashlib.sha256((fp + "|" + event_set).encode()).hexdigest()[:16]
+    # The event set and the recordings in it are part of what is frozen
+    # (2026-11-20: m21 came in with the same files).
+    fp = hashlib.sha256((fp + "|" + event_set + "|" + ",".join(labs)).encode()).hexdigest()[:16]
     os.makedirs(out_root, exist_ok=True)
     have = sorted(int(d[1:]) for d in os.listdir(out_root) if d.startswith("v") and d[1:].isdigit())
     for v in have:

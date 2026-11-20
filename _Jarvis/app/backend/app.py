@@ -92,6 +92,13 @@ feedmod.install_narration(app)
 from . import gzipjson as _gzipjson  # noqa: E402
 _gzipjson.install(app)
 
+# The PI's practice layer (backend/pisafe.py, 2026-11-20): decided before the
+# first record is opened, so nothing is ever written under the wrong name.
+from . import pisafe as pisafemod  # noqa: E402
+pisafemod.decide(LOGS_DIR)
+pisafemod.install(app, LOGS_DIR)
+from . import stormregion as stormregionmod  # noqa: E402
+
 STORE = store.Store(LOGS_DIR, auto_stage=False)
 
 # Last boot's answers to the three slow roll-ups, so this boot can show
@@ -449,6 +456,11 @@ def index():
 @app.route("/<path:filename>")
 def static_files(filename):
     resp = send_from_directory(WEB_DIR, filename)
+    # Module scripts (Seahorse's three.js, web/vendor/three) are refused by
+    # the browser unless served as JavaScript, and mimetypes takes .js's type
+    # from the Windows registry, which some machines have as text/plain.
+    if filename.endswith((".js", ".mjs")):
+        resp.mimetype = "text/javascript"
     # Asked for by its versioned address: that address will never mean
     # anything else, so it is kept without asking again.
     if request.args.get("v") and resp.status_code == 200:
@@ -5562,6 +5574,14 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
         ident = (sess or {}).get("identity") or {}
         lab = reg.get("label") or ident.get("label") or label or gid
         p = dict((out or {}).get("params") or {}, run_key=key)
+        # One array of a KCNT1 dual recording (stormregion.py): a run given
+        # exactly one array's channels is that array's, and says so in its
+        # name and its parameters -- its own entry, its own version tree.
+        region = stormregionmod.for_range(_storm_regions(gid),
+                                          p.get("channel_range"))
+        if region:
+            p["region"] = region["id"]
+            lab = stormregionmod.name_with(lab, region)
         here = reg.get("here") or []
         entry = BANK.add({
             "project": reg.get("project") or reg.get("group"),
@@ -5598,6 +5618,150 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
         STORE.record_error("doppler.autobank", str(exc), None,
                            {"gid": gid, "key": key})
         return None
+
+
+# ==========================================================================
+# A KCNT1 dual recording, one array at a time (stormregion.py, 2026-11-20)
+# ==========================================================================
+def _storm_regions(gid):
+    """[hip, m2] for a recording with both arrays named, else None."""
+    if not gid:
+        return None
+    try:
+        return stormregionmod.regions_for(REG.by_gid(gid))
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _storm_splits_of(entry_id):
+    """{region: entry} already split off `entry_id`."""
+    out = {}
+    for rec in BANK.all():
+        p = ((rec.get("source") or {}).get("parameters") or {})
+        sf = p.get("split_from") or {}
+        if sf.get("entry") == entry_id and p.get("region") in \
+                stormregionmod.NAMES:
+            out[p["region"]] = rec
+    return out
+
+
+def _storm_brief(rec, region=None, existed=False):
+    return {"id": rec["id"], "name": rec.get("name"), "n": rec.get("n"),
+            "region": region, "existed": existed,
+            "version": rec.get("version")}
+
+
+@app.route("/api/storm/regions/<gid>")
+def api_storm_regions(gid):
+    """Whether this recording has a hippocampal and an M2 array, which
+    CSC numbers each is, and -- with `?entry=` -- which one that bank entry
+    is about and what has been split off it already."""
+    regions = _storm_regions(gid)
+    out = {"ok": True, "gid": gid, "regions": regions}
+    eid = request.args.get("entry")
+    if eid and regions:
+        rec = BANK.get(eid)
+        if rec:
+            out["entry_region"] = stormregionmod.region_of(rec, regions)
+            out["splits"] = {rid: _storm_brief(r, rid, True)
+                             for rid, r in _storm_splits_of(eid).items()}
+    return jsonify(out)
+
+
+@app.route("/api/storm/split", methods=["POST"])
+def api_storm_split():
+    """File one bank entry per array from an entry that covers both.
+
+    Each new entry holds the events whose peak channel is on that array,
+    with every decision already made kept, and starts its own history; the
+    one it came from is untouched. Asking again returns the entry already
+    made rather than a second one."""
+    body = request.get_json(force=True) or {}
+    eid = body.get("entry_id")
+    want = [r for r in (body.get("regions") or [])
+            if r in stormregionmod.NAMES]
+    if not want:
+        return jsonify({"ok": False, "error": "Say which array: hip, m2 "
+                        "or both."}), 400
+    rec = BANK.get(eid) if eid else None
+    if not rec:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    regions = _storm_regions(rec.get("gid"))
+    if not regions:
+        return jsonify({"ok": False, "error": (
+            "This recording does not have a hippocampal and an M2 array "
+            "named, so there is nothing to split it by. Name its channel "
+            "banks, or pick the dual template, first.")}), 400
+    if stormregionmod.region_of(rec, regions):
+        return jsonify({"ok": False, "error": (
+            "That entry is about one array already.")}), 400
+    have = _storm_splits_of(eid)
+    src = rec.get("source") or {}
+    who = (body.get("added_by")
+           or (STORE.provenance() or {}).get("user") or "unknown")
+    made = []
+    try:
+        for rid in want:
+            region = stormregionmod.by_id(regions, rid)
+            if rid in have:
+                made.append(_storm_brief(have[rid], rid, True))
+                continue
+            evs, blind = stormregionmod.split_events(rec.get("events"), region)
+            if not evs:
+                made.append({"id": None, "region": rid, "n": 0,
+                             "why": "none of its %d events peaked on the %s "
+                                    "array" % (rec.get("n") or 0,
+                                               region["label"])})
+                continue
+            params = dict(src.get("parameters") or {}, region=rid,
+                          split_from={"entry": rec["id"],
+                                      "name": rec.get("name"),
+                                      "version": rec.get("version"),
+                                      "n_from": rec.get("n")})
+            note = ("Split from “%s” v%s: the %d of its %d events "
+                    "whose peak channel is on the %s array (CSC %d–%d)%s."
+                    % (rec.get("name"), rec.get("version"), len(evs),
+                       rec.get("n") or 0, region["label"], region["first"],
+                       region["last"],
+                       ("; %d had no channel and are in neither" % blind)
+                       if blind else ""))
+            entry = BANK.add({
+                "project": rec.get("project"), "mouse": rec.get("mouse"),
+                "session": rec.get("session"),
+                "session_key": rec.get("session_key"),
+                "session_loose_key": rec.get("session_loose_key"),
+                "session_label": rec.get("session_label"),
+                "session_path": rec.get("session_path"),
+                "recording_start": rec.get("recording_start"),
+                "duration_s": rec.get("duration_s"),
+                "gid": rec.get("gid"), "type": rec.get("type"),
+                "type_name": rec.get("type_name"),
+                "name": stormregionmod.name_with(rec.get("name"), region),
+                "note": rec.get("note"),
+                "events": evs,
+                "pipeline": src.get("pipeline") or "Event Bank split",
+                "detector": src.get("detector"),
+                "run_id": src.get("run_id"),
+                "source_file": src.get("file"),
+                "time_basis": rec.get("time_basis"),
+                "parameters": params,
+                "curated": bool(rec.get("specified")),
+                "curation_label": rec.get("curation_label"),
+                "label_names": rec.get("label_names"),
+                "aligned": rec.get("aligned"),
+                "added_by": who,
+                "version_note": note,
+            })
+            made.append(_storm_brief(entry, rid, False))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("storm/split", exc, 500, {"entry_id": eid})
+    STORE.record_activity([{"action": "storm.split",
+                            "detail": {"entry": eid, "regions": want,
+                                       "made": [m.get("id") for m in made]}}])
+    mirror_bank_soon()
+    return jsonify({"ok": True, "from": eid, "entries": made})
 
 
 def _doppler_recall(sess, key):
@@ -6836,6 +7000,9 @@ def api_braces_plan():
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
     _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
+    _br_regions = _storm_regions(rec.get("gid"))
+    _br_region = stormregionmod.by_id(
+        _br_regions, stormregionmod.region_of(rec, _br_regions))
     # Lock: how many of the spikes in the version asked about Braces placed.
     braced = None
     if (rec.get("type") or "") == "pooled":
@@ -6885,8 +7052,16 @@ def api_braces_plan():
         # unticked instead, which says the same thing and can be undone.
         "channels": [{"number": int(c["number"]),
                       "label": c.get("label"),
-                      "bad": bool(c.get("bad"))}
+                      "bad": bool(c.get("bad")),
+                      # The other array of a dual recording: listed, and
+                      # unticked, because a CSD down the channel order
+                      # steps from one implant to the other.
+                      "off_region": bool(_br_region and not
+                                         stormregionmod.inside(
+                                             _br_region, c["number"]))}
                      for c in _braces_channels(sess)],
+        "region": _br_region,
+        "regions": _br_regions,
         "versions": versions,
         # The NAME of the newest and of the one a commit would write. The
         # number is not unique -- see `versions.tip_next` -- so anything
@@ -7098,6 +7273,13 @@ def _braces_prepare(body):
         want = {int(x) for x in want_ch}
     else:
         want = {int(c["number"]) for c in all_ch if not c.get("bad")}
+        # One array of a dual recording: its own contacts only, never a
+        # profile down both implants (stormregion.py).
+        _regs = _storm_regions(rec.get("gid"))
+        _reg = stormregionmod.by_id(_regs,
+                                    stormregionmod.region_of(rec, _regs))
+        if _reg:
+            want = {n for n in want if stormregionmod.inside(_reg, n)}
     if not want:
         raise _BracesRefusal("No channels are ticked, so there is nothing to "
                              "build a profile from.")
@@ -32920,6 +33102,13 @@ def api_profile():
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:                              # noqa: BLE001
         return fail("profile/save", exc, 400)
+    # A profile that has just become the PI's starts the practice layer at
+    # once. Read from the real shard only, so nothing saved inside the layer
+    # can turn it off (pisafe.py).
+    try:
+        pisafemod.decide(LOGS_DIR)
+    except Exception as exc:                              # noqa: BLE001
+        STORE.record_error("pisafe.decide", exc)
     return jsonify({"ok": True, "profile": prof,
                     "provenance": STORE.provenance()})
 
@@ -33624,7 +33813,16 @@ def _cloud_results():
 
 def cloud_sync_once(push=True, pull=True, files=False):
     """One round trip. Never raises: a sync that fails is a status line,
-    not an interruption to whatever someone is doing."""
+    not an interruption to whatever someone is doing.
+
+    In the real view always (pisafe.py): what colleagues did lands in the
+    real records, and nothing from the PI's practice layer is swept, mirrored
+    or copied into one. With the layer on, the push half does nothing."""
+    with shards.real_view():
+        return _cloud_sync_once(push=push, pull=pull, files=files)
+
+
+def _cloud_sync_once(push=True, pull=True, files=False):
     # `ok=False` explicitly on both of these. They return a copy of the LAST
     # sync's record, and that record's `ok` belongs to a run that already
     # finished -- so a refusal after a good sync came back saying ok, and the
@@ -34337,7 +34535,9 @@ def mirror_bank_soon():
         if not _mirror_lock.acquire(blocking=False):
             return
         try:
-            CLOUD.mirror_bank(APP_DIR)
+            # The mirror is committed: from the real records only.
+            with shards.real_view():
+                CLOUD.mirror_bank(APP_DIR)
         except Exception as exc:                   # noqa: BLE001
             STORE.record_error("bank.mirror", exc)
         finally:

@@ -585,7 +585,9 @@ class Cloud:
         self.logs_dir = os.path.abspath(logs_dir)
         self.store = store
         self.cfg = load_config(self.logs_dir)
-        self.machine = shards.machine_id()
+        # The real name, practice layer or not (pisafe.py): this is who the
+        # database is talking to, and pulled rows are filed under it.
+        self.machine = shards.real_machine_id()
         self._lock = threading.RLock()
         self.last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,
                      "error": None}
@@ -622,6 +624,15 @@ class Cloud:
 
     def _call(self, method, path, body=None, headers=None, raw=None,
               timeout=TIMEOUT):
+        if (method != "GET" and shards.safe_on()
+                and not path.startswith("/storage/v1/object/list/")):
+            # The PI's practice layer (pisafe.py): nothing is written to the
+            # shared database. Answered as the database would have, with
+            # what was sent, so every caller carries on as though it went.
+            want = str((headers or {}).get("Prefer") or "")
+            if "return=representation" in want and body is not None:
+                return (body if isinstance(body, list) else [body]), {}
+            return None, {}
         url = self.cfg["url"] + path
         data = raw if raw is not None else (
             json.dumps(body, default=str).encode("utf-8")

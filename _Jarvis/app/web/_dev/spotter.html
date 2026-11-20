@@ -120,7 +120,10 @@ const post = (u, b) => fetch(u, { method: 'POST',
     events: evts,
     pipeline: 'Doppler (line length)', detector: 'LLspikedetector',
     time_basis: 'recording', added_by: 'spotter harness',
-    parameters: { llw_s: 0.04, prc: 99.9, stamp: 'peak' },
+    /* region: one array (stormregion.js) -- on a KCNT1 dual recording a
+       set covering both is asked which array, a modal nobody headless
+       answers. Channel 2 is the hippocampal array's. */
+    parameters: { llw_s: 0.04, prc: 99.9, stamp: 'peak', region: 'hip' },
   });
   entryId = (added.entry || {}).id || added.id;
   check('a throwaway entry was banked', !!entryId, JSON.stringify(added).slice(0, 200));

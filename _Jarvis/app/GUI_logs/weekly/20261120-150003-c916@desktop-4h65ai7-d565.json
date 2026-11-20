@@ -1,0 +1,313 @@
+{
+ "id": "20261120-150003-c916",
+ "shard": "desktop-4h65ai7-d565",
+ "machine": "Bluebarry",
+ "who": "Shahriar Tafti",
+ "at": "2026-11-20T15:00:03-05:00",
+ "since": "2026-11-13T15:00:03-05:00",
+ "until": "2026-11-20T15:00:03-05:00",
+ "status": "printed",
+ "numbers": {
+  "versions": 13,
+  "commits": 43,
+  "lines_added": 82501,
+  "lines_removed": 407,
+  "files": 101,
+  "events_banked": 20,
+  "entries_banked": 2,
+  "bank_versions": 24,
+  "calls_people": 256,
+  "calls_models": 0,
+  "recordings_new": 0,
+  "procedures": 5,
+  "people": 4,
+  "bench_people": 4
+ },
+ "code": {
+  "commits": 43,
+  "authors": {
+   "maliajaff": 12,
+   "Shahriar Akhavan Tafti": 10,
+   "AggieKrempasky": 8,
+   "Rain Younger": 7,
+   "SkylerDY": 4,
+   "asullenberger": 1,
+   "samarasahagian": 1
+  },
+  "areas": {
+   "elsewhere": {
+    "added": 55885,
+    "removed": 35,
+    "files": 21
+   },
+   "the interface": {
+    "added": 12400,
+    "removed": 222,
+    "files": 25
+   },
+   "the server": {
+    "added": 8159,
+    "removed": 99,
+    "files": 27
+   },
+   "the scripts": {
+    "added": 3234,
+    "removed": 0,
+    "files": 17
+   },
+   "the checks": {
+    "added": 2112,
+    "removed": 51,
+    "files": 8
+   },
+   "the notes and docs": {
+    "added": 711,
+    "removed": 0,
+    "files": 3
+   }
+  },
+  "files": 101,
+  "added": 82501,
+  "removed": 407,
+  "records_changed": 559,
+  "uncommitted": 9
+ },
+ "versions": [
+  {
+   "v": "2026.11.13.1",
+   "day": "2026-11-13",
+   "title": "A cut dragged past the last event, and a workflow saved with no pool, no longer file errors; Floss finds git"
+  },
+  {
+   "v": "2026.11.13.2",
+   "day": "2026-11-13",
+   "title": "Compare splits: delta middle, each way on one hump alone, and the low contacts left out; the PTEN and CTL Baseline set"
+  },
+  {
+   "v": "2026.11.13.3",
+   "day": "2026-11-13",
+   "title": "Data: the PTEN and CTL Baseline set without P-spikes"
+  },
+  {
+   "v": "2026.11.13.4",
+   "day": "2026-11-13",
+   "title": "Extraction Room: interpolate bad contacts, a \"No DS1\" call, each recording's length and rates, and a timeline with theta"
+  },
+  {
+   "v": "2026.11.13.5",
+   "day": "2026-11-13",
+   "title": "Blob Analysis's cards follow the measure; interpolation on and off in Compare splits"
+  },
+  {
+   "v": "2026.11.13.6",
+   "day": "2026-11-13",
+   "title": "Compare splits: try any contacts, and flip between views at once"
+  },
+  {
+   "v": "2026.11.13.7",
+   "day": "2026-11-13",
+   "title": "Extraction Room: DS3 (hybrid), the probability trim, the mix-up check, a time window, and a tidier room"
+  },
+  {
+   "v": "2026.11.16.1",
+   "day": "2026-11-16",
+   "title": "Extraction Room: a to-do banner for the PCA line"
+  },
+  {
+   "v": "2026.11.18.1",
+   "day": "2026-11-18",
+   "title": "A second window that will not open no longer stops the mode"
+  },
+  {
+   "v": "2026.11.18.2",
+   "day": "2026-11-18",
+   "title": "Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes"
+  },
+  {
+   "v": "2026.11.19.1",
+   "day": "2026-11-19",
+   "title": "StrataScope Beta: Consult"
+  },
+  {
+   "v": "2026.11.19.2",
+   "day": "2026-11-19",
+   "title": "Root Canal: bank by label (Project Evolve, phase 1)"
+  },
+  {
+   "v": "2026.11.19.3",
+   "day": "2026-11-19",
+   "title": "Support panels: a lab default, and a copy shows at once"
+  }
+ ],
+ "data": {
+  "bank": {
+   "entries": 2,
+   "events": {
+    "ied": 20
+   },
+   "versions": 24,
+   "by": {
+    "Shahriar Tafti": 15,
+    "Isabella Piatek": 1,
+    "Maddie Massad": 1
+   }
+  },
+  "calls": {
+   "people": {
+    "Maddie Massad": 254,
+    "Isabella Piatek": 1,
+    "Aggie Krempasky": 1
+   },
+   "models": {},
+   "labels": {
+    "spike": 133,
+    "garbage": 90,
+    "flag": 33
+   },
+   "sets": 2
+  },
+  "recordings": {},
+  "activity": {
+   "people": {
+    "Shahriar Tafti": 508
+   },
+   "areas": {
+    "link": 88,
+    "strata": 75,
+    "client": 61,
+    "session": 52,
+    "mode": 40,
+    "extraction": 38,
+    "events": 26,
+    "layers": 21,
+    "rootcanal": 18,
+    "window": 16,
+    "panes": 16,
+    "bank": 12
+   },
+   "actions": 508
+  },
+  "floss": {}
+ },
+ "bench": {
+  "events": [
+   {
+    "day": "2026-11-13",
+    "what": "Active avoidance #2",
+    "mouse": "1653",
+    "cage": "CC-30817-1",
+    "lead": "Avery, Maddie, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-13",
+    "what": "Active avoidance #2",
+    "mouse": "1659",
+    "cage": "CC-30819-1",
+    "lead": "Avery, Maddie, Samara",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1656",
+    "cage": "CC-30818-1",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1665",
+    "cage": "CC-30797-2",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1667",
+    "cage": "CC-30798-2",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   }
+  ],
+  "colony": {
+   "alive": 80,
+   "roles": {
+    "Stock": 76,
+    "Mating": 4
+   }
+  },
+  "procedures": [
+   "Tail Snip #1",
+   "Inject",
+   "Active avoidance",
+   "Active avoidance #2",
+   "Headplate",
+   "H3 probe (L)",
+   "H3 probe (R)",
+   "H10 probe (L)",
+   "H10 probe (R)",
+   "H10 opto (L)",
+   "H10 opto (R)",
+   "Perfuse",
+   "Euthanize",
+   "Tail Snip #2",
+   "Hippocampus Sectioning",
+   "M2 Sectioning"
+  ],
+  "url": "https://docs.google.com/spreadsheets/d/1SDXG1GpRhkjq2aKri3n06nOuR8TGio9QuQsyN656ERo/edit#gid=1444923131",
+  "counts": {
+   "Active avoidance": 3,
+   "Active avoidance #2": 2
+  },
+  "leads": {
+   "Maddie": 5,
+   "Angelina": 3,
+   "Avery": 2,
+   "Samara": 2
+  }
+ },
+ "note": {
+  "headline": "A productive week: 13 versions of Jarvis shipped, 20 events banked, and 256 calls made by people.",
+  "summary": "Work went in on the code all week: 43 commits changed 82,908 lines across 101 files. The most recent changes: StrataScope Beta: Consult; Root Canal: bank by label (Project Evolve, phase 1); Support panels: a lab default, and a copy shows at once. The data grew alongside it, and every call in the curation sets is kept with who made it.",
+  "progress": [
+   "Extraction Room: a to-do banner for the PCA line (v2026.11.16.1).",
+   "A second window that will not open no longer stops the mode (v2026.11.18.1).",
+   "Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes (v2026.11.18.2).",
+   "StrataScope Beta: Consult (v2026.11.19.1).",
+   "Root Canal: bank by label (Project Evolve, phase 1) (v2026.11.19.2).",
+   "Support panels: a lab default, and a copy shows at once (v2026.11.19.3)."
+  ],
+  "bench": [
+   "Active avoidance: 3 entries, on 3 mice, led by Angelina and Maddie.",
+   "Active avoidance #2: 2 entries, on 2 mice, led by Avery, Maddie and Samara.",
+   "The colony stands at 80 live mice."
+  ],
+  "data": [
+   "2 new bank entries, and 24 new versions of entries already banked.",
+   "Calls in the curation sets: 256 by people and 0 by models, across 2 sets."
+  ],
+  "next": [],
+  "watch": []
+ },
+ "writer": "Jarvis",
+ "why_plain": "Hater of AI could not finish: Failed to authenticate: OAuth token revoked. Please log in again or contact your administrator.",
+ "run": {
+  "model": "sonnet",
+  "turns": 1,
+  "cost_usd": 0,
+  "seconds": 2.1
+ },
+ "emailed": [
+  {
+   "at": "2026-11-20T15:01:04-05:00",
+   "list": "lab",
+   "n": 4,
+   "ok": true,
+   "error": null,
+   "by": "Shahriar Tafti"
+  }
+ ]
+}
