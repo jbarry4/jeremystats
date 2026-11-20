@@ -15,6 +15,127 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.19.3 - Support panels: a lab default, and a copy shows at once
+
+Needs a restart and a reload.
+
+- **Copying someone's support panels now changes what is on screen.** They
+  were read only when an add-on opened. Copying Rain's while Panning was
+  open changed nothing until Panning was left and opened again, and a copy
+  made from the support window never reached the main window at all,
+  because each window of the app keeps its own copy of the preferences.
+  Now any change (a copy, an edit, a reset) lays out the open add-on's main
+  window again and moves its second window to the new arrangement, in
+  whichever window it was made.
+- **A lab default.** Anyone who has not set an add-on up gets the lab's
+  default before the add-on's own, a new computer included. The editor
+  says "the lab's default" on those. Changing one window of such an add-on
+  makes it your own and keeps the other window as the lab has it, and
+  Defaults goes back to the lab's. "Make mine the lab default" in the
+  sharing bar sets it. Seeded today with Shahriar's current setup (the
+  same as Rain's).
+
+## 2026.11.19.2 - Root Canal: bank by label (Project Evolve, phase 1)
+
+Restart Jarvis (backend changes), then reload the page.
+
+- **Bank by label…** in a Root Canal workflow. An Ambiguous run's Extract
+  stage (and its Halo card, once a halo is saved) banks by label: **DS**,
+  **P-spike**, **Twilight Zone** (inside both borders, plus the Halo's
+  extended zone) and **Outside both borders**. Each label shows its count and
+  how many of its events the Halo captured. Press the labels you want in the
+  bank dialog.
+- **One label banks a plain entry, two or more bank a Root Canal bundle.**
+  - DS alone or P-spike alone is the same entry as before: type Dentate spike
+    or P-spike, with the same labels. Banking DS alone from Ambiguous Dataset
+    v3 gives exactly the 4,824 events of the set banked on 11-12.
+  - Twilight Zone alone banks as its own type.
+  - A bundle is one entry of the new type **Root Canal bundle**. Each event
+    says its label, the class it came from, and whether the Halo captured it.
+  - X-ray and the Extraction Room don't read bundles yet.
+- **Run and bank… on a Verified run** offers the border's inside, as always,
+  and also what it leaves outside.
+- A bundle never writes over a DS or P-spike entry. Each kind continues its
+  own entry.
+- **Twilight Zone** replaces "ambiguous" wherever the workflow tab names the
+  purple class. The workflow kind is still called Ambiguous.
+
+## 2026.11.19.1 - StrataScope Beta: Consult
+
+Restart Jarvis (a new backend module and routes), then reload the page.
+
+- **[Steps | Beta] in StrataScope's step row.** Beta is the same
+  StrataScope, with every step, the rail, the strip and Accept, plus a
+  **Consult** button and a Consult card at the top of the drawer.
+- **Consult** sends what the window shows to this computer's Claude Code
+  session: the sheet, the open step, the proposed lines where they are now,
+  every step's anchors and votes, the depth curves, the checks, ICA, the
+  question typed in the card, and pictures of the traces with the rail, the
+  depth strip and the evidence window. Then say "consult" in Claude Code.
+- **The reply arrives in the card by itself** (over /api/link, no refresh).
+  It is a list of notes, line moves, relabels, confidence changes, curves to
+  show, steps to open and parameter changes, each with its reason. Apply
+  them one at a time or with **Apply one by one**, which walks the list with
+  a pause between so each change can be seen landing. Anything applied can
+  be undone from its row. Moved lines stay proposals until the step is
+  Accepted, and relabels save at once, the same as painting the rail.
+- Kept on this computer only, in `GUI_logs/.cache/strata_consult`.
+  `tools/strata_consult.py` is Claude's side (`show`, `push`, `schema`).
+  Harness: `web/_dev/strataconsult.html`.
+- **Fixed: after Accept, the next step opened on stale proposals.** Step 3
+  was cut between the fissure and hilus proposed before Steps 1 and 2 were
+  accepted, not the accepted ones. Accept now asks for the next step's
+  proposal again. A consult's record of a moved line also now keeps where
+  the line was before, not where it went.
+
+## 2026.11.18.2 - Extraction Room 2.0: models that try to tell the groups apart from the dentate spikes
+
+Restart Jarvis (new backend modules and routes), then reload the page.
+
+- **A new Extraction Room tab, "Room 2.0 · models"** (`web/js/extraction_er2.js`).
+  It trains models on the dentate spikes alone. They try to tell PTEN from
+  control, low from high knockout, and control / IED− / IED+, and to guess
+  the knockout %.
+- **The frozen inputs.** Every Halo-set event, with its winning
+  classifier's DS1 / DS2 / DS3 call held fixed, is frozen into a versioned
+  "amber" bundle (`backend/er2/amber.py`, kept in `%LOCALAPPDATA%\Jarvis\er2`,
+  never in the repository). The bundle holds:
+  - everything measured about each event: the waveform, depth profile and
+    context, the same measures under six other filters, and the power
+    before and after the DS;
+  - per-mouse tables;
+  - nuisance values (placement, year, event count).
+- **The models** (`backend/er2/engine.py`, `backend/er2/nets.py`):
+  - pooled models: linear, lasso, random forest, boosting and a small
+    neural net, each on every mouse's event distributions;
+  - two set networks, deep sets and attention, that read the events
+    themselves. They are written in numpy, so they need no GPU.
+- **How a mouse is called.** Every call is made on a mouse the model never
+  saw. PTEN against control leaves one control and one PTEN mouse out at a
+  time; every other target leaves one mouse out.
+- **Opening a model** (`backend/er2/explain.py`) uses permutation
+  importance, Shapley values, retraining without a family, and attention
+  weights. The four are consolidated into a MOST IMPORTANT list per target.
+- **Where runs go** (`backend/er2run.py`, `backend/er2routes.py`). A run
+  goes here or to the VACC, as one slurm array through `vacc_run.py`'s new
+  tool "er2". `vacc.push_code` now also sends `backend/er2/`.
+- **What is kept.** Each run is numbered and kept. Its leaderboard is filed
+  as an `er2_leaderboard` artifact, so it syncs to the lab.
+
+## 2026.11.18.1 - A second window that will not open no longer stops the mode
+
+Reload the page; no restart needed.
+
+- **Panning, Spotter, Curate, Braces, the CFC scope and StrataScope** open
+  their aid window through one function (`popOutPanes` in
+  `web/js/xplore.js`). It handled a blocked window but not one where the
+  browser throws. Firefox threw there on Strawbarry on 11-16 while Panning
+  was opening, and Panning was left half open: no event was drawn, and the
+  presence beat that tells other machines the pool is in use never started. Now the mode
+  opens without the second window and says so: "The browser would not open
+  the second window. Leave and re-enter this mode to try again." Checked by
+  `web/_dev/popoutthrow.html`.
+
 ## 2026.11.16.1 - Extraction Room: a to-do banner for the PCA line
 
 Reload the Extraction Room; no restart needed.

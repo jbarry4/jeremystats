@@ -41,6 +41,218 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 25: 2026-11-20 (morning, scheduled), 11-19 08:50 to 11-20 08:50
+
+Covered: Bluebarry's 11-19 shard (17 rows, 14 of them `test: true`) and
+activity. Its 11-19 report has not been written yet (no tick since 18:00).
+HEAD is now `05e38e79` (the 11-19 afternoon merges took in `2026.11.18.2`
+to `2026.11.19.3`). `git fetch` moved `origin/master` to `a441677a` (Aggie,
+11-19 21:24). Git brought six reports, all 0 faults: Daphne Lyons's 11-05
+(`ip0af51b5c`), Rain's 11-11 and 11-18 (`desktop-ah45fae`, 0 actions),
+Blackbarry's 11-17 (Isabella, 140 actions, build `2026.11.16.1 7b2196df`),
+and Aggie's Mac 11-18 and 11-19 (`ip0af5d200`, 133 actions on 11-19, build
+`2026.11.19.3 a0fbe323`). No new error shard came by git. The cloud, read
+only, from `2026-11-18T13:50Z`: 17 `errors` rows, all Bluebarry's (the shard
+below), 954 `activity` rows, 46 `client.error` rows, all "stuck". Floss:
+Rain's `20261109-102332-eca9` is still open.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | `ip0af51b5c` (Daphne Lyons) | 0 | 0 actions. Build `2026.11.06.4 83b3c701` |
+| 11-11, 11-18 | DESKTOP-AH45FAE (Rain Younger) | 0 | 0 actions. Build `2026.11.18.2 06bd0fde` |
+| 11-17 | Blackbarry (Isabella Piatek) | 0 | 140 actions |
+| 11-18, 11-19 | `ip0af5d200` (Aggie Krempasky) | 0 | 0 and 133 actions |
+| 11-19 | Bluebarry (Shahriar) | 0 (3 refusals, 14 test) | `rootcanal/pool-fit` "N versions of sets have not been read yet" ×3, 12:57:33 to :35. The designed read-first path (1). The 14 test rows are the other session's StrataScope (`ui/mode.bounce`, 12:33 to 15:04) and `dspca/fit` (16:51) probes |
+| 11-19 | Bluebarry, DESKTOP-AH45FAE | 0 | 33 new "stuck" rows. Slow, not faults (2) |
+
+1. **Pool refusals on Bluebarry** (12:57:33 to :35, three fits as members
+   were changed, 9/18/9 members). `_rootcanal_pool_members`
+   (`backend/app.py` ~15296) refuses with `away` naming unread versions, and
+   `rootcanal.js` (~8771) reads them by itself and fits again. That is what
+   happened: `rootcanal.read` at 12:57:53, 14:33, 14:36 and 15:00, a VACC
+   batch of 13 at 14:43, and the pools saved again at 15:04. Not a fault.
+   It still lands in the report because `fail()` records every refusal. If
+   the user wants handled refusals (ones with `away` that the page resolves
+   by itself) kept out of the Errors view, that is their call; I left it.
+2. **"Stuck" rows.** Rain on DESKTOP-AH45FAE, 11-19 20:41Z: the usual
+   start-up cluster (`registry` 35 s, `prefs`). Bluebarry 16:32 to 16:54
+   local: `GET /api/rootcanal/workflows` 31 to 35 s and
+   `/api/rootcanal/workflow/<id>` 30 to 35 s, every ~2 min, with a
+   `link.scope` each time and "Taking stock of what is saved on this
+   computer -- done in 27.7 s" in the lines. That is a fresh page start each
+   time, in the minutes the other session was running harnesses (its
+   `dspca/fit` test faults and `guides.*` at 16:51). Start-up slowness, as
+   in passes 19 to 24, not a fault. Also 11:45 and 12:26 (ToolKit 1.1 s
+   freeze; `rootcanal/done` and `candidates` 34 s at a start). The 11-18
+   Strawbarry/Blackbarry rows pass 24 already read.
+
+No code changed and there is no CHANGELOG entry.
+
+Builds: Bluebarry has `2026.11.19.3` on disk (HEAD `05e38e79`). Aggie's Mac
+ran `2026.11.19.3 a0fbe323` on 11-19, so it has pass 23's `2026.11.18.1`.
+Blackbarry ran `7b2196df` (`2026.11.16.1`) on 11-17. A new machine name,
+`ip0af58640.int.uvm.edu`, sent 6 actions to the cloud (the `f987` Mac on
+another address, by the look of it); it has no report.
+
+Next pass: Bluebarry's 11-19 and 11-20 reports and the 11-20 shard. Then
+Strawbarry's 11-18 and later, Blackbarry's 11-13/11-14/11-18 and later when
+git brings them. Then `git fetch`, then the cloud from `2026-11-19T13:50Z`.
+Open, unchanged: pass 22's item 1 (a DS-PCA bundle opened on a machine
+without its read), pass 18's two watches, the Blackbarry `session/state`
+stalls (pass 24's lead), Rain's Floss ticket, pass 23's NS_ERROR_ABORT
+watch.
+
+## Pass 24: 2026-11-19 (morning, scheduled), 11-18 08:50 to 11-19 08:50
+
+Covered: Bluebarry's 11-18 report (0 faults, 22 actions). There is no
+11-18 or 11-19 shard. `git fetch` brought five commits from 11-18: Rain's
+`715487f5`/`c2c85848` (09:16), Shahriar's `a71fcafb`/`7b2196df` (12:10)
+and Samara Sahagian's `3f39ab7c` (14:29), which merges in her `658cba52`
+from 10-30. `origin/master` is `3f39ab7c`, and HEAD is still `a5e56299`.
+They change only `GUI_logs`, no code. With them came Strawbarry's 11-17
+report and the first shards from a new machine, `samarasahagia-839d`
+(profile, people, workbench and one session). It has no report and no
+stamps file. Blackbarry's 11-13, 11-14, 11-17 and 11-18 reports and
+Strawbarry's 11-18 have not come. The cloud, read only, from
+`2026-11-17T13:50Z`: 3 `errors` rows (Bluebarry's three 11-17 test faults,
+which pass 23 already read), 996 `activity` rows and 49 `client.error`
+rows. All 49 are "stuck", and 36 of them pass 23 had already read. Floss:
+Rain's `20261109-102332-eca9` is still open, here and on origin.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-17 | Strawbarry (Aggie Krempasky, Maddie Massad) | 0 | 366 actions. Build `2026.11.16.1 05254eea` |
+| 11-18 | Bluebarry (Shahriar) | 0 | 22 actions |
+| 11-18 | Strawbarry (Sylvia Clouse, Maddie Massad, Rain Younger, Aggie Krempasky) | 0 `errors` rows | 156 actions in the cloud. No report yet |
+| 11-18 | Blackbarry (Isabella Piatek) | 0 `errors` rows | 280 actions in the cloud. No report yet |
+| 11-18 | Strawbarry, Blackbarry | 13 new "stuck" rows | Slow, not faults (1) |
+
+1. **"Stuck" rows** (cloud `activity`), the 13 new ones. None is
+   `GET /api/link`.
+   - Start-up clusters (`registry` ~35 s, `prefs`, `csc/open`,
+     `arc/precon/status`, `toolkit/bad-channels`, curation sets):
+     Strawbarry at 14:38Z (Rain) and Blackbarry at 17:15Z to 17:16Z.
+   - Blackbarry `POST /api/session/state` in Xplorefinder: 42.8 s at
+     17:46:35Z, 42.8 s at 18:30:13Z and 31.5 s at 18:44:59Z, with
+     `csc/window` 31 to 32 s beside the first and the last. That makes
+     eighteen since 11-09. Pass 19's open item, still not measured. One new
+     lead from the server lines the rows carry: in all three, a sync chip
+     check ("Working on syncstate" and "Checking which records have reached
+     the shared database", 3 to 10 s each) and a push ("Synced: sent 2 to
+     54 changes") ran in the seconds before. At 18:45:04Z and :06Z two
+     `/api/session*` requests finished after 1 min 4 s and 1 min 5 s.
+     `Store.upsert_session` holds the store's global `_LOCK` for its whole
+     read-modify-write. Inside it, `get_session` (`backend/store.py`
+     ~510) first reads the shard named for the gid. Records are filed
+     under their key, so with a gid in the identity that read usually
+     misses and it falls back to `all_sessions()`. That recompiles every
+     session shard whenever any shard has been written, and the pull
+     writes them. I have not shown
+     that this is what holds the 30 to 60 s. Measuring it needs Blackbarry,
+     and it is a design question as well, so I left it open.
+
+No code changed and there is no CHANGELOG entry.
+
+Builds: Bluebarry's 11-18 report says `2026.11.18.2 a5e56299`. That is the
+other session's Extraction Room 2.0 and pass 23's `2026.11.18.1`, both
+uncommitted here. Strawbarry ran `05254eea` on 11-17, so it now has pass
+18's Floss fix (`2026.11.13.1`, "Floss finds git") and Rain's ticket can be
+retried there. It does not have `2026.11.18.1`. No NS_ERROR_ABORT
+"promise" row has come from it since.
+
+Next pass: Bluebarry's 11-19 report and shard. Then Strawbarry's 11-18 and
+Blackbarry's 11-13/11-14/11-17/11-18 reports when git brings them, and any
+report from `samarasahagia-839d`. Then `git fetch`, then the cloud from
+`2026-11-18T13:50Z`. Open: pass 22's item 1 (a DS-PCA bundle opened on a
+machine without its read), pass 18's two watches, the Blackbarry
+`session/state` stalls with the lead above, Rain's Floss ticket, and pass
+23's NS_ERROR_ABORT watch.
+
+## Pass 23: 2026-11-18 (morning, scheduled), 11-17 08:50 to 11-18 08:50
+
+Covered: Bluebarry's 11-17 report and shard. HEAD has moved to `a5e56299`
+(maliajaff's commit `1a6973ac`, 11-17 10:58, took in the uncommitted
+`2026.11.11.5` to `2026.11.16.1` work). `git fetch` brought `05254eea`
+(Rain, 11-17 13:32) and `bd823077` (Shahriar, 14:47): `origin/master` is
+`bd823077`. Git brought Strawbarry's 11-12 to 11-16 reports and
+Blackbarry's 11-15 and 11-16. Blackbarry's 11-13/11-14 and both machines'
+11-17 have not come. The cloud, read only, from `2026-11-14T13:50Z`: 4
+`errors` rows (Blackbarry's 11-16 DS-PCA fault and Bluebarry's three test
+faults), 1044 `activity` rows and 60 `client.error` rows, one of them a real
+fault. Floss: Rain's `20261109-102332-eca9` is still open, here and on
+origin.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-12 to 11-15 | Strawbarry (Eshal Anwer) | 0 | 64, 29, 0, 0 actions. Build `2026.11.11.4 f9792b6e` |
+| 11-16 | Strawbarry (Maddie Massad) | 0 in the report, 1 in the cloud | `client.error` "promise", NS_ERROR_ABORT from `window.open` in `popOutPanes`. **Fixed** (1) |
+| 11-15 | Blackbarry (Isabella Piatek) | 0 | 0 actions. Build `2026.11.11.4 8c391def` |
+| 11-16 | Blackbarry (Isabella Piatek) | 1 | `dspca/fit` "That read is not on this machine any more", 12:54:31. Pass 22's item 1, already read from the shard. Still open |
+| 11-17 | Bluebarry (Shahriar) | 0 (3 test) | 33 actions. `extraction/one` "no version 9/10/11" on `980b57eab496` at 16:05:14, all `test: true`: the other session's probes |
+| 11-16, 11-17 | all three | 0 `errors` rows | 59 "stuck" rows. Slow, not faults (2) |
+
+1. **Panning on Strawbarry, a pop-up that threw** (11-16 18:09:52Z, Maddie
+   Massad, KCNT1 m531 s1, pooled set `s69cf561a98cf`). The page reported an
+   unhandled rejection: `[Exception... "Abort" nsresult: "0x80004004
+   (NS_ERROR_ABORT)"]` at `xplore.js` line 3678, `popOutPanes`, called from
+   `openAids` → `layout` → `enter` in `panning.js`. The stack format and the
+   nsresult say Firefox. Line 3678 is the `window.open` for the aid window.
+   `popOutPanes` handled a blocked window (`null`) but not a throw, so the
+   throw went up through `enter()` right after `setMode('panning')`, before
+   `publishMarks`, `goTo`, `render` and `beat`: Panning was left half open.
+   The activity shows Panning left at 18:09:28, entered at 18:09:41 to :42,
+   the error 10 s later, then the recording opened again at 18:09:57 and
+   only window moves after it. Why Firefox refused I cannot tell from here
+   (the usual cause is a named window that is still closing, and Panning
+   closes `barry-panning-aids` on leave). The fault is that a refusal broke
+   the mode. Fixed in `2026.11.18.1`: `popOutPanes` catches the throw, notes
+   it in the debug log, says "The browser would not open the second window.
+   Leave and re-enter this mode to try again." and returns `null`, as for a
+   blocked window. All six callers (Panning, Spotter, Curate, Braces, CFC
+   scope, StrataScope) already go on without a window on `null`.
+   `web/_dev/popoutthrow.html` (new) stubs the frame's `window.open` to
+   throw, return null and work. With the fix taken out: 5 ok, 3 fail. With
+   it in: 8 ok. `aidkeys` still 12 ok. A reload is enough. Strawbarry gets
+   it when it pulls; it is still on `f9792b6e`.
+2. **"Stuck" rows** (cloud `activity`): 59. None is `GET /api/link`.
+   - Start-up clusters (`registry` ~35 s, `csc/open`, `prefs`,
+     `arc/precon/status`, `toolkit/scopes`, `curation`): Strawbarry 11-16
+     15:43Z and 11-17 14:36Z, Blackbarry 11-16 17:19Z and 11-17 19:52Z.
+   - Blackbarry `POST /api/session/state`: **62.8 s** at 11-16 18:44:29Z
+     (the longest yet) and 34.8 s at 11-17 20:23:56Z, both in Xplorefinder,
+     with `csc/open` 32 s twice just before the first. Pass 17's open item,
+     now fifteen since 11-09. At 11-16 19:24Z a cluster of eleven (Toolkit
+     `session/bad`, `toolkit/scopes`, `rootcanal/meta`, `/done`,
+     `/candidates`, `/workflows`, `csc/window` and two spinners), with
+     "Working on syncs" beside them. Not measured; left open with pass 19's
+     note.
+   - Bluebarry 11-17 17:12Z: 25 `GET /api/rootcanal/workflow/<id>` at
+     30 s, all at once, plus `rootcanal/done` and `/candidates`: the Root
+     Canal page fetching every workflow in parallel. Also 11-16 22:11Z
+     `doppler/estimate` 32 s and `doppler/batch/plan` 34 s. Slow, not
+     broken; left open.
+
+What changed, all in `2026.11.18.1` and uncommitted:
+- `web/js/xplore.js`, `popOutPanes` (around 3674–3701): the `try` around
+  `window.open`. That file had no other uncommitted work.
+- `web/_dev/popoutthrow.html` (new).
+- `CHANGELOG.md`: the `2026.11.18.1` entry.
+
+Builds: Bluebarry's 11-17 report still says `2026.11.13.7 de71a7fc`, though HEAD
+was `a5e56299` from 10:58 that day: most likely the server was started
+before the commit and not restarted. I did not check. Strawbarry ran `f9792b6e` on
+11-12 to 11-16, so it does not have pass 18's Floss fix and Rain's ticket
+cannot be retried there yet. Blackbarry ran `8c391def` on 11-15 and 11-16.
+
+Next pass: Bluebarry's 11-18 report and shard. Then Strawbarry's and
+Blackbarry's 11-17 reports (365 and 140 actions in the cloud, no `errors`
+rows) and Blackbarry's 11-13/11-14 when git brings them. Then `git fetch`,
+then the cloud from `2026-11-17T13:50Z`. Open: pass 22's item 1 (a DS-PCA
+bundle opened on a machine without its read), pass 18's two watches, the
+Blackbarry `session/state` stalls, and Rain's Floss ticket. Watch for
+another NS_ERROR_ABORT now that it is caught: it would show only as a
+`popOutPanes` line in the debug log and the toast, not as a fault.
+
 ## Pass 22: 2026-11-17 (morning, scheduled), 11-16 08:50 to 11-17 08:50
 
 Covered: Bluebarry's 11-16 report (build `2026.11.13.7 de71a7fc`, 0 faults,

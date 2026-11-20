@@ -40,6 +40,11 @@ EVENT_TYPES = [
     {"id": "artifact", "name": "Artifact", "note": "to be excluded"},
     {"id": "ttl", "name": "TTL", "note": "hardware event marker"},
     {"id": "behavior", "name": "Behavior", "note": "scored from video"},
+    # PROJECT EVOLVE (2026-11-19): a Root Canal run banked with two or more
+    # labels at once -- DS, P-spike, Twilight Zone, outside -- each event
+    # saying which. No DS or P-spike reader takes one whole.
+    {"id": "rcbundle", "name": "Root Canal bundle",
+     "note": "several Root Canal labels in one entry"},
     {"id": "other", "name": "Other", "note": ""},
 ]
 
@@ -572,6 +577,14 @@ class EventBank:
             # all, and every reader of a DS set picks events by it.
             if ev.get("rc_name"):
                 item["rc_name"] = str(ev["rc_name"])[:60]
+            # A Root Canal bundle's event (2026-11-19): the class its
+            # workflow put it in ("both", "halo_ds", ...), and whether the
+            # Halo captured it. Where it came from, beside the label that
+            # says what it is.
+            if ev.get("rc_class"):
+                item["rc_class"] = str(ev["rc_class"])[:24]
+            if ev.get("halo") is True:
+                item["halo"] = True
             # A pooled spike's origin (The Confluence, 2026-10-14): which
             # detector found it -- Incisor, Doppler, or both within the
             # merge window -- and `pair_t`, where the other one put it.
@@ -2131,6 +2144,10 @@ class EventBank:
 
         rec["events"] = out
         rec["versions"] = versions
+        # The entry's own "newest" counter, as add/dedupe/retime keep it
+        # (2026-11-19: an alignment left it one behind until a cloud absorb
+        # happened to catch it up).
+        rec["version"] = fresh["v"]
         rec["n"] = len(out)
         rec["by_label"] = counts
         # What the CURRENT events are aligned to, the way `time_basis` says
