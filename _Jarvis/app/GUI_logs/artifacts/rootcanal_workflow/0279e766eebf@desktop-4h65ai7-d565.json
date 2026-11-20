@@ -1,0 +1,121 @@
+{
+  "_at": {
+    "added": "2026-11-11T20:44:33.095402+00:00",
+    "deleted": "2026-11-11T20:44:33.955951+00:00",
+    "id": "2026-11-11T20:44:33.095402+00:00",
+    "kind": "2026-11-11T20:44:33.095402+00:00",
+    "name": "2026-11-11T20:44:33.095402+00:00",
+    "nickname": "2026-11-11T20:44:33.095402+00:00",
+    "schema": "2026-11-11T20:44:33.095402+00:00",
+    "subject": "2026-11-11T20:44:33.095402+00:00",
+    "subject_key": "2026-11-11T20:44:33.095402+00:00",
+    "version": "2026-11-11T20:44:33.955951+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "006e20fb9f32": [
+        "set",
+        "2026-11-11T20:44:33.095402+00:00"
+      ],
+      "16afb10809d2": [
+        "set",
+        "2026-11-11T20:44:33.955951+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-11T20:44:33.955951+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T15:44:33-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "0279e766eebf",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 Snap 5% \u00b7 Ambiguous",
+  "nickname": "Snap 5% \u00b7 Ambiguous",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 Snap 5% \u00b7 Ambiguous",
+    "workflow_key": "3cb04dbe846a46c8a1c13c6850350de2"
+  },
+  "subject_key": "rootcanal_workflow|3cb04dbe846a46c8a1c13c6850350de2",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.11.4",
+      "at": "2026-11-11T15:44:33-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "917914a497f1",
+      "id": "006e20fb9f32",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": "PTEN Baseline v2"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-11T15:44:33-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.11.4",
+      "at": "2026-11-11T15:44:33-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "0e9de2839b89",
+      "id": "16afb10809d2",
+      "inputs": [
+        {
+          "artifact_id": "105b40acbbb0",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "bff8c4363fc4",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        },
+        {
+          "artifact_id": "43a9e86c6520",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 3018,
+        "grace": null,
+        "kept": 1098,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "PTEN Baseline v2"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 2
+    }
+  ]
+}

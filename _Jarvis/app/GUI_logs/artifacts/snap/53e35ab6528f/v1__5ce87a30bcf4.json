@@ -1,0 +1,211 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "group": "ied",
+  "n_group": 39,
+  "n_other": 0
+ },
+ "gids": [
+  "s14510e30e1bd",
+  "s38b9e61c5684",
+  "s4a67210fc7ac",
+  "sc74c98b2495d",
+  "sd0d0bded958b"
+ ],
+ "grace_default": 0.05,
+ "group": "ied",
+ "identity": "wf_id",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "kind": "envelope",
+ "level": "workflow",
+ "levels": [
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 0,
+    "ied": 39,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2665.7831928715223,
+     "lo": 400.51150697399237
+    },
+    "hf_db": {
+     "hi": 38.9830085278379,
+     "lo": 10.824583346788593
+    },
+    "hw_ms": {
+     "hi": 41.08492014426582,
+     "lo": 7.05272863566222
+    }
+   },
+   "grace": 0.0,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 0,
+    "ied": 39,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2665.7831928715223,
+     "lo": 400.51150697399237
+    },
+    "hf_db": {
+     "hi": 38.9830085278379,
+     "lo": 10.824583346788593
+    },
+    "hw_ms": {
+     "hi": 41.08492014426582,
+     "lo": 7.05272863566222
+    }
+   },
+   "grace": 0.01,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 0,
+    "ied": 39,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2665.7831928715223,
+     "lo": 400.51150697399237
+    },
+    "hf_db": {
+     "hi": 38.9830085278379,
+     "lo": 10.824583346788593
+    },
+    "hw_ms": {
+     "hi": 41.08492014426582,
+     "lo": 7.05272863566222
+    }
+   },
+   "grace": 0.05,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  }
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "n": 39,
+ "n_complete": 39,
+ "n_identity": 39,
+ "n_mice": 5,
+ "n_recordings": 5,
+ "rules": {
+  "0.0": "Solid P-spike: inside max amplitude 401 to 2666 µV, HF power 10.8 to 39.0 dB, half-width 7.1 to 41.1 ms. Outside it on any axis is ambiguous (grace none: the box wraps every P-spike event).",
+  "0.01": "Solid P-spike: inside max amplitude 401 to 2666 µV, HF power 10.8 to 39.0 dB, half-width 7.1 to 41.1 ms. Outside it on any axis is ambiguous (grace 1%: the box leaves out the outermost 1% of the P-spike events).",
+  "0.05": "Solid P-spike: inside max amplitude 401 to 2666 µV, HF power 10.8 to 39.0 dB, half-width 7.1 to 41.1 ms. Outside it on any axis is ambiguous (grace 5%: the box leaves out the outermost 5% of the P-spike events)."
+ },
+ "schema": 1,
+ "source": {
+  "entries": [
+   {
+    "entry_id": "15de830c8b35",
+    "n": 8,
+    "session_label": "PTEN m28 s2 2024-06-18",
+    "version": "br-7dad3701b3"
+   },
+   {
+    "entry_id": "2bcb129a3db5",
+    "n": 6,
+    "session_label": "PTEN m34 s5 2024-06-10",
+    "version": "br-d594893abf"
+   },
+   {
+    "entry_id": "754a4ab49e03",
+    "n": 11,
+    "session_label": "PTEN m3 s2 2023-09-20",
+    "version": "br-48a730401a"
+   },
+   {
+    "entry_id": "51c1d1150100",
+    "n": 3,
+    "session_label": "PTEN m5 s2 2023-11-16",
+    "version": "br-e652b061d1"
+   },
+   {
+    "entry_id": "964aac87949e",
+    "n": 11,
+    "session_label": "PTEN m13 s2 2023-08-01",
+    "version": "br-e4e8f9cf6d"
+   }
+  ],
+  "kind": "workflow",
+  "type": "sets"
+ },
+ "strict": {
+  "amp_uV": {
+   "hi": 2665.7831928715223,
+   "lo": 400.51150697399237
+  },
+  "hf_db": {
+   "hi": 38.9830085278379,
+   "lo": 10.824583346788593
+  },
+  "hw_ms": {
+   "hi": 41.08492014426582,
+   "lo": 7.05272863566222
+  }
+ },
+ "strict_counts": {
+  "amb": 0,
+  "ds": 0,
+  "ied": 39,
+  "none": 0
+ },
+ "strict_rate": 0.0,
+ "strict_wrong": 0
+}

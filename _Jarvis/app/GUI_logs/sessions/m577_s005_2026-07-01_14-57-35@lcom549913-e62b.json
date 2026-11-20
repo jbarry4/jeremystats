@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-11-02T15:25:40.046435+00:00",
+    "gid": "2026-11-02T15:25:40.046435+00:00",
+    "group": "2026-11-02T15:25:40.046435+00:00",
+    "key": "2026-11-02T15:25:40.046435+00:00",
+    "label": "2026-11-02T15:25:40.046435+00:00",
+    "loose_key": "2026-11-02T15:25:40.046435+00:00",
+    "mouse": "2026-11-02T15:25:40.046435+00:00",
+    "project": "2026-11-02T15:25:40.046435+00:00",
+    "project_source": "2026-11-02T15:25:40.046435+00:00",
+    "retired": "2026-11-02T15:25:40.046435+00:00",
+    "schema": "2026-11-02T15:25:40.046435+00:00",
+    "session": "2026-11-02T15:25:40.046435+00:00",
+    "start": "2026-11-02T15:25:40.046435+00:00",
+    "updated": "2026-11-02T15:28:29.435630+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0577\\KCNT1_m0577_s05_070126\\2026-07-01_14-57-35": [
+        "set",
+        "2026-11-02T15:28:29.435630+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T15:28:29.435630+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.27.1",
+    "at": "2026-11-02T10:25:40-05:00",
+    "commit": "d752a3b1",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s562eacb05a5e",
+  "group": null,
+  "key": "m577_s005_2026-07-01_14-57-35",
+  "label": "KCNT1 m577 s5 2026-07-01",
+  "loose_key": "m577_s005",
+  "mouse": 577,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0577\\KCNT1_m0577_s05_070126\\2026-07-01_14-57-35"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 5,
+  "start": "2026-07-01T18:57:35+00:00",
+  "updated": {
+    "app_version": "2026.10.27.1",
+    "at": "2026-11-02T10:28:29-05:00",
+    "commit": "d752a3b1",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

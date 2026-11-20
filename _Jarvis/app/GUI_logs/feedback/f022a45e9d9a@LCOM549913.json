@@ -1,0 +1,30 @@
+{
+ "id": "f022a45e9d9a",
+ "kind": "bug",
+ "title": "Prospector issue",
+ "detail": "s",
+ "wants": "",
+ "context": {
+  "path": "vacc:s9a8f6138b49e",
+  "view": "errors",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0",
+  "panels": [
+   "traces"
+  ],
+  "screen": "1912x948",
+  "window": {
+   "t0": 1.403161,
+   "span": 0.4
+  },
+  "recording": "KCNT1 m1606 s1 2026-08-04"
+ },
+ "state": "open",
+ "at": "2026-11-05T18:33:37+00:00",
+ "by": "Isabella Piatek",
+ "machine": "LCOM549913",
+ "shard": "LCOM549913",
+ "screenshots": [],
+ "recent": null,
+ "notes": [],
+ "from_cloud": true
+}

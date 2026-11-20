@@ -1,0 +1,16 @@
+measure,PTEN vs control: rank-biserial,P (Mann-Whitney),n control,n PTEN,"vs % knockout, PTEN only: Spearman rho",P,"vs % knockout, all mice: rho",P
+Granule-layer source / sinks,-0.389,0.1996,8,9,-0.783,0.0125,-0.572,0.0165
+LFP at source / at sinks,0.278,0.3704,8,9,0.7,0.0358,0.419,0.0939
+Upper vs lower blade sink,-0.611,0.036,8,9,-0.333,0.3807,-0.608,0.0096
+LFP half-width,0.083,0.8148,8,9,-0.633,0.0671,-0.102,0.6963
+Blade-to-blade distance,0.139,0.664,8,9,0.462,0.2103,0.248,0.3374
+Amplitude variability,-0.028,0.9626,8,9,-0.433,0.244,-0.182,0.4834
+Events within 1 s of another,0.306,0.3213,8,9,0.217,0.5755,0.281,0.275
+Separation of best split,0.306,0.3213,8,9,-0.333,0.3807,0.159,0.5418
+LFP amplitude,-0.139,0.673,8,9,-0.367,0.3317,-0.195,0.4524
+Hybrid (DS3) share,-0.266,0.4005,8,8,0.048,0.9108,-0.241,0.368
+Agreement across splits,-0.167,0.6058,8,9,-0.3,0.4328,-0.212,0.4136
+Event rate,0.194,0.5414,8,9,-0.033,0.9322,0.141,0.5893
+Sink duration,0.167,0.6058,8,9,0.15,0.7001,0.171,0.5122
+Irregularity (CV of intervals),0.028,0.9626,8,9,0.133,0.7324,0.043,0.8707
+Sink width (depth),0.0,1.0,8,9,-0.067,0.8647,0.005,0.9843

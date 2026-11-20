@@ -1,0 +1,192 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>aidkeys: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;top:0;height:100vh;border:0}
+#app{left:560px;width:calc(60vw - 336px)}
+#aid{right:0;width:calc(40vw - 224px)}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/"></iframe>
+<iframe id="aid" src="/?role=aids&chrome=notabs,noheads#xplore"></iframe>
+<script>
+/* A support window's keys go to the mode (2026-11-05: "if you click on the
+   support panel and try to use the xplorefinder addon short cuts it doesnt
+   work. 1 does not label it takes you to sessions").
+
+   Two frames: the app, with Panning open on a pool answered here, and the
+   app as a support window (`role=aids`), whose `opener` is pointed at the
+   first -- a headless browser will not open the real window, and the
+   forwarding only ever reads `window.opener`. Keys are pressed in the
+   support window and land, or not, in the mode.
+
+   IT WRITES NOTHING: panmany's way, the set's routes answered by a wrapped
+   `fetch` proven with a probe first, prefs and the activity log caught, all
+   put back in `finally`. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const loaded = (f) => new Promise((r) => f.addEventListener('load', r, { once: true }));
+
+(async () => {
+  const fApp = document.getElementById('app'), fAid = document.getElementById('aid');
+  await Promise.all([loaded(fApp), loaded(fAid)]);
+  const ev = (c) => fApp.contentWindow.eval(c);
+  const aev = (c) => fAid.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  await until(() => aev('typeof BARRY') === 'object' && aev('BARRY.state.catalog'), 30000);
+  const W = fApp.contentWindow, A = fAid.contentWindow;
+  const G = 'demo-ds-tutorial';
+  try {
+    W.eval(`(function(){
+      var evs=[{id:'a',start:8.0,origin:'doppler',label:null,channel:12},
+               {id:'b',start:10.37,origin:'incisor',label:null,channel:12},
+               {id:'c',start:12.74,origin:'incisor',label:null,channel:12}];
+      window.__akSet={gid:'${G}',kind:'pooled',name:'harness pool, not banked',
+        labels:[{id:'spike',name:'Spike',keys:['1','s'],color:'#2f9e6e',good:true},
+                {id:'garbage',name:'Garbage',keys:['2','g'],color:'#dc2626'},
+                {id:'flag',name:'Flag',keys:['3','f'],color:'#E5A823',flagged:true}],
+        events:evs};
+      window.__akSent=[]; window.__akPrefs={};
+      window.__akRealFetch=window.fetch;
+      window.fetch=function(u,o){ var p=String(u).split('?')[0];
+        var fake=function(obj){return Promise.resolve(new Response(JSON.stringify(obj),
+          {status:200,headers:{'Content-Type':'application/json'}}));};
+        if(p.indexOf('/api/curation/${G}/pooled')===0){
+          var b=null; try{ b=o&&o.body?JSON.parse(o.body):null; }catch(e){}
+          window.__akSent.push({p:p,b:b});
+          if(p==='/api/curation/${G}/pooled') return fake({ok:true,
+            set:JSON.parse(JSON.stringify(window.__akSet)), banked:null,
+            session:{gid:'${G}',here:['demo:ds-tutorial'],reachable:true,demo:true}});
+          if(p.slice(-8)==='/receipt') return fake({ok:true,sitting:{n:0},labels:[],progress:{}});
+          return fake({ok:true}); }
+        if(p.indexOf('/api/presence/')===0) return fake({ok:true,others:[]});
+        return window.__akRealFetch.apply(this,arguments); };
+      BARRY.activity.__akLog=BARRY.activity.log; BARRY.activity.log=function(){};
+      BARRY.prefs.__akSet=BARRY.prefs.set;
+      BARRY.prefs.set=function(k,v){ if(/_span$|_at$|autobank/i.test(k)) { window.__akPrefs[k]=v; return; }
+        return BARRY.prefs.__akSet.apply(this,arguments); };
+      BARRY.testNoAutobank=true;
+    })()`);
+    const probe = await W.eval("apiPost('/api/curation/" + G + "/pooled/__probe', {x:1})"
+                               + ".then(function(r){return JSON.stringify(r);})");
+    if (!(ev('window.__akSent.length') === 1 && /"ok":true/.test(probe))) {
+      throw new Error('the fetch stub did not answer the probe: ' + probe);
+    }
+    ev('window.__akSent.length = 0');
+    say('  the fetch stub answers the page’s own apiPost', 'note');
+
+    // The support window's stand-in: same app, `role=aids`, opened by this one.
+    A.opener = W;
+    check('the second frame is a support window, and knows its opener',
+          aev('AID_WINDOW') === true && A.opener === W);
+
+    head('Panning open in the main window');
+    await W.eval("BARRY.panning.enter('" + G + "')");
+    await until(() => fApp.contentDocument.querySelector('#panBar'), 20000);
+    // The real window would not open headless; close the toast it leaves.
+    const st = () => JSON.parse(ev('JSON.stringify(BARRY.panning.state)'));
+    const viewMain = () => ev('BARRY.state.view');
+    const viewAid = () => aev('BARRY.state.view');
+    const aidView0 = viewAid();
+    const press = (key, target, extra) => aev(`(function(){
+      var t=${target || 'document.body'};
+      var e=new KeyboardEvent('keydown',Object.assign({key:${JSON.stringify(key)},
+        bubbles:true,cancelable:true},${JSON.stringify(extra || {})}));
+      t.dispatchEvent(e); return e.defaultPrevented; })()`);
+    const labels = () => JSON.parse(ev('JSON.stringify(window.__akSent)'))
+      .filter((x) => /\/label$/.test(x.p)).map((x) => x.b);
+    check('on the first event', st().index === 0, JSON.stringify(st()));
+
+    head('1, pressed in the support window');
+    const took = press('1');
+    await until(() => labels().length === 1, 4000);
+    check('labels the event in the main window: Spike, on that event',
+          labels().length === 1 && labels()[0].label === 'spike'
+          && labels()[0].event === 'a', JSON.stringify(labels()));
+    check('and the support window does not go to Sessions',
+          took === true && viewAid() === aidView0, viewAid());
+    check('nor does the main window', viewMain() === 'xplore', viewMain());
+
+    head('the arrows and n walk the events from there too');
+    const i0 = st().index;
+    press('ArrowRight');
+    await sleep(250);
+    check('→ steps to the next', st().index === i0 + 1, i0 + ' → ' + st().index);
+    press('p');
+    await sleep(250);
+    check('p steps back', st().index === i0, String(st().index));
+
+    head('what the mode does not use stays the support window’s');
+    const n0 = labels().length;
+    const took5 = press('5');
+    await sleep(250);
+    check('5 labels nothing, and moves neither window to Results',
+          !took5 && labels().length === n0 && viewMain() === 'xplore'
+          && viewAid() === aidView0, viewMain() + ' / ' + viewAid());
+
+    head('typing and Esc are left alone');
+    aev(`(function(){var i=document.createElement('input');i.id='akIn';
+      document.body.appendChild(i);i.focus();})()`);
+    press('2', "document.getElementById('akIn')");
+    await sleep(200);
+    check('a key typed into a field there labels nothing',
+          labels().length === n0, JSON.stringify(labels()));
+    aev("document.getElementById('akIn').remove()");
+    press('Escape');
+    await sleep(250);
+    check('Esc there does not take the main window out of Panning',
+          ev('BARRY.panning.active') === true);
+
+    head('no opener, no harm');
+    A.opener = null;
+    const n1 = labels().length;
+    press('1');
+    await sleep(200);
+    check('with the main window gone, 1 labels nothing and stays put',
+          labels().length === n1 && viewAid() === aidView0);
+  } finally {
+    try { ev('BARRY.panning.active && BARRY.panning.exit()'); } catch (e) {}
+    try { ev('closeModal(); closeModal();'); } catch (e) {}
+    await sleep(200);
+    try {
+      ev(`(function(){
+        if (window.__akRealFetch) { window.fetch=window.__akRealFetch; delete window.__akRealFetch; }
+        if (BARRY.activity.__akLog) { BARRY.activity.log=BARRY.activity.__akLog; delete BARRY.activity.__akLog; }
+        if (BARRY.prefs.__akSet) { BARRY.prefs.set=BARRY.prefs.__akSet; delete BARRY.prefs.__akSet; }
+        delete BARRY.testNoAutobank;
+      })()`);
+      say('  wrote nothing outside this page: prefs it tried to keep -- '
+          + ev("JSON.stringify(Object.keys(window.__akPrefs || {}))"), 'note');
+    } catch (e) {}
+    try { ev("setView('toolkit')"); } catch (e) {}
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'aidkeys: ' + fails + ' FAILED' : 'aidkeys: passed';
+  // The app's polling pins virtual time to the wall; let the runner go.
+  fApp.src = 'about:blank';
+  fAid.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'aidkeys CRASH';
+});
+</script></body></html>

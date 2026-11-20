@@ -1,0 +1,75 @@
+{
+  "_at": {
+    "added": "2026-11-05T21:37:45.834974+00:00",
+    "deleted": "2026-11-05T21:37:45.834974+00:00",
+    "id": "2026-11-05T21:37:45.834974+00:00",
+    "kind": "2026-11-05T21:37:45.834974+00:00",
+    "name": "2026-11-05T21:37:45.834974+00:00",
+    "nickname": "2026-11-05T21:37:45.834974+00:00",
+    "schema": "2026-11-05T21:37:45.834974+00:00",
+    "subject": "2026-11-05T21:37:45.834974+00:00",
+    "subject_key": "2026-11-05T21:37:45.834974+00:00",
+    "version": "2026-11-05T21:37:45.834974+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "4bf6f36fa970": [
+        "set",
+        "2026-11-05T21:37:45.834974+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-05T21:37:45.834974+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-05T16:37:45-05:00",
+    "by": "Aggie Krempasky",
+    "machine": "Strawbarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "ef2b1bce5621",
+  "kind": "rootcanal_margin",
+  "name": "Clusters of CTL Baseline",
+  "nickname": "CTL Baseline v1 clusters",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "margin_key": "825c39cc09414e3bac7533c8ed8e9182",
+    "name": "Clusters of CTL Baseline"
+  },
+  "subject_key": "rootcanal_margin|825c39cc09414e3bac7533c8ed8e9182",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:37:45-05:00",
+      "by": "Aggie Krempasky",
+      "commit": "c0b5e857",
+      "digest": "d7499319fe30",
+      "id": "4bf6f36fa970",
+      "inputs": [],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "ds": 1,
+        "events": 1475,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 1,
+        "k": 2,
+        "source": "pool"
+      },
+      "note": null,
+      "params": {
+        "pool": {
+          "artifact_id": "3fcedd33613b",
+          "nickname": "CTL Baseline",
+          "version": 1
+        }
+      },
+      "params_hash": "b4392e808817",
+      "v": 1
+    }
+  ]
+}

@@ -1,0 +1,1722 @@
+{
+ "v": 1,
+ "date": "2026-11-05",
+ "time": "13:29",
+ "stamp": "110526",
+ "source": "Jarvis",
+ "outcome": "applied",
+ "by": "Shahriar Tafti",
+ "machine": "Bluebarry",
+ "sheet": "KCNT1 Active 2.0",
+ "block_at": 22,
+ "mice": 139,
+ "issues": [
+  {
+   "category": "Spreadsheet issue",
+   "mouse": null,
+   "text": "7 live SoftMouse mice have no row in KCNT1 Active 2.0, so nothing was written for them: 557, 0597, 0598, 0599, 1622, 1624, 1628"
+  }
+ ],
+ "result": {
+  "sheet": "KCNT1 Active 2.0",
+  "matched": 132,
+  "changes": [
+   {
+    "id": "1652",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1652",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1652",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1652",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1653",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1653",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1653",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1653",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1654",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1654",
+    "field": "YH",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1654",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1654",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1655",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1655",
+    "field": "YH",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1655",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1655",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1656",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1656",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1656",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1656",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1657",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1657",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1657",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1657",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1658",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1658",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1658",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1658",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1659",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1659",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1659",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1659",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1660",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1660",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1660",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1660",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1661",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1661",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1661",
+    "field": "PV",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1661",
+    "field": "SST",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1662",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1662",
+    "field": "YH",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1662",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1662",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1663",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1663",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1663",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1663",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1664",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1664",
+    "field": "YH",
+    "from": "",
+    "to": "Het"
+   },
+   {
+    "id": "1664",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1664",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1665",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1665",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1665",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1665",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1666",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1666",
+    "field": "YH",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1666",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1666",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1667",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1667",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1667",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1667",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1668",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1668",
+    "field": "YH",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1668",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1668",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   },
+   {
+    "id": "1669",
+    "field": "Role",
+    "from": "",
+    "to": "Stock"
+   },
+   {
+    "id": "1669",
+    "field": "YH",
+    "from": "",
+    "to": "WT"
+   },
+   {
+    "id": "1669",
+    "field": "PV",
+    "from": "",
+    "to": "Hom"
+   },
+   {
+    "id": "1669",
+    "field": "SST",
+    "from": "",
+    "to": "N/A"
+   }
+  ],
+  "matingKept": [
+   "302",
+   "313"
+  ],
+  "notInSheet": [
+   "557",
+   "1622",
+   "1624",
+   "1628",
+   "0597",
+   "0598",
+   "0599"
+  ],
+  "sheetDuplicates": [],
+  "ok": true,
+  "kind": "softmouse",
+  "mode": "apply",
+  "blockAt": 22
+ },
+ "csv": "SoftMouse List 110526 1329.csv",
+ "list": [
+  [
+   "M506",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M509",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M512",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M302",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M304",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M305",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M307",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M308",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M311",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M313",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M325",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M326",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M327",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M317",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M319",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M321",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M322",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M514",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M516",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M517",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M518",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M519",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M520",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M521",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M522",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M523",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M524",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M529",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M531",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M576",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M577",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M578",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M536",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M537",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M538",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M539",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M540",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M542",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M543",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M544",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M545",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M547",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M548",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M549",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M551",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M556",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M571",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M572",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M573",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M557",
+   "Mating",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M558",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M559",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M560",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M561",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M562",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M565",
+   "Mating",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M566",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M567",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "1607",
+   "Mating",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1608",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "1609",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "M579",
+   "Mating",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "M580",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M583",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M584",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "1610",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "1611",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1612",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M588",
+   "Stock",
+   "YH(hom), PV-Cre(het)"
+  ],
+  [
+   "M591",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "M594",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M595",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "0597",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "0598",
+   "Stock",
+   "YH(hom), SST-Cre(het)"
+  ],
+  [
+   "0599",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "1600",
+   "Mating",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1601",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1602",
+   "Mating",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1603",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1604",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1605",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1606",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1613",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "1614",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "1615",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1616",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1617",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "1618",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "1619",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1620",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1621",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "1622",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "1623",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "1624",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "1625",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "1626",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1627",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "1628",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1629",
+   "Stock",
+   "YH(hom), SST-Cre(het)"
+  ],
+  [
+   "1630",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1631",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1632",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1633",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1634",
+   "Stock",
+   "YH(hom), SST-Cre(het)"
+  ],
+  [
+   "1635",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "1636",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "1637",
+   "Stock",
+   "YH(hom), SST-Cre(het)"
+  ],
+  [
+   "1638",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1639",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1640",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1641",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1642",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1643",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1644",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1645",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1646",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1647",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1648",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1649",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1650",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1651",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1662",
+   "Stock",
+   "YH(hom), PV-Cre(hom)"
+  ],
+  [
+   "1663",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1664",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "1665",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1666",
+   "Stock",
+   "YH(hom), PV-Cre(hom)"
+  ],
+  [
+   "1667",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1668",
+   "Stock",
+   "YH(hom), PV-Cre(hom)"
+  ],
+  [
+   "1669",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "1652",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1653",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1654",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1655",
+   "Stock",
+   "YH(hom), SST-Cre(hom)"
+  ],
+  [
+   "1656",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1657",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ],
+  [
+   "1658",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1659",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1660",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "1661",
+   "Stock",
+   "YH(het), SST-Cre(hom)"
+  ]
+ ],
+ "ended_list": [
+  [
+   "M826",
+   "05-27-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M827",
+   "06-25-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M828",
+   "05-27-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M834",
+   "11-29-2023",
+   "Perfused",
+   ""
+  ],
+  [
+   "M892",
+   "06-05-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M893",
+   "03-27-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M894",
+   "11-15-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M814",
+   "06-27-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M815",
+   "06-27-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M816",
+   "07-25-2024",
+   "Practice surgery",
+   ""
+  ],
+  [
+   "M807 (Breeder1)",
+   "06-05-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M0292 (Breeder2)",
+   "06-05-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M413",
+   "05-28-2025",
+   "Surgery",
+   ""
+  ],
+  [
+   "M414",
+   "11-15-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M415",
+   "11-15-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M416",
+   "05-24-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M417",
+   "08-19-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M418",
+   "06-20-2024",
+   "Perfused",
+   ""
+  ],
+  [
+   "M419",
+   "05-29-2025",
+   "Surgery",
+   ""
+  ],
+  [
+   "M457",
+   "12-12-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M458",
+   "09-01-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M459",
+   "04-03-2025",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M460",
+   "09-12-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M461",
+   "05-19-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M462",
+   "03-04-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M463",
+   "05-13-2024",
+   "Found Dead",
+   ""
+  ],
+  [
+   "466(Breeder3Nov24)",
+   "06-05-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M464",
+   "06-11-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M467",
+   "10-20-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M468",
+   "09-12-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M469",
+   "10-13-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M470",
+   "07-28-2025",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M471",
+   "09-19-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M472",
+   "10-03-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M473",
+   "08-11-2025",
+   "Perfused",
+   "Sick"
+  ],
+  [
+   "M401",
+   "10-10-2024",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M402",
+   "08-05-2025",
+   "Euthanized",
+   "Sick"
+  ],
+  [
+   "M465",
+   "09-18-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M474",
+   "12-18-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M475",
+   "11-05-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M448",
+   "06-10-2025",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M449",
+   "06-14-2024",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M483",
+   "10-18-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "477(Breeder4Nov24)",
+   "06-05-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M476",
+   "10-20-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M479",
+   "10-20-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M480",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M481",
+   "09-18-2025",
+   "Perfused",
+   ""
+  ],
+  [
+   "M482",
+   "05-15-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M484",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M485",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M486",
+   "08-08-2025",
+   "Perfused",
+   "Sick"
+  ],
+  [
+   "M487",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M488",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M489",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M439",
+   "05-18-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M443",
+   "06-20-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M444",
+   "06-20-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M445",
+   "05-18-2026",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M447",
+   "01-08-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M499",
+   "05-26-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M503",
+   "08-29-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M504",
+   "05-26-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M505",
+   "08-18-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M507",
+   "08-29-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M508",
+   "08-18-2025",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M510",
+   "05-30-2026",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M301",
+   "04-03-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M303",
+   "03-03-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M306",
+   "03-13-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M310",
+   "03-13-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M312",
+   "04-03-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M314",
+   "04-22-2026",
+   "Practice surgery",
+   ""
+  ],
+  [
+   "M315",
+   "05-28-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M328",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M329",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M323",
+   "02-19-2026",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M316",
+   "02-27-2026",
+   "Found Dead",
+   ""
+  ],
+  [
+   "M318",
+   "05-19-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M320",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M515",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M525",
+   "06-01-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M526",
+   "04-19-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M527",
+   "04-19-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M528",
+   "03-17-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M530",
+   "04-19-2026",
+   "Perfused",
+   ""
+  ],
+  [
+   "M532",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M541",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M546",
+   "06-20-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M575",
+   "06-26-2026",
+   "Euthanized",
+   ""
+  ],
+  [
+   "M596",
+   "05-28-2026",
+   "Euthanized",
+   ""
+  ]
+ ]
+}

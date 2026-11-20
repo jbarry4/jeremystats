@@ -1,0 +1,28 @@
+{
+ "definition": {
+  "kind": "ambiguous",
+  "target": {
+   "artifact_id": "105b40acbbb0",
+   "nickname": "PTEN Baseline v2",
+   "version": 1
+  },
+  "uses": {
+   "ds": {
+    "artifact_id": "ab9613cbc7c2",
+    "nickname": "Verified DS Test flow",
+    "version": 6
+   },
+   "pspike": {
+    "artifact_id": "abe99ac5d1b6",
+    "nickname": "Verified P-Spike",
+    "version": 7
+   }
+  }
+ },
+ "run": null,
+ "schema": 1,
+ "was": {
+  "had_run": true,
+  "version": 4
+ }
+}

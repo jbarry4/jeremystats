@@ -1,0 +1,65 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-30
+computer    Strawbarry (barrylab-d8e8)
+person      Rain Younger
+build       2026.10.27.1 69835e92
+written     2026-10-30T18:11:52-04:00
+faults      1 error(s), 1 distinct
+activity    74 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    17:58:35-17:58:35  braces/decide: This stamp is in a group this alignment holds where it is -- already lined up, by Braces or by the protocol -- so it is not moved or relabelled here. No second-guessing: follow the protocol as well as you can and move on. If the result is not good enough, the fix is a better protocol, not a nudge by hand.
+
+==========================================================================
+1/1  braces/decide  x1
+==========================================================================
+first       2026-10-30T17:58:35-04:00
+latest      2026-10-30T17:58:35-04:00
+who         Rain Younger
+signature   braces/decide||This stamp is in a group this alignment holds where it is -- already lined up, by Braces or by the protocol -- so it is not moved or relabelled here. No second-guessing: follow the
+
+message
+    This stamp is in a group this alignment holds where it is -- already lined up, by Braces or by the protocol -- so it is not moved or relabelled here. No second-guessing: follow the protocol as well as you can and move on. If the result is not good enough, the fix is a better protocol, not a nudge by hand.
+
+context
+    set_id             br598faf68f9
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 7379, in api_braces_decide
+        entry.get("versions") or [])[0],
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\shards.py", line 173, in go
+        return fn(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\bracesset.py", line 235, in decide
+        fresh.pop(str(i), None)
+    backend.bracesset.BracesSetError: This stamp is in a group this alignment holds where it is -- already lined up, by Braces or by the protocol -- so it is not moved or relabelled here. No second-guessing: follow the protocol as well as you can and move on. If the result is not good enough, the fix is a better protocol, not a nudge by hand.
+
+--- around 2026-10-30T17:58:35-04:00 ---
+    17:57:11    -83.1s  link.scope  [pipeline]  {"scope":"session"}
+    17:57:40    -54.8s  session.open  [toolkit]  {"channels":64,"duration_s":1561.9925333333333,"fs":30000,"path":"Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08","restored":[]}
+    17:57:42    -52.7s  events.import  [toolkit]  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    17:57:53    -41.1s  braces.enter  [toolkit]  {"path":"Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00","set":"br598faf68f9","step":"opening"}
+    17:58:00    -35.0s  session.open  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"channels":64,"duration_s":455.56053333333335,"fs":30000,"path":"Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00","restored":["1 bad channel(s)","view restored"]}
+    17:58:00    -35.0s  braces.enter  [xplore]  {"set":"br598faf68f9","step":"opened","view":"xplore"}
+    17:58:00    -35.0s  mode.change  [xplore]  {"from":null,"since_gesture_ms":6185,"to":"lock","via":""}
+    17:58:00    -34.9s  braces.enter  [xplore]  {"set":"br598faf68f9","step":"laid out","view":"xplore"}
+    17:58:00    -34.9s  window.change  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"scope":"session","span":0.8,"t0":211.3101}
+    17:58:00    -34.8s  braces.enter  [xplore]  {"n":254,"set":"br598faf68f9","step":"ready","view":"xplore"}
+    17:58:00    -34.4s  link.scope  [pipeline]  {"scope":"session"}
+    17:58:10    -24.6s  session.open  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"channels":64,"duration_s":455.56053333333335,"fs":30000,"path":"Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00","restored":["1 bad channel(s)","view restored"]}
+    17:58:12    -22.6s  events.import  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    17:58:18    -16.5s  events.import  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    17:58:26     -8.0s  window.change  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"scope":"session","span":0.8,"t0":211.1941}
+    17:58:35     +0.0s  >>> braces/decide: This stamp is in a group this alignment holds where it is -- already lined up, by Braces or by the protocol -- so it is not moved or relabelled here. No second-guessing: follow the protocol as well as you can and move on. If the result is not good enough, the fix is a better protocol, not a nudge by hand.
+    17:58:35     +0.4s  window.change  [xplore]  rec=m002_s008_2024-01-26_17-48-00  {"scope":"session","span":0.8,"t0":211.3101}
+    17:58:48    +13.0s  braces.commit  {"entry":"cb74d97dac17","left_alone":0,"moved":2,"set":"br598faf68f9","version":3}
+    17:58:51    +16.2s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":135,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e36d6661006c30:2261:13 < "}
+    18:00:18   +103.0s  rootcanal.read  {"entry":"cb74d97dac17","from_version":"br-f5d10eafe0","n":254,"read":"2fd6d78dd8df"}
+    18:00:18   +103.3s  rootcanal.read  [toolkit]  {"entry":"cb74d97dac17","from_version":"br-f5d10eafe0","gid":"sddf3e5010ff2"}
