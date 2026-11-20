@@ -44,7 +44,7 @@
       ],
       "Maddie Massad": [
         "set",
-        "2026-11-16T18:08:53.062845+00:00"
+        "2026-11-18T18:29:53.269560+00:00"
       ],
       "Prospector (AI)": [
         "set",
@@ -56,7 +56,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-11-06T21:24:59.783965+00:00"
+        "2026-11-18T14:22:11.121187+00:00"
       ],
       "Shahriar": [
         "set",
@@ -68,7 +68,7 @@
       ],
       "Sylvia Clouse": [
         "set",
-        "2026-09-14T13:26:54.957774+00:00"
+        "2026-11-18T16:53:16.194503+00:00"
       ],
       "TEST": [
         "set",
@@ -137,7 +137,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-17T18:32:36.705605+00:00",
+    "at": "2026-11-18T18:29:53.269560+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -182,16 +182,6 @@
       "initials": "IP",
       "name": "Isabella Piatek",
       "role": "Graduate Student"
-    },
-    {
-      "at": "2026-09-09T15:29:28.090683+00:00",
-      "by": "Sylvia Clouse",
-      "edited_at": "2026-09-14T13:26:54.957070+00:00",
-      "email": "seclouse@uvm.edu",
-      "id": "Sylvia Clouse",
-      "initials": "SC",
-      "name": "Sylvia Clouse",
-      "role": "Undergraduate Student"
     },
     {
       "at": "2026-09-24T19:12:50.584139+00:00",
@@ -252,19 +242,6 @@
       "name": "Prospector (AI)"
     },
     {
-      "aliases": [
-        "rain"
-      ],
-      "at": "2026-09-29T18:04:01.532204+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-11-06T21:24:59.783964+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Graduate Student"
-    },
-    {
       "at": "2026-11-09T21:15:42.330771+00:00",
       "by": "Shahriar Tafti",
       "edited_at": "2026-11-09T21:15:42.330794+00:00",
@@ -311,16 +288,6 @@
       "role": "Undergraduate Student"
     },
     {
-      "at": "2026-11-09T15:33:54.310964+00:00",
-      "by": "Maddie Massad",
-      "edited_at": "2026-11-16T18:08:53.061854+00:00",
-      "email": "mmassad@uvm.edu",
-      "id": "Maddie Massad",
-      "initials": "MM",
-      "name": "Maddie Massad",
-      "role": "Undergraduate Student"
-    },
-    {
       "at": "2026-11-02T19:24:47.345408+00:00",
       "by": "Aggie Krempasky",
       "edited_at": "2026-11-17T18:32:36.705604+00:00",
@@ -328,6 +295,39 @@
       "id": "Aggie Krempasky",
       "initials": "AK",
       "name": "Aggie Krempasky",
+      "role": "Undergraduate Student"
+    },
+    {
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-29T18:04:01.532204+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-11-18T14:22:11.121186+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
+      "role": "Graduate Student"
+    },
+    {
+      "at": "2026-09-09T15:29:28.090683+00:00",
+      "by": "Sylvia Clouse",
+      "edited_at": "2026-11-18T16:53:16.193504+00:00",
+      "email": "seclouse@uvm.edu",
+      "id": "Sylvia Clouse",
+      "initials": "SC",
+      "name": "Sylvia Clouse",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-09T15:33:54.310964+00:00",
+      "by": "Maddie Massad",
+      "edited_at": "2026-11-18T18:29:53.269559+00:00",
+      "email": "mmassad@uvm.edu",
+      "id": "Maddie Massad",
+      "initials": "MM",
+      "name": "Maddie Massad",
       "role": "Undergraduate Student"
     }
   ]
