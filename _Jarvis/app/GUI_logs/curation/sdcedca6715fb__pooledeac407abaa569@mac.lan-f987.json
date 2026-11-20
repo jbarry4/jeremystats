@@ -15,7 +15,7 @@
     "schema": "2026-11-04T21:24:27.097564+00:00",
     "session_label": "2026-11-04T21:24:27.097564+00:00",
     "source": "2026-11-04T21:24:27.097564+00:00",
-    "updated": "2026-11-20T18:07:48.747589+00:00"
+    "updated": "2026-11-20T18:15:47.329462+00:00"
   },
   "_keys": {
     "events": {
@@ -97,11 +97,11 @@
       ],
       "e065fdbad4c": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e066de08eeb": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "e068a16593b": [
         "set",
@@ -125,7 +125,7 @@
       ],
       "e06e16155dd": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e076c84008f": [
         "set",
@@ -353,7 +353,7 @@
       ],
       "e1469fdf28b": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e1488875519": [
         "set",
@@ -393,7 +393,7 @@
       ],
       "e167e3fe638": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e168ce8181c": [
         "set",
@@ -717,7 +717,7 @@
       ],
       "e29428b5645": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e29a4bc9bac": [
         "set",
@@ -733,7 +733,7 @@
       ],
       "e2a1c3ee78d": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e2a3e3768c3": [
         "set",
@@ -749,7 +749,7 @@
       ],
       "e2b60771877": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e2c10c70c90": [
         "set",
@@ -761,7 +761,7 @@
       ],
       "e2c5db45f33": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e2c667e6b24": [
         "set",
@@ -829,7 +829,7 @@
       ],
       "e3002cfc078": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e3008fd04fb": [
         "set",
@@ -845,7 +845,7 @@
       ],
       "e321884d39a": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e3224d73f6a": [
         "set",
@@ -869,7 +869,7 @@
       ],
       "e3355e36787": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "e33eae75c2c": [
         "set",
@@ -937,7 +937,7 @@
       ],
       "e39bee48aed": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e3a458e688c": [
         "set",
@@ -965,7 +965,7 @@
       ],
       "e3ad58bd03a": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e3c5355ec7d": [
         "set",
@@ -1053,7 +1053,7 @@
       ],
       "e4017919036": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e4060e721a5": [
         "set",
@@ -1157,7 +1157,7 @@
       ],
       "e459c52c686": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e46065cd811": [
         "set",
@@ -1181,7 +1181,7 @@
       ],
       "e493a8623fe": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "e49b80d54ac": [
         "set",
@@ -1249,7 +1249,7 @@
       ],
       "e4dc9cea089": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e4df2ebf2a0": [
         "set",
@@ -1317,7 +1317,7 @@
       ],
       "e52e6dfc9bd": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e52f50e6528": [
         "set",
@@ -1345,7 +1345,7 @@
       ],
       "e542076f9de": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e54430f1518": [
         "set",
@@ -1381,7 +1381,7 @@
       ],
       "e577e2d0bed": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e57b756df07": [
         "set",
@@ -1509,7 +1509,7 @@
       ],
       "e5f0ed6e925": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e5f2cb95e9a": [
         "set",
@@ -1553,7 +1553,7 @@
       ],
       "e616ddfea92": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "e619aefda15": [
         "set",
@@ -1697,7 +1697,7 @@
       ],
       "e6c3181af77": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e6c44ccbfc2": [
         "set",
@@ -1757,11 +1757,11 @@
       ],
       "e6f293d958e": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "e6f35f704e6": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "e6f3999be93": [
         "set",
@@ -1813,7 +1813,7 @@
       ],
       "e718b082f31": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e71ceac7066": [
         "set",
@@ -1929,7 +1929,7 @@
       ],
       "e7944ecac23": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e7a3c766b20": [
         "set",
@@ -1981,7 +1981,7 @@
       ],
       "e7ceb38797f": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "e7cfc0119c5": [
         "set",
@@ -2013,7 +2013,7 @@
       ],
       "e7ea1d1a73d": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e7ecc5d6ae1": [
         "set",
@@ -2089,7 +2089,7 @@
       ],
       "e8336264312": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e83920b6480": [
         "set",
@@ -2217,7 +2217,7 @@
       ],
       "e8ade6a43dc": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "e8adf8b3a2d": [
         "set",
@@ -2269,7 +2269,7 @@
       ],
       "e8d7578e0fe": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "e8d8d681fbf": [
         "set",
@@ -2293,7 +2293,7 @@
       ],
       "e8f4256ca59": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e8f6f6459d2": [
         "set",
@@ -2337,7 +2337,7 @@
       ],
       "e9335653e30": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e933d988753": [
         "set",
@@ -2345,7 +2345,7 @@
       ],
       "e9367a7799c": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e938f3db949": [
         "set",
@@ -2445,7 +2445,7 @@
       ],
       "e9916204eb9": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "e997efe79f1": [
         "set",
@@ -2453,7 +2453,7 @@
       ],
       "e9981140724": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e99fa1ec337": [
         "set",
@@ -2481,7 +2481,7 @@
       ],
       "e9af6d9706b": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "e9b555d89d5": [
         "set",
@@ -2521,7 +2521,7 @@
       ],
       "e9ded31a524": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "e9df02fc564": [
         "set",
@@ -2701,11 +2701,11 @@
       ],
       "ea9f28531ae": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "eaa48543978": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "eaa833cd1b9": [
         "set",
@@ -2717,7 +2717,7 @@
       ],
       "eabfa439d04": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "eac322b7635": [
         "set",
@@ -2797,7 +2797,7 @@
       ],
       "eb10a2a8f92": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "eb120484566": [
         "set",
@@ -3165,7 +3165,7 @@
       ],
       "ec7355b8222": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "ec7d4d5f114": [
         "set",
@@ -3213,7 +3213,7 @@
       ],
       "eca1466ba82": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:10:53.550854+00:00"
       ],
       "eca66e487cd": [
         "set",
@@ -3281,7 +3281,7 @@
       ],
       "eccb8af0003": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "eccea364629": [
         "set",
@@ -3489,7 +3489,7 @@
       ],
       "edb30b710c8": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "edb50e401a2": [
         "set",
@@ -3673,7 +3673,7 @@
       ],
       "ee743127416": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "ee74fd65b00": [
         "set",
@@ -3737,7 +3737,7 @@
       ],
       "eeaf7f1f951": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "eeb8573f928": [
         "set",
@@ -3857,11 +3857,11 @@
       ],
       "ef236464023": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:15:47.329462+00:00"
       ],
       "ef2b005b251": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:09:24.460916+00:00"
       ],
       "ef2d200dec6": [
         "set",
@@ -3881,7 +3881,7 @@
       ],
       "ef40b8f5edf": [
         "set",
-        "2026-11-04T22:12:19.539846+00:00"
+        "2026-11-20T18:11:19.541087+00:00"
       ],
       "ef419a1a679": [
         "set",
@@ -4082,7 +4082,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-20T18:07:48.747589+00:00",
+    "at": "2026-11-20T18:15:47.329462+00:00",
     "machine": "mac.lan-f987",
     "schema": 1
   },
@@ -14175,11 +14175,11 @@
     },
     {
       "amplitude": 476.5253,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:07+00:00",
+      "by": "Isabella Piatek",
       "channel": 4,
       "id": "e9916204eb9",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14192,11 +14192,11 @@
     },
     {
       "amplitude": 695.994,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:15+00:00",
+      "by": "Isabella Piatek",
       "channel": 44,
       "id": "e542076f9de",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -14209,11 +14209,11 @@
     },
     {
       "amplitude": 1411.9989,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:24+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "eb10a2a8f92",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14226,11 +14226,11 @@
     },
     {
       "amplitude": 1220.5644,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:30+00:00",
+      "by": "Isabella Piatek",
       "channel": 44,
       "id": "e8f4256ca59",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14243,11 +14243,11 @@
     },
     {
       "amplitude": 780.997,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:40+00:00",
+      "by": "Isabella Piatek",
       "channel": 4,
       "id": "ef2b005b251",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
@@ -14260,11 +14260,11 @@
     },
     {
       "amplitude": 705.8636,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:07:49+00:00",
+      "by": "Isabella Piatek",
       "channel": 12,
       "id": "e321884d39a",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14277,11 +14277,11 @@
     },
     {
       "amplitude": 550.0441,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:00+00:00",
+      "by": "Isabella Piatek",
       "channel": 3,
       "id": "e4017919036",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14294,11 +14294,11 @@
     },
     {
       "amplitude": 755.9633,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:11+00:00",
+      "by": "Isabella Piatek",
       "channel": 11,
       "id": "e718b082f31",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14311,11 +14311,11 @@
     },
     {
       "amplitude": 738.339,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:13+00:00",
+      "by": "Isabella Piatek",
       "channel": 10,
       "id": "e4dc9cea089",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
@@ -14328,11 +14328,11 @@
     },
     {
       "amplitude": 2516.2811,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:23+00:00",
+      "by": "Isabella Piatek",
       "channel": 25,
       "id": "e2a1c3ee78d",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14345,11 +14345,11 @@
     },
     {
       "amplitude": 860.507,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:24+00:00",
+      "by": "Isabella Piatek",
       "channel": 14,
       "id": "e9367a7799c",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14362,11 +14362,11 @@
     },
     {
       "amplitude": 513.6325,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:28+00:00",
+      "by": "Isabella Piatek",
       "channel": 8,
       "id": "e459c52c686",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14379,11 +14379,11 @@
     },
     {
       "amplitude": 707.914,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:08:50+00:00",
+      "by": "Isabella Piatek",
       "channel": 38,
       "id": "e06e16155dd",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -14396,11 +14396,11 @@
     },
     {
       "amplitude": 832.6936,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:22+00:00",
+      "by": "Isabella Piatek",
       "channel": 51,
       "id": "e3355e36787",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14413,11 +14413,11 @@
     },
     {
       "amplitude": 764.9794,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:31+00:00",
+      "by": "Isabella Piatek",
       "channel": 13,
       "id": "eaa48543978",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14464,11 +14464,11 @@
     },
     {
       "amplitude": 540.371,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:37+00:00",
+      "by": "Isabella Piatek",
       "channel": 1,
       "id": "e493a8623fe",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14481,11 +14481,11 @@
     },
     {
       "amplitude": 1082.5404,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:41+00:00",
+      "by": "Isabella Piatek",
       "channel": 18,
       "id": "e6f35f704e6",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14498,11 +14498,11 @@
     },
     {
       "amplitude": 577.9997,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:49+00:00",
+      "by": "Isabella Piatek",
       "channel": 9,
       "id": "e8ade6a43dc",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14515,11 +14515,11 @@
     },
     {
       "amplitude": 537.9925,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:09:54+00:00",
+      "by": "Isabella Piatek",
       "channel": 3,
       "id": "e8d7578e0fe",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14532,11 +14532,11 @@
     },
     {
       "amplitude": 465.3293,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:03+00:00",
+      "by": "Isabella Piatek",
       "channel": 1,
       "id": "eca1466ba82",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1114.333279,
       "reviews": [
@@ -14550,11 +14550,11 @@
     },
     {
       "amplitude": 520.1199,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:09+00:00",
+      "by": "Isabella Piatek",
       "channel": 3,
       "id": "e066de08eeb",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "both",
       "pair_t": 1115.116785,
       "reviews": [
@@ -14568,11 +14568,11 @@
     },
     {
       "amplitude": 1197.7639,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:10+00:00",
+      "by": "Isabella Piatek",
       "channel": 35,
       "id": "e9af6d9706b",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14585,11 +14585,11 @@
     },
     {
       "amplitude": 2104.5224,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:26+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "ea9f28531ae",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14602,11 +14602,11 @@
     },
     {
       "amplitude": 676.6542,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:29+00:00",
+      "by": "Isabella Piatek",
       "channel": 12,
       "id": "e6f293d958e",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14619,11 +14619,11 @@
     },
     {
       "amplitude": 539.582,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:38+00:00",
+      "by": "Isabella Piatek",
       "channel": 4,
       "id": "e7ceb38797f",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -14636,11 +14636,11 @@
     },
     {
       "amplitude": 707.2424,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:41+00:00",
+      "by": "Isabella Piatek",
       "channel": 12,
       "id": "ec7355b8222",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14653,11 +14653,11 @@
     },
     {
       "amplitude": 1318.2719,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:43+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "e616ddfea92",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14670,11 +14670,11 @@
     },
     {
       "amplitude": 586.538,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:10:46+00:00",
+      "by": "Isabella Piatek",
       "channel": 8,
       "id": "ef40b8f5edf",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14687,11 +14687,11 @@
     },
     {
       "amplitude": 1207.3759,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:11:53+00:00",
+      "by": "Isabella Piatek",
       "channel": 40,
       "id": "e2b60771877",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14704,11 +14704,11 @@
     },
     {
       "amplitude": 1842.2018,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:11:53+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "ef236464023",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1116.710296,
       "reviews": [
@@ -14722,11 +14722,11 @@
     },
     {
       "amplitude": 715.9176,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:12:08+00:00",
+      "by": "Isabella Piatek",
       "channel": 11,
       "id": "e52e6dfc9bd",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -14739,11 +14739,11 @@
     },
     {
       "amplitude": 687.424,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:12:16+00:00",
+      "by": "Isabella Piatek",
       "channel": 26,
       "id": "eeaf7f1f951",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -14756,11 +14756,11 @@
     },
     {
       "amplitude": 1515.0863,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:12:22+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "eabfa439d04",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14773,11 +14773,11 @@
     },
     {
       "amplitude": 499.7084,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:12:39+00:00",
+      "by": "Isabella Piatek",
       "channel": 3,
       "id": "e577e2d0bed",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14790,11 +14790,11 @@
     },
     {
       "amplitude": 835.585,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:12:57+00:00",
+      "by": "Isabella Piatek",
       "channel": 40,
       "id": "e3ad58bd03a",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -14824,11 +14824,11 @@
     },
     {
       "amplitude": 1342.8675,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:02+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "e39bee48aed",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14841,11 +14841,11 @@
     },
     {
       "amplitude": 1237.1901,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:11+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "e6c3181af77",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1133.200909,
       "reviews": [
@@ -14859,11 +14859,11 @@
     },
     {
       "amplitude": 1430.5309,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:13+00:00",
+      "by": "Isabella Piatek",
       "channel": 44,
       "id": "e7ea1d1a73d",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14876,11 +14876,11 @@
     },
     {
       "amplitude": 953.8791,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:16+00:00",
+      "by": "Isabella Piatek",
       "channel": 49,
       "id": "e3002cfc078",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14893,11 +14893,11 @@
     },
     {
       "amplitude": 1538.678,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:22+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "edb30b710c8",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14910,11 +14910,11 @@
     },
     {
       "amplitude": 1225.0505,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:24+00:00",
+      "by": "Isabella Piatek",
       "channel": 44,
       "id": "e8336264312",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14927,11 +14927,11 @@
     },
     {
       "amplitude": 672.827,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:26+00:00",
+      "by": "Isabella Piatek",
       "channel": 40,
       "id": "e9981140724",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
@@ -14944,11 +14944,11 @@
     },
     {
       "amplitude": 469.6902,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:29+00:00",
+      "by": "Isabella Piatek",
       "channel": 4,
       "id": "e5f0ed6e925",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14961,11 +14961,11 @@
     },
     {
       "amplitude": 1207.9205,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:36+00:00",
+      "by": "Isabella Piatek",
       "channel": 41,
       "id": "e29428b5645",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -14996,11 +14996,11 @@
     },
     {
       "amplitude": 1155.5331,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:41+00:00",
+      "by": "Isabella Piatek",
       "channel": 46,
       "id": "e2c5db45f33",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -15013,11 +15013,11 @@
     },
     {
       "amplitude": 479.3306,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:46+00:00",
+      "by": "Isabella Piatek",
       "channel": 3,
       "id": "e7944ecac23",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -15030,11 +15030,11 @@
     },
     {
       "amplitude": 534.396,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:57+00:00",
+      "by": "Isabella Piatek",
       "channel": 40,
       "id": "ee743127416",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -15047,11 +15047,11 @@
     },
     {
       "amplitude": 1223.7352,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:13:59+00:00",
+      "by": "Isabella Piatek",
       "channel": 44,
       "id": "e1469fdf28b",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -15064,11 +15064,11 @@
     },
     {
       "amplitude": 951.9544,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:14:06+00:00",
+      "by": "Isabella Piatek",
       "channel": 15,
       "id": "eccb8af0003",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -15081,11 +15081,11 @@
     },
     {
       "amplitude": 740.0761,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:14:10+00:00",
+      "by": "Isabella Piatek",
       "channel": 52,
       "id": "e065fdbad4c",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -15098,11 +15098,11 @@
     },
     {
       "amplitude": 2133.2937,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:14:11+00:00",
+      "by": "Isabella Piatek",
       "channel": 25,
       "id": "e167e3fe638",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1142.930475,
       "reviews": [
@@ -15116,11 +15116,11 @@
     },
     {
       "amplitude": 890.1964,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:14:12+00:00",
+      "by": "Isabella Piatek",
       "channel": 12,
       "id": "e9335653e30",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -15133,11 +15133,11 @@
     },
     {
       "amplitude": 489.3473,
-      "at": "2026-11-04T17:12:19-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T18:14:12+00:00",
+      "by": "Isabella Piatek",
       "channel": 6,
       "id": "e9ded31a524",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -22280,7 +22280,7 @@
   },
   "updated": {
     "app_version": "2026.11.19.3",
-    "at": "2026-11-20T13:07:48-05:00",
+    "at": "2026-11-20T13:15:47-05:00",
     "commit": "75399c6e",
     "email": "akrempas@uvm.edu",
     "machine": "mac.lan",
