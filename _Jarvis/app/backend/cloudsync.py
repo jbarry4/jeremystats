@@ -409,7 +409,7 @@ class Sync:
         self.payloads_held = 0
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
-        self.machine = shards.machine_id()
+        self.machine = shards.real_machine_id()
         self.tombs = tombsmod.Tombs(self.logs, store)
 
     def _note_gone(self, kind, ident, at):
@@ -1695,7 +1695,7 @@ class Sync:
     def _own_shards(self):
         """(key, store, name, path) for every shard file this machine wrote
         in a travelling store."""
-        me = shards.machine_id()
+        me = shards.real_machine_id()
         tail = shards.SIGIL + me + ".json"
         out = []
         for store, (book, _idf) in sorted(self.shard_books.items()):
@@ -1735,7 +1735,7 @@ class Sync:
             if _absent(exc):
                 self._shard_absent_until = time.time() + ART_ABSENT_RETRY_S
             return {}
-        me = shards.machine_id()
+        me = shards.real_machine_id()
         now = cloud.now()
         out, used, after = [], 0, dict(sent)
         for key, store, raw, sha in todo:
@@ -1756,7 +1756,7 @@ class Sync:
     def _apply_shard_files(self, rows):
         """Other machines' shard files, written where their store reads
         pulled ones. Never this machine's own, never outside that folder."""
-        me = shards.machine_id()
+        me = shards.real_machine_id()
         n = 0
         for r in rows or []:
             key = str(r.get("path") or "")
@@ -1918,6 +1918,11 @@ class Sync:
         because its timestamp was unreadable.
         """
         since = None if full else (self.cloud.state() or {}).get("last_push")
+        if shards.safe_on():
+            # The PI's practice layer (pisafe.py): nothing goes up, and the
+            # cursor stays where it was.
+            return {"sent": 0, "tables": {}, "dry_run": dry_run,
+                    "since": since, "full": bool(full)}
         # THE CURSOR IS TAKEN BEFORE THE READ, and that ordering is the
         # whole correctness of an incremental push.
         #
@@ -2031,7 +2036,7 @@ class Sync:
         machine that has not pulled can still show one, and so the repo is not
         the only copy of anything.
         """
-        if not self.results:
+        if not self.results or shards.safe_on():
             return {"uploaded": 0, "skipped": 0, "failed": []}
         done, skipped, failed = 0, 0, []
         state = self.cloud.state()
@@ -2095,7 +2100,7 @@ class Sync:
         hanging off it should not evaporate on a stray click. `retired` is
         already how Jarvis hides a session it has been told to forget.
         """
-        if not self.tombs:
+        if not self.tombs or shards.safe_on():
             return {"marked": 0}
         rows = self.tombs.pending()
         if not rows:
@@ -2235,9 +2240,11 @@ class Sync:
         from . import bankmirror
         if not self.bank:
             return {"written": 0}
-        return bankmirror.BankMirror(repo_dir, self.bank,
-                                     mice=self.mice,
-                                     store=self.store).rebuild()
+        # Committed, so from the real records only (pisafe.py).
+        with shards.real_view():
+            return bankmirror.BankMirror(repo_dir, self.bank,
+                                         mice=self.mice,
+                                         store=self.store).rebuild()
 
     # ==================================================================
     # Pull

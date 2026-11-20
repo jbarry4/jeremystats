@@ -303,6 +303,29 @@ def ssh_cmd(cfg, remote_command):
     return cmd
 
 
+# The PI's practice layer (pisafe.py) answers the routes that start, stop or
+# upload anything on the cluster before they get here. This is the net under
+# them: whatever reaches ssh while the layer is on may read, not queue or
+# cancel a lab job.
+_OUTWARD = re.compile(r"\b(sbatch|scancel)\b")
+
+
+def _hold_outward(remote_command, stdin=None):
+    from . import shards
+    if not shards.safe_on():
+        return
+    text = str(remote_command or "")
+    if stdin is not None:
+        try:
+            text += "\n" + (stdin.decode("utf-8", "replace")
+                            if isinstance(stdin, (bytes, bytearray))
+                            else str(stdin))
+        except Exception:                                # noqa: BLE001
+            pass
+    if _OUTWARD.search(text):
+        raise SSHError("The cluster was not asked to run anything.", "held")
+
+
 def popen_kwargs():
     """What `_ssh` passes to Popen on this platform (no console window)."""
     return _popen_kwargs()
@@ -321,6 +344,7 @@ def _ssh(cfg, remote_command, stdin=None, timeout=45, on_line=None):
     string with `shlex.quote`, or better, send data on `stdin` and keep paths
     out of it altogether.
     """
+    _hold_outward(remote_command, stdin)
     cmd = ssh_cmd(cfg, remote_command)
     if on_line is not None:
         return _ssh_stream(cmd, stdin, timeout, on_line)
@@ -1783,6 +1807,8 @@ def push_code(cfg, app_dir, timeout=180):
     kilobytes is nothing, but a push on every submit is a push that happens
     while somebody is waiting.
     """
+    from . import pisafe
+    pisafe.refuse_outward("The code")
     import hashlib
     import io
     import tarfile

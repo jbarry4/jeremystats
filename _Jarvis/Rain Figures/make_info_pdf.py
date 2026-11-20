@@ -1,4 +1,4 @@
-"""Builds Rain_Figure_Info.pdf: everything Rain asked for, item by item
+"""Builds Rain_Figure_Info.pdf (for v1.1 / v2.1): everything Rain asked for, item by item
 (time stamps, windows, filters, channels, how the DS was chosen, legend).
     python make_info_pdf.py
 """
@@ -28,12 +28,38 @@ li { margin-bottom: 2pt; }
 
 HTML = """
 <h1>Rain's figure: time stamps, windows and methods</h1>
-<p class="sub">Two versions of the same figure (same data, same events): <b>Rain_Figure.pdf</b> (plain journal style)
-and <b>Rain_Figure_v2.pdf</b> (the same layout with the jet color map used in Figure 5 of the mTORC1/mTORC2
-preprint, bioRxiv 2026.06.22.733785). Both label depth with even channel numbers on the theta and CSD panels
-(no micron scale bar). Every panel is also saved on its own
+<p class="sub">Two versions of the same figure (same data, same events): <b>Rain_Figure_v1.1.pdf</b> (blue-white-red)
+and <b>Rain_Figure_v2.1.pdf</b> (the jet color map used in Figure 5 of the mTORC1/mTORC2 preprint, bioRxiv
+2026.06.22.733785). They are the earlier versions 1 and 2 with Rain's feedback of 2026-11-19 worked in (section 0).
+Both figures follow this text as full pages, then every panel on its own page at print size (appendix). Every panel is also saved on its own
 (PDF and PNG) in the "Individual panels" subfolder.
-Folder: _Jarvis\\Rain Figures. Prepared 2026-11-19.</p>
+Folder: _Jarvis\\Rain Figures. Prepared 2026-11-20.</p>
+
+<h2>0. Rain's feedback (2026-11-19) and what changed</h2>
+<table>
+<tr><th>Feedback</th><th>Done in v1.1 / v2.1</th></tr>
+<tr><td>Show the cell layers (estimates are fine)</td>
+<td>Layer brackets and names beside every depth axis (the theta panels and both CSDs; the voltage rasters share the
+CSD's rows): SO, SP, SR, SLM, ML, GCL, HIL, GCL, ML, grouped as CA1 and DG. The upper and lower blades each have a
+GCL and an ML (OML and MML drawn together as ML). The spectrogram contacts carry their layer as well.
+Sources: section 5a.</td></tr>
+<tr><td>Tighten the figure, less dead space</td>
+<td>Panels moved closer and widened; the figure is 180 x 193 mm (was 180 x 200) and the spectrograms are 44 mm
+wide (were 33).</td></tr>
+<tr><td>Is the spectrogram logarithmic?</td>
+<td>Yes, twice over. The frequency axis is logarithmic (90 log-spaced frequencies from 1 to 800 Hz; ticks at 1, 10
+and 100 Hz), and the color is power in decibels, also a log scale (10 log10 of power relative to that frequency's
+median). The panel title now says "log scale".</td></tr>
+<tr><td>High-resolution elements in the PDF</td>
+<td>Text, traces, axes and scale bars are vector. The CSD images and spectrograms are embedded at 600 dpi at print
+size. Each panel is also its own page in the appendix of this PDF, and its own PDF and 600 dpi PNG in
+"Individual panels".</td></tr>
+</table>
+<div class="note"><p><b>A correction: the contact spacing.</b> These recordings are on an H3 probe (64 contacts,
+20 um apart, the spacing Jarvis and StrataScope use), not 50 um. Each even contact is therefore 40 um from the next,
+not 100 um as versions 1 and 2 and their legend said. The CSD pictures keep their shape, but the numbers on the CSD
+color bars are 6.25 times larger in v1.1 / v2.1 (about 50 mV/mm2 for theta, 120 for the DS, 210 for the IED).
+The old v1 / v2 files are left as they were; use the .1 versions.</p></div>
 
 <h2>1. The time stamps (not shown in the figure)</h2>
 <p>All times are seconds from the start of the recording (the first Neuralynx record), the clock Jarvis and the
@@ -63,13 +89,13 @@ for all three.</td></tr>
 <tr><td>DS voltage: 5-100 Hz, 60 Hz notch, every even channel, no channel IDs</td><td>Yes (32 traces, CSC2-CSC64).</td></tr>
 <tr><td>DS CSD: same filtering, every even channel</td><td>Yes.</td></tr>
 <tr><td>DS spectrogram 1-800 Hz; channel IDs or subcompartments</td>
-<td>Four contacts, labeled by channel ID (both versions).</td></tr>
+<td>Four contacts, labeled by channel ID and cell layer (both versions).</td></tr>
 <tr><td>PTEN IED, m34 s5, just before 1197.400 s</td><td>The event at 1197.3657 s; 300 ms window.</td></tr>
 <tr><td>IED voltage: unfiltered, 60 Hz notch, every even channel, no channel IDs</td><td>Yes.</td></tr>
 <tr><td>IED CSD: 1 Hz high-pass only if needed; 60 Hz notch</td>
 <td>Not needed: no high-pass. Each contact's median over -150 to -60 ms was subtracted (an offset, not a filter).</td></tr>
 <tr><td>IED spectrogram 1-800 Hz</td><td>Yes, as for the DS.</td></tr>
-<tr><td>Publishing-ready PDF, standard style</td><td>Rain_Figure.pdf (version 1) and Rain_Figure_v2.pdf (version 2); vector, 180 mm wide.</td></tr>
+<tr><td>Publishing-ready PDF, standard style</td><td>Rain_Figure_v1.1.pdf and Rain_Figure_v2.1.pdf; vector with 600 dpi images, 180 mm wide.</td></tr>
 </table>
 
 <h2>3. How the control DS was chosen (Root Canal)</h2>
@@ -107,33 +133,43 @@ lower-blade sink about 14 ms later (Ch 54).</li>
 </table>
 <p>Colored arrowheads on the voltage traces mark these contacts.</p>
 
+<h3>5a. Where the cell layers come from</h3>
+<table>
+<tr><th>Panel</th><th>Source</th><th>Layers (channels)</th></tr>
+LAYER_ROWS
+</table>
+<p>Layers are labeled by eye from the CSD and LFP depth profiles, so boundaries are good to a few contacts (about
+40-80 um). Rain said estimates are fine for representative figures; the PTEN m13 s1 estimate is the least certain.</p>
+
 <h2>6. Methods (for the legend or methods section)</h2>
 <ul>
-<li><b>Data:</b> 64-contact linear silicon probe, 50 um spacing; every even contact shown (100 um apart), top = dorsal.
+<li><b>Data:</b> 64-contact linear silicon probe (H3), 20 um spacing; every even contact shown (40 um apart), top = dorsal.
 Raw Neuralynx CSC files were read through Jarvis and downsampled from 30 kHz to 2.5 kHz with a zero-phase
 anti-alias filter.</li>
 <li><b>Filters</b> (all zero-phase): 60 Hz notch (Q = 30) on everything; theta 4-12 Hz and DS 5-100 Hz Butterworth band-pass, order 3;
 the IED is unfiltered apart from the notch.</li>
-<li><b>CSD:</b> -d2V/dz2 over the even contacts (100 um), end contacts duplicated (Vaknin et al., 1988), conductivity
-omitted; shown in mV/mm2 (sink negative). Version 1 uses a blue-white-red map, version 2 the jet map (green at zero).
+<li><b>CSD:</b> -d2V/dz2 over the even contacts (40 um), end contacts duplicated (Vaknin et al., 1988), conductivity
+omitted; shown in mV/mm2 (sink negative). v1.1 uses a blue-white-red map, v2.1 the jet map (green at zero).
 Theta panels share one color scale.</li>
 <li><b>Bad contacts:</b> replaced by the mean of the even neighbors: Ch 34 and 38 (CTL theta, m6), Ch 8 (IED, m34).
 CSC59 is dead in every recording but is an odd contact, so it is not used.</li>
-<li><b>Spectrograms:</b> complex Morlet wavelets, 1-800 Hz (90 log-spaced frequencies), 3 cycles at 1 Hz rising to 10
+<li><b>Spectrograms:</b> complex Morlet wavelets, 1-800 Hz (90 log-spaced frequencies, logarithmic frequency axis), 3 cycles at 1 Hz rising to 10
 at 800 Hz. Power is in dB relative to each frequency's median over the surrounding 8 s, computed on the broadband
 signal (60 Hz notch only).</li>
 <li><b>Scale bars:</b> 50 ms; 1 mV (DS), 2 mV (IED). Depth is given by even channel numbers (2, 16, 32, 48, 64)
-on the theta and CSD panels; contacts are 100 um apart.</li>
+and cell layers on the theta and CSD panels; even contacts are 40 um apart.</li>
 </ul>
 
 <h2>7. Draft legend</h2>
 <p><b>(A)</b> Representative theta-band (4-12 Hz) current source density (CSD) in a wild-type, a <i>Pten</i> KO and a
-<i>Pten;Raptor</i> dKO mouse (6 s each). Every even contact of the 64-contact probe is shown (100 um apart); black
+<i>Pten;Raptor</i> dKO mouse (6 s each). Every even contact of the 64-contact probe is shown (40 um apart); black
 traces are the 4-12 Hz LFP on the same contacts. Sinks are negative, sources positive; one color scale for all three.
 <b>(B)</b> A representative wild-type dentate spike (300 ms window centered on the spike): LFP (5-100 Hz), CSD of the
 same signals, and wavelet spectrograms (1-800 Hz) from the contacts marked by arrowheads. <b>(C)</b> A representative
 interictal epileptiform discharge (IED) from a <i>Pten</i> KO mouse (300 ms window): unfiltered LFP, its CSD, and
-spectrograms as in (B). A 60 Hz notch filter was applied throughout.</p>
+spectrograms as in (B). A 60 Hz notch filter was applied throughout. Cell layers are estimated for each recording
+(SO, stratum oriens; SP, stratum pyramidale; SR, stratum radiatum; SLM, stratum lacunosum-moleculare; ML, molecular
+layer; GCL, granule cell layer; HIL, hilus). Spectrogram frequency axes are logarithmic.</p>
 
 <h2>8. Things to know before using it</h2>
 <div class="note">
@@ -142,25 +178,65 @@ for confounds during the experiment. If that matters for this figure, another co
 <p><b>On one shared color scale, DKO theta looks about as strong as PTEN</b> in these windows. The poster's
 PTEN &gt; DKO &gt; CTL ordering does not come through clearly in single 6 s windows.</p>
 <p><b>Channel numbers are not depths across mice.</b> The same channel sits in different layers in different
-recordings (the probe went in at a different depth each time), so rows line up by contact, not by layer.</p>
+recordings (the probe went in at a different depth each time), so rows line up by contact, not by layer. The layer labels beside each panel show where that mouse's layers fall.</p>
 </div>
 
 <h2>9. Files</h2>
 <table>
-<tr><td class="mono">Rain_Figure.pdf / _preview.png</td><td>Version 1</td></tr>
-<tr><td class="mono">Rain_Figure_v2.pdf / _v2_preview.png</td><td>Version 2 (jet color map)</td></tr>
-<tr><td class="mono">Individual panels\\Rain_Figure\\, Individual panels\\Rain_Figure_v2\\</td>
-<td>Each panel alone, PDF + 600 dpi PNG: a_Theta_CTL / PTEN / DKO / colorbar / all; b_DS_Voltage / CSD / Spectrogram / all;
-c_IED_Voltage / CSD / Spectrogram / all</td></tr>
-<tr><td class="mono">make_rain_figure.py, make_rain_figure_v2.py</td><td>Rebuild the figures from the raw recordings (needs D: and the netfiles share for m13 s1)</td></tr>
+<tr><td class="mono">Rain_Figure_v1.1.pdf / _v1.1_preview.png</td><td>Version 1.1 (blue-white-red)</td></tr>
+<tr><td class="mono">Rain_Figure_v2.1.pdf / _v2.1_preview.png</td><td>Version 2.1 (jet color map)</td></tr>
+<tr><td class="mono">Individual panels\\Rain_Figure_v1.1\\, Individual panels\\Rain_Figure_v2.1\\</td>
+<td>Each panel alone, PDF + 600 dpi PNG: a_Theta_CTL / PTEN / DKO / colorbar / all; b_DS_Voltage / CSD / Spectrogram / all; c_IED_Voltage / CSD / Spectrogram / all</td></tr>
+<tr><td class="mono">make_rain_figure_v1_1.py, make_rain_figure_v2_1.py (engine make_rain_figure_x1.py)</td><td>Rebuild the figures from the raw recordings (needs D: and the netfiles share for m13 s1)</td></tr>
+<tr><td class="mono">Rain_Figure.pdf, Rain_Figure_v2.pdf</td><td>The earlier versions, unchanged (wrong contact spacing on the CSD color bars, see section 0)</td></tr>
 <tr><td class="mono">TIMESTAMPS_AND_LEGEND.txt</td><td>The same information as plain text</td></tr>
 </table>
 """
 
 
+PANEL_TITLES = {
+    "a_Theta_CTL": "a, theta CSD: CTL", "a_Theta_PTEN": "a, theta CSD: PTEN", "a_Theta_DKO": "a, theta CSD: DKO",
+    "a_Theta_colorbar": "a, theta CSD color bar", "a_Theta_all": "a, all theta panels",
+    "b_DS_Voltage": "b, dentate spike: voltage", "b_DS_CSD": "b, dentate spike: CSD",
+    "b_DS_Spectrogram": "b, dentate spike: spectrograms", "b_DS_all": "b, dentate spike: whole row",
+    "c_IED_Voltage": "c, IED: voltage", "c_IED_CSD": "c, IED: CSD", "c_IED_Spectrogram": "c, IED: spectrograms",
+    "c_IED_all": "c, IED: whole row",
+}
+
+
+def layer_rows():
+    import make_rain_figure_x1 as X
+    names = {"CTL": "a, CTL theta", "PTEN": "a, PTEN theta", "DKO": "a, DKO theta", "ds": "b, control DS",
+             "ied": "c, PTEN IED"}
+    out = []
+    for k in ("CTL", "PTEN", "DKO", "ds", "ied"):
+        lay = ", ".join("%s %d-%d" % (n, a, b) if a != b else "%s %d" % (n, a) for n, a, b in X.LAYERS[k])
+        out.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (names[k], X.LAYER_SOURCE[k], lay))
+    return "\n".join(out)
+
+
+def appendix(doc, fig_pages):
+    """Every panel of both versions on its own page at print size (1:1), from
+    its own panel PDF, so it stays vector with its 600 dpi images."""
+    import json
+    for stem in ("Rain_Figure_v2.1", "Rain_Figure_v1.1"):
+        crops = json.load(open(os.path.join(HERE, "Individual panels", stem, "_crops.json"), encoding="utf8"))
+        for name in [n for n in crops["panels"] if not n.endswith("_all")]:   # whole rows = the figure pages
+            src = fitz.open(os.path.join(HERE, "Individual panels", stem, name + ".pdf"))
+            clip = src[0].rect
+            page = doc.new_page(width=612, height=792)
+            page.insert_text((54, 60), "Appendix: %s, %s" % (stem.replace("Rain_Figure_", ""), PANEL_TITLES[name]),
+                             fontsize=11, fontname="helv")
+            page.insert_text((54, 76), "Print size (1:1). Also: Individual panels/%s/%s.pdf and .png" % (stem, name),
+                             fontsize=8, fontname="helv", color=(0.35, 0.35, 0.35))
+            k = min(1.0, 504 / clip.width, 680 / clip.height)
+            page.show_pdf_page(fitz.Rect(54, 92, 54 + clip.width * k, 92 + clip.height * k), src, 0)
+            src.close()
+
+
 def main():
     out = os.path.join(HERE, "Rain_Figure_Info.pdf")
-    story = fitz.Story(html=HTML, user_css=CSS)
+    story = fitz.Story(html=HTML.replace("LAYER_ROWS", layer_rows()), user_css=CSS)
     buf = io.BytesIO()
     writer = fitz.DocumentWriter(buf)
     page = fitz.paper_rect("letter")
@@ -174,9 +250,15 @@ def main():
     writer.close()
     # append the two figures as their own pages
     doc = fitz.open("pdf", buf.getvalue())
-    for f in ("Rain_Figure_v2.pdf", "Rain_Figure.pdf"):
-        src = fitz.open(os.path.join(HERE, f))
-        doc.insert_pdf(src)
+    # every use of a figure goes through show_pdf_page from one open source, so
+    # its images are copied into this PDF once, however many pages show them
+    fig_pages = {}
+    for f in ("Rain_Figure_v2.1.pdf", "Rain_Figure_v1.1.pdf"):
+        src = fig_pages[f] = fitz.open(os.path.join(HERE, f))
+        page = doc.new_page(width=src[0].rect.width, height=src[0].rect.height)
+        page.show_pdf_page(page.rect, src, 0)
+    appendix(doc, fig_pages)
+    for src in fig_pages.values():
         src.close()
     doc.save(out, garbage=3, deflate=True)
     doc.close()
