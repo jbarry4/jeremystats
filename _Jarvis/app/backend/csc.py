@@ -102,6 +102,35 @@ def open_session(path, invert=True):
     return {"ok": False, "error": "Unrecognized session type."}
 
 
+#: A clock span longer than this is a bad timestamp, not a recording.
+_MAX_SPAN_S = 24 * 3600.0
+
+
+def _clock_span(path, n_rec, fs):
+    """How long the recording is on its own clock -- first record to the end
+    of the last, two seeks.
+
+    Every window is read by timestamp (`nlx.read_ncs_range`), and every event,
+    mark and video frame is on this clock, so the session's length must be
+    too. `n_rec * 512 / fs` is short by every pause: KCNT1 m529 s1 paused
+    for 33 minutes at 6:15, and its viewer ended at 41:34 with the last 33
+    minutes and 1,377 of 1,476 banked events past the end, the overview
+    drawing the pause as a flat line (2026-11-20).
+
+    Falls back to the record count if the clock cannot be read, or reads as
+    shorter than the records or longer than a day (a corrupt timestamp).
+    """
+    by_records = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+    try:
+        got = nlx.record_times(path)
+    except (OSError, ValueError):
+        got = None
+    span = float((got or {}).get("true_duration_s") or 0.0)
+    if by_records - 1.0 <= span <= max(_MAX_SPAN_S, by_records):
+        return span
+    return by_records
+
+
 def _open_ncs_folder(folder, invert):
     files = nlx.list_csc_files(folder)
     if not files:
@@ -113,7 +142,7 @@ def _open_ncs_folder(folder, invert):
 
     size = os.path.getsize(files[0][1])
     n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
-    duration = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+    duration = _clock_span(files[0][1], n_rec, fs)
 
     # A file with a header and no data is not a recording.
     #
@@ -168,7 +197,7 @@ def _open_single_ncs(path, invert):
     adbv = nlx._header_float(hdr, "ADBitVolts") or nlx.FALLBACK_ADBITVOLTS
     size = os.path.getsize(path)
     n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
-    duration = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+    duration = _clock_span(path, n_rec, fs)
 
     m = nlx._CSC_NAME_RE.match(os.path.basename(path))
     num = int(m.group(1)) if m else 0

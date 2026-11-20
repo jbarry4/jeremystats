@@ -15,6 +15,24 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.20.1 - A recording that paused is as long as its clock says
+
+Needs a restart.
+
+- **KCNT1 m529 s1 ended 33 minutes early.** Acquisition paused at 6:15 for
+  33 minutes and then ran on until 74:57. The viewer took the recording's
+  length from its record count (41:34), which leaves the pause out, while
+  every window, event, mark and video frame is on the recording's own clock,
+  which keeps it in. So the whole-recording strip drew 6:15 of signal, a flat
+  line, and then two minutes of the second half before it hit the end, and
+  everything after 41:34 -- the last 33 minutes, and 1,377 of the pooled
+  set's 1,476 events -- was past the end of the strip in Panning and
+  unreachable by scrolling. A session's length is now first record to last
+  on its own clock (two reads), falling back to the record count only if the
+  clock cannot be read or is nonsense. The pause itself still shows as the
+  flat stretch it is: nothing was recorded there.
+- Recordings without a pause are unchanged to the millisecond.
+
 ## 2026.11.19.3 - Support panels: a lab default, and a copy shows at once
 
 Needs a restart and a reload.
