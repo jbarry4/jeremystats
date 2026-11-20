@@ -63,17 +63,40 @@ def _family_of_event(name):
     return "waveform/depth"
 
 
-def build(battery_dir, out_root=AMBER, log=print):
-    """Freeze the bundle; returns its manifest."""
+SET_NAMES = {"v6": "v6 (Halo)", "v8": "v8 (Strict)"}
+
+
+def _rows_by_time(t_want, t_have, tol=0.005):
+    """For each time in t_want, the row of t_have within tol (-1 when none)."""
+    t_have = np.asarray(t_have, float)
+    if t_have.size == 0:
+        return np.full(len(t_want), -1)
+    o = np.argsort(t_have)
+    s = t_have[o]
+    j = np.searchsorted(s, t_want)
+    lo, hi = np.clip(j - 1, 0, s.size - 1), np.clip(j, 0, s.size - 1)
+    pick = np.where(np.abs(s[lo] - t_want) <= np.abs(s[hi] - t_want), lo, hi)
+    return np.where(np.abs(s[pick] - t_want) <= tol, o[pick], -1)
+
+
+def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
+    """Freeze the bundle; returns its manifest.
+
+    event_set (2026-11-19): "v6" the Halo set (the default, as before) or
+    "v8" the Strict set. The filter copies and the before/after windows are
+    read for Halo events; a Strict event takes the row of the same event
+    (matched by time, 5 ms), and its own winner call (the battery gives the
+    Strict set the Halo set's)."""
     sys.path.insert(0, battery_dir)
     import dsdata
     import measures as MS
     import around_measures as AM
     import pandas as pd
 
-    recs = [r for r in dsdata.load("v6") if r.ok and r.landmarks is not None and r.winner]
+    recs = [r for r in dsdata.load(event_set) if r.ok and r.landmarks is not None and r.winner]
     labs = [r.lab for r in recs]
     filt = {es: {r.lab: r for r in dsdata.load(es)} for es in FILTERS}
+    halo = {r.lab: r for r in dsdata.load("v6")} if event_set != "v6" else None
     rows, ev_mouse, names = [], [], None
     for mi, r in enumerate(recs):
         F = MS.event_features(r)
@@ -89,6 +112,13 @@ def build(battery_dir, out_root=AMBER, log=print):
         cols["type_ds2"] = ((t == 2) & ~d3).astype(float)
         cols["type_ds3"] = d3.astype(float)
         cols["type_unscored"] = (~np.isfinite(s)).astype(float)
+        # Rows of the Halo-event copies (filters, before/after) for these events.
+        hr = halo.get(r.lab) if halo is not None else None
+        rows_h = _rows_by_time(r.times_s, hr.times_s) if hr is not None else np.arange(r.n)
+
+        def take(v):
+            v = np.asarray(v, float)
+            return np.where(rows_h >= 0, v[np.maximum(rows_h, 0)], np.nan)
         for es in FILTERS:
             rb = filt[es].get(r.lab)
             if rb is None or rb.landmarks is None:
@@ -97,8 +127,8 @@ def build(battery_dir, out_root=AMBER, log=print):
                 continue
             Fb = MS.event_features(rb)
             for k in FILTER_FEATS:
-                cols["f_%s__%s" % (es[2:], k)] = np.asarray(Fb.get(k, np.full(r.n, np.nan)), float)
-        D = AM.load(r)
+                cols["f_%s__%s" % (es[2:], k)] = take(Fb.get(k, np.full(rb.n, np.nan)))
+        D = AM.load(r)   # matches the windows to these events by time itself
         if D is not None:
             mrd = D["rdE"].mean(axis=0)
             mrd[mrd <= 0] = np.nan
@@ -127,9 +157,9 @@ def build(battery_dir, out_root=AMBER, log=print):
     ev_mouse = np.concatenate(ev_mouse)
     # mouse tables
     M = pd.read_pickle(os.path.join(battery_dir, "merged", "measures.pkl"))
-    M = M[(M.event_set == "v6") & ((M.classifier == "") | (M.classifier == "winner"))]
+    M = M[(M.event_set == event_set) & ((M.classifier == "") | (M.classifier == "winner"))]
     MA = pd.read_pickle(os.path.join(battery_dir, "merged_around", "measures.pkl"))
-    MA = MA[(MA.event_set == "v6") & MA.name.str.startswith(("locked", "burst"))]
+    MA = MA[(MA.event_set == event_set) & MA.name.str.startswith(("locked", "burst"))]
     mcols, mnames, mfam = [], [], []
     for df, fam in ((M, "battery"), (MA, "before/after (per mouse)")):
         for _, row in df.iterrows():
@@ -149,9 +179,11 @@ def build(battery_dir, out_root=AMBER, log=print):
         mnames.append("nuisance|" + key)
         mfam.append("nuisance")
     XM = np.column_stack(mcols).astype(np.float32)
-    srcs = [os.path.join(battery_dir, "data", "ds_v6.pkl")] + [os.path.join(battery_dir, "data", "ds_%s.pkl" % es) for es in FILTERS] + \
+    srcs = [os.path.join(battery_dir, "data", "ds_v6.pkl"), os.path.join(battery_dir, "data", "ds_%s.pkl" % event_set)] + [os.path.join(battery_dir, "data", "ds_%s.pkl" % es) for es in FILTERS] + \
         [os.path.join(battery_dir, "merged", "measures.pkl"), os.path.join(battery_dir, "merged_around", "measures.pkl")]
-    fp = _fingerprint([p for p in srcs if os.path.isfile(p)] + [os.path.join(AM.SRC, f) for f in os.listdir(AM.SRC)])
+    fp = _fingerprint(sorted(set(p for p in srcs if os.path.isfile(p))) + [os.path.join(AM.SRC, f) for f in os.listdir(AM.SRC)])
+    if event_set != "v6":
+        fp = hashlib.sha256((fp + "|" + event_set).encode()).hexdigest()[:16]
     os.makedirs(out_root, exist_ok=True)
     have = sorted(int(d[1:]) for d in os.listdir(out_root) if d.startswith("v") and d[1:].isdigit())
     for v in have:
@@ -165,7 +197,7 @@ def build(battery_dir, out_root=AMBER, log=print):
     np.savez_compressed(os.path.join(d, "amber.part.npz"), X=X, ev_mouse=ev_mouse, XM=XM)
     os.replace(os.path.join(d, "amber.part.npz"), os.path.join(d, "amber.npz"))
     man = {"version": ver, "made": datetime.datetime.now().isoformat(timespec="seconds"), "fingerprint": fp, "source": battery_dir,
-           "event_set": "v6 (Halo)", "classifier": "winner (round 11 FINAL OPTIMIZED SEPARATION), frozen",
+           "event_set": SET_NAMES.get(event_set, event_set), "classifier": "winner (round 11 FINAL OPTIMIZED SEPARATION), frozen",
            "mice": [{"lab": r.lab, "group": r.group, "subgroup": r.subgroup, "ko": r.ko, "year": r.year, "n": r.n,
                      "winner": r.winner} for r in recs],
            "event_features": names, "event_families": [_family_of_event(n) for n in names],
@@ -188,4 +220,5 @@ def load(version=None, root=AMBER):
 
 
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Z390\Desktop\DS_PTEN_figures_2026-11-16\battery")
+    build(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Z390\Desktop\DS_PTEN_figures_2026-11-16\battery",
+          event_set=sys.argv[2] if len(sys.argv) > 2 else "v6")

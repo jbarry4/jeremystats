@@ -41,6 +41,67 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 25: 2026-11-20 (morning, scheduled), 11-19 08:50 to 11-20 08:50
+
+Covered: Bluebarry's 11-19 shard (17 rows, 14 of them `test: true`) and
+activity. Its 11-19 report has not been written yet (no tick since 18:00).
+HEAD is now `05e38e79` (the 11-19 afternoon merges took in `2026.11.18.2`
+to `2026.11.19.3`). `git fetch` moved `origin/master` to `a441677a` (Aggie,
+11-19 21:24). Git brought six reports, all 0 faults: Daphne Lyons's 11-05
+(`ip0af51b5c`), Rain's 11-11 and 11-18 (`desktop-ah45fae`, 0 actions),
+Blackbarry's 11-17 (Isabella, 140 actions, build `2026.11.16.1 7b2196df`),
+and Aggie's Mac 11-18 and 11-19 (`ip0af5d200`, 133 actions on 11-19, build
+`2026.11.19.3 a0fbe323`). No new error shard came by git. The cloud, read
+only, from `2026-11-18T13:50Z`: 17 `errors` rows, all Bluebarry's (the shard
+below), 954 `activity` rows, 46 `client.error` rows, all "stuck". Floss:
+Rain's `20261109-102332-eca9` is still open.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | `ip0af51b5c` (Daphne Lyons) | 0 | 0 actions. Build `2026.11.06.4 83b3c701` |
+| 11-11, 11-18 | DESKTOP-AH45FAE (Rain Younger) | 0 | 0 actions. Build `2026.11.18.2 06bd0fde` |
+| 11-17 | Blackbarry (Isabella Piatek) | 0 | 140 actions |
+| 11-18, 11-19 | `ip0af5d200` (Aggie Krempasky) | 0 | 0 and 133 actions |
+| 11-19 | Bluebarry (Shahriar) | 0 (3 refusals, 14 test) | `rootcanal/pool-fit` "N versions of sets have not been read yet" ×3, 12:57:33 to :35. The designed read-first path (1). The 14 test rows are the other session's StrataScope (`ui/mode.bounce`, 12:33 to 15:04) and `dspca/fit` (16:51) probes |
+| 11-19 | Bluebarry, DESKTOP-AH45FAE | 0 | 33 new "stuck" rows. Slow, not faults (2) |
+
+1. **Pool refusals on Bluebarry** (12:57:33 to :35, three fits as members
+   were changed, 9/18/9 members). `_rootcanal_pool_members`
+   (`backend/app.py` ~15296) refuses with `away` naming unread versions, and
+   `rootcanal.js` (~8771) reads them by itself and fits again. That is what
+   happened: `rootcanal.read` at 12:57:53, 14:33, 14:36 and 15:00, a VACC
+   batch of 13 at 14:43, and the pools saved again at 15:04. Not a fault.
+   It still lands in the report because `fail()` records every refusal. If
+   the user wants handled refusals (ones with `away` that the page resolves
+   by itself) kept out of the Errors view, that is their call; I left it.
+2. **"Stuck" rows.** Rain on DESKTOP-AH45FAE, 11-19 20:41Z: the usual
+   start-up cluster (`registry` 35 s, `prefs`). Bluebarry 16:32 to 16:54
+   local: `GET /api/rootcanal/workflows` 31 to 35 s and
+   `/api/rootcanal/workflow/<id>` 30 to 35 s, every ~2 min, with a
+   `link.scope` each time and "Taking stock of what is saved on this
+   computer -- done in 27.7 s" in the lines. That is a fresh page start each
+   time, in the minutes the other session was running harnesses (its
+   `dspca/fit` test faults and `guides.*` at 16:51). Start-up slowness, as
+   in passes 19 to 24, not a fault. Also 11:45 and 12:26 (ToolKit 1.1 s
+   freeze; `rootcanal/done` and `candidates` 34 s at a start). The 11-18
+   Strawbarry/Blackbarry rows pass 24 already read.
+
+No code changed and there is no CHANGELOG entry.
+
+Builds: Bluebarry has `2026.11.19.3` on disk (HEAD `05e38e79`). Aggie's Mac
+ran `2026.11.19.3 a0fbe323` on 11-19, so it has pass 23's `2026.11.18.1`.
+Blackbarry ran `7b2196df` (`2026.11.16.1`) on 11-17. A new machine name,
+`ip0af58640.int.uvm.edu`, sent 6 actions to the cloud (the `f987` Mac on
+another address, by the look of it); it has no report.
+
+Next pass: Bluebarry's 11-19 and 11-20 reports and the 11-20 shard. Then
+Strawbarry's 11-18 and later, Blackbarry's 11-13/11-14/11-18 and later when
+git brings them. Then `git fetch`, then the cloud from `2026-11-19T13:50Z`.
+Open, unchanged: pass 22's item 1 (a DS-PCA bundle opened on a machine
+without its read), pass 18's two watches, the Blackbarry `session/state`
+stalls (pass 24's lead), Rain's Floss ticket, pass 23's NS_ERROR_ABORT
+watch.
+
 ## Pass 24: 2026-11-19 (morning, scheduled), 11-18 08:50 to 11-19 08:50
 
 Covered: Bluebarry's 11-18 report (0 faults, 22 actions). There is no
