@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import OUT, write_json  # noqa: E402
+from volume import DERIVED, HOW, LAMINA  # noqa: E402
 
 REFS = {
     'amaral2007': 'Amaral DG, Scharfman HE, Lavenex P (2007) The dentate gyrus: fundamental neuroanatomical organization (dentate gyrus for dummies). Prog Brain Res 163:3-22.',
@@ -354,6 +355,8 @@ def main():
         'refs': REFS, 'regions': REGIONS, 'cells': CELLS, 'connections': CONNECTIONS,
         'pathways': PATHWAYS, 'ds': DS, 'lamina_colors': LAMINA_COLORS, 'probe': PROBE,
         'dg_layers': LAYERS_DG,
+        'lamina': [{'code': r[0], 'key': r[1], 'label': r[2], 'group': r[3], 'name': r[4],
+                    'how': DERIVED[HOW[r[1]]] if r[1] in HOW else ''} for r in LAMINA[1:]],
     }, compact=False)
     print('kb.json:', len(REGIONS), 'regions', len(CELLS), 'cells', len(CONNECTIONS),
           'connections', len(PATHWAYS), 'pathways')

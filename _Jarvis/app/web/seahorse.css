@@ -97,7 +97,7 @@
 
 /* ---------- schematic ---------- */
 .sh-svg { width: 100%; height: 100%; display: block; }
-.sh-svg text { fill: var(--text); font-family: inherit; }
+.sh-svg text { fill: var(--text); font-family: var(--sans); stroke: none; text-shadow: none; }
 .sh-svg .sub { fill: var(--text-2); font-style: italic; font-size: 11px; }
 .sh-svg .box rect { fill: var(--bg-2); stroke: var(--line); stroke-width: 1.2; transition: opacity 0.25s, stroke 0.2s; }
 .sh-svg .box:hover rect { stroke: var(--accent); }
@@ -109,7 +109,7 @@
 .sh-svg .edge.inh path.ln { stroke: var(--err); }
 .sh-svg .edge.dash path.ln { stroke-dasharray: 6 5; }
 .sh-svg .edge:hover path.ln, .sh-svg .edge.sel path.ln { stroke: var(--accent); stroke-width: 2.6; }
-.sh-svg .edge .elabel { font-size: 11px; fill: var(--text-2); font-style: italic; }
+.sh-svg .edge .elabel { font-size: 11px; fill: var(--text-2); font-style: italic; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
 .sh-svg .dim { opacity: 0.14; }
 .sh-svg .lit path.ln { stroke: var(--accent); stroke-width: 3; }
 .sh-svg .lit rect { stroke: var(--accent); stroke-width: 2.4; }

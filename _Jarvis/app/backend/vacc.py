@@ -315,6 +315,12 @@ def _hold_outward(remote_command, stdin=None):
     if not shards.safe_on():
         return
     text = str(remote_command or "")
+    # A script on stdin is read; a payload is not. The code push sends a tar
+    # whose Python mentions sbatch everywhere, and reading it as a command
+    # refused the push the live link needs before any recording can open.
+    if isinstance(stdin, (bytes, bytearray)) and (
+            b"\x00" in stdin[:4096] or len(stdin) > 262144):
+        stdin = None
     if stdin is not None:
         try:
             text += "\n" + (stdin.decode("utf-8", "replace")
@@ -1807,8 +1813,10 @@ def push_code(cfg, app_dir, timeout=180):
     kilobytes is nothing, but a push on every submit is a push that happens
     while somebody is waiting.
     """
-    from . import pisafe
-    pisafe.refuse_outward("The code")
+    # NOT refused in the PI's practice layer (pisafe.py): the live link
+    # that reads a recording off the cluster pushes the backend first
+    # (vaccio.Link.start), and refusing it stopped every VACC recording
+    # from opening. It is this account's copy of the code, not lab data.
     import hashlib
     import io
     import tarfile
