@@ -1,0 +1,193 @@
+/* ==========================================================================
+   seahorse_phys.js -- model laminar profiles for the Seahorse tab
+   (BARRY.shPhys).
+
+   NOT recordings. Each event is a handful of current sinks and sources
+   placed in the layers the literature puts them in; the probe's 64
+   contacts read the layer they sit in, and the potential each contact
+   would see is computed from that current source density with the usual
+   disc model of a laminar structure:
+
+       phi(z) = 1 / (2 sigma) * sum_z' C(z') (sqrt((z - z')^2 + R^2) - |z - z'|) dz
+
+   (C > 0 a source, R the radius of the active disc; Nicholson & Freeman
+   1975). So the picture is right in shape -- where the sink is, where the
+   potential reverses -- and says nothing about amplitude. Every panel is
+   labelled "model".
+   ========================================================================== */
+'use strict';
+
+BARRY.shPhys = (function () {
+  const ML = ['oml1', 'oml2'], MM = ['mml1', 'mml2'], GC = ['gcl1', 'gcl2'];
+  /* comps: {layers, amp (sink < 0), t (ms), w (ms), osc (Hz), phase, burst} */
+  const EVENTS = {
+    ds1: {
+      label: 'DS1', kind: 'ds', ms: 70, tok: '--call-ds',
+      comps: [{ layers: ML, amp: -1.0, t: 24, w: 6.5 }, { layers: MM.concat(GC), amp: 0.42, t: 24, w: 7.5 }, { layers: ['hil'], amp: 0.12, t: 25, w: 8 }],
+      say: 'A lateral perforant-path volley: a current sink in the outer molecular layer of both blades, the return current (source) toward the granule cells. In the hilus the field goes strongly positive.',
+      refs: ['bragin1995', 'penttonen1997'],
+    },
+    ds2: {
+      label: 'DS2', kind: 'ds', ms: 70, tok: '--call-ds',
+      comps: [{ layers: MM, amp: -1.25, t: 24, w: 6.5 }, { layers: ML.concat(GC), amp: 0.5, t: 24, w: 7.5 }, { layers: ['hil'], amp: 0.14, t: 25, w: 8 }],
+      say: 'A medial perforant-path volley: the sink moves in to the middle third, flanked by sources in the outer third and the granule layer. Usually the larger dentate spike.',
+      refs: ['bragin1995', 'penttonen1997'],
+    },
+    swr: {
+      label: 'Sharp-wave ripple', kind: 'swr', ms: 160, tok: '--accent',
+      comps: [{ layers: ['ca1sr'], amp: -1.0, t: 72, w: 20 }, { layers: ['ca1sp', 'ca1so'], amp: 0.45, t: 72, w: 22 },
+              { layers: ['ca1sp'], amp: 0.32, t: 72, w: 13, osc: 180 }],
+      say: 'A CA3 population burst drives a sink in CA1 stratum radiatum (the sharp wave) while a 140-200 Hz ripple rides on stratum pyramidale.',
+      refs: ['buzsaki2015', 'ylinen1995'], cells: ['ca3', 'ca1'],
+    },
+    theta: {
+      label: 'Theta', kind: 'theta', ms: 500, tok: '--accent',
+      comps: [{ layers: ['ca1slm'].concat(ML), amp: -0.8, osc: 8, phase: 0 }, { layers: ['ca1sp', 'ca1so'], amp: 0.45, osc: 8, phase: 0 },
+              { layers: ['hil', 'iml1', 'iml2'].concat(GC), amp: 0.18, osc: 70, phase: 0, thetaLocked: true }],
+      say: 'Theta (6-10 Hz): alternating sinks at the distal dendrites (entorhinal input, near the fissure) and the cell bodies; the rhythm reverses across stratum radiatum and is largest near the fissure. Gamma rides on it in the dentate.',
+      refs: ['buzsaki2002'],
+    },
+    pspike: {
+      label: 'P-spike', kind: 'pspike', ms: 220, tok: '--call-p',
+      comps: [{ layers: ['ca3sr', 'ca3so', 'ca1sr', 'ca1so'], amp: -2.0, t: 70, w: 14 }, { layers: ['ca3sp', 'ca1sp'], amp: 0.9, t: 70, w: 16 },
+              { layers: ['ca3sp', 'ca1sp'], amp: -0.7, t: 64, w: 1.6, burst: [0, 7, 14] }],
+      say: 'A model interictal spike: a synchronous CA3 burst (where they start in slices; Wong & Traub 1983) with population spikes in the pyramidal layers and a large sink in radiatum and oriens. Replace with the lab\'s own P-spike profile once recordings are linked.',
+      refs: ['wongtraub1983'], cells: ['ca3', 'ca3_b', 'ca1'],
+    },
+  };
+
+  function envelope(c, t) {
+    if (c.burst) {
+      let v = 0;
+      for (const d of c.burst) { const x = (t - c.t - d) / c.w; v += Math.exp(-x * x); }
+      return v;
+    }
+    let v = c.t == null ? 1 : Math.exp(-Math.pow((t - c.t) / c.w, 2));
+    if (c.osc) {
+      if (c.thetaLocked) v *= 0.5 + 0.5 * Math.cos(2 * Math.PI * 8 * t / 1000);
+      v *= Math.cos(2 * Math.PI * c.osc * t / 1000 + (c.phase || 0));
+    }
+    return v;
+  }
+
+  /* layers: the lamina key under each contact, contact 1 (nearest the tip)
+     first; z: each contact's distance from the tip (um). */
+  function compute(key, layers, z) {
+    const ev = EVENTS[key];
+    const n = layers.length;
+    const dt = ev.ms > 300 ? 2 : 0.5;
+    const T = Math.round(ev.ms / dt);
+    const csd = new Float32Array(n * T), lfp = new Float32Array(n * T);
+    for (let ti = 0; ti < T; ti++) {
+      const t = ti * dt;
+      for (let i = 0; i < n; i++) {
+        let v = 0;
+        for (const c of ev.comps) if (c.layers.includes(layers[i])) v += c.amp * envelope(c, t);
+        csd[i * T + ti] = v;
+      }
+    }
+    // forward model, R = 400 um
+    const R = 400;
+    const pitch = n > 1 ? Math.abs(z[1] - z[0]) : 20;
+    let mx = 1e-9;
+    for (let i = 0; i < n; i++) {
+      for (let ti = 0; ti < T; ti++) {
+        let v = 0;
+        for (let j = 0; j < n; j++) {
+          const c = csd[j * T + ti];
+          if (!c) continue;
+          const d = Math.abs(z[i] - z[j]);
+          v += c * (Math.sqrt(d * d + R * R) - d) * pitch;
+        }
+        lfp[i * T + ti] = v;
+        if (Math.abs(v) > mx) mx = Math.abs(v);
+      }
+    }
+    for (let k = 0; k < lfp.length; k++) lfp[k] /= mx;
+    let cm = 1e-9;
+    for (let k = 0; k < csd.length; k++) cm = Math.max(cm, Math.abs(csd[k]));
+    return { key, ev, n, T, dt, csd, lfp, cmax: cm, layers };
+  }
+
+  /* The panel: CSD as a colour sheet (red sink, blue source; contacts top
+     to bottom from the shallowest), LFP traces over it, a time cursor. */
+  function draw(cv, m, o) {
+    o = o || {};
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const r = cv.getBoundingClientRect();
+    const Wc = Math.max(10, Math.round(r.width * dpr)), Hc = Math.max(10, Math.round(r.height * dpr));
+    if (cv.width !== Wc || cv.height !== Hc) { cv.width = Wc; cv.height = Hc; }
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, Wc, Hc);
+    const padL = 54 * dpr, padR = 8 * dpr, padT = 6 * dpr, padB = 18 * dpr;
+    const w = Wc - padL - padR, h = Hc - padT - padB;
+    const n = m.n, T = m.T;
+    const rowH = h / n;
+    // CSD sheet
+    const img = ctx.createImageData(Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+    const iw = img.width, ih = img.height;
+    for (let y = 0; y < ih; y++) {
+      const ci = n - 1 - Math.min(n - 1, Math.floor(y / ih * n));     // shallowest at the top
+      for (let x = 0; x < iw; x++) {
+        const ti = Math.min(T - 1, Math.floor(x / iw * T));
+        const v = m.csd[ci * T + ti] / m.cmax;
+        const a = Math.min(1, Math.abs(v)) * 0.85;
+        const o2 = (y * iw + x) * 4;
+        if (v < 0) { img.data[o2] = 214; img.data[o2 + 1] = 54; img.data[o2 + 2] = 46; }
+        else { img.data[o2] = 46; img.data[o2 + 1] = 112; img.data[o2 + 2] = 214; }
+        img.data[o2 + 3] = Math.round(a * 255);
+      }
+    }
+    ctx.putImageData(img, padL, padT);
+    // layer runs on the left
+    const LC = o.layerColors || {};
+    let i0 = 0;
+    ctx.font = (10 * dpr) + 'px ' + (o.font || 'sans-serif');
+    ctx.textBaseline = 'middle';
+    for (let i = 1; i <= n; i++) {
+      if (i < n && m.layers[i] === m.layers[i0]) continue;
+      const k = m.layers[i0];
+      const yTop = padT + (n - i) * rowH, yBot = padT + (n - i0) * rowH;
+      ctx.fillStyle = LC[k] || 'rgba(128,128,128,0.4)';
+      ctx.globalAlpha = k ? 0.9 : 0.25;
+      ctx.fillRect(padL - 7 * dpr, yTop + 0.5, 5 * dpr, yBot - yTop - 1);
+      ctx.globalAlpha = 1;
+      if (yBot - yTop > 9 * dpr) {
+        ctx.fillStyle = o.ink || '#888';
+        ctx.textAlign = 'right';
+        ctx.fillText((o.labelOf && o.labelOf(k)) || k || '', padL - 10 * dpr, (yTop + yBot) / 2);
+      }
+      i0 = i;
+    }
+    // LFP traces (every other contact)
+    ctx.strokeStyle = o.ink || '#222';
+    ctx.lineWidth = 1 * dpr;
+    ctx.globalAlpha = 0.85;
+    for (let ci = 0; ci < n; ci += 2) {
+      const y0 = padT + (n - 1 - ci + 0.5) * rowH;
+      ctx.beginPath();
+      for (let ti = 0; ti < T; ti++) {
+        const x = padL + ti / (T - 1) * w;
+        const y = y0 - m.lfp[ci * T + ti] * rowH * 5;
+        if (ti) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // time axis + cursor
+    ctx.fillStyle = o.ink || '#888';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('0', padL, Hc - 4 * dpr);
+    ctx.textAlign = 'right';
+    ctx.fillText(m.ev.ms + ' ms', padL + w, Hc - 4 * dpr);
+    if (o.cursor != null) {
+      const x = padL + Math.min(1, o.cursor / m.ev.ms) * w;
+      ctx.strokeStyle = o.accent || '#e5a823';
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + h); ctx.stroke();
+    }
+  }
+
+  return { EVENTS, compute, draw };
+})();

@@ -60,7 +60,9 @@ NOT_A_PERSON = frozenset({"snapshot import", "the import", "unknown",
 # reservation is enforced here rather than left to whoever adds the next
 # vocabulary.
 RESERVED_KEYS = frozenset({"n", "p", "u", "escape", "backspace",
-                           "arrowleft", "arrowright"})
+                           "arrowleft", "arrowright",
+                           # W writes a note on the event (2026-11-20).
+                           "w"})
 
 KINDS = {
     "ds": {
@@ -471,6 +473,42 @@ def _remember_review(ev, who, label, at):
     rows.append({"by": who, "label": label, "at": at or _now()})
     rows.sort(key=lambda r: _when(r.get("at")))
     ev["reviews"] = rows
+
+
+#: The longest note a candidate carries. A note is a sentence or three
+#: beside a flag, not a report, and it rides in every banked version.
+NOTE_MAX = 2000
+
+
+def clean_note(text):
+    """A note as it is kept: trimmed, capped, and '' for none."""
+    return str(text or "").strip()[:NOTE_MAX]
+
+
+def _set_note(ev, text, who):
+    """Put a note on a candidate, or take it off, with who and when.
+
+    A cleared note keeps `note_at` and `note_by`: the time is what lets the
+    clearing be ordered against somebody else's note on another machine,
+    exactly as `cleared_at` does for a decision.
+    """
+    text = clean_note(text)
+    if text:
+        ev["note"] = text
+    else:
+        ev.pop("note", None)
+    ev["note_by"] = (who or "").strip() or None
+    ev["note_at"] = _now()
+
+
+def _claim(rec, who):
+    """The first decision makes an unclaimed set this person's.
+
+    It used to be opening that did this, so a look put a name on a set
+    (2026-11-20, "claim on first decision")."""
+    if who and not (rec.get("assignee") or "").strip():
+        rec["assignee"] = who
+        rec["assigned_at"] = _now()
 
 
 class Curation:
@@ -1651,9 +1689,10 @@ class Curation:
         _own_review(hit)
         hit["label"] = label
         if note is not None:
-            hit["note"] = note
+            _set_note(hit, note, who)
         if label is not None:
             _remember_review(hit, who, label, _now())
+            _claim(rec, who)
         if label is None:
             hit.pop("by", None)
             hit.pop("at", None)
@@ -1715,9 +1754,36 @@ class Curation:
                 e["by"] = who
                 e["at"] = stamp
                 _remember_review(e, who, label, stamp)
+                # A sweep is a decision too; putting a banked version back
+                # (`who` given) is not this person claiming anything.
+                if not at:
+                    _claim(rec, who)
             n += 1
         self._write(rec)
         return n, self.progress(rec)
+
+    @shards.atomic
+    def note(self, gid, kind, event_id, text):
+        """Write, change or clear the note on one candidate (2026-11-20).
+
+        Nothing else about the candidate changes: not its label, not who
+        decided it, and not whose the set is. A note is somebody saying why,
+        or what to look at, beside a flag -- and it travels with the event
+        into the bank when the set is banked.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        hit = next((e for e in (rec.get("events") or [])
+                    if e.get("id") == event_id), None)
+        if not hit:
+            raise CurationError("No candidate %r in this set." % event_id)
+        who = (self.store.provenance() if self.store else {}).get("user")
+        if (hit.get("note") or "") == clean_note(text):
+            return hit
+        _set_note(hit, text, who)
+        self._write(rec)
+        return hit
 
     @shards.atomic
     def open_set(self, gid, kind, on=True, who=None, unarchive=False,
@@ -1736,9 +1802,11 @@ class Curation:
         saved -- every keystroke wrote through when it was made. It only
         says whether this is something anybody is working on right now.
 
-        Opening also claims the set, if nobody has claimed it. Forty sets
-        with no owner is a list; forty sets with a name on each is a
-        division of labour.
+        Opening does NOT claim the set any more (2026-11-20, "claim on first
+        decision"): somebody looking at a set is not taking it on, and a
+        name put on a set by a look made it read as somebody's work in
+        progress -- PTEN m34 s5's pool carried Eshal's name after she opened
+        it. The first decision claims it (`_claim`).
         """
         rec = self._read(gid, kind)
         if not rec:
@@ -1766,8 +1834,6 @@ class Curation:
                 rec.pop("archived", None)
                 rec.pop("archived_at", None)
                 rec.pop("archived_by", None)
-            if not (rec.get("assignee") or "").strip() and who:
-                rec["assignee"] = who
             if based_on is not None:
                 rec["based_on"] = based_on
                 rec["based_on_at"] = _now()
@@ -1932,6 +1998,12 @@ class Curation:
             item["label_id"] = lab or "unspecified"
             if e.get("by"):
                 item["by"] = e["by"]
+            # The note somebody left on it (2026-11-20), so Lock, Eye and
+            # Root Canal see why it was flagged.
+            if e.get("note"):
+                item["note"] = e["note"]
+                if e.get("note_by"):
+                    item["note_by"] = e["note_by"]
             # Who has looked this one over, so a spot-check that agreed is
             # not indistinguishable from nobody having checked.
             revs = e.get("reviews") or []

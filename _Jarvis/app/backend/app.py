@@ -7828,7 +7828,7 @@ def api_braces_set(set_id):
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
                  "params", "summary", "created", "committed", "rows",
-                 "calls")},
+                 "calls", "notes")},
         "counts": counts,
         # Which rows currently sit on a time another row also claims, by
         # row number so the panel can jump to them. Worked out from the
@@ -7885,6 +7885,45 @@ def api_braces_decide(set_id):
                     "calls": rec.get("calls") or {}})
 
 
+@app.route("/api/braces/set/<set_id>/note", methods=["POST"])
+def api_braces_note(set_id):
+    """A note on one row of an alignment (2026-11-20). `{row, note}`."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = BRACES.note(set_id, body.get("row"), body.get("note"),
+                          by=_braces_who(body))
+    except brsetmod.BracesSetError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "notes": rec.get("notes") or {}})
+
+
+@app.route("/api/braces/set/<set_id>/save", methods=["POST"])
+def api_braces_save(set_id):
+    """Send this alignment's review up now and confirm it arrived
+    (2026-11-20, the Save button)."""
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    try:
+        got = CLOUD.save_shard_file("braces", BRACES._base(rec))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    calls = rec.get("calls") or {}
+    STORE.record_activity([{"action": "braces.save",
+                            "detail": {"set": set_id, "calls": len(calls),
+                                       "confirmed": got.get("confirmed")}}])
+    return jsonify(dict(got, ok=True, calls=len(calls),
+                        rows=len(rec.get("rows") or []),
+                        notes=sum(1 for v in (rec.get("notes") or {}).values()
+                                  if (v or {}).get("text"))))
+
+
 @app.route("/api/braces/set/<set_id>/commit", methods=["POST"])
 def api_braces_commit(set_id):
     """Write the alignment as the next version of the bank entry.
@@ -7923,12 +7962,21 @@ def api_braces_commit(set_id):
         for lid, name in (entry.get("label_names") or {}).items():
             if lid in keep_ids:
                 keep_ids.add(name)
+        # The review's notes (2026-11-20), from row number to event index,
+        # so they ride into the version with their events.
+        rows = rec.get("rows") or []
+        notes = {}
+        for k, said in (rec.get("notes") or {}).items():
+            try:
+                notes[rows[int(k)]["i"]] = said
+            except (TypeError, ValueError, IndexError, KeyError):
+                continue
         report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
                             flags=flags, keep_ids=keep_ids,
-                            reject=rejects)
+                            reject=rejects, notes=notes)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -23333,7 +23381,8 @@ def api_curation_from_bank():
         except (TypeError, ValueError):
             continue
         facts[key] = {k: e[k] for k in ("origin", "pair_t", "stamp",
-                                         "channel", "amplitude")
+                                         "channel", "amplitude",
+                                         "note", "note_by")
                       if e.get(k) is not None}
     if facts:
         for item in events:
@@ -23409,6 +23458,17 @@ def api_curation_from_bank():
             pass
 
     prog = CURATE.progress(rec)
+    # Started from a version where every event is already decided: the
+    # "first time every event is decided" has happened, in that version, so
+    # this set never banks itself. Without this, picking up an old finished
+    # version and changing one call banked a new version on the spot
+    # (Rain, 2026-11-20: "if people pull up old shit ... it can save a new
+    # version").
+    if prog.get("total") and not prog.get("left"):
+        try:
+            rec = CURATE.mark_autobanked(gid, skind, want_v) or rec
+        except curation.CurationError:
+            pass
     STORE.record_activity([{
         "action": "curation.from_bank",
         "detail": {"gid": gid, "kind": skind, "entry": ent["id"],
@@ -24028,6 +24088,101 @@ def api_curation_label(gid, kind):
     except Exception as exc:
         return fail("curation/label", exc, 400, {"gid": gid, "kind": kind})
     return jsonify({"ok": True, "event": ev, "progress": prog})
+
+
+@app.route("/api/curation/<gid>/<kind>/note", methods=["POST"])
+def api_curation_note(gid, kind):
+    """A note on one candidate, or none (2026-11-20). `{event, note}`.
+
+    Changes nothing but the note: not the label, not who decided, not whose
+    the set is. It goes into the bank with the event when the set is banked.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        ev = CURATE.note(gid, kind, body.get("event"), body.get("note"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "event": {
+        "id": ev.get("id"), "note": ev.get("note") or "",
+        "note_by": ev.get("note_by"), "note_at": ev.get("note_at")}})
+
+
+@app.route("/api/curation/<gid>/<kind>/save", methods=["POST"])
+def api_curation_save(gid, kind):
+    """Save, and say so (2026-11-20).
+
+    Every decision is already written here the moment it is made. This sends
+    the set to the shared database now, rather than with the next sync, and
+    reads back what the database holds -- so "is it saved?" has an answer
+    somebody can see: "412 of 1,476 decided, uploaded and confirmed".
+    """
+    try:
+        got = CLOUD.save_curation_set(gid, kind)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    STORE.record_activity([{
+        "action": "curation.save",
+        "detail": {"gid": gid, "kind": kind,
+                   "decided": got.get("decided"), "total": got.get("total"),
+                   "confirmed": got.get("confirmed")},
+    }])
+    return jsonify(dict(got, ok=True))
+
+
+@app.route("/api/curation/<gid>/<kind>/keep-only", methods=["POST"])
+def api_curation_keep_only(gid, kind):
+    """Keep this set in view and hide the other sets of the same step on the
+    same recording (2026-11-20, Rain: "an option to ... remove them from
+    view").
+
+    Hiding is archiving: nothing is deleted, every decision stays, and each
+    can be brought back from the "archived" fold. Only sets of the same kind
+    family (every Panning set of a recording, say) are touched, and never
+    one somebody is in right now.
+    """
+    me = CURATE.get(gid, kind)
+    if not me:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    base = curation.kind_of(kind)
+    busy = set()
+    try:
+        for r in PRESENCE.all():
+            if r.get("active") and r.get("gid") == gid:
+                busy.add(r.get("kind"))
+    except Exception:                                    # noqa: BLE001
+        pass
+    hidden, skipped = [], []
+    for rec in CURATE.all():
+        if rec.get("gid") != gid or rec.get("kind") == kind:
+            continue
+        if curation.kind_of(rec.get("kind")) != base or rec.get("archived"):
+            continue
+        if rec.get("kind") in busy:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": "somebody is in it right now"})
+            continue
+        try:
+            CURATE.archive(gid, rec["kind"], True)
+            hidden.append({"kind": rec["kind"], "name": rec.get("name")})
+        except curation.CurationError as exc:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": str(exc)})
+    if me.get("archived"):
+        try:
+            CURATE.archive(gid, kind, False)
+        except curation.CurationError:
+            pass
+    STORE.record_activity([{
+        "action": "curation.keep_only",
+        "detail": {"gid": gid, "kind": kind, "hidden": len(hidden),
+                   "skipped": len(skipped)},
+    }])
+    return jsonify({"ok": True, "hidden": hidden, "skipped": skipped})
 
 
 @app.route("/api/curation/<gid>/<kind>/rename", methods=["POST"])
@@ -26027,6 +26182,10 @@ def api_curation_restore(gid, kind):
     # pass on top of whatever was newest.
     try:
         CURATE.set_based_on(gid, kind, want_v)
+        # A finished version put back is not a first finish: it never banks
+        # itself again (see api_curation_from_bank).
+        if prog.get("total") and not prog.get("left"):
+            CURATE.mark_autobanked(gid, kind, want_v)
     except curation.CurationError:
         pass        # the set is gone; the restore already reported that
     STORE.record_activity([{
@@ -29299,6 +29458,7 @@ _SHARD_WHAT = {
     "presets": "saved filter and analysis presets",
     "results": "the figure catalogue",
     "storyboards": "decks",
+    "seahorse": "Seahorse atlas notes, saved views and quiz progress",
     "feedback": "reports filed from the interface",
     "tombstones": "what has been deleted, so a delete travels",
 }
@@ -30244,6 +30404,10 @@ COLUMN_MIGRATIONS = {
     "synced_at": "24_arrival_clock.sql",
     "aligned": "24_arrival_clock.sql",
     "by_label": "24_arrival_clock.sql",
+    # Notes on curated events, each half of the row on its own clock
+    # (2026-11-20).
+    "note_at": "25_curation_notes.sql",
+    "note_by": "25_curation_notes.sql",
 }
 
 
@@ -30283,6 +30447,8 @@ COLUMN_TABLES = {
     "synced_at": "bank_entries",
     "aligned": "bank_entries",
     "by_label": "bank_entries",
+    "note_at": "curation_events",
+    "note_by": "curation_events",
 }
 
 
@@ -31450,6 +31616,11 @@ softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("us
 from . import chickenscratch as chickenscratchmod             # noqa: E402
 chickenscratchmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                                   _vacc_device()))
+# Seahorse (the mouse-brain atlas tab): shared lab notes, saved views and
+# per-person quiz progress in GUI_logs/seahorse. seahorse.py.
+from . import seahorse as seahorsemod                         # noqa: E402
+SEAHORSE = seahorsemod.install(app, fail, LOGS_DIR, STORE,
+                               who=lambda: (PROFILE.effective() or {}).get("user"))
 # Floss, the bug fixer anyone can ask (the rail's Floss chip): Claude Code on
 # the lab's account, in a private copy of the code. floss.py, docs/floss.md.
 from . import floss as flossmod                               # noqa: E402
@@ -33346,6 +33517,27 @@ def api_bank_version(entry_id, v):
         elif action in ("archive", "unarchive"):
             rec, changed = BANK.edit_version(
                 entry_id, v, {"archived": action == "archive"})
+        elif action == "keep_only":
+            # This version in view and every other one hidden (2026-11-20,
+            # Rain: "consolidate them or remove them from view"). Hidden is
+            # archived: nothing is deleted, each comes back from the
+            # "hidden" fold of any version picker. The one kept is
+            # unarchived if it was hidden itself.
+            ent = BANK.get(entry_id)
+            if not ent:
+                raise eventbank.BankError("No such entry.")
+            keep = BANK._version_ref(ent, v)
+            changed = []
+            for ver in list(ent.get("versions") or []):
+                ref = (str(ver["id"]) if ver.get("id")
+                       else versionsmod.stable_id(entry_id, ver))
+                want = not (ver is keep or versionsmod._twin_of(keep, ver))
+                if bool(ver.get("archived")) == want:
+                    continue
+                rec, _c = BANK.edit_version(entry_id, ref, {"archived": want})
+                changed.append(("hid " if want else "kept ")
+                               + "v%s" % ver.get("v"))
+            rec = BANK.get(entry_id)
         else:
             patch = {}
             if "note" in body:

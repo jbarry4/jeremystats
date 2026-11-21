@@ -331,7 +331,10 @@ def main():
                 # argument on its way to a native program.
                 with open(raw[1:], "r", encoding="utf-8") as fh:
                     raw = fh.read()
-            for js_, wait_, settle_ in json.loads(raw):
+            for step in json.loads(raw):
+                # [js, wait-for, settle] and, optionally, a 4th element: the
+                # name of a picture to take once the step has settled.
+                js_, wait_, settle_ = step[:3]
                 try:
                     cdp.js(js_)
                 except RuntimeError as exc:
@@ -339,6 +342,11 @@ def main():
                 if not cdp.until(wait_ or "1", limit=30):
                     print("  step waited out: %s" % (wait_ or "")[:80])
                 cdp.pump(float(settle_ or 0.5))
+                if len(step) > 3 and step[3]:
+                    mid = os.path.join(out, "%s@%dx%d%s.png" % (
+                        step[3], w, h, ("-" + a.theme) if a.theme else ""))
+                    cdp.shot(mid)
+                    print("  %-22s %s" % (step[3], mid))
             path = os.path.join(out, "%s@%dx%d%s.png" % (
                 a.name, w, h, ("-" + a.theme) if a.theme else ""))
             cdp.shot(path)

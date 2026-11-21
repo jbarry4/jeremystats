@@ -634,7 +634,50 @@ BARRY.ui = (function () {
        unit       what the count counts, "stamps" */
   const LANE = 14, PAD = 8;
 
+  /* HIDDEN VERSIONS (2026-11-20, Rain: "remove them from view"). A version
+     that is archived -- hidden, in the pickers' words -- is left out of a
+     choice and counted under it, with one press to show it again. A
+     history to read (`readonly`) still shows everything, and so does a
+     version that is the current choice. `showHidden: true` starts open. */
   function versionTree(o) {
+    const opt = o || {};
+    const all = opt.versions || [];
+    const idOf = typeof opt.idOf === 'function' ? opt.idOf
+      : (v) => (v && (v.id || v.label || v.v));
+    const want = opt.value === undefined || opt.value === null ? null
+      : String(opt.value).replace(/^v/i, '');
+    const isChosen = (v) => want !== null
+      && (String(idOf(v)).replace(/^v/i, '') === want
+          || String(versionLabel(v)).slice(1) === want);
+    const hidden = opt.readonly ? [] : all.filter((v) => v.archived && !isChosen(v));
+    if (!hidden.length || all.length === hidden.length) return versionTreeAll(opt);
+    let open = !!opt.showHidden;
+    const wrap = el('div', { class: 'vtree-wrap' });
+    let tree = null;
+    const draw = () => {
+      tree = versionTreeAll(Object.assign({}, opt, {
+        versions: open ? all : all.filter((v) => hidden.indexOf(v) < 0),
+        value: tree && tree.value && tree.value()
+          ? idOf(tree.value()) : opt.value,
+      }));
+      wrap.replaceChildren(tree, el('button', {
+        type: 'button', class: 'linkish vtree-hidden-toggle',
+        text: open ? 'Leave out the ' + hidden.length + ' hidden'
+                   : 'Show ' + hidden.length + ' hidden version'
+                     + (hidden.length === 1 ? '' : 's'),
+        title: 'Hidden versions are archived: kept, and not offered. Showing '
+             + 'them changes nothing.',
+        onclick: () => { open = !open; draw(); },
+      }));
+    };
+    draw();
+    wrap.redraw = () => tree && tree.redraw && tree.redraw();
+    wrap.value = () => (tree && tree.value ? tree.value() : null);
+    wrap.choose = (ref) => tree && tree.choose && tree.choose(ref);
+    return wrap;
+  }
+
+  function versionTreeAll(o) {
     const opt = o || {};
     const vs = (opt.versions || []).map((v) => ({
       v, name: versionLabel(v).slice(1), k: vkey(versionLabel(v).slice(1)),
@@ -1023,11 +1066,84 @@ BARRY.ui = (function () {
             + 'the version it was worked from. Click a version to use it.' }),
         tree,
       ].filter(Boolean)),
-      modalFoot([], [button({ kind: 'ghost', text: 'Close',
-                               onclick: () => closeModal() })]),
+      modalFoot(opt.manage && opt.manage.entry ? [button({
+        kind: 'ghost', size: 'sm', text: 'Hide versions…',
+        title: 'Hide the versions nobody should pick up, or keep only one. '
+             + 'Nothing is deleted.',
+        onclick: () => { closeModal(); manageVersions(Object.assign(
+          { versions: opt.versions, heading: opt.heading }, opt.manage)); },
+      })] : [], [button({ kind: 'ghost', text: 'Close',
+                          onclick: () => closeModal() })]),
     ]));
     requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
     return tree;
+  }
+
+  /* HIDING VERSIONS (2026-11-20, Rain: "an option to fully delete those
+     extra versions or consolidate them or remove them from view"). Hidden
+     is the bank's `archived`: kept, and not offered in a picker. "Keep only
+     this one" hides every other version of the entry in one step. Deleting
+     for good stays in the Event Bank, where its consequences are spelled
+     out. `o`: { entry, versions, heading, onChange }. */
+  function manageVersions(o) {
+    const opt = o || {};
+    const vs = (opt.versions || []).slice().sort((a, b) => vcmp(
+      vkey(versionLabel(b).slice(1)), vkey(versionLabel(a).slice(1))));
+    const refOf = (v) => (v.id != null ? v.id : v.v);
+    const say = el('p', { class: 'confirm-err hidden' });
+    const act = async (v, action) => {
+      say.classList.add('hidden');
+      try {
+        await apiPost('/api/bank/' + encodeURIComponent(opt.entry)
+                      + '/version/' + encodeURIComponent(refOf(v)),
+                      { action });
+        if (action === 'keep_only') {
+          vs.forEach((x) => { x.archived = x !== v; });
+        } else {
+          v.archived = action === 'archive';
+        }
+        paint();
+        if (typeof opt.onChange === 'function') opt.onChange();
+      } catch (e) {
+        say.textContent = e.message || String(e);
+        say.classList.remove('hidden');
+      }
+    };
+    const list = el('div', { class: 'vman-list' });
+    function paint() {
+      list.replaceChildren(...vs.map((v) => el('div', {
+        class: 'vman-row' + (v.archived ? ' is-hidden' : '') }, [
+        el('strong', { text: versionLabel(v) }),
+        versionChip(v, null, null),
+        el('span', { class: 'vman-who', text: [v.by, when(v.at),
+          v.n != null ? Number(v.n).toLocaleString() : null]
+          .filter(Boolean).join('  ·  ') }),
+        v.archived ? el('span', { class: 'vman-state', text: 'hidden' }) : null,
+        el('div', { class: 'spacer' }),
+        button({ kind: 'ghost', size: 'sm',
+                 text: v.archived ? 'Show it again' : 'Hide',
+                 onclick: () => act(v, v.archived ? 'unarchive' : 'archive') }),
+        button({ kind: 'ghost', size: 'sm', text: 'Keep only this one',
+                 title: 'Hide every other version of this entry',
+                 onclick: () => act(v, 'keep_only') }),
+      ].filter(Boolean))));
+    }
+    paint();
+    showModal(el('div', { class: 'vpop' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hide versions' + (opt.heading ? ' — ' + opt.heading : '') }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint', text: 'A hidden version is kept, with '
+          + 'everything in it, and is not offered when somebody picks a '
+          + 'version to work from; every picker can still show it. To delete '
+          + 'one for good, use the Event Bank.' }),
+        list, say,
+      ]),
+      modalFoot([], [button({ kind: 'ghost', text: 'Done',
+                               onclick: () => closeModal() })]),
+    ]));
   }
 
   /* ---------- the bank dialog ---------- */
@@ -1592,6 +1708,18 @@ BARRY.ui = (function () {
                          disabled: !!opt.bank.disabled,
                          onclick: opt.bank.onclick }));
     }
+    /* Save (2026-11-20): every curation tool's, in one place, last before
+       the shell's Leave. Not a ghost: it is the one people look for. */
+    if (opt.save) {
+      const sb = button({ kind: 'primary', size: 'sm',
+                          text: opt.save.text || 'Save',
+                          title: opt.save.title || null,
+                          disabled: !!opt.save.disabled,
+                          onclick: opt.save.onclick });
+      sb.classList.add('ck-save');
+      if (opt.save.state) sb.dataset.state = opt.save.state;
+      bits.push(sb);
+    }
     return el('div', { class: 'mode-own-end' }, bits);
   }
 
@@ -1916,6 +2044,7 @@ BARRY.ui = (function () {
     versionTree: versionTree,
     versionButton: versionButton,
     versionPop: versionPop,
+    manageVersions: manageVersions,
     versionProducer: versionProducer,
     versionChip: versionChip,
     bankDialog: bankDialog,

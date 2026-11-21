@@ -137,6 +137,55 @@ def stream_crop_10(path, ap0, ap1, dv0, dv1, ml0, ml1):
     return out
 
 
+def brain_nissl_hi():
+    """The Nissl value that maps to 255 everywhere: the 99.5th percentile of
+    the whole brain's 25 um ARA Nissl (the 10 um volume shares its scale), so
+    the whole-brain, 20 um and 10 um copies are the same grey for the same
+    tissue."""
+    import nrrd
+    p = os.path.join(RAW, 'nissl_hi.json')
+    if os.path.exists(p):
+        from common import read_json
+        return float(read_json(p)['hi'])
+    n25, _ = nrrd.read(os.path.join(RAW, 'ara_nissl_25.nrrd'))
+    a25, _ = nrrd.read(os.path.join(RAW, 'annotation_25.nrrd'))
+    hi = float(np.percentile(n25[a25 > 0], 99.5))
+    write_json(p, {'hi': hi, 'what': 'p99.5 of ara_nissl_25 inside the brain'})
+    return hi
+
+
+def mode3(L):
+    """3x3x3 majority filter of a label volume: every voxel takes the label
+    most common around it (its own wins ties). For display only -- it clears
+    the one-voxel islands the derived CA strata leave, which draw as
+    blocky outlines; analysis keeps the raw labels."""
+    from scipy import ndimage as ndi
+    best = np.full(L.shape, -1.0, np.float32)
+    out = L.copy()
+    for c in np.unique(L):
+        m = (L == c)
+        sc = ndi.uniform_filter(m.astype(np.float32), size=3, mode='nearest') * 27.0 + m * 0.5
+        upd = sc > best
+        out[upd] = c
+        best[upd] = sc[upd]
+    return out
+
+
+def block_mode2(L):
+    """2x2x2 majority downsampling (10 um labels -> 20 um)."""
+    sh = [d - d % 2 for d in L.shape]
+    B = L[:sh[0], :sh[1], :sh[2]].reshape(sh[0] // 2, 2, sh[1] // 2, 2, sh[2] // 2, 2)
+    best = np.full((sh[0] // 2, sh[1] // 2, sh[2] // 2), -1, np.int16)
+    out = np.zeros(best.shape, L.dtype)
+    first = B[:, 0, :, 0, :, 0]
+    for c in np.unique(L):
+        n = (B == c).sum(axis=(1, 3, 5)).astype(np.int16) * 2 + (first == c)
+        upd = n > best
+        out[upd] = c
+        best[upd] = n[upd]
+    return out
+
+
 def descendants(flat, sid):
     out = [sid]
     for c in flat[sid]['children']:
@@ -329,16 +378,27 @@ def ship():
     log('brain50', len(structs), 'structures', n // 1024, 'KB')
 
     L = np.load(os.path.join(RAW, 'hip10_labels.npy'))
-    nis = np.load(os.path.join(RAW, 'hip10_nissl.npy'))
+    # the real 10 um Nissl when nissl10.py has cropped it, else the 25 um one upsampled
+    tn = os.path.join(RAW, 'hip10_nissl_true.npy')
+    nis = np.load(tn if os.path.exists(tn) else os.path.join(RAW, 'hip10_nissl.npy'))
+    if os.path.exists(tn):
+        # 2x2x2 means, so the 20 um copy is the true stain averaged, not subsampled
+        sh = [d - d % 2 for d in nis.shape]
+        m = nis[:sh[0], :sh[1], :sh[2]].astype(np.float32)
+        m = m.reshape(sh[0] // 2, 2, sh[1] // 2, 2, sh[2] // 2, 2).mean(axis=(1, 3, 5))
+        nis = np.repeat(np.repeat(np.repeat(m, 2, 0), 2, 1), 2, 2).astype(np.uint8)
+        nis = np.pad(nis, [(0, L.shape[i] - nis.shape[i]) for i in range(3)], mode='edge')
     meta = read_json(os.path.join(RAW, 'hip10_meta.json'))
     origin = meta['origin_um']
     lam = [{'code': r[0], 'key': r[1], 'label': r[2], 'group': r[3], 'name': r[4],
             'how': DERIVED[HOW[r[1]]] if r[1] in HOW else ''} for r in LAMINA]
+    L20 = mode3(block_mode2(L))
+    N20 = nis[::2, ::2, ::2][:L20.shape[0], :L20.shape[1], :L20.shape[2]]
     n = write_blob(os.path.join(OUT, 'hip20.shb.gz'),
                    {'kind': 'hip20', 'um': 20, 'origin_um': origin, 'order': 'AP,DV,ML',
-                    'nissl_scale': 8, 'lamina': lam},
-                   [('labels', L[::2, ::2, ::2]), ('nissl', nis[::2, ::2, ::2] >> 3)])
-    log('hip20', L[::2, ::2, ::2].shape, n // 1024, 'KB')
+                    'nissl_scale': 8, 'lamina': lam, 'labels_smoothed': '2x2x2 majority, then 3x3x3 majority (display)'},
+                   [('labels', L20), ('nissl', N20 >> 3)])
+    log('hip20', L20.shape, n // 1024, 'KB')
     # 10 um labels over the dorsal hippocampus, where the probes go:
     # CCF AP 6000-8400 um, DV <= 3200 um. Its Nissl comes from hip20.
     sh = L.shape

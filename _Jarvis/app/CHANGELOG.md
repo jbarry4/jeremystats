@@ -15,6 +15,62 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.21.1 - Extraction Room 2.0: pressing "bring answers home" twice no longer fails
+
+Needs a restart (a backend change); a page reload is not enough.
+
+- **"Ask the VACC and bring answers home" pressed again while it was still
+  working** (it takes a few minutes, one answer at a time) ran a second fetch
+  beside the first. The two brought home the same answers in step and wrote
+  each one through the same temporary file, so one moved the other's
+  half-written file away and failed: "The process cannot access the file
+  because it is being used by another process" (Bluebarry, 11-20 09:21, run
+  r005). Nothing was lost, since the second fetch finished the job. Now a
+  run's answers are brought home by one fetch at a time: a second press waits
+  for the first and then brings home only what is still missing. Each answer
+  is also written through a temporary file of its own.
+  `tools/check_er2_fetch_race.py` runs four fetches of a throwaway run at once.
+
+## 2026.11.20.2 - Curation: notes, a Save you can see, View only, and fewer stray copies
+
+Needs a restart and a reload. Notes reach other computers once
+`supabase/25_curation_notes.sql` has been run in the SQL editor; until then
+they stay on the computer that wrote them, and the Sync panel names the file.
+
+Across Panning, Checkup, Spotter, Lock, Braces and Eye:
+
+- **Notes.** Anything that can be flagged can carry a note: press **W** (or
+  **+ Note** in the bar) on the event in front of you, or on a row of a Lock,
+  Braces or Eye review. The note shows in the bar beside the event, with whose
+  it is, and in the review table. It changes nothing else about the event,
+  and it goes into the Event Bank with the event when the set is banked, so
+  the next step sees why something was flagged. A set started again from that
+  version has the notes back.
+- **Save.** Every decision was already saved on the computer the moment it
+  was made, and uploaded with the next sync, so "does it save? do I just
+  leave it?" had no answer anybody could check. **Save**, at the end of the
+  bar, uploads the set now and asks the shared database what it holds:
+  "Saved. 412 of 1,476 decided, uploaded, and the shared database confirms it
+  (3:04 PM). Safe to leave." Leaving with work that has not been confirmed
+  asks **Save & leave**, **Leave** (the next sync uploads it) or **Stay**.
+- **View only.** Beside every Open on the bench and the shelf, and beside
+  every alignment in Lock, Braces and Eye: opens the set to look at. Nothing is
+  decided, noted or banked, and nobody's name goes on it; the bar says View
+  only, and **Work on it…** opens it properly, after asking.
+- **Opening a set no longer puts your name on it.** The first decision does.
+  A look at PTEN m34 s5's pool on 11-12 left Eshal's name on it.
+- **An old finished version picked up again never banks itself.** A set
+  started from (or put back to) a version where everything is decided is
+  marked as already banked. Changing one call in it used to bank a new version
+  on the spot.
+- **Hiding extra copies.** "Keep only this one…" (under More on a bench card)
+  hides the other sets of the same step on the same recording; nothing is
+  deleted, and they come back from the archived fold. In a version picker,
+  hidden versions are left out and counted under the tree ("Show 2 hidden
+  versions"), and Lock, Braces and Eye's pickers have **Hide versions…**:
+  hide one, or keep only one. Deleting a version for good stays in the Event
+  Bank.
+
 ## 2026.11.20.1 - A recording that paused is as long as its clock says
 
 Needs a restart.

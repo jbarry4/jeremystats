@@ -122,6 +122,16 @@ function makeBraces(cfg) {
   let filter = 'flag';  // which rows the table is showing
   let bench = null;     // { row, t, trace } while one is open
   let busy = false;
+  /* View only, and calls or notes not yet confirmed by a Save (curkit.js,
+     2026-11-20). */
+  let viewing = false;
+  let bdirty = 0;
+  /* Calls made since this proposal was opened. Leaving banks only a visit
+     that decided something (2026-11-20, Rain: "whenever we open ...
+     anything earlier than the most current step, it can automatically bank
+     as a new version") -- an old proposal opened to look at and left again
+     was banked on the way out. */
+  let visitCalls = 0;
 
   const $ = (s) => document.querySelector(s);
   const host = () => document.getElementById('tkResult');
@@ -504,13 +514,17 @@ function makeBraces(cfg) {
     try { await apiPost('/api/cfc/job/' + job.id + '/cancel', {}); } catch (e) {}
   }
 
-  async function openSet(setId) {
+  async function openSet(setId, opts) {
     try {
       set_ = await api('/api/braces/set/' + encodeURIComponent(setId));
     } catch (e) {
       toast('Could not open that alignment: ' + e.message, 'err', 8000);
       return;
     }
+    // Opened to look at (curkit.js): nothing is decided, banked or noted.
+    viewing = !!(opts && opts.viewOnly);
+    bdirty = 0;
+    visitCalls = 0;
     readOverlaps(set_.overlaps);
     /* Opening on the pass that wants an answer. An overlap only appears
        once somebody has been through the flags, so it comes second -- but
@@ -533,6 +547,7 @@ function makeBraces(cfg) {
      as what it is. */
   let saidAccepted = null;
   function accepted() {
+    if (viewing) { BARRY.curKit.refuse(); return true; }
     const c = set_ && set_.set && set_.set.committed;
     if (!c) return false;
     if (saidAccepted !== set_.set.set_id) {
@@ -562,6 +577,8 @@ function makeBraces(cfg) {
       set_.counts = got.counts;
       set_.would_move = got.would_move;
       set_.set.calls = got.calls;
+      bdirty += 1; BARRY.curKit.saveState(true);
+      visitCalls += 1;
       // A move onto a time its neighbour already holds flags both of them,
       // and moving either off unflags both -- so this is re-read on every
       // decision rather than only when the set is opened.
@@ -573,6 +590,56 @@ function makeBraces(cfg) {
   }
 
   const callFor = (n) => ((set_.set.calls || {})[String(n)] || {}).call || null;
+
+  /* A row's note (2026-11-20): `{text, by, at}`, or null. Allowed on an
+     accepted proposal too -- it moves nothing -- but not while viewing. */
+  const noteFor = (n) => {
+    const x = ((set_ && set_.set.notes) || {})[String(n)];
+    return x && x.text ? x : null;
+  };
+  async function writeRowNote(n) {
+    if (!set_ || n == null || n < 0) return;
+    if (viewing) { BARRY.curKit.refuse(); return; }
+    const own = set_;
+    const r = (own.set.rows || [])[n] || {};
+    const had = noteFor(n);
+    const got = await BARRY.curKit.editNote({
+      title: 'Note on the stamp at ' + clock(r.was),
+      about: (r.flag ? (REASONS[r.flag] || r.flag) + '. ' : '')
+             + (callFor(n) ? 'Answered: ' + callFor(n) + '.' : 'Not answered yet.'),
+      text: had ? had.text : '',
+      onSave: (text) => apiPost('/api/braces/set/'
+          + encodeURIComponent(own.set.set_id) + '/note', { row: n, note: text })
+        .then((res) => { own.set.notes = res.notes || own.set.notes; }),
+    });
+    if (got === null || set_ !== own) return;
+    bdirty += 1; BARRY.curKit.saveState(true);
+    if (view) vBar(); else render();
+  }
+
+  /* Save (curkit.js): the review up to the shared database now. */
+  async function saveSet() {
+    if (!set_) return null;
+    if (viewing) { BARRY.curKit.refuse(); return null; }
+    const r = await BARRY.curKit.save({
+      url: '/api/braces/set/' + encodeURIComponent(set_.set.set_id) + '/save' });
+    if (r && r.confirmed) {
+      bdirty = 0;
+      if (view) vBar(); else render();
+    }
+    return r;
+  }
+
+  /* View only, then asked, then working: the same alignment, opened again. */
+  async function workOnIt() {
+    if (!set_) return;
+    if (!(await BARRY.curKit.askToWork(set_.set.name || cfg.name))) return;
+    const id = set_.set.set_id;
+    const inView = !!view;
+    if (inView) exitView({ handoff: true });
+    await openSet(id);
+    if (inView) enter();
+  }
 
   /* THE OVERLAP FLAG, by row.
 
@@ -1224,6 +1291,8 @@ function makeBraces(cfg) {
         : 'branches off it — nothing after it is touched'),
       heading: 'Which version of ' + (c.name || 'this set') + '’s stamps',
       sub: W.versionSub,
+      // Hide the versions nobody should start from (2026-11-20).
+      manage: c.id ? { entry: c.id } : null,
     };
   }
 
@@ -1922,6 +1991,7 @@ function makeBraces(cfg) {
         heading: 'Which version of ' + rowLabel(c) + '’s stamps to align',
         sub: 'The newest one this computer can read is chosen unless you '
            + 'pick another.',
+        manage: c.id ? { entry: c.id } : null,
         state: (v) => (v === newestOf(c) ? ['newest readable here'] : []),
         onpick: (v) => {
           if (!v) return;
@@ -2598,7 +2668,7 @@ function makeBraces(cfg) {
   }
 
   function setRow(s, withName) {
-    return el('button', {
+    const row = el('button', {
       class: 'br-recent-row' + (s.committed ? ' done' : ''),
       'data-set': s.set_id,
       onclick: () => { reused = null; openSet(s.set_id); },
@@ -2609,6 +2679,10 @@ function makeBraces(cfg) {
          here can be picked up on another machine (2026-10-06). */
       BARRY.syncState ? BARRY.syncState.mark('braces', s.set_id) : null,
     ].filter(Boolean));
+    // View only, beside it (curkit.js, 2026-11-20).
+    return el('div', { class: 'br-recent-item' }, [row,
+      BARRY.curKit.viewButton(() => { reused = null;
+                                      openSet(s.set_id, { viewOnly: true }); })]);
   }
 
   /* EVERY ALIGNMENT, BY SET (2026-10-14).
@@ -2751,6 +2825,8 @@ function makeBraces(cfg) {
                                            + 'version') }),
       ]),
     ]));
+
+    if (viewing) box.appendChild(BARRY.curKit.viewBadge(workOnIt));
 
     if (reused && reused.set_id === s.set_id) {
       box.appendChild(el('div', { class: 'card br-reused' }, [
@@ -3082,11 +3158,22 @@ function makeBraces(cfg) {
              ? (said === 'keep' ? 'left where it was'
                 : said === 'move' ? 'moved by hand' : 'confirmed')
              : (REASONS[r.flag] || '')) }),
+        // The note, whole -- never cut short -- and a click on it edits it.
+        el('td', { class: 'br-note-td' }, [noteFor(n)
+          ? el('button', { class: 'ck-note-cell', type: 'button',
+              title: 'Note by ' + (noteFor(n).by || 'somebody')
+                     + ' — click to change it',
+              onclick: (e) => { e.stopPropagation(); writeRowNote(n); },
+              text: '✎ ' + noteFor(n).text })
+          : (viewing ? null : el('button', { class: 'ck-note-add', type: 'button',
+              title: 'Write a note on this stamp',
+              onclick: (e) => { e.stopPropagation(); writeRowNote(n); },
+              text: '+ note' }))].filter(Boolean)),
       ]));
     }
     const tbl = el('table', { class: 'br-tbl' }, [
       el('thead', {}, [el('tr', {}, ['', 'was', 'now', 'Δ ms',
-                                     'peak µV', 'why'].map((t) =>
+                                     'peak µV', 'why', 'note'].map((t) =>
         el('th', { text: t })))]),
       tb,
     ]);
@@ -3137,7 +3224,9 @@ function makeBraces(cfg) {
      with calls still waiting is said, not banked half-decided. */
   function autoBank(why) {
     if (BARRY.testNoAutobank || busy || !set_ || !set_.set
-        || set_.set.committed) return;
+        || set_.set.committed || viewing) return;
+    // Looked at and left: nothing was decided this visit, so nothing banks.
+    if (why === 'leave' && !visitCalls) return;
     if (!pendingWrite()) return;
     /* A first alignment that moves nothing banks when the last call is
        made, never on leaving: an old proposal opened and left again --
@@ -3164,6 +3253,21 @@ function makeBraces(cfg) {
   function acceptBar(c) {
     const s = set_.set;
     const bar = el('div', { class: 'br-accept' });
+    if (viewing) {
+      bar.appendChild(el('button', {
+        class: 'btn sm', text: 'Open on the recording\u2026',
+        title: 'The trace view, to look at. Nothing is decided there either.',
+        onclick: enter }));
+      return bar;
+    }
+    // Save (curkit.js): the calls and notes up to the shared database now.
+    bar.appendChild(el('button', {
+      class: 'btn sm ck-save', 'data-state': bdirty ? 'dirty' : 'clean',
+      text: bdirty ? 'Save' : 'Saved',
+      title: 'Upload this review to the shared database now and check it '
+           + 'arrived. Every call is already saved on this computer as you '
+           + 'make it.',
+      onclick: saveSet }));
     if (s.committed) return bar;
     const waiting = c.waiting || 0;
     const nextV = vName(set_.entry, 'next_name');
@@ -3342,7 +3446,7 @@ function makeBraces(cfg) {
        marks were published and then wiped a second later by the sync,
        which is why the trace view never changed. */
     sess.curation = { kind: 'braces', index: 0, set: set_.set };
-    setMode(cfg.mode, exitView);
+    setMode(cfg.mode, leaveView);
     vLayout();
     vGrab();
     // The traces through the band last looked at (Lock's always; Braces'
@@ -3470,6 +3574,15 @@ function makeBraces(cfg) {
 
   /* `opts.handoff`: another mode is being entered, and will say which view
      to show. */
+  /* Leave the trace view as a person does it: Save & leave first when the
+     shared database has not confirmed the review (curkit.js). */
+  async function leaveView() {
+    if (!view) return;
+    const go = await BARRY.curKit.leaveAsk({
+      dirty: !viewing && bdirty > 0, tool: cfg.name, save: saveSet });
+    if (go) exitView();
+  }
+
   function exitView(opts) {
     if (!view) return;
     const handoff = !!(opts && opts.handoff);
@@ -4144,6 +4257,7 @@ function makeBraces(cfg) {
       set_.counts = got.counts;
       set_.would_move = got.would_move;
       set_.set.calls = got.calls;
+      bdirty += 1; BARRY.curKit.saveState(true);
       // A move onto a time its neighbour already holds flags both of them,
       // and moving either off unflags both -- so this is re-read on every
       // decision rather than only when the set is opened.
@@ -4476,6 +4590,8 @@ function makeBraces(cfg) {
     const all = vRows();
     const r = vAt() || {};
     const said = callFor(view.at);
+    bar.classList.toggle('ck-viewing', viewing);
+    if (viewing) bar.appendChild(BARRY.curKit.viewBadge(workOnIt));
     const n = all.filter(vWanted).length;
     const seen = all.slice(0, view.at + 1).filter(vWanted).length;
     const left = (set_.counts || {}).waiting || 0;
@@ -4508,7 +4624,9 @@ function makeBraces(cfg) {
                 ? ' (stamp ' + (overlapMate(view.at) + 1) + ')' : '')
            : (r.flag ? '   ·   ' + (REASONS[r.flag] || r.flag) : '')) }),
       el('span', { class: 'cur-count', text: where }),
-    ]));
+      noteFor(view.at) ? BARRY.curKit.noteLine(noteFor(view.at).text,
+        noteFor(view.at).by, viewing ? null : () => writeRowNote(view.at)) : null,
+    ].filter(Boolean)));
 
     bar.appendChild(el('div', { class: 'cur-prog' }, [
       el('i', { style: 'width:' + (n ? (seen / n * 100) : 0) + '%' }),
@@ -4602,6 +4720,8 @@ function makeBraces(cfg) {
                      onclick: () => vStep(-1) }),
       el('button', { class: 'mini', text: '▶', title: 'Next  (n)',
                      onclick: () => vStep(1) }),
+      BARRY.curKit.noteButton(!!noteFor(view.at), () => writeRowNote(view.at),
+                              viewing),
       /* Moving it. Millisecond steps, because that is the grid everything
          here is measured on -- one sample at the rate the traces are
          decimated to. */
@@ -4725,7 +4845,14 @@ function makeBraces(cfg) {
                        title: 'Clears the whole pass. The proposal itself is '
                             + 'untouched.',
                        onclick: vUndoAll }),
-      ] }) : el('button', { class: 'btn ghost sm br-undo-all',
+      ],
+      save: viewing ? null : {
+        onclick: saveSet,
+        text: bdirty ? 'Save' : 'Saved',
+        state: bdirty ? 'dirty' : 'clean',
+        title: 'Upload this review to the shared database now and check it '
+             + 'arrived. Every call is already saved on this computer as you '
+             + 'make it.' } }) : el('button', { class: 'btn ghost sm br-undo-all',
                             text: 'Undo every decision', onclick: vUndoAll }),
     ]));
   }
@@ -4754,7 +4881,8 @@ function makeBraces(cfg) {
     else if (k === 'g') vGarbage();
     else if (k === 'l') { view.list = !view.list; vList(); vBar(); }
     else if (k === 'u' || k === '0') vUndo();
-    else if (k === 'escape') exitView();
+    else if (k === 'w') writeRowNote(view.at);
+    else if (k === 'escape') leaveView();
     else return;
     e.preventDefault();
     e.stopPropagation();
@@ -5209,8 +5337,15 @@ function makeBraces(cfg) {
       el('div', { style: 'flex:1' }),
       keyHint('↵', 'confirm'), keyHint('[ ]', 'nudge 1 ms'),
       keyHint('0', 'reset'), keyHint('k', 'keep'),
-      keyHint('n p', 'step'),
+      keyHint('n p', 'step'), keyHint('w', 'note'),
     ]));
+    if (noteFor(bench.n)) {
+      card.appendChild(BARRY.curKit.noteLine(noteFor(bench.n).text,
+        noteFor(bench.n).by, viewing ? null : () => writeRowNote(bench.n)));
+    } else if (!viewing) {
+      card.appendChild(el('button', { class: 'btn ghost sm',
+        text: '+ Note on this stamp', onclick: () => writeRowNote(bench.n) }));
+    }
     setTimeout(drawBench, 0);
     return card;
   }
@@ -5489,6 +5624,7 @@ function makeBraces(cfg) {
                           drawBench(); }
     else if (k === 'n') { stepBench(1); }
     else if (k === 'p') { stepBench(-1); }
+    else if (k === 'w') { writeRowNote(bench.n); }
     else if (k === 'escape') { bench = null; render(); }
     else return;
     e.preventDefault();
@@ -5499,6 +5635,7 @@ function makeBraces(cfg) {
   /* ---------- accepting ---------- */
   async function commit(apply) {
     if (busy || !set_) return;
+    if (viewing) { BARRY.curKit.refuse(); return; }
     busy = true;
     let out;
     try {
@@ -6137,6 +6274,7 @@ function makeBraces(cfg) {
   }
 
   async function discard() {
+    if (viewing) { BARRY.curKit.refuse(); return; }
     ask('Throw this proposal away?',
         el('p', { text:
           'The measurement and every decision made about it go. The set '

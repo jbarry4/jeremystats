@@ -1413,7 +1413,7 @@ BARRY.views.toolkit = (function () {
     curate: {
       tool: 'curate', title: 'Checkup', kinds: ['ds'], kind: 'ds',
       noun: 'dentate spikes', from: 'Incisor banks them.',
-      enter: (st) => BARRY.curate.enter(st.gid, st.kind),
+      enter: (st, o) => BARRY.curate.enter(st.gid, st.kind, o),
       startable: { kind: 'ds', noun: 'dentate spikes' },
     },
     spotter: {
@@ -1422,7 +1422,8 @@ BARRY.views.toolkit = (function () {
       hideTests: true,
       blurb: 'Confirm what the radar found, one discharge at a time: solid, '
            + 'sputter, or neither.',
-      enter: (st) => BARRY.spotter.enter(st.gid, null, { kind: st.kind }),
+      enter: (st, o) => BARRY.spotter.enter(st.gid, null,
+                                            Object.assign({ kind: st.kind }, o)),
       startable: {
         kind: 'ied', noun: 'discharges', otherLabel: 'imported',
         mine: { label: 'From Doppler', chip: 'Doppler',
@@ -1438,7 +1439,8 @@ BARRY.views.toolkit = (function () {
       blurb: 'Sort a pool one event at a time: spike, garbage or flag. Every '
            + 'event shows which detector found it, and two that are one '
            + 'event can be merged.',
-      enter: (st) => BARRY.panning.enter(st.gid, null, { kind: st.kind }),
+      enter: (st, o) => BARRY.panning.enter(st.gid, null,
+                                            Object.assign({ kind: st.kind }, o)),
       startable: {
         kind: 'pooled', noun: 'events', otherLabel: 'other',
         mine: { label: 'From Junction', chip: 'Junction',
@@ -1461,7 +1463,7 @@ BARRY.views.toolkit = (function () {
   }
 
   /* Opening a set through the door it was picked up from. */
-  function wbEnter(st) {
+  function wbEnter(st, o) {
     const w = wb();
     // Each door opens its own kind; a set of another kind opens in its own
     // door's mode (a pool in Panning, a run in Spotter), never in Checkup.
@@ -1469,7 +1471,53 @@ BARRY.views.toolkit = (function () {
     const own = Object.keys(WB).map((k) => WB[k])
       .find((x) => x.kinds && x.kinds.indexOf(base) >= 0);
     return (w.kinds && w.kinds.indexOf(base) < 0 ? (own || WB.curate) : w)
-      .enter(st);
+      .enter(st, o);
+  }
+
+  /* View only (curkit.js, 2026-11-20): opened to look at, from the bench or
+     the shelf, without picking it up -- nothing is written, banked or put
+     in anybody's name. */
+  function viewSet(st) {
+    return wbEnter(st, { viewOnly: true });
+  }
+
+  /* Keep this set in view and hide the other sets of the same step on the
+     same recording (Rain, 2026-11-20: "remove them from view"). Hidden is
+     archived: every decision stays and each comes back from the fold. */
+  async function keepOnlySet(st) {
+    const others = wbSets().filter((x) => x.gid === st.gid
+      && x.kind !== st.kind && !x.archived
+      && BARRY.ui.kindBase(x.kind) === BARRY.ui.kindBase(st.kind));
+    if (!others.length) {
+      toast('This is the only ' + (wb().title || '') + ' set of '
+            + ((st.session || {}).label || 'this recording')
+            + ' in view already.', null, 5000);
+      return;
+    }
+    const ok = await BARRY.confirm('Keep only this one?',
+      el('div', {}, [
+        el('p', { class: 'confirm-msg', text: 'Hides the other '
+          + others.length + ' set' + (others.length === 1 ? '' : 's') + ' of '
+          + ((st.session || {}).label || 'this recording') + ' here, so '
+          + 'nobody picks up the wrong one. Nothing is deleted: every '
+          + 'decision stays, and each can be brought back from the '
+          + 'archived fold at the bottom of the shelf.' }),
+        el('ul', { class: 'ck-keep-list' }, others.map((x) => el('li', {
+          text: (x.name || x.kind) + ' — '
+                + ((x.progress || {}).specified || 0) + ' of '
+                + ((x.progress || {}).total || 0) + ' decided'
+                + (x.assignee ? ', ' + x.assignee + '’s' : '') }))),
+      ]), 'Hide the others');
+    if (!ok) return;
+    try {
+      const got = await apiPost(BARRY.ui.setUrl(st.gid, st.kind, 'keep-only'), {});
+      const n = (got.hidden || []).length;
+      toast(n + ' hidden.' + ((got.skipped || []).length
+        ? ' Left alone: ' + got.skipped.map((x) => (x.name || x.kind)
+                                              + ' (' + x.why + ')').join(', ')
+          + '.' : ''), 'ok', 8000);
+      loadCuration();
+    } catch (e) { toast(e.message, 'err', 9000); }
   }
 
   /* Which half of Checkup is showing: the sets, or AI Beta (aibeta.js).
@@ -2215,6 +2263,12 @@ BARRY.views.toolkit = (function () {
             + 'and banked.',
         onclick: () => archiveSet(st, !st.archived),
       }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Keep only this one…',
+        title: 'Hide the other sets of this step on this recording, so '
+             + 'nobody picks up the wrong one. Nothing is deleted.',
+        onclick: () => keepOnlySet(st),
+      }),
       /* No Delete. It erased every machine's shard of the set -- the one
          irreversible thing in this view, sitting at the same weight as
          Export CSV. Archiving is what "get this out of my way" means, and
@@ -2276,6 +2330,8 @@ BARRY.views.toolkit = (function () {
               : 'Open the recording and step through the candidates',
           onclick: () => enterSet(st),
         }),
+        BARRY.curKit.viewButton(() => viewSet(st),
+                                { disabled: !reach, title: reach ? null : rr.why }),
         el('button', {
           class: 'btn ghost sm', text: 'Close',
           title: 'Off the bench. Nothing to save first — every decision '
@@ -2488,6 +2544,8 @@ BARRY.views.toolkit = (function () {
                                         preset: { gid: e.gid, entry: e.id },
                                         quick: true }),
         }),
+        // View only's column: a run with no set has nothing to look at.
+        el('span', { class: 'csr-slot' }),
         el('button', {
           class: 'btn ghost sm', text: e.archived ? 'Unarchive' : 'Archive',
           title: e.archived
@@ -2558,6 +2616,8 @@ BARRY.views.toolkit = (function () {
                + 'right now can still be claimed, named and exported.',
           onclick: () => pickUpSet(st),
         }),
+        BARRY.curKit.viewButton(() => viewSet(st),
+                                { disabled: !reach, title: reach ? null : rr.why }),
         el('button', {
           class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',
           title: st.archived ? 'Put it back on the shelf'
