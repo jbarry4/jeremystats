@@ -8,7 +8,7 @@
     "extraction_mode": "2026-11-20T14:25:56.252759+00:00",
     "extraction_set_archive": "2026-11-20T14:25:06.582694+00:00",
     "figure_profile": "2026-10-23T19:05:47.379192+00:00",
-    "gobble": "2026-11-20T15:55:45.652137+00:00",
+    "gobble": "2026-11-22T19:01:05.784395+00:00",
     "lock_hold": "2026-10-28T18:42:51.201738+00:00",
     "lock_trace_band": "2026-10-29T13:02:43.123053+00:00",
     "panning_at": "2026-11-22T01:49:33.822237+00:00",
@@ -17,7 +17,7 @@
     "spotter_at": "2026-11-20T17:12:16.343104+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels_lab": "2026-11-19T22:36:55.108889+00:00",
-    "updated": "2026-11-22T19:00:15.492751+00:00",
+    "updated": "2026-11-22T19:01:05.784395+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
     "xf_simplify_lock": "2026-10-29T12:30:13.790961+00:00",
     "xf_simplify_panning": "2026-11-22T16:01:07.625625+00:00",
@@ -1104,7 +1104,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-22T19:00:15.492751+00:00",
+    "at": "2026-11-22T19:01:05.784395+00:00",
     "machine": "isabellas-macbook-air.lo-c6a7",
     "schema": 1
   },
@@ -2618,6 +2618,11 @@
       "from": "horizon-night",
       "year": 2026
     },
+    "Isabellas-MacBook-Air.local": {
+      "chosen": false,
+      "from": "thanksgiving",
+      "year": 2026
+    },
     "LCOM549913": {
       "chosen": true,
       "from": "halloween",
@@ -3202,7 +3207,7 @@
     "ip0af5d200.int.uvm.edu": "thanksgiving",
     "samarasahagia": "halloween"
   },
-  "updated": "2026-11-22T13:00:15-06:00",
+  "updated": "2026-11-22T13:01:05-06:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
