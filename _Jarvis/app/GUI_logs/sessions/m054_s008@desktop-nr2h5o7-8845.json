@@ -1,0 +1,56 @@
+{
+  "_at": {
+    "created": "2026-09-10T03:01:46.958692+00:00",
+    "gid": "2026-09-10T03:01:46.958692+00:00",
+    "group": "2026-09-10T03:01:46.958692+00:00",
+    "key": "2026-09-10T03:01:46.958692+00:00",
+    "label": "2026-09-10T03:01:46.958692+00:00",
+    "loose_key": "2026-09-10T03:01:46.958692+00:00",
+    "mouse": "2026-09-10T03:01:46.958692+00:00",
+    "project": "2026-09-10T03:01:46.958692+00:00",
+    "project_source": "2026-09-10T03:01:46.958692+00:00",
+    "retired": "2026-09-10T03:01:46.958692+00:00",
+    "schema": "2026-09-10T03:01:46.958692+00:00",
+    "session": "2026-09-10T03:01:46.958692+00:00",
+    "start": "2026-09-10T03:01:46.958692+00:00",
+    "updated": "2026-09-10T03:54:33.437002+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M54_s8_DCZ": [
+        "set",
+        "2026-09-10T03:54:33.437002+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T03:54:33.437002+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-09T23:01:46-04:00",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "asull"
+  },
+  "gid": "scfd2b46d428c",
+  "key": "m054_s008",
+  "label": "PTEN_CSDsEtc m54 s8",
+  "loose_key": "m054_s008",
+  "mouse": 54,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M54_s8_DCZ"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 8,
+  "updated": {
+    "at": "2026-09-09T23:54:33-04:00",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "asull"
+  }
+}

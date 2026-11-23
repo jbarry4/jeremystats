@@ -1,0 +1,235 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>feedfocus: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* A field being typed in keeps the caret while the activity feed updates.
+
+   2026-10-30: "you click into a typing field and then it unselects the field
+   so you don't type anything! Whenever this updates, it unselects that
+   field" -- the Activity card under a tool, which polls every 15 s.
+
+   The feed's own answers are stubbed (a new row on every poll), so it
+   repaints on schedule with nothing real behind it; everything else the
+   page asks reaches the server, writes are refused, preference writes are
+   held and the activity log is quiet. Every way a node can leave the page
+   is watched while the field has the focus, and the first one that takes
+   the field with it is reported with its stack. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const ev = (c) => W.eval(c);
+  const D = () => frame.contentDocument;
+  say('booting', 'dim');
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  say('booted', 'dim');
+  await until(() => ev('!!(BARRY.prefs && BARRY.toolfeed && BARRY.rootcanal)'),
+              10000, 'the modules');
+
+  // Preferences held, the log quiet, writes refused, the feed stubbed.
+  // BARRY is a const in the page, not a property of its window.
+  const B = ev('BARRY');
+  const realSet = B.prefs.set;
+  const mem = {};
+  B.prefs.set = (k, v) => { mem[k] = v; return v; };
+  const realGet = B.prefs.get;
+  B.prefs.get = function (k, d) {
+    return (k in mem) ? mem[k] : realGet.apply(B.prefs, arguments);
+  };
+  const realLog = B.activity.log;
+  B.activity.log = () => {};
+  B.testNoAutobank = true;
+  const realFetch = W.fetch;
+  let polls = 0;
+  W.fetch = function (u, o) {
+    const s = String(u).split('?')[0];
+    const json = (obj, st) => Promise.resolve(new W.Response(JSON.stringify(obj),
+      { status: st || 200, headers: { 'Content-Type': 'application/json' } }));
+    if (/\/api\/toolfeed\//.test(s)) {
+      polls += 1;
+      const at = new Date().toISOString();
+      return json({ ok: true, source: 'supabase',
+        prefixes: ['rootcanal.', 'braces.', 'lock.', 'eye.'],
+        rows: [{ id: 'feedfocus-' + polls, at: at, action: 'rootcanal.read',
+                 detail: { n: polls }, git_user: 'Debug_Bot',
+                 machine: 'harness' }] });
+    }
+    if (o && o.method && o.method !== 'GET'
+        && !/\/api\/(rootcanal\/batch\/plan|presence|errors\/client)/.test(s)) {
+      return json({ ok: false, error: 'harness: no writes' }, 400);
+    }
+    return realFetch.apply(this, arguments);
+  };
+
+  /* Who takes the field away. Each way a node leaves the page is wrapped:
+     when the field is inside what goes, the stack is kept. */
+  let field = null;
+  const took = [];
+  const inside = (n) => field && n && n.nodeType === 1 && (n === field || n.contains(field));
+  const note = (how) => { took.push(how + '\n' + (new Error().stack || '')
+                                        .split('\n').slice(2, 9).join('\n')); };
+  const P = W.Element.prototype, N = W.Node.prototype;
+  const ih = Object.getOwnPropertyDescriptor(P, 'innerHTML');
+  Object.defineProperty(P, 'innerHTML', { configurable: true,
+    get() { return ih.get.call(this); },
+    set(v) { if (inside(this) && this !== field) note('innerHTML on ' + this.className);
+             return ih.set.call(this, v); } });
+  const tc = Object.getOwnPropertyDescriptor(N, 'textContent');
+  Object.defineProperty(N, 'textContent', { configurable: true,
+    get() { return tc.get.call(this); },
+    set(v) { if (inside(this) && this !== field) note('textContent on ' + this.className);
+             return tc.set.call(this, v); } });
+  const wrap = (proto, name, pick) => {
+    const real = proto[name];
+    proto[name] = function () {
+      const n = pick(this, arguments);
+      if (inside(n)) note(name + ' of ' + (n.className || n.tagName));
+      return real.apply(this, arguments);
+    };
+  };
+  wrap(N, 'removeChild', (self, a) => a[0]);
+  wrap(N, 'replaceChild', (self, a) => a[1]);
+  wrap(P, 'remove', (self) => self);
+  wrap(P, 'replaceWith', (self) => self);
+  wrap(P, 'replaceChildren', (self) => self);
+  const blurs = [];
+  const realBlur = W.HTMLElement.prototype.blur;
+  W.HTMLElement.prototype.blur = function () {
+    if (this === field) blurs.push((new Error().stack || '').split('\n').slice(1, 7).join('\n'));
+    return realBlur.apply(this, arguments);
+  };
+  const realFocus = W.HTMLElement.prototype.focus;
+  W.HTMLElement.prototype.focus = function () {
+    if (field && this !== field && D().activeElement === field) {
+      blurs.push('focus() moved to ' + (this.className || this.tagName) + '\n'
+                 + (new Error().stack || '').split('\n').slice(1, 7).join('\n'));
+    }
+    return realFocus.apply(this, arguments);
+  };
+
+  /* One field: focus it, type, sit through two feed polls, and ask. */
+  async function holds(what, sel) {
+    const f = D().querySelector(sel);
+    ok(what + ': the field is there', !!f, sel);
+    if (!f) return;
+    field = f;
+    took.length = 0; blurs.length = 0;
+    f.focus();
+    f.value = 'm';
+    f.dispatchEvent(new W.Event('input', { bubbles: true }));
+    const p0 = polls;
+    await until(() => polls >= p0 + 2, 40000, 'two feed polls');
+    await sleep(600);
+    ok(what + ': the feed polled while the field had the caret', polls >= p0 + 2,
+       (polls - p0) + ' poll(s)');
+    ok(what + ': the field is still on the page', f.isConnected,
+       took[0] || 'no removal caught');
+    ok(what + ': and still has the caret', D().activeElement === f,
+       'active: ' + ((D().activeElement || {}).className || (D().activeElement || {}).tagName)
+       + (blurs[0] ? '\n       ' + blurs[0] : '') + (took[0] ? '\n       ' + took[0] : ''));
+    field = null;
+  }
+
+  /* The panel drawn again from nothing while the field has the caret --
+     what a poll or an arrival does to a tool that repaints whole. The
+     field is a new element afterwards; the caret and the text must be in
+     it. */
+  async function repaint(what, sel, how) {
+    const f = D().querySelector(sel);
+    ok(what + ': the field is there', !!f, sel);
+    if (!f) return;
+    f.focus();
+    f.value = 'm1';
+    f.dispatchEvent(new W.Event('input', { bubbles: true }));
+    try { f.setSelectionRange(2, 2); } catch (e) { /* none */ }
+    ev(how);
+    await until(() => !f.isConnected, 3000, 'the repaint (a kept field is fine too)');
+    await sleep(400);
+    const g = D().querySelector(sel);
+    say('       ' + (f.isConnected ? 'the field was kept in place'
+                                   : 'the field was drawn again'), 'dim');
+    ok(what + ': the new field has the caret', g && D().activeElement === g,
+       'active: ' + ((D().activeElement || {}).className || (D().activeElement || {}).tagName));
+    ok(what + ': and the text typed so far', g && g.value === 'm1', g && g.value);
+    // Pressing elsewhere is leaving it: nothing pulls the caret back.
+    D().body.dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true }));
+    g && g.blur();
+    ev(how);
+    await sleep(600);
+    ok(what + ': once left, a repaint leaves the caret alone',
+       !D().activeElement || !D().activeElement.matches(sel),
+       'active: ' + ((D().activeElement || {}).className));
+  }
+
+  try {
+    head('ROOT CANAL, MANY');
+    ev('BARRY.rootcanal._setView && BARRY.rootcanal._setView("single")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const stepBtn = Array.from(D().querySelectorAll('.tk-step'))
+      .find((b) => /Root Canal/.test(b.textContent));
+    if (stepBtn) stepBtn.click();
+    await until(() => D().querySelector('.rc-mode'), 30000, 'Root Canal');
+    await until(() => D().querySelector('.tf .tf-row'), 30000, 'the feed');
+    const many = Array.from(D().querySelectorAll('.rc-mode button'))
+      .find((b) => /many/i.test(b.textContent));
+    if (many) many.click();
+    await until(() => D().querySelector('.rc-bulk-find input'), 60000, 'Many');
+    await holds('Root Canal Many search', '.rc-bulk-find input');
+
+    head('LOCK, THE ALIGNMENTS SEARCH');
+    ev('BARRY.views.toolkit.pick("lock", "confluence")');
+    await until(() => D().querySelector('.br-recent-search'), 60000, 'Lock');
+    await until(() => D().querySelector('.tf .tf-row'), 30000, 'the feed');
+    await holds('Lock alignments search', '.br-recent-search');
+    await repaint('Lock drawn again', '.br-recent-search', 'BARRY.lock.paint()');
+    await repaint('ToolKit drawn again', '.br-recent-search',
+                  'BARRY.views.toolkit.render()');
+  } catch (e) {
+    ok('the run finished', false, e && e.stack);
+  } finally {
+    W.fetch = realFetch;
+    B.prefs.set = realSet;
+    B.prefs.get = realGet;
+    B.activity.log = realLog;
+    say('');
+    say(pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+    document.title = 'feedfocus: ' + pass + ' ok, ' + fail + ' fail';
+    frame.src = 'about:blank';
+  }
+} catch (e) {
+  ok('the harness set up', false, e && e.stack);
+  document.title = 'feedfocus: ' + pass + ' ok, ' + fail + ' fail';
+  document.getElementById('app').src = 'about:blank';
+} })();
+</script></body></html>

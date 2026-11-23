@@ -1,0 +1,12 @@
+{
+ "definition": {
+  "ambiguous": {
+   "artifact_id": "2ba64f7dec44",
+   "nickname": "Ambiguous Dataset"
+  },
+  "grace": 0.1,
+  "name": "Fewest ambiguous · 10% grace"
+ },
+ "result": null,
+ "schema": "rootcanal_meta/1"
+}

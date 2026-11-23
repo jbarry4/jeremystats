@@ -1,0 +1,904 @@
+{
+ "ran": "2026-11-20",
+ "connections": {
+  "ctx_per": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "5 Allen experiments injected in TEa; median projection density in PERI 0.0015 (cerebellum control 0.0000); 1 of 5 at or above 0.002.",
+   "median": 0.00147,
+   "control": 0.0,
+   "n": 5,
+   "top": [
+    {
+     "id": 521617657,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0048
+    },
+    {
+     "id": 569623967,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0015
+    },
+    {
+     "id": 529428776,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0015
+    },
+    {
+     "id": 292208876,
+     "line": "Chrna2-Cre_OE25",
+     "density": 0.0007
+    },
+    {
+     "id": 603890605,
+     "line": "Ntsr1-Cre_GN220",
+     "density": 0.0001
+    }
+   ]
+  },
+  "ctx_por": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "283 Allen experiments injected in VISp; median projection density in VISpor 0.0022 (cerebellum control 0.0000); 145 of 283 at or above 0.002.",
+   "median": 0.00217,
+   "control": 2e-05,
+   "n": 283,
+   "top": [
+    {
+     "id": 180296424,
+     "line": "wild type",
+     "density": 0.4683
+    },
+    {
+     "id": 309004492,
+     "line": "wild type",
+     "density": 0.3456
+    },
+    {
+     "id": 127138787,
+     "line": "wild type",
+     "density": 0.2238
+    },
+    {
+     "id": 307743253,
+     "line": "wild type",
+     "density": 0.2158
+    },
+    {
+     "id": 512315551,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.2016
+    }
+   ]
+  },
+  "per_lec": {
+   "status": "untested",
+   "evidence": "allen",
+   "detail": "No Allen experiment has its primary injection in PERI."
+  },
+  "por_mec": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "36 Allen experiments injected in VISpor; median projection density in ENTm 0.0011 (cerebellum control 0.0000); 16 of 36 at or above 0.002.",
+   "median": 0.0011,
+   "control": 5e-05,
+   "n": 36,
+   "top": [
+    {
+     "id": 657172447,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.0309
+    },
+    {
+     "id": 127089669,
+     "line": "wild type",
+     "density": 0.0201
+    },
+    {
+     "id": 298178204,
+     "line": "Rbp4-Cre_KL100",
+     "density": 0.0167
+    },
+    {
+     "id": 293470216,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0152
+    },
+    {
+     "id": 661987195,
+     "line": "Rbp4-Cre_KL100",
+     "density": 0.0134
+    }
+   ]
+  },
+  "lpp": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in DG-mo 0.0062 (cerebellum control 0.0000); 28 of 47 at or above 0.002.",
+   "median": 0.00625,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 146553971,
+     "line": "wild type",
+     "density": 0.1315
+    },
+    {
+     "id": 263974698,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.1122
+    },
+    {
+     "id": 301264977,
+     "line": "Gpr26-Cre_KO250",
+     "density": 0.1101
+    },
+    {
+     "id": 126116848,
+     "line": "wild type",
+     "density": 0.0941
+    },
+    {
+     "id": 287769992,
+     "line": "Scnn1a-Tg3-Cre",
+     "density": 0.0776
+    }
+   ]
+  },
+  "mpp": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in DG-mo 0.0226 (cerebellum control 0.0000); 35 of 45 at or above 0.002.",
+   "median": 0.02256,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 603468246,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.1592
+    },
+    {
+     "id": 181859467,
+     "line": "Cux2-CreERT2",
+     "density": 0.1449
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.1337
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.0997
+    },
+    {
+     "id": 287953223,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0977
+    }
+   ]
+  },
+  "pp_ca3": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in CA3 0.0055 (cerebellum control 0.0000); 25 of 45 at or above 0.002.",
+   "median": 0.00553,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.058
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.0455
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.0393
+    },
+    {
+     "id": 112672974,
+     "line": "wild type",
+     "density": 0.0383
+    },
+    {
+     "id": 518745840,
+     "line": "Grp-Cre_KH288",
+     "density": 0.0268
+    }
+   ]
+  },
+  "pp_ca2": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in CA2 0.0129 (cerebellum control 0.0000); 33 of 45 at or above 0.002.",
+   "median": 0.0129,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.1059
+    },
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.0977
+    },
+    {
+     "id": 518745840,
+     "line": "Grp-Cre_KH288",
+     "density": 0.0758
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.0621
+    },
+    {
+     "id": 626107114,
+     "line": "wild type",
+     "density": 0.0599
+    }
+   ]
+  },
+  "ta": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in CA1 0.0109 (cerebellum control 0.0000); 33 of 47 at or above 0.002.",
+   "median": 0.01088,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 114472145,
+     "line": "wild type",
+     "density": 0.0864
+    },
+    {
+     "id": 272414403,
+     "line": "wild type",
+     "density": 0.0625
+    },
+    {
+     "id": 142654100,
+     "line": "wild type",
+     "density": 0.0594
+    },
+    {
+     "id": 263974698,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0568
+    },
+    {
+     "id": 126116848,
+     "line": "wild type",
+     "density": 0.0546
+    }
+   ]
+  },
+  "ec3_sub": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in SUB 0.0275 (cerebellum control 0.0000); 38 of 45 at or above 0.002.",
+   "median": 0.02753,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.1735
+    },
+    {
+     "id": 640282128,
+     "line": "wild type",
+     "density": 0.1616
+    },
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.1541
+    },
+    {
+     "id": 287953223,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.1082
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.1009
+    }
+   ]
+  },
+  "pp_pv": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mf_ca3": {
+   "status": "supported",
+   "evidence": "ccf",
+   "fraction": 0.619,
+   "detail": "62% of 4.8 mm of axon in ca3so, ca3sp, ca3slu, ca3sr, CA3 (needs 25%); evidence: AA0091 was registered to CCFv3 by its authors."
+  },
+  "mf_mc": {
+   "status": "supported",
+   "evidence": "ccf",
+   "fraction": 0.349,
+   "detail": "35% of 4.8 mm of axon in hil (needs 10%); evidence: AA0091 was registered to CCFv3 by its authors."
+  },
+  "mf_int": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "gc_pv": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mc_gc": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mc_int": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "hipp_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.384,
+   "detail": "38% of 14.9 mm of axon in oml1, mml1, oml2, mml2 (needs 30%); placement only: HIPP1 was traced in a slice and placed here by fit."
+  },
+  "pv_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.998,
+   "detail": "100% of 20.4 mm of axon in gcl1, gcl2 (needs 50%); placement only: class-BC1 was traced in a slice and placed here by fit."
+  },
+  "aac_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.971,
+   "detail": "97% of 24.1 mm of axon in gcl1, gcl2, hil (needs 50%); placement only: 082113-1COMAACscale was traced in a slice and placed here by fit."
+  },
+  "sgc_hil": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.439,
+   "detail": "44% of 3.7 mm of axon in hil, ca3slu, ca3sp (needs 20%); placement only: Anstoetz_Toolbox-SL1 was traced in a slice and placed here by fit."
+  },
+  "rc": {
+   "status": "supported",
+   "evidence": "ccf",
+   "fraction": 0.109,
+   "detail": "11% of 206.8 mm of axon in ca3so, ca3sr, ca3sp, ca3slu, CA3 (needs 5%); evidence: AA0999 was registered to CCFv3 by its authors."
+  },
+  "sc": {
+   "status": "supported",
+   "evidence": "ccf",
+   "fraction": 0.567,
+   "detail": "57% of 206.8 mm of axon in ca1so, ca1sr, ca1sp, ca1slm, CA1 (needs 30%); evidence: AA0999 was registered to CCFv3 by its authors."
+  },
+  "sc_allen": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "29 Allen experiments injected in CA3; median projection density in CA1 0.0791 (cerebellum control 0.0000); 26 of 29 at or above 0.002.",
+   "median": 0.07909,
+   "control": 3e-05,
+   "n": 29,
+   "top": [
+    {
+     "id": 177606858,
+     "line": "Grik4-Cre",
+     "density": 0.3473
+    },
+    {
+     "id": 113935285,
+     "line": "wild type",
+     "density": 0.3359
+    },
+    {
+     "id": 114429338,
+     "line": "wild type",
+     "density": 0.3118
+    },
+    {
+     "id": 177780284,
+     "line": "Grik4-Cre",
+     "density": 0.3026
+    },
+    {
+     "id": 112745073,
+     "line": "wild type",
+     "density": 0.2954
+    }
+   ]
+  },
+  "back": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "ca2_ca1": {
+   "status": "untested",
+   "evidence": "allen",
+   "detail": "No Allen experiment has its primary injection in CA2."
+  },
+  "ca1_olm": {
+   "status": "supported",
+   "evidence": "ccf",
+   "fraction": 0.397,
+   "detail": "40% of 83.6 mm of axon in ca1so, alv (needs 10%); evidence: AA0959 was registered to CCFv3 by its authors."
+  },
+  "olm_ca1": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.807,
+   "detail": "81% of 13.1 mm of axon in ca1slm (needs 40%); placement only: cell-pair-02-12-10-A_file2 was traced in a slice and placed here by fit."
+  },
+  "ca1_sub": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "33 Allen experiments injected in CA1; median projection density in SUB 0.0234 (cerebellum control 0.0000); 30 of 33 at or above 0.002.",
+   "median": 0.02339,
+   "control": 1e-05,
+   "n": 33,
+   "top": [
+    {
+     "id": 120436274,
+     "line": "wild type",
+     "density": 0.1027
+    },
+    {
+     "id": 267104205,
+     "line": "Slc17a7-IRES2-Cre",
+     "density": 0.0889
+    },
+    {
+     "id": 116900714,
+     "line": "wild type",
+     "density": 0.0803
+    },
+    {
+     "id": 301130077,
+     "line": "Drd3-Cre_KI198",
+     "density": 0.0792
+    },
+    {
+     "id": 516526160,
+     "line": "Chrnb4-Cre_OL57",
+     "density": 0.0747
+    }
+   ]
+  },
+  "ca1_ec5": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "33 Allen experiments injected in CA1; median projection density in ENTl 0.0016 (cerebellum control 0.0000); 16 of 33 at or above 0.002.",
+   "median": 0.00164,
+   "control": 1e-05,
+   "n": 33,
+   "top": [
+    {
+     "id": 286610923,
+     "line": "Syt17-Cre_NO14",
+     "density": 0.0673
+    },
+    {
+     "id": 182226839,
+     "line": "Vipr2-Cre_KE2",
+     "density": 0.0374
+    },
+    {
+     "id": 286610216,
+     "line": "Syt17-Cre_NO14",
+     "density": 0.033
+    },
+    {
+     "id": 516526160,
+     "line": "Chrnb4-Cre_OL57",
+     "density": 0.0211
+    },
+    {
+     "id": 181093729,
+     "line": "Etv1-CreERT2",
+     "density": 0.0135
+    }
+   ]
+  },
+  "sub_ec5": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in ENTm 0.0101 (cerebellum control 0.0000); 25 of 30 at or above 0.002.",
+   "median": 0.0101,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 159374329,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.113
+    },
+    {
+     "id": 267747690,
+     "line": "Grm2-Cre_MR90",
+     "density": 0.0768
+    },
+    {
+     "id": 506426778,
+     "line": "Gpr26-Cre_KO250",
+     "density": 0.0686
+    },
+    {
+     "id": 485929089,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0673
+    },
+    {
+     "id": 550155867,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.0568
+    }
+   ]
+  },
+  "sub_pre": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in PRE 0.0221 (cerebellum control 0.0000); 26 of 30 at or above 0.002.",
+   "median": 0.02213,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 556343427,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.4194
+    },
+    {
+     "id": 152994878,
+     "line": "wild type",
+     "density": 0.3474
+    },
+    {
+     "id": 127222723,
+     "line": "wild type",
+     "density": 0.3128
+    },
+    {
+     "id": 550155867,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.2435
+    },
+    {
+     "id": 550892495,
+     "line": "Trib2-F2A-CreERT2",
+     "density": 0.2339
+    }
+   ]
+  },
+  "sub_subc": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in MBO 0.0211 (cerebellum control 0.0000); 22 of 30 at or above 0.002.",
+   "median": 0.02114,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 127795906,
+     "line": "wild type",
+     "density": 0.2741
+    },
+    {
+     "id": 556343427,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.2651
+    },
+    {
+     "id": 152994878,
+     "line": "wild type",
+     "density": 0.2088
+    },
+    {
+     "id": 127222723,
+     "line": "wild type",
+     "density": 0.1565
+    },
+    {
+     "id": 159374329,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.1477
+    }
+   ]
+  },
+  "pre_mec": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "7 Allen experiments injected in PRE; median projection density in ENTm 0.0803 (cerebellum control 0.0000); 5 of 7 at or above 0.002.",
+   "median": 0.08034,
+   "control": 0.0,
+   "n": 7,
+   "top": [
+    {
+     "id": 146984915,
+     "line": "wild type",
+     "density": 0.1117
+    },
+    {
+     "id": 287172689,
+     "line": "Grm2-Cre_MR90",
+     "density": 0.0921
+    },
+    {
+     "id": 292530653,
+     "line": "Wfs1-Tg2-CreERT2",
+     "density": 0.0822
+    },
+    {
+     "id": 302084009,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.0803
+    },
+    {
+     "id": 287772112,
+     "line": "Scnn1a-Tg3-Cre",
+     "density": 0.0666
+    }
+   ]
+  },
+  "ec5_ec2": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "ec5_ctx": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in PERI 0.0265 (cerebellum control 0.0000); 39 of 47 at or above 0.002.",
+   "median": 0.02648,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 114472145,
+     "line": "wild type",
+     "density": 0.4114
+    },
+    {
+     "id": 146553971,
+     "line": "wild type",
+     "density": 0.375
+    },
+    {
+     "id": 127397469,
+     "line": "wild type",
+     "density": 0.3101
+    },
+    {
+     "id": 142654100,
+     "line": "wild type",
+     "density": 0.2185
+    },
+    {
+     "id": 180297139,
+     "line": "wild type",
+     "density": 0.2003
+    }
+   ]
+  }
+ },
+ "cells": {
+  "gc": {
+   "soma": "gcl1",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in gcl1 (CCF 8979, 3473, 8649 um), as expected."
+   ]
+  },
+  "sgc": {
+   "soma": "iml1",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.71 of 1.1): soma in iml1."
+   ]
+  },
+  "mc": {
+   "soma": "hil",
+   "soma_ok": true,
+   "kind": "drawn",
+   "notes": [],
+   "identity": "drawn"
+  },
+  "hipp": {
+   "soma": "hil",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.67 of 1.1): soma in hil."
+   ]
+  },
+  "pvbc": {
+   "soma": "gcl1",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 1.00 of 1.1): soma in gcl1."
+   ]
+  },
+  "aac": {
+   "soma": "gcl1",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.98 of 1.1): soma in gcl1."
+   ]
+  },
+  "stel": {
+   "soma": "ENTm2",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 1.04 of 1.1): soma in ENTm2."
+   ]
+  },
+  "fan": {
+   "soma": "ENTl2",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ENTl2 (CCF 9658, 3666, 10094 um), as expected.",
+    "Dendrites in layer I: 0% of 2.3 mm. Fan cells send their dendrites up into layer I; this one keeps them in ENTl3, ENTl2, so its identity as a fan cell is unconfirmed (NeuroMorpho lists it only as a LEC layer II principal cell)."
+   ],
+   "identity": "unconfirmed"
+  },
+  "ca3": {
+   "soma": "ca3sp",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ca3sp (CCF 6156, 2384, 6380 um), as expected."
+   ]
+  },
+  "ca1": {
+   "soma": "ca1sp",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ca1sp (CCF 6548, 1948, 7143 um), as expected."
+   ]
+  },
+  "olm": {
+   "soma": "ca1so",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.96 of 1.1): soma in ca1so."
+   ]
+  }
+ },
+ "lamina": [
+  {
+   "layer": "gcl1",
+   "vs": [
+    "iml1",
+    "hil",
+    "mml1"
+   ],
+   "ratio": 1.38,
+   "ok": true,
+   "detail": "Mean Nissl in gcl1 is 1.38x the densest of iml1, hil, mml1."
+  },
+  {
+   "layer": "gcl2",
+   "vs": [
+    "iml2",
+    "hil",
+    "mml2"
+   ],
+   "ratio": 1.19,
+   "ok": true,
+   "detail": "Mean Nissl in gcl2 is 1.19x the densest of iml2, hil, mml2."
+  },
+  {
+   "layer": "ca1sp",
+   "vs": [
+    "ca1so",
+    "ca1sr"
+   ],
+   "ratio": 2.37,
+   "ok": true,
+   "detail": "Mean Nissl in ca1sp is 2.37x the densest of ca1so, ca1sr."
+  },
+  {
+   "layer": "ca3sp",
+   "vs": [
+    "ca3so",
+    "ca3slu",
+    "ca3sr"
+   ],
+   "ratio": 2.54,
+   "ok": true,
+   "detail": "Mean Nissl in ca3sp is 2.54x the densest of ca3so, ca3slu, ca3sr."
+  },
+  {
+   "layer": "ca2sp",
+   "vs": [
+    "ca2so",
+    "ca2sr"
+   ],
+   "ratio": 3.39,
+   "ok": true,
+   "detail": "Mean Nissl in ca2sp is 3.39x the densest of ca2so, ca2sr."
+  }
+ ],
+ "findings": [
+  {
+   "about": "gc",
+   "text": "NeuroMorpho lists MouseLight AA0998 as a dentate granule cell, but its axon is 108 mm long and stays in the molecular layer; real MouseLight granule cells have 3-5 mm axons through the hilus into CA3. AA0998 is not used; AA0091 is."
+  },
+  {
+   "about": "ccf",
+   "text": "MouseLight source files are (ML, DV, AP); SEU-ALLEN (Peng) files are (AP, DV, ML). Found by checking which order puts each soma in the region its authors named."
+  },
+  {
+   "about": "ca1",
+   "text": "MouseLight AA0960, listed as CA1, has its soma in CA3 by the CCFv3 annotation (near the border); AA0959 (soma in CA1 sp) is used instead."
+  },
+  {
+   "about": "mc",
+   "text": "No mouse or rat mossy-cell tracing is on NeuroMorpho.Org (searched 2026-11-20); the mossy cell is drawn from published descriptions."
+  },
+  {
+   "about": "ca",
+   "text": "CCFv3 does not annotate CA strata or the thirds of the molecular layer; Seahorse derives them (see each layer), and the Nissl test above is how they are checked."
+  }
+ ],
+ "method": "Seahorse auto cross-check: test what the schematic claims against data.\n\n    python tools/seahorse/crosscheck.py      -> web/seahorse/checks.json\n\nThree kinds of test, each with a verdict the tab shows beside the claim:\n\n  Allen connectivity   for a region-level connection A -> B: every Allen\n                       Mouse Connectivity experiment whose primary injection\n                       is in A; projection density in B (both hemispheres)\n                       against the same experiments' density in cerebellum\n                       (a structure none of these project to). supported if\n                       the median is >= 0.002 and >= 5x the control.\n  tracings             for a cell-level connection: the share of the\n                       exemplar's axon (or dendrite) length in the layers the\n                       claim names. 'evidence' when the tracing was registered\n                       to CCF by its authors; 'placement' when the cell was\n                       traced in a slice and placed here by fit -- then it only\n                       says the placement is sane.\n  laminae vs Nissl     each derived layer's mean Nissl density: granule and\n                       pyramidal layers must be denser than their neighbors.\n\nPlus findings: things the checks turned up about the sources themselves.",
+ "nissl_means": {
+  "oml1": 35.9,
+  "mml1": 35.4,
+  "iml1": 62.4,
+  "gcl1": 147.4,
+  "hil": 107.0,
+  "gcl2": 127.8,
+  "iml2": 44.0,
+  "mml2": 36.9,
+  "oml2": 43.7,
+  "ca1so": 54.6,
+  "ca1sp": 129.2,
+  "ca1sr": 32.9,
+  "ca1slm": 32.8,
+  "ca2so": 39.3,
+  "ca2sp": 133.4,
+  "ca2sr": 32.2,
+  "ca2slm": 29.7,
+  "ca3so": 52.2,
+  "ca3sp": 154.9,
+  "ca3slu": 61.0,
+  "ca3sr": 31.9,
+  "ca3slm": 31.2,
+  "sub": 61.0,
+  "pros": 51.9,
+  "fc": 70.8,
+  "ig": 54.9,
+  "alv": 43.1,
+  "fi": 42.9
+ }
+}

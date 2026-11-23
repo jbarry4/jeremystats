@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-09-04T15:57:01.635110+00:00",
+    "duration_s": "2026-09-04T15:57:01.635110+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.635110+00:00",
+    "fs": "2026-09-04T15:57:01.635110+00:00",
+    "gid": "2026-09-04T15:57:01.635110+00:00",
+    "group": "2026-09-04T15:57:01.635110+00:00",
+    "key": "2026-09-10T03:06:57.240361+00:00",
+    "label": "2026-09-10T03:06:57.240361+00:00",
+    "loose_key": "2026-09-10T03:06:57.240361+00:00",
+    "mouse": "2026-09-10T03:06:57.240361+00:00",
+    "n_channels": "2026-09-04T15:57:01.635110+00:00",
+    "project": "2026-09-10T03:06:57.240361+00:00",
+    "project_source": "2026-09-10T03:06:57.240361+00:00",
+    "retired": "2026-09-10T03:06:57.240361+00:00",
+    "schema": "2026-09-10T03:06:57.240361+00:00",
+    "session": "2026-09-10T03:06:57.240361+00:00",
+    "start": "2026-09-10T03:06:57.240361+00:00",
+    "updated": "2026-10-23T19:20:33.715504+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\M10_HF6_pten\\m10s3aug23\\2023-08-23_16-07-47": [
+        "set",
+        "2026-09-10T03:59:47.246382+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M10_HF6_pten\\m10s3aug23\\2023-08-23_16-07-47": [
+        "set",
+        "2026-10-23T19:20:33.715504+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.635110+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-23T19:20:33.715504+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:26:31-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 798.9248,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s489ab15c299c",
+  "group": "PTEN",
+  "key": "m010_s003_2023-08-23_16-07-47",
+  "label": "PTEN m10 s3 2023-08-23",
+  "loose_key": "m010_s003",
+  "mouse": 10,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\M10_HF6_pten\\m10s3aug23\\2023-08-23_16-07-47",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M10_HF6_pten\\m10s3aug23\\2023-08-23_16-07-47"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:31-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\M10_HF6_pten\\m10s3aug23\\2023-08-23_16-07-47",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 3,
+  "start": "2023-08-23T16:07:47+00:00",
+  "updated": {
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:33-04:00",
+    "commit": "be1e2ae4",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

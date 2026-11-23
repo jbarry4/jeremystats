@@ -1,0 +1,63 @@
+{
+  "_at": {
+    "created": "2026-10-14T19:13:50.526396+00:00",
+    "gid": "2026-10-19T15:04:14.533326+00:00",
+    "key": "2026-10-14T19:15:51.654681+00:00",
+    "label": "2026-10-19T15:04:14.533326+00:00",
+    "loose_key": "2026-10-14T19:15:51.654681+00:00",
+    "mouse": "2026-10-14T19:15:51.654681+00:00",
+    "project": "2026-10-14T19:15:51.654681+00:00",
+    "project_source": "2026-10-14T19:15:51.654681+00:00",
+    "retired": "2026-10-14T19:15:51.654681+00:00",
+    "schema": "2026-10-14T19:15:51.654681+00:00",
+    "session": "2026-10-14T19:15:51.654681+00:00",
+    "start": "2026-10-14T19:15:51.654681+00:00",
+    "updated": "2026-10-19T15:04:14.533326+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con1\\multi_spcon_con1_J1_FP2\\2025-09-16_12-35-36": [
+        "set",
+        "2026-10-14T19:16:26.120905+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T15:04:14.533326+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:13:50-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s0f40e2055f53",
+  "key": "r001_s011_2025-09-16_10-47-50",
+  "label": "DEWEY r1 s11 Con1 FP1 2025-09-16",
+  "loose_key": "r001_s011",
+  "mouse": 1,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con1\\multi_spcon_con1_J1_FP2\\2025-09-16_12-35-36"
+  ],
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 11,
+  "start": "2025-09-16T14:47:50+00:00",
+  "updated": {
+    "app_version": "2026.10.15.1",
+    "at": "2026-10-19T11:04:14-04:00",
+    "commit": "db630f57",
+    "email": "asullenb@uvm.edu",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "Avery Sullenberger"
+  }
+}

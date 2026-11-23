@@ -1,0 +1,1754 @@
+{
+ "id": "f022a45e9d9a",
+ "kind": "bug",
+ "title": "Prospector issue",
+ "detail": "s",
+ "context": {
+  "view": "errors",
+  "recording": "KCNT1 m1606 s1 2026-08-04",
+  "path": "vacc:s9a8f6138b49e",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 1.403161,
+   "span": 0.4
+  },
+  "screen": "1912x948",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0"
+ },
+ "wants": "",
+ "state": "open",
+ "at": "2026-11-05T13:33:37-0500",
+ "by": "Isabella Piatek",
+ "machine": "LCOM549913",
+ "shard": "lcom549913-e62b",
+ "screenshots": [],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "71b82a49b3",
+    "at": "2026-11-05T18:30:05.457Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "20361cd921",
+    "at": "2026-11-05T18:30:04.087Z",
+    "action": "session.open",
+    "detail": {
+     "path": "vacc:s9a8f6138b49e",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1803.9125333333334,
+     "restored": [
+      "read off read in place, on a share VACC mounts",
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "6d80bc80f6",
+    "at": "2026-11-05T18:29:49.115Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "dc1749827f",
+    "at": "2026-11-05T18:29:46.127Z",
+    "action": "panning.enter",
+    "detail": {
+     "gid": "s9a8f6138b49e",
+     "n": 1038,
+     "left": 521
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "1080a7f9a7",
+    "at": "2026-11-05T18:29:46.103Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.4032,
+     "span": 0.4,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "11c03a893f",
+    "at": "2026-11-05T18:29:46.009Z",
+    "action": "mode.change",
+    "detail": {
+     "from": null,
+     "to": "panning",
+     "via": "Object.enter (http://127.0.0.1:8733/js/panning.js?v=18e538bc88d540b4:215:5)",
+     "since_gesture_ms": 6422
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "0a81a8590c",
+    "at": "2026-11-05T18:29:19.159Z",
+    "action": "mode.change",
+    "detail": {
+     "from": "panning",
+     "to": null,
+     "via": "exit (http://127.0.0.1:8733/js/panning.js?v=18e538bc88d540b4:360:5) < HTMLButtonElement.<anonymous> (http://127.0.0.1:8733/js/core.js?v=18e538bc856f0374:2364:13)",
+     "since_gesture_ms": 85
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "a105e4e436",
+    "at": "2026-11-05T18:29:19.130Z",
+    "action": "panning.leave",
+    "detail": {
+     "gid": "s9a8f6138b49e",
+     "left": 521
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "01fc303eae",
+    "at": "2026-11-05T18:29:11.208Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "a9c717292b",
+    "at": "2026-11-05T18:29:11.195Z",
+    "action": "session.open",
+    "detail": {
+     "path": "vacc:s9a8f6138b49e",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1803.9125333333334,
+     "restored": [
+      "read off read in place, on a share VACC mounts",
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "65fc024d67",
+    "at": "2026-11-05T18:29:04.029Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "5372b4786c",
+    "at": "2026-11-05T18:29:02.290Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "c4f85ef7ad",
+    "at": "2026-11-05T18:29:02.259Z",
+    "action": "panning.enter",
+    "detail": {
+     "gid": "s9a8f6138b49e",
+     "n": 1038,
+     "left": 521
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ae4d7079fa",
+    "at": "2026-11-05T18:29:02.242Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.4032,
+     "span": 0.4,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "0f853f9461",
+    "at": "2026-11-05T18:29:02.150Z",
+    "action": "mode.change",
+    "detail": {
+     "from": null,
+     "to": "panning",
+     "via": "Object.enter (http://127.0.0.1:8733/js/panning.js?v=18e538bc88d540b4:215:5)",
+     "since_gesture_ms": 24778
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "1d4d818f36",
+    "at": "2026-11-05T18:29:02.146Z",
+    "action": "session.open",
+    "detail": {
+     "path": "vacc:s9a8f6138b49e",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1803.9125333333334,
+     "restored": [
+      "read off read in place, on a share VACC mounts",
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m1606_s001_2026-08-04_11-20-06",
+     "loose_key": "m1606_s001",
+     "label": "KCNT1 m1606 s1 2026-08-04",
+     "mouse": 1606,
+     "session": 1,
+     "path": "vacc:s9a8f6138b49e"
+    },
+    "view": "xplore",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "7f9a4043d5",
+    "at": "2026-11-05T18:27:59.693Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m034_s005_2024-06-10_14-45-34",
+     "loose_key": "m034_s005",
+     "label": "PTEN m34 s5 2024-06-10",
+     "mouse": 34,
+     "session": 5,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s5\\2024-06-10_14-45-34"
+    },
+    "view": "sessions",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "b21430e1c9",
+    "at": "2026-11-05T18:27:59.662Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s5\\2024-06-10_14-45-34",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1295.9744,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m034_s005_2024-06-10_14-45-34",
+     "loose_key": "m034_s005",
+     "label": "PTEN m34 s5 2024-06-10",
+     "mouse": 34,
+     "session": 5,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s5\\2024-06-10_14-45-34"
+    },
+    "view": "sessions",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "a7d253948c",
+    "at": "2026-11-05T18:27:53.851Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2d98b6376a",
+    "at": "2026-11-05T13:29:46-05:00",
+    "action": "curation.open",
+    "detail": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "assignee": "Isabella Piatek",
+     "left": 521
+    },
+    "session": {},
+    "view": null,
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2afdedfffa",
+    "at": "2026-11-05T13:29:02-05:00",
+    "action": "curation.open",
+    "detail": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "assignee": "Isabella Piatek",
+     "left": 521
+    },
+    "session": {},
+    "view": null,
+    "user": "Isabella Piatek",
+    "machine": "Blackbarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   }
+  ],
+  "errors": [],
+  "requests": [
+   {
+    "at": "13:29:52",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 3735.8,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, climBy, fdefault, flock, gain, hp, invert, lp}"
+    },
+    "n": 139
+   },
+   {
+    "at": "13:30:04",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 14057.8,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true
+    },
+    "n": 140
+   },
+   {
+    "at": "13:30:04",
+    "method": "GET",
+    "path": "/api/session/bad/s9a8f6138b49e",
+    "status": 200,
+    "ms": 11101.4,
+    "n": 141
+   },
+   {
+    "at": "13:30:04",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "folder": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43",
+     "track": "session"
+    },
+    "n": 142
+   },
+   {
+    "at": "13:30:05",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 13596.4,
+    "query": "head=1",
+    "n": 143
+   },
+   {
+    "at": "13:30:05",
+    "method": "POST",
+    "path": "/api/cloud/active",
+    "status": 200,
+    "ms": 0.1,
+    "n": 144
+   },
+   {
+    "at": "13:30:05",
+    "method": "POST",
+    "path": "/api/prospector/sweep",
+    "status": 200,
+    "ms": 80.9,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "ds_loss": null
+    },
+    "n": 145
+   },
+   {
+    "at": "13:30:05",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 8.0,
+    "body": {
+     "path": "/netfiles/bigdata_jbarry/Jeremy3/KCNT1/Summer'26/KCNT1_m1606/KCNT1_m1606_s01_080426/2026-08-04_11-20-06/Events.nev",
+     "session_path": "vacc:s9a8f6138b49e"
+    },
+    "n": 146
+   },
+   {
+    "at": "13:30:07",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 14057.5,
+    "n": 147
+   },
+   {
+    "at": "13:30:07",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 5.1,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 148
+   },
+   {
+    "at": "13:30:07",
+    "method": "GET",
+    "path": "/api/session/bad/s9a8f6138b49e",
+    "status": 200,
+    "ms": 2029.6,
+    "n": 149
+   },
+   {
+    "at": "13:30:07",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 389.1,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[16 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 150
+   },
+   {
+    "at": "13:30:07",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 308.0,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 151
+   },
+   {
+    "at": "13:30:07",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false
+    },
+    "n": 152
+   },
+   {
+    "at": "13:30:07",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.7,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "highpass": 1,
+     "lowpass": 0,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false
+    },
+    "n": 153
+   },
+   {
+    "at": "13:30:08",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 99.9,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[16 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 154
+   },
+   {
+    "at": "13:30:08",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 325.6,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 155
+   },
+   {
+    "at": "13:30:08",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 156
+   },
+   {
+    "at": "13:30:09",
+    "method": "GET",
+    "path": "/api/vacc/knows",
+    "status": 200,
+    "ms": 1678.9,
+    "n": 157
+   },
+   {
+    "at": "13:30:09",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false
+    },
+    "n": 158
+   },
+   {
+    "at": "13:30:09",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.5,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "highpass": 1,
+     "lowpass": 0,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false
+    },
+    "n": 159
+   },
+   {
+    "at": "13:30:09",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 100.8,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[16 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 160
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/curation/startable",
+    "status": 200,
+    "ms": 1616.3,
+    "query": "kind=pooled",
+    "n": 161
+   },
+   {
+    "at": "13:30:10",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 1,
+     "fmax": 800
+    },
+    "n": 162
+   },
+   {
+    "at": "13:30:10",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 373.9,
+    "body": {
+     "path": "vacc:s9a8f6138b49e",
+     "invert": true,
+     "t0": 1.4032,
+     "t1": 1.8032,
+     "channels": "[63 items]",
+     "px": 341,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 163
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/prospector/sweep/926d34d47507/peek",
+    "status": 200,
+    "ms": 0.1,
+    "n": 164
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 165
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 6372.5,
+    "n": 166
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 8.9,
+    "n": 167
+   },
+   {
+    "at": "13:30:10",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 6681.7,
+    "n": 168
+   },
+   {
+    "at": "13:30:11",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 169
+   },
+   {
+    "at": "13:30:11",
+    "method": "GET",
+    "path": "/api/vacc/knows",
+    "status": 200,
+    "ms": 719.6,
+    "n": 170
+   },
+   {
+    "at": "13:30:11",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 171
+   },
+   {
+    "at": "13:30:12",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 172
+   },
+   {
+    "at": "13:30:13",
+    "method": "GET",
+    "path": "/api/cfc/job/926d34d47507",
+    "status": 200,
+    "ms": 0.1,
+    "n": 173
+   },
+   {
+    "at": "13:30:17",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2141.0,
+    "n": 174
+   },
+   {
+    "at": "13:30:24",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 1272.7,
+    "n": 175
+   },
+   {
+    "at": "13:30:30",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 1566.2,
+    "n": 176
+   },
+   {
+    "at": "13:30:32",
+    "method": "GET",
+    "path": "/api/prospector",
+    "status": 200,
+    "ms": 3.9,
+    "n": 177
+   },
+   {
+    "at": "13:30:34",
+    "method": "POST",
+    "path": "/api/prospector/sweep",
+    "status": 200,
+    "ms": 43.0,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "ds_loss": null
+    },
+    "n": 178
+   },
+   {
+    "at": "13:30:34",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 179
+   },
+   {
+    "at": "13:30:34",
+    "method": "GET",
+    "path": "/api/prospector/sweep/61fa9e3adbf7/peek",
+    "status": 200,
+    "ms": 0.1,
+    "n": 180
+   },
+   {
+    "at": "13:30:35",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 181
+   },
+   {
+    "at": "13:30:36",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 182
+   },
+   {
+    "at": "13:30:37",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 183
+   },
+   {
+    "at": "13:30:38",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2345.9,
+    "n": 184
+   },
+   {
+    "at": "13:30:38",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 185
+   },
+   {
+    "at": "13:30:38",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 186
+   },
+   {
+    "at": "13:30:39",
+    "method": "GET",
+    "path": "/api/cfc/job/61fa9e3adbf7",
+    "status": 200,
+    "ms": 0.1,
+    "n": 187
+   },
+   {
+    "at": "13:30:42",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 1492.9,
+    "n": 188
+   },
+   {
+    "at": "13:30:45",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2352.2,
+    "n": 189
+   },
+   {
+    "at": "13:30:46",
+    "method": "POST",
+    "path": "/api/presence/beat",
+    "status": 200,
+    "ms": 422.8,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "first": false,
+     "doing": "panning",
+     "n_total": 1038,
+     "n_decided": 517,
+     "n_this_visit": 0,
+     "at_index": 518,
+     "at_time_s": 1.603161
+    },
+    "n": 190
+   },
+   {
+    "at": "13:30:52",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 1958.9,
+    "n": 191
+   },
+   {
+    "at": "13:30:59",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2069.6,
+    "n": 192
+   },
+   {
+    "at": "13:31:38",
+    "method": "POST",
+    "path": "/api/cloud/active",
+    "status": 200,
+    "ms": 0.2,
+    "n": 193
+   },
+   {
+    "at": "13:31:39",
+    "method": "POST",
+    "path": "/api/presence/beat",
+    "status": 200,
+    "ms": 406.6,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "first": false,
+     "doing": "panning",
+     "n_total": 1038,
+     "n_decided": 517,
+     "n_this_visit": 0,
+     "at_index": 518,
+     "at_time_s": 1.603161
+    },
+    "n": 194
+   },
+   {
+    "at": "13:31:40",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 1185.9,
+    "n": 195
+   },
+   {
+    "at": "13:31:40",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 1791.8,
+    "n": 196
+   },
+   {
+    "at": "13:31:46",
+    "method": "POST",
+    "path": "/api/presence/beat",
+    "status": 200,
+    "ms": 198.5,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "first": false,
+     "doing": "panning",
+     "n_total": 1038,
+     "n_decided": 517,
+     "n_this_visit": 0,
+     "at_index": 518,
+     "at_time_s": 1.603161
+    },
+    "n": 197
+   },
+   {
+    "at": "13:31:47",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2176.7,
+    "n": 198
+   },
+   {
+    "at": "13:31:54",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 2039.0,
+    "n": 199
+   },
+   {
+    "at": "13:32:01",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 1843.0,
+    "n": 200
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/prospector",
+    "status": 200,
+    "ms": 3.1,
+    "n": 201
+   },
+   {
+    "at": "13:32:03",
+    "method": "POST",
+    "path": "/api/prospector/sweep",
+    "status": 200,
+    "ms": 36.0,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "ds_loss": null
+    },
+    "n": 202
+   },
+   {
+    "at": "13:32:04",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 203
+   },
+   {
+    "at": "13:32:04",
+    "method": "GET",
+    "path": "/api/prospector/sweep/bc90ced44277/peek",
+    "status": 200,
+    "ms": 0.1,
+    "n": 204
+   },
+   {
+    "at": "13:32:05",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 205
+   },
+   {
+    "at": "13:32:05",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 206
+   },
+   {
+    "at": "13:32:06",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 134.2,
+    "n": 207
+   },
+   {
+    "at": "13:32:06",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 208
+   },
+   {
+    "at": "13:32:07",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.3,
+    "n": 209
+   },
+   {
+    "at": "13:32:08",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 210
+   },
+   {
+    "at": "13:32:09",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 211
+   },
+   {
+    "at": "13:32:09",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 212
+   },
+   {
+    "at": "13:32:10",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 213
+   },
+   {
+    "at": "13:32:10",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 370.5,
+    "n": 214
+   },
+   {
+    "at": "13:32:11",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 215
+   },
+   {
+    "at": "13:32:11",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 129.0,
+    "n": 216
+   },
+   {
+    "at": "13:32:12",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 217
+   },
+   {
+    "at": "13:32:13",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 218
+   },
+   {
+    "at": "13:32:13",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 219
+   },
+   {
+    "at": "13:32:14",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 220
+   },
+   {
+    "at": "13:32:15",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 221
+   },
+   {
+    "at": "13:32:16",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 222
+   },
+   {
+    "at": "13:32:17",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 223
+   },
+   {
+    "at": "13:32:17",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 224
+   },
+   {
+    "at": "13:32:18",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 225
+   },
+   {
+    "at": "13:32:19",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 226
+   },
+   {
+    "at": "13:32:20",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 227
+   },
+   {
+    "at": "13:32:20",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 4157.1,
+    "n": 228
+   },
+   {
+    "at": "13:32:21",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 229
+   },
+   {
+    "at": "13:32:21",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 230
+   },
+   {
+    "at": "13:32:22",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 231
+   },
+   {
+    "at": "13:32:23",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 232
+   },
+   {
+    "at": "13:32:24",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.2,
+    "n": 233
+   },
+   {
+    "at": "13:32:25",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 234
+   },
+   {
+    "at": "13:32:25",
+    "method": "GET",
+    "path": "/api/cfc/job/bc90ced44277",
+    "status": 200,
+    "ms": 0.1,
+    "n": 235
+   },
+   {
+    "at": "13:32:26",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 133.4,
+    "n": 236
+   },
+   {
+    "at": "13:32:31",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 131.5,
+    "n": 237
+   },
+   {
+    "at": "13:32:35",
+    "method": "GET",
+    "path": "/api/history",
+    "status": 200,
+    "ms": 11.4,
+    "query": "limit=400",
+    "n": 238
+   },
+   {
+    "at": "13:32:36",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 133.3,
+    "n": 239
+   },
+   {
+    "at": "13:32:38",
+    "method": "POST",
+    "path": "/api/cloud/active",
+    "status": 200,
+    "ms": 0.1,
+    "n": 240
+   },
+   {
+    "at": "13:32:41",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 423.9,
+    "n": 241
+   },
+   {
+    "at": "13:32:41",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 220.3,
+    "n": 242
+   },
+   {
+    "at": "13:32:42",
+    "method": "GET",
+    "path": "/api/digest",
+    "status": 200,
+    "ms": 7512.6,
+    "n": 243
+   },
+   {
+    "at": "13:32:46",
+    "method": "POST",
+    "path": "/api/presence/beat",
+    "status": 200,
+    "ms": 604.2,
+    "body": {
+     "gid": "s9a8f6138b49e",
+     "kind": "pooled.eeda040008abc",
+     "first": false,
+     "doing": "panning",
+     "n_total": 1038,
+     "n_decided": 517,
+     "n_this_visit": 0,
+     "at_index": 518,
+     "at_time_s": 1.603161
+    },
+    "n": 244
+   },
+   {
+    "at": "13:32:46",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 155.1,
+    "n": 245
+   },
+   {
+    "at": "13:32:51",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 128.3,
+    "n": 246
+   },
+   {
+    "at": "13:32:57",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 133.5,
+    "n": 247
+   },
+   {
+    "at": "13:33:02",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 134.6,
+    "n": 248
+   },
+   {
+    "at": "13:33:07",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 128.3,
+    "n": 249
+   },
+   {
+    "at": "13:33:11",
+    "method": "GET",
+    "path": "/api/syncstate",
+    "status": 200,
+    "ms": 295.8,
+    "n": 250
+   },
+   {
+    "at": "13:33:12",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 130.2,
+    "n": 251
+   },
+   {
+    "at": "13:33:17",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 176.2,
+    "query": "limit=300",
+    "n": 252
+   },
+   {
+    "at": "13:33:17",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 151.1,
+    "n": 253
+   },
+   {
+    "at": "13:33:17",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 604.5,
+    "query": "limit=600",
+    "n": 254
+   },
+   {
+    "at": "13:33:19",
+    "method": "GET",
+    "path": "/api/devices",
+    "status": 200,
+    "ms": 1199.4,
+    "n": 255
+   },
+   {
+    "at": "13:33:22",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 138.0,
+    "n": 256
+   },
+   {
+    "at": "13:33:27",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 125.2,
+    "n": 257
+   },
+   {
+    "at": "13:33:33",
+    "method": "GET",
+    "path": "/api/cloud/items",
+    "status": 200,
+    "ms": 127.7,
+    "n": 258
+   }
+  ]
+ },
+ "notes": []
+}

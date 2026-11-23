@@ -1,0 +1,195 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "ds_as_ied": 0.0,
+  "ds_solid": 0.687789797782898,
+  "ied_as_ds": 0.0535714291036129,
+  "ied_solid": 0.09577921777963638,
+  "n_ds": 647,
+  "n_ied": 616,
+  "youden": 0.7299976348876953
+ },
+ "gids": [
+  "s016e132432c8",
+  "s0a9e96cf1739",
+  "s37c7c8edfe10",
+  "s43b16cd74bcb",
+  "s79ba9ba163c4",
+  "s8d7f397b9708",
+  "s9eb56573e0b4",
+  "sd42a6992b76c",
+  "sd94396e874c7"
+ ],
+ "grace_default": 0.05,
+ "identity": "cls_single",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "level": "pool",
+ "levels": [
+  {
+   "counts": {
+    "amb": 1241,
+    "ds": 21,
+    "ied": 1,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "at": 1658.8083987497832,
+     "ds_at": 1012.3325042120191,
+     "ied_at": 2305.2842932875474
+    },
+    "hf_db": {
+     "at": 13.38798908725956,
+     "ds_at": 7.36161486851447,
+     "ied_at": 19.414363306004653
+    },
+    "hw_ms": {
+     "at": 23.537002775691956,
+     "ds_at": 9.369574390728378,
+     "ied_at": 37.70443116065553
+    }
+   },
+   "grace": 0.0,
+   "reached": true,
+   "s_sd": 1.24,
+   "switch_rate": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 873,
+    "ds": 368,
+    "ied": 22,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "at": 1658.8083987497832,
+     "ds_at": 1544.1110626221155,
+     "ied_at": 1773.505734877451
+    },
+    "hf_db": {
+     "at": 13.38798908725956,
+     "ds_at": 12.318793661353173,
+     "ied_at": 14.457184513165949
+    },
+    "hw_ms": {
+     "at": 23.537002775691956,
+     "ds_at": 21.023426771908095,
+     "ied_at": 26.050578779475817
+    }
+   },
+   "grace": 0.01,
+   "reached": true,
+   "s_sd": 0.22,
+   "switch_rate": 0.00870942201108472,
+   "wrong": 11
+  },
+  {
+   "counts": {
+    "amb": 726,
+    "ds": 478,
+    "ied": 59,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "at": 1658.8083987497832,
+     "ds_at": 1658.8083987497832,
+     "ied_at": 1658.8083987497832
+    },
+    "hf_db": {
+     "at": 13.38798908725956,
+     "ds_at": 13.38798908725956,
+     "ied_at": 13.38798908725956
+    },
+    "hw_ms": {
+     "at": 23.537002775691956,
+     "ds_at": 23.537002775691956,
+     "ied_at": 23.537002775691956
+    }
+   },
+   "grace": 0.05,
+   "reached": true,
+   "s_sd": 0.0,
+   "switch_rate": 0.026128266033254157,
+   "wrong": 33
+  }
+ ],
+ "made_from": [
+  "u:841aad39cfff:01a913aa64df",
+  "u:c0e55458531c:39c1c9f64a2c",
+  "u:af587732a900:6182a80d3639",
+  "u:39d439a95f7c:54775b49c294",
+  "u:6a2ade1040d3:5cdb0ebe287f",
+  "u:dbf2676df67a:f90c134c439d",
+  "u:3fc6bf1e2588:8ddf80324321",
+  "u:adc84ab8c916:b2c0380f768b",
+  "u:9b801cb6e235:45397eaf12a2"
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 50.0,
+  "filt": "lfp",
+  "filter_label": "LFP filter, 1–100 Hz, 60 Hz mains left in",
+  "hi_hz": 100.0,
+  "lo_hz": 1.0,
+  "mains_out": false,
+  "order": 4,
+  "win_ms": 25.0
+ },
+ "n": 1263,
+ "n_complete": 1263,
+ "n_identity": 1263,
+ "n_mice": 9,
+ "n_recordings": 9,
+ "rules": {
+  "0.0": "Solid IED: max amplitude ≥ 2305 µV, HF power ≥ 19.4 dB, half-width ≥ 37.7 ms. Solid DS: max amplitude < 1012 µV, HF power < 7.4 dB, half-width < 9.4 ms. Anything else is ambiguous (grace none).",
+  "0.01": "Solid IED: max amplitude ≥ 1774 µV, HF power ≥ 14.5 dB, half-width ≥ 26.1 ms. Solid DS: max amplitude < 1544 µV, HF power < 12.3 dB, half-width < 21.0 ms. Anything else is ambiguous (grace 1%).",
+  "0.05": "Solid IED: max amplitude ≥ 1659 µV, HF power ≥ 13.4 dB, half-width ≥ 23.5 ms. Solid DS: max amplitude < 1659 µV, HF power < 13.4 dB, half-width < 23.5 ms. Anything else is ambiguous (grace 5%)."
+ },
+ "schema": 1,
+ "sd": {
+  "amp_uV": 521.3515278530356,
+  "hf_db": 4.859979208665396,
+  "hw_ms": 11.425345471744821
+ },
+ "source": {
+  "kind": "pool",
+  "unsaved": true
+ },
+ "strict": {
+  "amp_uV": 1658.8083987497832,
+  "hf_db": 13.38798908725956,
+  "hw_ms": 23.537002775691956
+ },
+ "strict_counts": {
+  "amb": 726,
+  "ds": 478,
+  "ied": 59,
+  "none": 0
+ },
+ "strict_rate": 0.026128266033254157,
+ "strict_wrong": 33
+}

@@ -1,0 +1,2233 @@
+{
+  "_at": {
+    "committed": "2026-10-29T19:25:39.710960+00:00",
+    "created": "2026-10-29T19:07:30.535146+00:00",
+    "entry_id": "2026-10-29T19:07:30.535146+00:00",
+    "from_version": "2026-10-29T19:07:30.535146+00:00",
+    "gid": "2026-10-29T19:07:30.535146+00:00",
+    "name": "2026-10-29T19:07:30.535146+00:00",
+    "params": "2026-10-29T19:07:30.535146+00:00",
+    "rows": "2026-10-29T19:07:30.535146+00:00",
+    "schema": "2026-10-29T19:07:30.535146+00:00",
+    "set_id": "2026-10-29T19:07:30.535146+00:00",
+    "summary": "2026-10-29T19:07:30.535146+00:00"
+  },
+  "_keys": {
+    "calls": {
+      "105": [
+        "set",
+        "2026-10-29T19:25:38.531494+00:00"
+      ],
+      "12": [
+        "set",
+        "2026-10-29T19:23:55.035344+00:00"
+      ],
+      "22": [
+        "set",
+        "2026-10-29T19:24:11.801078+00:00"
+      ],
+      "32": [
+        "set",
+        "2026-10-29T19:24:30.966280+00:00"
+      ],
+      "35": [
+        "set",
+        "2026-10-29T19:24:48.543196+00:00"
+      ],
+      "55": [
+        "set",
+        "2026-10-29T19:25:06.049898+00:00"
+      ],
+      "64": [
+        "set",
+        "2026-10-29T19:25:19.042611+00:00"
+      ],
+      "90": [
+        "set",
+        "2026-10-29T19:25:29.161421+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-29T19:25:39.710960+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "calls": {
+    "105": {
+      "at": "2026-10-29T15:25:38-0400",
+      "by": "Rain Younger",
+      "call": "keep"
+    },
+    "12": {
+      "at": "2026-10-29T15:23:55-0400",
+      "by": "Rain Younger",
+      "call": "garbage"
+    },
+    "22": {
+      "at": "2026-10-29T15:24:11-0400",
+      "by": "Rain Younger",
+      "call": "move",
+      "t": 1504.14954
+    },
+    "32": {
+      "at": "2026-10-29T15:24:30-0400",
+      "by": "Rain Younger",
+      "call": "move",
+      "t": 1846.435433
+    },
+    "35": {
+      "at": "2026-10-29T15:24:48-0400",
+      "by": "Rain Younger",
+      "call": "move",
+      "t": 1911.703826
+    },
+    "55": {
+      "at": "2026-10-29T15:25:06-0400",
+      "by": "Rain Younger",
+      "call": "move",
+      "t": 2235.320598
+    },
+    "64": {
+      "at": "2026-10-29T15:25:19-0400",
+      "by": "Rain Younger",
+      "call": "keep"
+    },
+    "90": {
+      "at": "2026-10-29T15:25:29-0400",
+      "by": "Rain Younger",
+      "call": "keep"
+    }
+  },
+  "committed": {
+    "at": "2026-10-29T15:25:39-0400",
+    "by": "Rain Younger",
+    "version": 2,
+    "version_id": "br-9fdb7f2064"
+  },
+  "created": {
+    "at": "2026-10-29T15:07:30-0400",
+    "by": "Rain Younger",
+    "machine": "Strawbarry"
+  },
+  "entry_id": "cf227c79b356",
+  "from_version": "vk-be7f6d9eaec0",
+  "gid": "sd699dd1d187e",
+  "name": "PTEN_DKO m44 s1 2024-11-11 \u2014 pooled (Incisor + Doppler, 20 ms)",
+  "params": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "computed_on": {
+      "file": "result_2.json",
+      "host": "login.vacc.uvm.edu",
+      "kind": "vacc",
+      "max_rss": null,
+      "netid": "sakhava1",
+      "partition": "general",
+      "rid": "2bfcb72de3bd",
+      "slurm_id": "6106546_2",
+      "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/2bfcb72de3bd"
+    },
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "lock_reach_ms": 20.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "pinned": 61,
+    "profile": {
+      "10": -0.382591,
+      "11": 0.121778,
+      "12": 0.223277,
+      "13": -0.311269,
+      "14": -0.103364,
+      "15": 0.15677,
+      "16": 0.043096,
+      "17": 0.02911,
+      "2": 0.616274,
+      "3": 0.417452,
+      "4": 0.089855,
+      "5": 0.165104,
+      "6": 0.012022,
+      "7": -0.21924,
+      "8": 0.123884,
+      "9": 0.033708
+    },
+    "request": {
+      "band_kind": "ds",
+      "channels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "depth_band": 16,
+      "entry_id": "cf227c79b356",
+      "from_version": "vk-be7f6d9eaec0",
+      "hold": [
+        "both",
+        "incisor"
+      ],
+      "kind": "pooled",
+      "n_pinned": 61,
+      "pinned": "89d9ef450c7f",
+      "stamps": "0e48aa8d77a0"
+    },
+    "request_hash": "c204c885c9f904e0",
+    "screened": {
+      "59": "dead (0.5 uV against a median of 37)"
+    },
+    "smooth_ms": 0.0,
+    "spacing_um": 30.0,
+    "window_ms": 200.0
+  },
+  "rows": [
+    {
+      "flag": null,
+      "i": 11,
+      "moved": true,
+      "now": 225.771385,
+      "origin": "doppler",
+      "peak": 254,
+      "peak_uv": 8945.171,
+      "same": false,
+      "shift_ms": 1.331,
+      "was": 225.770054
+    },
+    {
+      "fills": 254.68951,
+      "flag": null,
+      "i": 16,
+      "locked": "held",
+      "moved": false,
+      "now": 254.689775,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 254.689775
+    },
+    {
+      "fills": 336.44857,
+      "flag": null,
+      "i": 18,
+      "locked": "held",
+      "moved": false,
+      "now": 336.448773,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 336.448773
+    },
+    {
+      "flag": null,
+      "i": 28,
+      "moved": false,
+      "now": 442.951986,
+      "origin": "doppler",
+      "peak": 609,
+      "peak_uv": 5140.149,
+      "same": true,
+      "shift_ms": 0.323,
+      "was": 442.951663
+    },
+    {
+      "flag": null,
+      "i": 30,
+      "moved": true,
+      "now": 463.648928,
+      "origin": "doppler",
+      "peak": 652,
+      "peak_uv": 4201.339,
+      "same": false,
+      "shift_ms": 3.398,
+      "was": 463.64553
+    },
+    {
+      "flag": null,
+      "i": 53,
+      "moved": true,
+      "now": 860.259819,
+      "origin": "doppler",
+      "peak": 1312,
+      "peak_uv": 3768.697,
+      "same": false,
+      "shift_ms": 3.83,
+      "was": 860.255989
+    },
+    {
+      "fills": 892.237174,
+      "flag": null,
+      "i": 54,
+      "locked": "held",
+      "moved": false,
+      "now": 892.237729,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 892.237729
+    },
+    {
+      "fills": 916.023404,
+      "flag": null,
+      "i": 56,
+      "locked": "held",
+      "moved": false,
+      "now": 916.022914,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 916.022914
+    },
+    {
+      "flag": null,
+      "i": 57,
+      "moved": true,
+      "now": 917.319163,
+      "origin": "doppler",
+      "peak": 1447,
+      "peak_uv": 6113.958,
+      "same": false,
+      "shift_ms": -8.461,
+      "was": 917.327624
+    },
+    {
+      "fills": 1034.282209,
+      "flag": null,
+      "i": 63,
+      "locked": "held",
+      "moved": false,
+      "now": 1034.278018,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1034.278018
+    },
+    {
+      "flag": null,
+      "i": 67,
+      "moved": true,
+      "now": 1109.018387,
+      "origin": "doppler",
+      "peak": 1639,
+      "peak_uv": 5726.552,
+      "same": false,
+      "shift_ms": -117.508,
+      "was": 1109.135895
+    },
+    {
+      "fills": 1153.580535,
+      "flag": null,
+      "i": 68,
+      "locked": "held",
+      "moved": false,
+      "now": 1153.5802,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1153.5802
+    },
+    {
+      "flag": "locked_peak",
+      "i": 69,
+      "moved": true,
+      "now": 1153.560863,
+      "origin": "doppler",
+      "peak": 1668,
+      "peak_uv": 2616.812,
+      "same": false,
+      "shift_ms": -40.747,
+      "was": 1153.60161
+    },
+    {
+      "flag": null,
+      "i": 71,
+      "moved": false,
+      "now": 1183.186169,
+      "origin": "doppler",
+      "peak": 1713,
+      "peak_uv": 4402.238,
+      "same": true,
+      "shift_ms": -0.752,
+      "was": 1183.186921
+    },
+    {
+      "flag": null,
+      "i": 72,
+      "moved": true,
+      "now": 1190.701491,
+      "origin": "doppler",
+      "peak": 1739,
+      "peak_uv": 1603.367,
+      "same": false,
+      "shift_ms": 84.118,
+      "was": 1190.617373
+    },
+    {
+      "flag": null,
+      "i": 75,
+      "moved": true,
+      "now": 1242.997648,
+      "origin": "doppler",
+      "peak": 1799,
+      "peak_uv": 3801.114,
+      "same": false,
+      "shift_ms": 4.11,
+      "was": 1242.993538
+    },
+    {
+      "flag": null,
+      "i": 78,
+      "moved": true,
+      "now": 1297.364178,
+      "origin": "doppler",
+      "peak": 1868,
+      "peak_uv": 2426.853,
+      "same": false,
+      "shift_ms": 2.489,
+      "was": 1297.361689
+    },
+    {
+      "flag": null,
+      "i": 79,
+      "moved": false,
+      "now": 1310.421768,
+      "origin": "doppler",
+      "peak": 1889,
+      "peak_uv": 3712.704,
+      "same": true,
+      "shift_ms": 0.162,
+      "was": 1310.421606
+    },
+    {
+      "flag": null,
+      "i": 80,
+      "moved": true,
+      "now": 1312.433306,
+      "origin": "doppler",
+      "peak": 2000,
+      "peak_uv": 6311.126,
+      "same": false,
+      "shift_ms": 9.713,
+      "was": 1312.423593
+    },
+    {
+      "fills": 1329.612469,
+      "flag": null,
+      "i": 82,
+      "locked": "held",
+      "moved": false,
+      "now": 1329.607835,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1329.607835
+    },
+    {
+      "flag": null,
+      "i": 85,
+      "moved": true,
+      "now": 1334.939066,
+      "origin": "doppler",
+      "peak": 2343,
+      "peak_uv": 2403.979,
+      "same": false,
+      "shift_ms": 3.117,
+      "was": 1334.935949
+    },
+    {
+      "flag": null,
+      "i": 95,
+      "moved": true,
+      "now": 1481.418663,
+      "origin": "doppler",
+      "peak": 2642,
+      "peak_uv": 2265.193,
+      "same": false,
+      "shift_ms": -28.347,
+      "was": 1481.44701
+    },
+    {
+      "flag": "locked_peak",
+      "i": 97,
+      "moved": true,
+      "now": 1504.267135,
+      "origin": "doppler",
+      "peak": 2694,
+      "peak_uv": 2929.952,
+      "same": false,
+      "shift_ms": 107.27,
+      "was": 1504.159865
+    },
+    {
+      "fills": 1504.227995,
+      "flag": null,
+      "i": 98,
+      "locked": "held",
+      "moved": false,
+      "now": 1504.227642,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1504.227642
+    },
+    {
+      "flag": null,
+      "i": 101,
+      "moved": true,
+      "now": 1543.044461,
+      "origin": "doppler",
+      "peak": 2755,
+      "peak_uv": 3973.372,
+      "same": false,
+      "shift_ms": -10.654,
+      "was": 1543.055115
+    },
+    {
+      "flag": null,
+      "i": 105,
+      "moved": true,
+      "now": 1632.700024,
+      "origin": "doppler",
+      "peak": 2943,
+      "peak_uv": 1344.854,
+      "same": false,
+      "shift_ms": -127.016,
+      "was": 1632.82704
+    },
+    {
+      "flag": null,
+      "i": 106,
+      "moved": true,
+      "now": 1641.317486,
+      "origin": "doppler",
+      "peak": 2966,
+      "peak_uv": 1299.111,
+      "same": false,
+      "shift_ms": -121.999,
+      "was": 1641.439485
+    },
+    {
+      "fills": 1672.866723,
+      "flag": null,
+      "i": 108,
+      "locked": "held",
+      "moved": false,
+      "now": 1672.867691,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1672.867691
+    },
+    {
+      "fills": 1699.880328,
+      "flag": null,
+      "i": 109,
+      "locked": "held",
+      "moved": false,
+      "now": 1699.879884,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1699.879884
+    },
+    {
+      "flag": null,
+      "i": 112,
+      "moved": true,
+      "now": 1735.412546,
+      "origin": "doppler",
+      "peak": 3107,
+      "peak_uv": 3797.056,
+      "same": false,
+      "shift_ms": -1.837,
+      "was": 1735.414383
+    },
+    {
+      "fills": 1766.374574,
+      "flag": null,
+      "i": 115,
+      "locked": "held",
+      "moved": false,
+      "now": 1766.371685,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1766.371685
+    },
+    {
+      "fills": 1766.46804,
+      "flag": null,
+      "i": 116,
+      "locked": "held",
+      "moved": false,
+      "now": 1766.468027,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1766.468027
+    },
+    {
+      "flag": "locked_peak",
+      "i": 121,
+      "moved": true,
+      "now": 1846.473295,
+      "origin": "doppler",
+      "peak": 3389,
+      "peak_uv": 2751.581,
+      "same": false,
+      "shift_ms": 39.623,
+      "was": 1846.433672
+    },
+    {
+      "fills": 1846.522521,
+      "flag": null,
+      "i": 122,
+      "locked": "held",
+      "moved": false,
+      "now": 1846.522482,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1846.522482
+    },
+    {
+      "fills": 1866.370998,
+      "flag": null,
+      "i": 125,
+      "locked": "held",
+      "moved": false,
+      "now": 1866.357044,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1866.357044
+    },
+    {
+      "flag": "edge",
+      "i": 126,
+      "moved": true,
+      "now": 1911.902044,
+      "origin": "doppler",
+      "peak": 3489,
+      "peak_uv": 1633.473,
+      "same": false,
+      "shift_ms": 198.29,
+      "was": 1911.703754
+    },
+    {
+      "fills": 1911.780486,
+      "flag": null,
+      "i": 127,
+      "locked": "held",
+      "moved": false,
+      "now": 1911.78027,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1911.78027
+    },
+    {
+      "flag": null,
+      "i": 128,
+      "moved": true,
+      "now": 1913.490678,
+      "origin": "doppler",
+      "peak": 3580,
+      "peak_uv": 2593.22,
+      "same": false,
+      "shift_ms": 82.935,
+      "was": 1913.407743
+    },
+    {
+      "flag": null,
+      "i": 129,
+      "moved": true,
+      "now": 1914.885492,
+      "origin": "doppler",
+      "peak": 3654,
+      "peak_uv": 8726.432,
+      "same": false,
+      "shift_ms": 1.258,
+      "was": 1914.884234
+    },
+    {
+      "fills": 1929.649477,
+      "flag": null,
+      "i": 132,
+      "locked": "held",
+      "moved": false,
+      "now": 1929.64906,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1929.64906
+    },
+    {
+      "flag": null,
+      "i": 133,
+      "moved": true,
+      "now": 1931.490946,
+      "origin": "doppler",
+      "peak": 3822,
+      "peak_uv": 3219.352,
+      "same": false,
+      "shift_ms": -10.681,
+      "was": 1931.501627
+    },
+    {
+      "fills": 1956.11131,
+      "flag": null,
+      "i": 135,
+      "locked": "held",
+      "moved": false,
+      "now": 1956.112058,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1956.112058
+    },
+    {
+      "fills": 1956.611404,
+      "flag": null,
+      "i": 136,
+      "locked": "held",
+      "moved": false,
+      "now": 1956.610616,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1956.610616
+    },
+    {
+      "flag": null,
+      "i": 137,
+      "moved": true,
+      "now": 1968.370407,
+      "origin": "doppler",
+      "peak": 3919,
+      "peak_uv": 4528.971,
+      "same": false,
+      "shift_ms": 27.016,
+      "was": 1968.343391
+    },
+    {
+      "fills": 1997.894152,
+      "flag": null,
+      "i": 141,
+      "locked": "held",
+      "moved": false,
+      "now": 1997.896097,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 1997.896097
+    },
+    {
+      "fills": 2022.770303,
+      "flag": null,
+      "i": 146,
+      "locked": "held",
+      "moved": false,
+      "now": 2022.77035,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2022.77035
+    },
+    {
+      "flag": null,
+      "i": 147,
+      "moved": false,
+      "now": 2036.80615,
+      "origin": "doppler",
+      "peak": 4274,
+      "peak_uv": 7709.177,
+      "same": true,
+      "shift_ms": -0.302,
+      "was": 2036.806452
+    },
+    {
+      "fills": 2049.704404,
+      "flag": null,
+      "i": 151,
+      "locked": "held",
+      "moved": false,
+      "now": 2049.698762,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2049.698762
+    },
+    {
+      "flag": null,
+      "i": 155,
+      "moved": true,
+      "now": 2094.496153,
+      "origin": "doppler",
+      "peak": 4609,
+      "peak_uv": 2116.809,
+      "same": false,
+      "shift_ms": -33.43,
+      "was": 2094.529583
+    },
+    {
+      "fills": 2143.656142,
+      "flag": null,
+      "i": 160,
+      "locked": "held",
+      "moved": false,
+      "now": 2143.651268,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2143.651268
+    },
+    {
+      "flag": null,
+      "i": 162,
+      "moved": true,
+      "now": 2148.105694,
+      "origin": "doppler",
+      "peak": 4831,
+      "peak_uv": 3862.95,
+      "same": false,
+      "shift_ms": 6.954,
+      "was": 2148.09874
+    },
+    {
+      "fills": 2161.040862,
+      "flag": null,
+      "i": 163,
+      "locked": "held",
+      "moved": false,
+      "now": 2161.040842,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2161.040842
+    },
+    {
+      "flag": null,
+      "i": 164,
+      "moved": true,
+      "now": 2161.375335,
+      "origin": "doppler",
+      "peak": 4871,
+      "peak_uv": 2750.493,
+      "same": false,
+      "shift_ms": -33.819,
+      "was": 2161.409154
+    },
+    {
+      "flag": null,
+      "i": 169,
+      "moved": true,
+      "now": 2223.089278,
+      "origin": "doppler",
+      "peak": 4977,
+      "peak_uv": 1527.146,
+      "same": false,
+      "shift_ms": -17.481,
+      "was": 2223.106759
+    },
+    {
+      "fills": 2232.804918,
+      "flag": null,
+      "i": 170,
+      "locked": "held",
+      "moved": false,
+      "now": 2232.805366,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2232.805366
+    },
+    {
+      "flag": "locked_peak",
+      "i": 172,
+      "moved": false,
+      "now": 2235.342424,
+      "origin": "doppler",
+      "peak": 5029,
+      "peak_uv": 2647.488,
+      "same": true,
+      "shift_ms": 0.243,
+      "was": 2235.342181
+    },
+    {
+      "fills": 2235.45531,
+      "flag": null,
+      "i": 173,
+      "locked": "held",
+      "moved": false,
+      "now": 2235.454887,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2235.454887
+    },
+    {
+      "flag": null,
+      "i": 174,
+      "moved": true,
+      "now": 2236.249272,
+      "origin": "doppler",
+      "peak": 5074,
+      "peak_uv": 1309.152,
+      "same": false,
+      "shift_ms": 37.097,
+      "was": 2236.212175
+    },
+    {
+      "fills": 2248.923677,
+      "flag": null,
+      "i": 176,
+      "locked": "held",
+      "moved": false,
+      "now": 2248.922594,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2248.922594
+    },
+    {
+      "fills": 2285.451448,
+      "flag": null,
+      "i": 179,
+      "locked": "held",
+      "moved": false,
+      "now": 2285.451404,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2285.451404
+    },
+    {
+      "flag": null,
+      "i": 180,
+      "moved": true,
+      "now": 2296.850076,
+      "origin": "doppler",
+      "peak": 5278,
+      "peak_uv": 6997.465,
+      "same": false,
+      "shift_ms": 4.789,
+      "was": 2296.845287
+    },
+    {
+      "fills": 2315.411639,
+      "flag": null,
+      "i": 182,
+      "locked": "held",
+      "moved": false,
+      "now": 2315.413781,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2315.413781
+    },
+    {
+      "fills": 2325.282584,
+      "flag": null,
+      "i": 183,
+      "locked": "held",
+      "moved": false,
+      "now": 2325.282534,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2325.282534
+    },
+    {
+      "flag": null,
+      "i": 187,
+      "moved": false,
+      "now": 2373.232402,
+      "origin": "doppler",
+      "peak": 5435,
+      "peak_uv": 2607.136,
+      "same": true,
+      "shift_ms": 0.105,
+      "was": 2373.232297
+    },
+    {
+      "flag": "locked_peak",
+      "i": 188,
+      "moved": true,
+      "now": 2378.852434,
+      "origin": "doppler",
+      "peak": 5460,
+      "peak_uv": 1708.39,
+      "same": false,
+      "shift_ms": 71.172,
+      "was": 2378.781262
+    },
+    {
+      "fills": 2378.838393,
+      "flag": null,
+      "i": 189,
+      "locked": "held",
+      "moved": false,
+      "now": 2378.838772,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2378.838772
+    },
+    {
+      "fills": 2418.455647,
+      "flag": null,
+      "i": 191,
+      "locked": "held",
+      "moved": false,
+      "now": 2418.454054,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2418.454054
+    },
+    {
+      "flag": null,
+      "i": 193,
+      "moved": true,
+      "now": 2420.20865,
+      "origin": "doppler",
+      "peak": 5584,
+      "peak_uv": 4258.976,
+      "same": false,
+      "shift_ms": -6.846,
+      "was": 2420.215496
+    },
+    {
+      "fills": 2424.035618,
+      "flag": null,
+      "i": 194,
+      "locked": "held",
+      "moved": false,
+      "now": 2424.035216,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2424.035216
+    },
+    {
+      "flag": null,
+      "i": 195,
+      "moved": true,
+      "now": 2429.314217,
+      "origin": "doppler",
+      "peak": 5634,
+      "peak_uv": 1529.536,
+      "same": false,
+      "shift_ms": 128.278,
+      "was": 2429.185939
+    },
+    {
+      "fills": 2440.362903,
+      "flag": null,
+      "i": 196,
+      "locked": "held",
+      "moved": false,
+      "now": 2440.361036,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2440.361036
+    },
+    {
+      "fills": 2440.934352,
+      "flag": null,
+      "i": 197,
+      "locked": "held",
+      "moved": false,
+      "now": 2440.935431,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2440.935431
+    },
+    {
+      "flag": null,
+      "i": 198,
+      "moved": true,
+      "now": 2443.781777,
+      "origin": "doppler",
+      "peak": 5705,
+      "peak_uv": 1830.574,
+      "same": false,
+      "shift_ms": 46.931,
+      "was": 2443.734846
+    },
+    {
+      "fills": 2469.260663,
+      "flag": null,
+      "i": 199,
+      "locked": "held",
+      "moved": false,
+      "now": 2469.259662,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2469.259662
+    },
+    {
+      "flag": null,
+      "i": 200,
+      "moved": true,
+      "now": 2480.5097,
+      "origin": "doppler",
+      "peak": 5742,
+      "peak_uv": 1931.903,
+      "same": false,
+      "shift_ms": -106.91,
+      "was": 2480.61661
+    },
+    {
+      "fills": 2492.688989,
+      "flag": null,
+      "i": 201,
+      "locked": "held",
+      "moved": false,
+      "now": 2492.689509,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2492.689509
+    },
+    {
+      "fills": 2503.533781,
+      "flag": null,
+      "i": 203,
+      "locked": "held",
+      "moved": false,
+      "now": 2503.533631,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2503.533631
+    },
+    {
+      "fills": 2506.016936,
+      "flag": null,
+      "i": 205,
+      "locked": "held",
+      "moved": false,
+      "now": 2506.025947,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2506.025947
+    },
+    {
+      "fills": 2508.863442,
+      "flag": null,
+      "i": 206,
+      "locked": "held",
+      "moved": false,
+      "now": 2508.864158,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2508.864158
+    },
+    {
+      "fills": 2522.082289,
+      "flag": null,
+      "i": 209,
+      "locked": "held",
+      "moved": false,
+      "now": 2522.082141,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2522.082141
+    },
+    {
+      "fills": 2528.788371,
+      "flag": null,
+      "i": 211,
+      "locked": "held",
+      "moved": false,
+      "now": 2528.785946,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2528.785946
+    },
+    {
+      "fills": 2528.905847,
+      "flag": null,
+      "i": 212,
+      "locked": "held",
+      "moved": false,
+      "now": 2528.904868,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2528.904868
+    },
+    {
+      "fills": 2562.214418,
+      "flag": null,
+      "i": 216,
+      "locked": "held",
+      "moved": false,
+      "now": 2562.213406,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2562.213406
+    },
+    {
+      "fills": 2584.267473,
+      "flag": null,
+      "i": 219,
+      "locked": "held",
+      "moved": false,
+      "now": 2584.272365,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2584.272365
+    },
+    {
+      "flag": null,
+      "i": 220,
+      "moved": true,
+      "now": 2620.523488,
+      "origin": "doppler",
+      "peak": 6302,
+      "peak_uv": 1798.645,
+      "same": false,
+      "shift_ms": -31.725,
+      "was": 2620.555213
+    },
+    {
+      "flag": null,
+      "i": 221,
+      "moved": true,
+      "now": 2630.275003,
+      "origin": "doppler",
+      "peak": 6325,
+      "peak_uv": 2290.761,
+      "same": false,
+      "shift_ms": 5.352,
+      "was": 2630.269651
+    },
+    {
+      "fills": 2639.792418,
+      "flag": null,
+      "i": 222,
+      "locked": "held",
+      "moved": false,
+      "now": 2639.789559,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2639.789559
+    },
+    {
+      "fills": 2648.0568,
+      "flag": null,
+      "i": 223,
+      "locked": "held",
+      "moved": false,
+      "now": 2648.05413,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2648.05413
+    },
+    {
+      "flag": null,
+      "i": 228,
+      "moved": true,
+      "now": 2662.312625,
+      "origin": "doppler",
+      "peak": 6499,
+      "peak_uv": 3629.454,
+      "same": false,
+      "shift_ms": 8.179,
+      "was": 2662.304446
+    },
+    {
+      "flag": null,
+      "i": 229,
+      "moved": true,
+      "now": 2676.342777,
+      "origin": "doppler",
+      "peak": 6520,
+      "peak_uv": 4057.12,
+      "same": false,
+      "shift_ms": -11.579,
+      "was": 2676.354356
+    },
+    {
+      "flag": "locked_peak",
+      "i": 235,
+      "moved": true,
+      "now": 2716.260502,
+      "origin": "doppler",
+      "peak": 6709,
+      "peak_uv": 6439.661,
+      "same": false,
+      "shift_ms": 51.402,
+      "was": 2716.2091
+    },
+    {
+      "fills": 2716.315977,
+      "flag": null,
+      "i": 236,
+      "locked": "held",
+      "moved": false,
+      "now": 2716.315945,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2716.315945
+    },
+    {
+      "flag": null,
+      "i": 237,
+      "moved": true,
+      "now": 2718.893279,
+      "origin": "doppler",
+      "peak": 6729,
+      "peak_uv": 11664.274,
+      "same": false,
+      "shift_ms": -86.804,
+      "was": 2718.980083
+    },
+    {
+      "flag": null,
+      "i": 241,
+      "moved": true,
+      "now": 2748.058488,
+      "origin": "doppler",
+      "peak": 6926,
+      "peak_uv": 2189.603,
+      "same": false,
+      "shift_ms": 9.092,
+      "was": 2748.049396
+    },
+    {
+      "flag": null,
+      "i": 242,
+      "moved": true,
+      "now": 2772.686565,
+      "origin": "doppler",
+      "peak": 6948,
+      "peak_uv": 1780.802,
+      "same": false,
+      "shift_ms": 4.326,
+      "was": 2772.682239
+    },
+    {
+      "flag": null,
+      "i": 244,
+      "moved": true,
+      "now": 2811.248745,
+      "origin": "doppler",
+      "peak": 6981,
+      "peak_uv": 4150.175,
+      "same": false,
+      "shift_ms": -138.746,
+      "was": 2811.387491
+    },
+    {
+      "fills": 2817.682801,
+      "flag": null,
+      "i": 245,
+      "locked": "held",
+      "moved": false,
+      "now": 2817.68995,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2817.68995
+    },
+    {
+      "fills": 2819.433169,
+      "flag": null,
+      "i": 246,
+      "locked": "held",
+      "moved": false,
+      "now": 2819.433076,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2819.433076
+    },
+    {
+      "fills": 2838.685544,
+      "flag": null,
+      "i": 249,
+      "locked": "held",
+      "moved": false,
+      "now": 2838.684595,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2838.684595
+    },
+    {
+      "flag": null,
+      "i": 251,
+      "moved": true,
+      "now": 2860.763072,
+      "origin": "doppler",
+      "peak": 7283,
+      "peak_uv": 6087.262,
+      "same": false,
+      "shift_ms": -72.602,
+      "was": 2860.835674
+    },
+    {
+      "fills": 2860.887387,
+      "flag": null,
+      "i": 252,
+      "locked": "held",
+      "moved": false,
+      "now": 2860.887516,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2860.887516
+    },
+    {
+      "fills": 2884.400376,
+      "flag": null,
+      "i": 257,
+      "locked": "held",
+      "moved": false,
+      "now": 2884.400402,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2884.400402
+    },
+    {
+      "flag": null,
+      "i": 259,
+      "moved": true,
+      "now": 2892.729398,
+      "origin": "doppler",
+      "peak": 7459,
+      "peak_uv": 2213.155,
+      "same": false,
+      "shift_ms": 68.928,
+      "was": 2892.66047
+    },
+    {
+      "fills": 2910.208792,
+      "flag": null,
+      "i": 260,
+      "locked": "held",
+      "moved": false,
+      "now": 2910.209049,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2910.209049
+    },
+    {
+      "fills": 2911.671201,
+      "flag": null,
+      "i": 262,
+      "locked": "held",
+      "moved": false,
+      "now": 2911.672084,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2911.672084
+    },
+    {
+      "flag": "locked_peak",
+      "i": 263,
+      "moved": true,
+      "now": 2911.736862,
+      "origin": "doppler",
+      "peak": 7564,
+      "peak_uv": 1520.149,
+      "same": false,
+      "shift_ms": 6.014,
+      "was": 2911.730848
+    },
+    {
+      "flag": null,
+      "i": 267,
+      "moved": true,
+      "now": 2925.733316,
+      "origin": "doppler",
+      "peak": 7756,
+      "peak_uv": 4516.593,
+      "same": false,
+      "shift_ms": 8.058,
+      "was": 2925.725258
+    },
+    {
+      "fills": 2928.774772,
+      "flag": null,
+      "i": 269,
+      "locked": "held",
+      "moved": false,
+      "now": 2928.777086,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2928.777086
+    },
+    {
+      "fills": 2950.986702,
+      "flag": null,
+      "i": 270,
+      "locked": "held",
+      "moved": false,
+      "now": 2950.986096,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2950.986096
+    },
+    {
+      "fills": 2960.885854,
+      "flag": null,
+      "i": 271,
+      "locked": "held",
+      "moved": false,
+      "now": 2960.896612,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2960.896612
+    },
+    {
+      "fills": 2965.538738,
+      "flag": null,
+      "i": 272,
+      "locked": "held",
+      "moved": false,
+      "now": 2965.540411,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2965.540411
+    },
+    {
+      "fills": 2981.96774,
+      "flag": null,
+      "i": 277,
+      "locked": "held",
+      "moved": false,
+      "now": 2981.968001,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2981.968001
+    },
+    {
+      "fills": 2991.132297,
+      "flag": null,
+      "i": 280,
+      "locked": "held",
+      "moved": false,
+      "now": 2991.130339,
+      "origin": "both",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 2991.130339
+    },
+    {
+      "flag": null,
+      "i": 281,
+      "moved": true,
+      "now": 3000.389445,
+      "origin": "doppler",
+      "peak": 8431,
+      "peak_uv": 4913.547,
+      "same": false,
+      "shift_ms": 11.665,
+      "was": 3000.37778
+    },
+    {
+      "fills": 3003.633426,
+      "flag": null,
+      "i": 282,
+      "locked": "held",
+      "moved": false,
+      "now": 3003.633627,
+      "origin": "incisor",
+      "peak": null,
+      "peak_uv": null,
+      "same": true,
+      "shift_ms": 0.0,
+      "was": 3003.633627
+    }
+  ],
+  "schema": 1,
+  "set_id": "br1f741ba40e",
+  "summary": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by_reason": {
+      "edge": 1,
+      "locked_peak": 7
+    },
+    "cand_dist_ms": 12.0,
+    "cand_floor_uv": 2044.935,
+    "channels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "computed_on": {
+      "file": "result_2.json",
+      "host": "login.vacc.uvm.edu",
+      "kind": "vacc",
+      "max_rss": null,
+      "netid": "sakhava1",
+      "partition": "general",
+      "rid": "2bfcb72de3bd",
+      "slurm_id": "6106546_2",
+      "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/2bfcb72de3bd"
+    },
+    "depth": {
+      "channels": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "from": 0,
+      "of": 64,
+      "profile": [
+        {
+          "index": 1,
+          "number": 2,
+          "score": 412983743.849
+        },
+        {
+          "index": 2,
+          "number": 3,
+          "score": 179215430.431
+        },
+        {
+          "index": 3,
+          "number": 4,
+          "score": 32535573.105
+        },
+        {
+          "index": 4,
+          "number": 5,
+          "score": 43912427.807
+        },
+        {
+          "index": 5,
+          "number": 6,
+          "score": 8706695.565
+        },
+        {
+          "index": 6,
+          "number": 7,
+          "score": 42484116.206
+        },
+        {
+          "index": 7,
+          "number": 8,
+          "score": 65543189.118
+        },
+        {
+          "index": 8,
+          "number": 9,
+          "score": 20236977.305
+        },
+        {
+          "index": 9,
+          "number": 10,
+          "score": 184200630.199
+        },
+        {
+          "index": 10,
+          "number": 11,
+          "score": 34501232.864
+        },
+        {
+          "index": 11,
+          "number": 12,
+          "score": 115822613.112
+        },
+        {
+          "index": 12,
+          "number": 13,
+          "score": 129761380.023
+        },
+        {
+          "index": 13,
+          "number": 14,
+          "score": 21568841.198
+        },
+        {
+          "index": 14,
+          "number": 15,
+          "score": 49098986.27
+        },
+        {
+          "index": 15,
+          "number": 16,
+          "score": 22244180.165
+        },
+        {
+          "index": 16,
+          "number": 17,
+          "score": 2443425.774
+        },
+        {
+          "index": 17,
+          "number": 18,
+          "score": 1928833.164
+        },
+        {
+          "index": 18,
+          "number": 19,
+          "score": 15063834.356
+        },
+        {
+          "index": 19,
+          "number": 20,
+          "score": 8500691.995
+        },
+        {
+          "index": 20,
+          "number": 21,
+          "score": 30691705.701
+        },
+        {
+          "index": 21,
+          "number": 22,
+          "score": 1711807.905
+        },
+        {
+          "index": 22,
+          "number": 23,
+          "score": 32735683.793
+        },
+        {
+          "index": 23,
+          "number": 24,
+          "score": 68042344.46
+        },
+        {
+          "index": 24,
+          "number": 25,
+          "score": 113660364.327
+        },
+        {
+          "index": 25,
+          "number": 26,
+          "score": 49169638.762
+        },
+        {
+          "index": 26,
+          "number": 27,
+          "score": 49172175.398
+        },
+        {
+          "index": 27,
+          "number": 28,
+          "score": 76540491.358
+        },
+        {
+          "index": 28,
+          "number": 29,
+          "score": 59672965.326
+        },
+        {
+          "index": 29,
+          "number": 30,
+          "score": 19504552.362
+        },
+        {
+          "index": 30,
+          "number": 31,
+          "score": 65153765.821
+        },
+        {
+          "index": 31,
+          "number": 32,
+          "score": 36390170.071
+        },
+        {
+          "index": 32,
+          "number": 33,
+          "score": 31933965.82
+        },
+        {
+          "index": 33,
+          "number": 34,
+          "score": 24350139.073
+        },
+        {
+          "index": 34,
+          "number": 35,
+          "score": 23973155.604
+        },
+        {
+          "index": 35,
+          "number": 36,
+          "score": 52605165.867
+        },
+        {
+          "index": 36,
+          "number": 37,
+          "score": 107331598.195
+        },
+        {
+          "index": 37,
+          "number": 38,
+          "score": 108773840.361
+        },
+        {
+          "index": 38,
+          "number": 39,
+          "score": 52012463.593
+        },
+        {
+          "index": 39,
+          "number": 40,
+          "score": 22645922.734
+        },
+        {
+          "index": 40,
+          "number": 41,
+          "score": 20538231.427
+        },
+        {
+          "index": 41,
+          "number": 42,
+          "score": 23305248.275
+        },
+        {
+          "index": 42,
+          "number": 43,
+          "score": 18568450.652
+        },
+        {
+          "index": 43,
+          "number": 44,
+          "score": 5556841.212
+        },
+        {
+          "index": 44,
+          "number": 45,
+          "score": 24977859.61
+        },
+        {
+          "index": 45,
+          "number": 46,
+          "score": 41396948.858
+        },
+        {
+          "index": 46,
+          "number": 47,
+          "score": 49428825.254
+        },
+        {
+          "index": 47,
+          "number": 48,
+          "score": 24355325.386
+        },
+        {
+          "index": 48,
+          "number": 49,
+          "score": 10597606.592
+        },
+        {
+          "index": 49,
+          "number": 50,
+          "score": 6808487.713
+        },
+        {
+          "index": 50,
+          "number": 51,
+          "score": 2042366.234
+        },
+        {
+          "index": 51,
+          "number": 52,
+          "score": 1964839.247
+        },
+        {
+          "index": 52,
+          "number": 53,
+          "score": 4335294.127
+        },
+        {
+          "index": 53,
+          "number": 54,
+          "score": 2557416.747
+        },
+        {
+          "index": 54,
+          "number": 55,
+          "score": 3046260.5
+        },
+        {
+          "index": 55,
+          "number": 56,
+          "score": 1328617.836
+        },
+        {
+          "index": 56,
+          "number": 57,
+          "score": 244767.6
+        },
+        {
+          "index": 57,
+          "number": 58,
+          "score": 336641.146
+        },
+        {
+          "index": 58,
+          "number": 59,
+          "score": 397248.947
+        },
+        {
+          "index": 59,
+          "number": 60,
+          "score": 404516.834
+        },
+        {
+          "index": 60,
+          "number": 61,
+          "score": 1853192.626
+        },
+        {
+          "index": 61,
+          "number": 62,
+          "score": 1801044.271
+        },
+        {
+          "index": 62,
+          "number": 63,
+          "score": 1062608.93
+        }
+      ],
+      "screened": {
+        "59": "dead (0.5 uV against a median of 37)"
+      },
+      "weights": {
+        "10": -0.382591,
+        "11": 0.121778,
+        "12": 0.223277,
+        "13": -0.311269,
+        "14": -0.103364,
+        "15": 0.15677,
+        "16": 0.043096,
+        "17": 0.02911,
+        "2": 0.616274,
+        "3": 0.417452,
+        "4": 0.089855,
+        "5": 0.165104,
+        "6": 0.012022,
+        "7": -0.21924,
+        "8": 0.123884,
+        "9": 0.033708
+      }
+    },
+    "dist_ms": 100.0,
+    "edge_frac": 0.8,
+    "estimator": "mad",
+    "greedy_stranded": 0,
+    "hist": [
+      0,
+      0,
+      0,
+      3,
+      2,
+      1,
+      1,
+      1,
+      4,
+      7,
+      17,
+      3,
+      2,
+      2,
+      2,
+      1,
+      1,
+      0,
+      0,
+      1
+    ],
+    "hist_hi_ms": 200.0,
+    "hist_lo_ms": -200.0,
+    "left_out": [
+      59
+    ],
+    "n": 54,
+    "n_channels": 16,
+    "n_flagged": 8,
+    "n_locked": 61,
+    "n_moved": 48,
+    "n_no_peak": 0,
+    "n_peaks": 8797,
+    "n_same": 6,
+    "n_skipped": 175,
+    "n_windows": 214,
+    "read_s": 374.0,
+    "same_ms": 1.0,
+    "screened": {
+      "59": "dead (0.5 uV against a median of 37)"
+    },
+    "shift_max_ms": 198.29,
+    "shift_median_ms": 3.614,
+    "shift_p95_ms": 127.016,
+    "skipped": {
+      "garbage": 175
+    },
+    "skipped_channels": [],
+    "thr_uv": 0.0,
+    "window_ms": 200.0
+  }
+}

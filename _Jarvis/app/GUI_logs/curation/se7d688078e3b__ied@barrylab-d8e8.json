@@ -1,0 +1,1822 @@
+{
+  "_at": {
+    "assignee": "2026-10-19T20:23:00.170650+00:00",
+    "created": "2026-10-19T20:22:59.110104+00:00",
+    "gid": "2026-10-19T20:22:59.110104+00:00",
+    "imports": "2026-10-19T20:22:59.110104+00:00",
+    "kind": "2026-10-19T20:22:59.110104+00:00",
+    "labels": "2026-10-19T20:22:59.110104+00:00",
+    "name": "2026-10-19T20:22:59.110104+00:00",
+    "open": "2026-10-19T20:23:00.170650+00:00",
+    "opened_at": "2026-10-19T20:23:00.170650+00:00",
+    "opened_by": "2026-10-19T20:23:00.170650+00:00",
+    "schema": "2026-10-19T20:22:59.110104+00:00",
+    "session_label": "2026-10-19T20:22:59.110104+00:00",
+    "source": "2026-10-19T20:22:59.110104+00:00",
+    "updated": "2026-10-19T20:23:00.170650+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e00ab22ab4e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e028b10db04": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e0442e87fb0": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e045646f799": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e05a4f9db72": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e0a801c2db7": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e0fd1e7acb6": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e10ded16850": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e111f95b2ed": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e138ec497b4": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e144b2f392b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e147aad2cb9": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e1780e61c70": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e1b18a3a147": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e1c829d730f": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e1e9a8c3d35": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e20efce95d9": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e2176f2e6dc": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e23473520a3": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e238c245dc8": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e245b7542af": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e24c4747842": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e27122bae19": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e27ba4c8d56": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e284c52bec6": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e2892f19381": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e2a9074a2bd": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e2b3363e770": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e2d19172b46": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3391cf44b6": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3520dbf329": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3689bec55f": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e36a5e9519c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e39988107fa": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3b1dcacc88": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3bdc70ae21": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e3c24d5adfe": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e40a679a068": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4197b5ba80": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4281523194": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e43073a1ba0": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e446c2385e5": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4529487b44": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e45a9aa6f1c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e478956ea86": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4889d61d9e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4a00b6ba92": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4a45e5c3be": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4c29c48e09": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4c4e4fe4f9": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4ce93a9222": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e4d4c7b3d33": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e50e6cbbf03": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5245ea5346": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5255263ac2": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e52e7c544a2": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e592d51f519": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e59fa47adcc": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5a7cc0d710": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5be5cbd1e9": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5c5ffd977a": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e5d722e5f27": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e60e1ef1a93": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e63bf958f4f": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e65a343c89d": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e671a3c79dd": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e67ea7d8565": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e681496c62b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e6926e4fad5": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e71e275e803": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e7207443026": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e72d244227c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e7327e5ae41": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e7451eeebce": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e75c56e7dce": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e782fcb21e0": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e7a6e4a3d7e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e806b03dc29": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e80e04f0304": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e818263ee0e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e81c7bea3e1": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e8283c11dd8": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e84cac71832": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e85b248a3fe": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e868b8b7caf": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e877fa20225": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e87c138e3ab": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e898e91cf5e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e8a9a911b04": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e915e2b931d": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e9186cfaf8d": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e93509d6367": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e94cb648d7c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e95c9f3e74e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e96a4a01ba6": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e96f8876cde": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e97f1eed58b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e9810908433": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e998d3d83b4": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e9d18a0d9fb": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "e9e1dc01130": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea06590da58": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea15aadaf27": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea270661520": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea2fa91d043": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea3100e0e05": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea46a365df2": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea4d4ee053e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea51fc5bf80": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea5fd2ffba7": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea60f3c0366": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ea687b0c28f": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ead642f47ca": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eaed5b64cdd": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eaf7e59511b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eb1b54b90fb": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eb87402c7cd": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eb944db43c2": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ebc347992cb": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ec6056e38bd": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ec6326da7b1": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ec79cb5f43b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eca8cd673fc": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eccb58dc2b0": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed0490fabbe": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed0d8900426": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed1e4cd3b11": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed2d8171444": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed3c249c8d4": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ed3fbb17f82": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ede6d3c3923": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ede70fbc65e": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee35e146a48": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee53970028d": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee56771b616": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee678abfd6c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee800194d8c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ee9a87ab850": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eeb5166d53b": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eec028f1116": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eef2c46be15": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "eef8d46caaa": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ef0ce05a13a": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ef3612e3c29": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ef7c7d60f8c": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "ef88ac75330": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "efb3e95ca47": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "efb73823af5": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "efd9e605f88": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "efeff0f71f4": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ],
+      "effb61f2865": [
+        "set",
+        "2026-10-19T20:22:59.110104+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T20:23:00.170650+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "assignee": "Rain Younger",
+  "created": {
+    "app_version": "2026.10.19.2",
+    "at": "2026-10-19T16:22:59-04:00",
+    "commit": "5d58e3d6",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "events": [
+    {
+      "amplitude": 313.004,
+      "channel": 6,
+      "id": "e5d722e5f27",
+      "label": null,
+      "start": 3.304483
+    },
+    {
+      "amplitude": 955.179,
+      "channel": 28,
+      "id": "e36a5e9519c",
+      "label": null,
+      "start": 8.991453
+    },
+    {
+      "amplitude": 554.511,
+      "channel": 6,
+      "id": "e4a45e5c3be",
+      "label": null,
+      "start": 15.807917
+    },
+    {
+      "amplitude": 732.418,
+      "channel": 34,
+      "id": "eaf7e59511b",
+      "label": null,
+      "start": 18.064405
+    },
+    {
+      "amplitude": 522.588,
+      "channel": 34,
+      "id": "e3520dbf329",
+      "label": null,
+      "start": 34.27182
+    },
+    {
+      "amplitude": 421.106,
+      "channel": 2,
+      "id": "ed1e4cd3b11",
+      "label": null,
+      "start": 54.397214
+    },
+    {
+      "amplitude": 366.253,
+      "channel": 6,
+      "id": "ee678abfd6c",
+      "label": null,
+      "start": 58.190194
+    },
+    {
+      "amplitude": 451.354,
+      "channel": 8,
+      "id": "e96f8876cde",
+      "label": null,
+      "start": 85.689049
+    },
+    {
+      "amplitude": 361.99,
+      "channel": 34,
+      "id": "ede6d3c3923",
+      "label": null,
+      "start": 88.190036
+    },
+    {
+      "amplitude": 415.392,
+      "channel": 4,
+      "id": "e85b248a3fe",
+      "label": null,
+      "start": 92.945511
+    },
+    {
+      "amplitude": 447.837,
+      "channel": 2,
+      "id": "e446c2385e5",
+      "label": null,
+      "start": 122.077358
+    },
+    {
+      "amplitude": 708.324,
+      "channel": 38,
+      "id": "e60e1ef1a93",
+      "label": null,
+      "start": 129.834817
+    },
+    {
+      "amplitude": 451.633,
+      "channel": 28,
+      "id": "e915e2b931d",
+      "label": null,
+      "start": 130.199315
+    },
+    {
+      "amplitude": 473.409,
+      "channel": 8,
+      "id": "e81c7bea3e1",
+      "label": null,
+      "start": 142.144253
+    },
+    {
+      "amplitude": 605.188,
+      "channel": 34,
+      "id": "e0fd1e7acb6",
+      "label": null,
+      "start": 183.411036
+    },
+    {
+      "amplitude": 465.404,
+      "channel": 28,
+      "id": "e71e275e803",
+      "label": null,
+      "start": 208.265905
+    },
+    {
+      "amplitude": 473.366,
+      "channel": 34,
+      "id": "e818263ee0e",
+      "label": null,
+      "start": 213.134879
+    },
+    {
+      "amplitude": 402.926,
+      "channel": 2,
+      "id": "e6926e4fad5",
+      "label": null,
+      "start": 216.308363
+    },
+    {
+      "amplitude": 463.589,
+      "channel": 38,
+      "id": "e3391cf44b6",
+      "label": null,
+      "start": 218.72685
+    },
+    {
+      "amplitude": 399.917,
+      "channel": 6,
+      "id": "ec6326da7b1",
+      "label": null,
+      "start": 222.265331
+    },
+    {
+      "amplitude": 590.979,
+      "channel": 6,
+      "id": "e998d3d83b4",
+      "label": null,
+      "start": 254.964159
+    },
+    {
+      "amplitude": 537.509,
+      "channel": 6,
+      "id": "e7a6e4a3d7e",
+      "label": null,
+      "start": 268.792087
+    },
+    {
+      "amplitude": 591.159,
+      "channel": 6,
+      "id": "e5c5ffd977a",
+      "label": null,
+      "start": 287.829487
+    },
+    {
+      "amplitude": 520.491,
+      "channel": 4,
+      "id": "e67ea7d8565",
+      "label": null,
+      "start": 303.361905
+    },
+    {
+      "amplitude": 610.138,
+      "channel": 2,
+      "id": "e877fa20225",
+      "label": null,
+      "start": 316.528336
+    },
+    {
+      "amplitude": 779.913,
+      "channel": 28,
+      "id": "ea2fa91d043",
+      "label": null,
+      "start": 324.024796
+    },
+    {
+      "amplitude": 586.279,
+      "channel": 6,
+      "id": "e24c4747842",
+      "label": null,
+      "start": 337.092727
+    },
+    {
+      "amplitude": 474.534,
+      "channel": 4,
+      "id": "e9e1dc01130",
+      "label": null,
+      "start": 340.46221
+    },
+    {
+      "amplitude": 345.474,
+      "channel": 34,
+      "id": "e4c29c48e09",
+      "label": null,
+      "start": 347.336174
+    },
+    {
+      "amplitude": 543.613,
+      "channel": 6,
+      "id": "e868b8b7caf",
+      "label": null,
+      "start": 369.464557
+    },
+    {
+      "amplitude": 600.87,
+      "channel": 6,
+      "id": "e65a343c89d",
+      "label": null,
+      "start": 385.235474
+    },
+    {
+      "amplitude": 586.563,
+      "channel": 6,
+      "id": "e97f1eed58b",
+      "label": null,
+      "start": 390.439947
+    },
+    {
+      "amplitude": 450.729,
+      "channel": 6,
+      "id": "e4c4e4fe4f9",
+      "label": null,
+      "start": 398.094907
+    },
+    {
+      "amplitude": 745.623,
+      "channel": 34,
+      "id": "e7207443026",
+      "label": null,
+      "start": 418.3618
+    },
+    {
+      "amplitude": 518.567,
+      "channel": 34,
+      "id": "e4d4c7b3d33",
+      "label": null,
+      "start": 421.084286
+    },
+    {
+      "amplitude": 580.51,
+      "channel": 34,
+      "id": "e9d18a0d9fb",
+      "label": null,
+      "start": 424.536268
+    },
+    {
+      "amplitude": 481.221,
+      "channel": 2,
+      "id": "e4529487b44",
+      "label": null,
+      "start": 441.041181
+    },
+    {
+      "amplitude": 429.514,
+      "channel": 34,
+      "id": "e50e6cbbf03",
+      "label": null,
+      "start": 477.826487
+    },
+    {
+      "amplitude": 524.117,
+      "channel": 2,
+      "id": "ea3100e0e05",
+      "label": null,
+      "start": 478.996981
+    },
+    {
+      "amplitude": 1537.097,
+      "channel": 34,
+      "id": "efd9e605f88",
+      "label": null,
+      "start": 480.454974
+    },
+    {
+      "amplitude": 636.347,
+      "channel": 2,
+      "id": "eef8d46caaa",
+      "label": null,
+      "start": 482.670462
+    },
+    {
+      "amplitude": 478.386,
+      "channel": 2,
+      "id": "e2d19172b46",
+      "label": null,
+      "start": 484.676951
+    },
+    {
+      "amplitude": 483.376,
+      "channel": 2,
+      "id": "e5255263ac2",
+      "label": null,
+      "start": 491.999913
+    },
+    {
+      "amplitude": 403.387,
+      "channel": 2,
+      "id": "e9810908433",
+      "label": null,
+      "start": 500.638368
+    },
+    {
+      "amplitude": 503.474,
+      "channel": 2,
+      "id": "e3c24d5adfe",
+      "label": null,
+      "start": 502.938855
+    },
+    {
+      "amplitude": 499.716,
+      "channel": 4,
+      "id": "ee53970028d",
+      "label": null,
+      "start": 506.109339
+    },
+    {
+      "amplitude": 348.392,
+      "channel": 8,
+      "id": "e5a7cc0d710",
+      "label": null,
+      "start": 507.202333
+    },
+    {
+      "amplitude": 403.784,
+      "channel": 6,
+      "id": "e2176f2e6dc",
+      "label": null,
+      "start": 509.208322
+    },
+    {
+      "amplitude": 423.845,
+      "channel": 10,
+      "id": "e782fcb21e0",
+      "label": null,
+      "start": 512.212307
+    },
+    {
+      "amplitude": 497.388,
+      "channel": 2,
+      "id": "ea51fc5bf80",
+      "label": null,
+      "start": 520.243264
+    },
+    {
+      "amplitude": 482.096,
+      "channel": 2,
+      "id": "ed3c249c8d4",
+      "label": null,
+      "start": 523.316748
+    },
+    {
+      "amplitude": 548.238,
+      "channel": 2,
+      "id": "e4ce93a9222",
+      "label": null,
+      "start": 527.159228
+    },
+    {
+      "amplitude": 621.15,
+      "channel": 2,
+      "id": "e671a3c79dd",
+      "label": null,
+      "start": 531.333706
+    },
+    {
+      "amplitude": 395.808,
+      "channel": 12,
+      "id": "eb1b54b90fb",
+      "label": null,
+      "start": 533.304696
+    },
+    {
+      "amplitude": 469.91,
+      "channel": 2,
+      "id": "ea60f3c0366",
+      "label": null,
+      "start": 533.881693
+    },
+    {
+      "amplitude": 442.126,
+      "channel": 2,
+      "id": "ea270661520",
+      "label": null,
+      "start": 547.70112
+    },
+    {
+      "amplitude": 443.433,
+      "channel": 10,
+      "id": "e045646f799",
+      "label": null,
+      "start": 556.821572
+    },
+    {
+      "amplitude": 575.118,
+      "channel": 2,
+      "id": "e9186cfaf8d",
+      "label": null,
+      "start": 568.478511
+    },
+    {
+      "amplitude": 455.501,
+      "channel": 34,
+      "id": "e1780e61c70",
+      "label": null,
+      "start": 606.412811
+    },
+    {
+      "amplitude": 456.19,
+      "channel": 2,
+      "id": "e8a9a911b04",
+      "label": null,
+      "start": 610.53529
+    },
+    {
+      "amplitude": 731.203,
+      "channel": 2,
+      "id": "e4889d61d9e",
+      "label": null,
+      "start": 625.868709
+    },
+    {
+      "amplitude": 494.944,
+      "channel": 28,
+      "id": "e5245ea5346",
+      "label": null,
+      "start": 646.6091
+    },
+    {
+      "amplitude": 501.25,
+      "channel": 2,
+      "id": "e87c138e3ab",
+      "label": null,
+      "start": 710.777263
+    },
+    {
+      "amplitude": 394.494,
+      "channel": 34,
+      "id": "e75c56e7dce",
+      "label": null,
+      "start": 724.238192
+    },
+    {
+      "amplitude": 634.251,
+      "channel": 34,
+      "id": "e1b18a3a147",
+      "label": null,
+      "start": 731.465654
+    },
+    {
+      "amplitude": 571.86,
+      "channel": 34,
+      "id": "e8283c11dd8",
+      "label": null,
+      "start": 754.434533
+    },
+    {
+      "amplitude": 491.384,
+      "channel": 2,
+      "id": "ef88ac75330",
+      "label": null,
+      "start": 757.423017
+    },
+    {
+      "amplitude": 459.346,
+      "channel": 34,
+      "id": "e4197b5ba80",
+      "label": null,
+      "start": 759.388007
+    },
+    {
+      "amplitude": 596.311,
+      "channel": 4,
+      "id": "eccb58dc2b0",
+      "label": null,
+      "start": 814.00872
+    },
+    {
+      "amplitude": 563.625,
+      "channel": 2,
+      "id": "e681496c62b",
+      "label": null,
+      "start": 824.028167
+    },
+    {
+      "amplitude": 700.222,
+      "channel": 34,
+      "id": "eca8cd673fc",
+      "label": null,
+      "start": 836.599101
+    },
+    {
+      "amplitude": 532.069,
+      "channel": 6,
+      "id": "e72d244227c",
+      "label": null,
+      "start": 845.246555
+    },
+    {
+      "amplitude": 624.79,
+      "channel": 2,
+      "id": "e478956ea86",
+      "label": null,
+      "start": 849.466033
+    },
+    {
+      "amplitude": 474.269,
+      "channel": 6,
+      "id": "e284c52bec6",
+      "label": null,
+      "start": 863.222461
+    },
+    {
+      "amplitude": 463.198,
+      "channel": 8,
+      "id": "ec6056e38bd",
+      "label": null,
+      "start": 865.506449
+    },
+    {
+      "amplitude": 540.912,
+      "channel": 34,
+      "id": "e45a9aa6f1c",
+      "label": null,
+      "start": 885.236345
+    },
+    {
+      "amplitude": 485.503,
+      "channel": 8,
+      "id": "ea4d4ee053e",
+      "label": null,
+      "start": 891.95231
+    },
+    {
+      "amplitude": 517.429,
+      "channel": 30,
+      "id": "efeff0f71f4",
+      "label": null,
+      "start": 916.955678
+    },
+    {
+      "amplitude": 438.094,
+      "channel": 28,
+      "id": "ea687b0c28f",
+      "label": null,
+      "start": 917.993673
+    },
+    {
+      "amplitude": 337.997,
+      "channel": 34,
+      "id": "ef3612e3c29",
+      "label": null,
+      "start": 943.923537
+    },
+    {
+      "amplitude": 524.75,
+      "channel": 6,
+      "id": "e3b1dcacc88",
+      "label": null,
+      "start": 970.879395
+    },
+    {
+      "amplitude": 305.693,
+      "channel": 6,
+      "id": "e1c829d730f",
+      "label": null,
+      "start": 981.174841
+    },
+    {
+      "amplitude": 899.36,
+      "channel": 28,
+      "id": "ee9a87ab850",
+      "label": null,
+      "start": 998.553249
+    },
+    {
+      "amplitude": 433.084,
+      "channel": 28,
+      "id": "effb61f2865",
+      "label": null,
+      "start": 1026.062105
+    },
+    {
+      "amplitude": 574.675,
+      "channel": 28,
+      "id": "e7451eeebce",
+      "label": null,
+      "start": 1034.465561
+    },
+    {
+      "amplitude": 456.641,
+      "channel": 8,
+      "id": "e245b7542af",
+      "label": null,
+      "start": 1046.504497
+    },
+    {
+      "amplitude": 471.409,
+      "channel": 4,
+      "id": "e40a679a068",
+      "label": null,
+      "start": 1062.716912
+    },
+    {
+      "amplitude": 455.21,
+      "channel": 6,
+      "id": "eeb5166d53b",
+      "label": null,
+      "start": 1065.263399
+    },
+    {
+      "amplitude": 730.485,
+      "channel": 34,
+      "id": "e10ded16850",
+      "label": null,
+      "start": 1099.29822
+    },
+    {
+      "amplitude": 450.505,
+      "channel": 28,
+      "id": "eb944db43c2",
+      "label": null,
+      "start": 1126.852575
+    },
+    {
+      "amplitude": 478.951,
+      "channel": 28,
+      "id": "e3bdc70ae21",
+      "label": null,
+      "start": 1146.574471
+    },
+    {
+      "amplitude": 657.337,
+      "channel": 28,
+      "id": "ec79cb5f43b",
+      "label": null,
+      "start": 1188.301252
+    },
+    {
+      "amplitude": 700.669,
+      "channel": 34,
+      "id": "eb87402c7cd",
+      "label": null,
+      "start": 1202.913675
+    },
+    {
+      "amplitude": 451.566,
+      "channel": 4,
+      "id": "e95c9f3e74e",
+      "label": null,
+      "start": 1211.895628
+    },
+    {
+      "amplitude": 512.021,
+      "channel": 28,
+      "id": "e39988107fa",
+      "label": null,
+      "start": 1224.938559
+    },
+    {
+      "amplitude": 457.781,
+      "channel": 34,
+      "id": "ea46a365df2",
+      "label": null,
+      "start": 1231.979022
+    },
+    {
+      "amplitude": 581.964,
+      "channel": 2,
+      "id": "e63bf958f4f",
+      "label": null,
+      "start": 1248.222437
+    },
+    {
+      "amplitude": 649.908,
+      "channel": 34,
+      "id": "e028b10db04",
+      "label": null,
+      "start": 1255.612898
+    },
+    {
+      "amplitude": 361.629,
+      "channel": 2,
+      "id": "e2b3363e770",
+      "label": null,
+      "start": 1266.67434
+    },
+    {
+      "amplitude": 675.609,
+      "channel": 34,
+      "id": "e111f95b2ed",
+      "label": null,
+      "start": 1274.564298
+    },
+    {
+      "amplitude": 512.401,
+      "channel": 6,
+      "id": "e20efce95d9",
+      "label": null,
+      "start": 1280.120269
+    },
+    {
+      "amplitude": 452.419,
+      "channel": 6,
+      "id": "e138ec497b4",
+      "label": null,
+      "start": 1283.478251
+    },
+    {
+      "amplitude": 603.464,
+      "channel": 4,
+      "id": "e0a801c2db7",
+      "label": null,
+      "start": 1318.736566
+    },
+    {
+      "amplitude": 449.537,
+      "channel": 34,
+      "id": "e93509d6367",
+      "label": null,
+      "start": 1334.130985
+    },
+    {
+      "amplitude": 979.447,
+      "channel": 34,
+      "id": "e80e04f0304",
+      "label": null,
+      "start": 1341.812444
+    },
+    {
+      "amplitude": 420.26,
+      "channel": 4,
+      "id": "e59fa47adcc",
+      "label": null,
+      "start": 1352.782387
+    },
+    {
+      "amplitude": 913.498,
+      "channel": 34,
+      "id": "e94cb648d7c",
+      "label": null,
+      "start": 1358.344357
+    },
+    {
+      "amplitude": 451.625,
+      "channel": 28,
+      "id": "e144b2f392b",
+      "label": null,
+      "start": 1362.909833
+    },
+    {
+      "amplitude": 407.525,
+      "channel": 6,
+      "id": "e05a4f9db72",
+      "label": null,
+      "start": 1366.652814
+    },
+    {
+      "amplitude": 486.058,
+      "channel": 2,
+      "id": "ed3fbb17f82",
+      "label": null,
+      "start": 1372.835281
+    },
+    {
+      "amplitude": 804.539,
+      "channel": 34,
+      "id": "ef0ce05a13a",
+      "label": null,
+      "start": 1378.055254
+    },
+    {
+      "amplitude": 595.242,
+      "channel": 34,
+      "id": "e7327e5ae41",
+      "label": null,
+      "start": 1384.368221
+    },
+    {
+      "amplitude": 904.454,
+      "channel": 34,
+      "id": "e147aad2cb9",
+      "label": null,
+      "start": 1393.594672
+    },
+    {
+      "amplitude": 357.978,
+      "channel": 34,
+      "id": "efb73823af5",
+      "label": null,
+      "start": 1396.751156
+    },
+    {
+      "amplitude": 626.129,
+      "channel": 6,
+      "id": "ef7c7d60f8c",
+      "label": null,
+      "start": 1446.890892
+    },
+    {
+      "amplitude": 474.607,
+      "channel": 28,
+      "id": "e3689bec55f",
+      "label": null,
+      "start": 1451.246369
+    },
+    {
+      "amplitude": 476.342,
+      "channel": 2,
+      "id": "ee35e146a48",
+      "label": null,
+      "start": 1452.489862
+    },
+    {
+      "amplitude": 402.089,
+      "channel": 34,
+      "id": "efb3e95ca47",
+      "label": null,
+      "start": 1470.831766
+    },
+    {
+      "amplitude": 454.835,
+      "channel": 2,
+      "id": "e238c245dc8",
+      "label": null,
+      "start": 1475.139743
+    },
+    {
+      "amplitude": 552.427,
+      "channel": 34,
+      "id": "ea5fd2ffba7",
+      "label": null,
+      "start": 1491.357658
+    },
+    {
+      "amplitude": 430.338,
+      "channel": 34,
+      "id": "ee56771b616",
+      "label": null,
+      "start": 1503.938092
+    },
+    {
+      "amplitude": 456.038,
+      "channel": 34,
+      "id": "e806b03dc29",
+      "label": null,
+      "start": 1505.657083
+    },
+    {
+      "amplitude": 549.443,
+      "channel": 38,
+      "id": "eef2c46be15",
+      "label": null,
+      "start": 1515.309032
+    },
+    {
+      "amplitude": 484.335,
+      "channel": 34,
+      "id": "e27122bae19",
+      "label": null,
+      "start": 1516.143028
+    },
+    {
+      "amplitude": 479.909,
+      "channel": 6,
+      "id": "ea15aadaf27",
+      "label": null,
+      "start": 1523.673988
+    },
+    {
+      "amplitude": 599.126,
+      "channel": 6,
+      "id": "ed2d8171444",
+      "label": null,
+      "start": 1533.028439
+    },
+    {
+      "amplitude": 687.982,
+      "channel": 2,
+      "id": "e00ab22ab4e",
+      "label": null,
+      "start": 1535.545926
+    },
+    {
+      "amplitude": 857.135,
+      "channel": 28,
+      "id": "ed0d8900426",
+      "label": null,
+      "start": 1555.67932
+    },
+    {
+      "amplitude": 522.204,
+      "channel": 2,
+      "id": "e898e91cf5e",
+      "label": null,
+      "start": 1566.055265
+    },
+    {
+      "amplitude": 392.661,
+      "channel": 8,
+      "id": "e4281523194",
+      "label": null,
+      "start": 1589.772141
+    },
+    {
+      "amplitude": 513.99,
+      "channel": 34,
+      "id": "e2892f19381",
+      "label": null,
+      "start": 1618.853988
+    },
+    {
+      "amplitude": 402.535,
+      "channel": 6,
+      "id": "e5be5cbd1e9",
+      "label": null,
+      "start": 1620.841477
+    },
+    {
+      "amplitude": 503.549,
+      "channel": 6,
+      "id": "e592d51f519",
+      "label": null,
+      "start": 1632.741415
+    },
+    {
+      "amplitude": 709.312,
+      "channel": 34,
+      "id": "e4a00b6ba92",
+      "label": null,
+      "start": 1651.538316
+    },
+    {
+      "amplitude": 320.07,
+      "channel": 4,
+      "id": "e52e7c544a2",
+      "label": null,
+      "start": 1661.772262
+    },
+    {
+      "amplitude": 385.888,
+      "channel": 10,
+      "id": "eec028f1116",
+      "label": null,
+      "start": 1667.149234
+    },
+    {
+      "amplitude": 510.658,
+      "channel": 2,
+      "id": "ede70fbc65e",
+      "label": null,
+      "start": 1682.357654
+    },
+    {
+      "amplitude": 441.398,
+      "channel": 34,
+      "id": "ed0490fabbe",
+      "label": null,
+      "start": 1698.967066
+    },
+    {
+      "amplitude": 643.035,
+      "channel": 34,
+      "id": "ead642f47ca",
+      "label": null,
+      "start": 1708.009019
+    },
+    {
+      "amplitude": 376.41,
+      "channel": 34,
+      "id": "e27ba4c8d56",
+      "label": null,
+      "start": 1711.411001
+    },
+    {
+      "amplitude": 440.617,
+      "channel": 10,
+      "id": "e0442e87fb0",
+      "label": null,
+      "start": 1723.00994
+    },
+    {
+      "amplitude": 511.246,
+      "channel": 28,
+      "id": "ea06590da58",
+      "label": null,
+      "start": 1725.607426
+    },
+    {
+      "amplitude": 462.822,
+      "channel": 34,
+      "id": "e2a9074a2bd",
+      "label": null,
+      "start": 1738.594858
+    },
+    {
+      "amplitude": 474.171,
+      "channel": 2,
+      "id": "e23473520a3",
+      "label": null,
+      "start": 1758.021756
+    },
+    {
+      "amplitude": 607.64,
+      "channel": 34,
+      "id": "e84cac71832",
+      "label": null,
+      "start": 1767.433206
+    },
+    {
+      "amplitude": 552.889,
+      "channel": 8,
+      "id": "ee800194d8c",
+      "label": null,
+      "start": 1769.496196
+    },
+    {
+      "amplitude": 348.307,
+      "channel": 34,
+      "id": "ebc347992cb",
+      "label": null,
+      "start": 1784.206618
+    },
+    {
+      "amplitude": 497.343,
+      "channel": 34,
+      "id": "e96a4a01ba6",
+      "label": null,
+      "start": 1788.691595
+    },
+    {
+      "amplitude": 261.489,
+      "channel": 10,
+      "id": "e43073a1ba0",
+      "label": null,
+      "start": 1789.54359
+    },
+    {
+      "amplitude": 446.977,
+      "channel": 8,
+      "id": "e1e9a8c3d35",
+      "label": null,
+      "start": 1796.308055
+    },
+    {
+      "amplitude": 486.321,
+      "channel": 2,
+      "id": "eaed5b64cdd",
+      "label": null,
+      "start": 1820.397928
+    }
+  ],
+  "gid": "se7d688078e3b",
+  "imports": [
+    {
+      "at": "2026-10-19T16:22:59-0400",
+      "n": 151,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "b80c1d0313a1",
+        "by": "Rain Younger",
+        "entry_name": "PTEN_DKO m56 s2 2025-06-19  \u00b7  Doppler 20\u2013300 Hz",
+        "kind": "bank version",
+        "pipeline": "Doppler (line length)",
+        "version": 0
+      }
+    }
+  ],
+  "kind": "ied",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "solid",
+      "keys": [
+        "1",
+        "s"
+      ],
+      "name": "Solid"
+    },
+    {
+      "color": "#3b82f6",
+      "good": true,
+      "id": "sputter",
+      "keys": [
+        "2",
+        "t"
+      ],
+      "name": "Sputter"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "3",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "4",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#f97316",
+      "created": {
+        "app_version": "2026.10.14.5",
+        "at": "2026-10-14T13:49:34-04:00",
+        "commit": "8d0daabe",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "custom": true,
+      "id": "ds-like",
+      "keys": [
+        "5"
+      ],
+      "name": "DS-Like"
+    },
+    {
+      "color": "#ec4899",
+      "created": {
+        "app_version": "2026.10.14.5",
+        "at": "2026-10-14T13:51:47-04:00",
+        "commit": "8d0daabe",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "custom": true,
+      "good": true,
+      "id": "weak-ied",
+      "keys": [
+        "6"
+      ],
+      "name": "Weak IED"
+    }
+  ],
+  "name": "PTEN_DKO m56 s2 2025-06-19  \u00b7  Doppler 20\u2013300 Hz",
+  "open": true,
+  "opened_at": "2026-10-19T16:23:00-0400",
+  "opened_by": "Rain Younger",
+  "schema": 1,
+  "session_label": "PTEN_DKO m56 s2 2025-06-19",
+  "source": {
+    "bank_entry": "b80c1d0313a1",
+    "by": "Rain Younger",
+    "entry_name": "PTEN_DKO m56 s2 2025-06-19  \u00b7  Doppler 20\u2013300 Hz",
+    "kind": "bank version",
+    "pipeline": "Doppler (line length)",
+    "version": 0
+  },
+  "updated": {
+    "app_version": "2026.10.19.2",
+    "at": "2026-10-19T16:23:00-04:00",
+    "commit": "5d58e3d6",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

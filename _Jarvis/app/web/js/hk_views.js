@@ -1,0 +1,395 @@
+/* ==========================================================================
+   hk_views.js -- Housekeeping's two ways of looking, and the mouse book.
+
+   The tree is the right shape for "what do we have and where is it". It is
+   the wrong shape for "which animals still need a genotype", because that
+   question is about a column, and a tree has no columns. So there are two
+   views over exactly the same records:
+
+     Branches   nested, grouped by whatever you choose -- project by default,
+                or any label anyone has put on a mouse. Grouping by genotype
+                or cohort costs one dropdown, because the branch key is just
+                an attribute lookup rather than a hard-coded level.
+
+     Table      one row per recording (or per mouse), sortable, filterable,
+                and copyable as TSV so it lands in Excel intact. This is the
+                spreadsheet the lab was keeping by hand.
+
+   And the labels themselves are free-form. A fixed set of columns is a guess
+   about what the lab will want to record, and it is wrong within a month --
+   someone needs "implant date", someone else needs "virus batch". So a new
+   label is created by typing its name, it immediately becomes a grouping
+   option, and nothing had to be declared anywhere first.
+   ========================================================================== */
+'use strict';
+
+BARRY.hk = (function () {
+  /* ==================================================================
+     Reading the records
+     ================================================================== */
+  function flatten(data) {
+    const out = [];
+    for (const p of (data.tree || [])) {
+      for (const m of p.mice) {
+        for (const s of m.sessions) out.push(s);
+      }
+    }
+    return out;
+  }
+
+  function attrsFor(data, s) {
+    const byProject = (data.mice || {})[s.project] || {};
+    return ((byProject[String(s.mouse)] || {}).attrs) || {};
+  }
+
+  /* Every label anyone has used, in a stable order: the suggested ones
+     first so they are spelled the same way by everyone, then whatever the
+     lab has invented since. */
+  function attributes(data) {
+    return (data.attributes || []).filter((a) => a.n || a.suggested);
+  }
+
+  function groupsOf(data, rows, groupBy) {
+    /* One pass, producing [{key, label, mice:[{mouse, sessions}]}].
+
+       Grouping by an attribute rather than by the project means a mouse with
+       no value for it lands in "Not set" rather than vanishing -- which is
+       the whole point, because "which ones have I not labelled yet" is the
+       question you are usually asking. */
+    const groups = new Map();
+    for (const s of rows) {
+      let key;
+      if (groupBy === 'project') key = s.project || 'Unfiled';
+      else if (groupBy === 'cohort') key = s.cohort || '—';
+      else key = attrsFor(data, s)[groupBy] || null;
+      const label = key === null ? 'Not set' : String(key);
+      const gk = key === null ? '\u0000unset' : String(key);
+      if (!groups.has(gk)) groups.set(gk, { key: gk, label, mice: new Map() });
+      const g = groups.get(gk);
+      /* A recording Jarvis could not get a mouse number out of still has
+         to appear -- it is usually the one you were looking for. It gets a
+         branch of its own that says so, rather than one labelled "mnull"
+         that offers to label an animal that does not exist. */
+      const mk = s.project + '/' + (s.mouse == null ? '?' : s.mouse);
+      if (!g.mice.has(mk)) {
+        g.mice.set(mk, {
+          mouse: s.mouse == null ? null : s.mouse,
+          name: s.mouse == null ? 'No mouse number' : 'm' + s.mouse,
+          project: s.project, sessions: [],
+        });
+      }
+      g.mice.get(mk).sessions.push(s);
+    }
+    const out = [...groups.values()].map((g) => ({
+      key: g.key,
+      label: g.label,
+      // Unknown last: it is a loose end, not the first thing to read.
+      mice: [...g.mice.values()].sort(
+        (a, b) => (a.mouse == null) - (b.mouse == null)
+                  || (a.mouse || 0) - (b.mouse || 0)),
+    }));
+    // "Not set" last: it is a to-do list, not a category.
+    out.sort((a, b) => (a.key === '\u0000unset') - (b.key === '\u0000unset')
+                    || BARRY.ui.natCompare(a.label, b.label));
+    return out;
+  }
+
+  /* ==================================================================
+     The table
+     ================================================================== */
+  const SESSION_COLS = [
+    { id: 'label', name: 'Recording', get: (s) => s.label || s.key || s.gid },
+    { id: 'project', name: 'Project', get: (s) => s.project },
+    { id: 'cohort', name: 'Cohort', get: (s) => s.cohort || '' },
+    { id: 'mouse', name: 'Mouse', get: (s) => s.mouse, num: true },
+    { id: 'session', name: 'Session', get: (s) => s.session, num: true },
+    { id: 'date', name: 'Date', get: (s) => s.date || '' },
+    { id: 'condition', name: 'Condition', get: (s) => s.condition || '' },
+    { id: 'n_channels', name: 'Ch',
+      get: (s) => s.n_channels_here || s.n_channels, num: true },
+    { id: 'duration', name: 'Length', get: (s) => s.duration_s, num: true,
+      show: (v) => (v ? fmtDur(v) : '') },
+    { id: 'bad', name: 'Bad channels', get: (s) => (s.bad_channels || []).join(' '),
+      title: 'CSC numbers marked bad' },
+    { id: 'layers', name: 'Layers', get: (s) => (s.has || {}).layers || 0,
+      num: true },
+    { id: 'banked', name: 'Banked', get: (s) => (s.has || {}).banked || 0,
+      num: true },
+    { id: 'figures', name: 'Figures', get: (s) => (s.has || {}).figures || 0,
+      num: true },
+    { id: 'paths', name: 'Paths', get: (s) => s.n_paths, num: true,
+      title: 'How many places this recording has been seen' },
+    { id: 'where', name: 'Where it is',
+      get: (s) => ((s.here || [])[0] || (s.paths || [])[0] || ''),
+      title: 'The full path -- reachable from here if there is one' },
+    { id: 'machines', name: 'Seen by',
+      get: (s) => Object.keys(s.seen || {}).join(', '),
+      title: 'Which machines have laid eyes on it' },
+    { id: 'gid', name: 'Permanent id', get: (s) => s.gid, mono: true },
+  ];
+
+  function mouseCols(data) {
+    const cols = [
+      { id: 'mouse', name: 'Mouse', get: (r) => r.mouse, num: true,
+        show: (v) => (v == null ? '—' : String(v)) },
+      { id: 'project', name: 'Project', get: (r) => r.project },
+      { id: 'n', name: 'Recordings', get: (r) => r.sessions.length, num: true },
+    ];
+    for (const a of attributes(data)) {
+      cols.push({ id: 'a:' + a.id, name: a.name, attr: a.id,
+                  get: (r) => r.attrs[a.id] || '' });
+    }
+    cols.push({ id: 'dates', name: 'First seen',
+                get: (r) => r.sessions.map((s) => s.date)
+                  .filter(Boolean).sort()[0] || '' });
+    return cols;
+  }
+
+  function miceRows(data, rows) {
+    const by = new Map();
+    for (const s of rows) {
+      const k = s.project + '/' + s.mouse;
+      if (!by.has(k)) {
+        by.set(k, { mouse: s.mouse, project: s.project,
+                    name: s.mouse == null ? 'No mouse number' : 'm' + s.mouse,
+                    attrs: attrsFor(data, s), sessions: [] });
+      }
+      by.get(k).sessions.push(s);
+    }
+    return [...by.values()];
+  }
+
+  function sortRows(rows, cols, sort) {
+    if (!sort || !sort.col) return rows;
+    const col = cols.find((c) => c.id === sort.col);
+    if (!col) return rows;
+    const dir = sort.dir === 'desc' ? -1 : 1;
+    return rows.slice().sort((a, b) => {
+      const x = col.get(a);
+      const y = col.get(b);
+      if (col.num) return dir * ((Number(x) || 0) - (Number(y) || 0));
+      return dir * BARRY.ui.natCompare(x, y);
+    });
+  }
+
+  function table(opts) {
+    const { cols, rows, sort, onsort, onclick, isSel, edit, wrap } = opts;
+    const head = el('tr', {}, cols.map((c) => el('th', {
+      class: (c.num ? 'num' : '') + (sort && sort.col === c.id ? ' sorted' : ''),
+      title: c.title || 'Sort by ' + c.name,
+      onclick: () => onsort(c.id),
+    }, [
+      el('span', { text: c.name }),
+      sort && sort.col === c.id
+        ? el('span', { class: 'hk-arrow',
+                       text: sort.dir === 'desc' ? '▾' : '▴' })
+        : null,
+    ].filter(Boolean))));
+
+    const body = el('tbody', {}, rows.map((r) => el('tr', {
+      class: (isSel && isSel(r) ? 'sel' : '')
+           + (r.reachable === false ? ' away' : ''),
+      onclick: onclick ? () => onclick(r) : null,
+    }, cols.map((c) => {
+      const raw = c.get(r);
+      const txt = c.show ? c.show(raw) : (raw == null ? '' : String(raw));
+      return el('td', {
+        class: (c.num ? 'num' : '') + (c.mono ? ' mono' : '')
+             + (c.attr ? ' editable' : ''),
+        title: c.attr ? 'Click to set ' + c.name : txt,
+        onclick: c.attr && edit
+          ? (e) => { e.stopPropagation(); edit(r, c.attr); }
+          : null,
+      }, [txt === '' && c.attr
+          ? el('span', { class: 'hk-unset', text: '—' })
+          : el('span', { text: txt })]);
+    }))));
+
+    return el('div', { class: 'hk-tablewrap' },
+              [el('table', { class: 'hk-table' + (wrap ? ' wrap' : '') },
+                  [el('thead', {}, [head]), body])]);
+  }
+
+  function toTSV(cols, rows) {
+    const lines = [cols.map((c) => c.name).join('\t')];
+    for (const r of rows) {
+      lines.push(cols.map((c) => {
+        const v = c.get(r);
+        const t = c.show ? c.show(v) : (v == null ? '' : String(v));
+        return t.replace(/[\t\r\n]+/g, ' ');
+      }).join('\t'));
+    }
+    return lines.join('\n');
+  }
+
+  /* ==================================================================
+     Which probe went into the animal, as a chip
+     ==================================================================
+     Here rather than in either view, because three places draw it -- the
+     drive scan, Everything Jarvis knows and Everything VACC knows -- and
+     three copies of "is this confirmed" would eventually disagree about
+     what green means.
+
+     Three states, and they are not degrees of confidence:
+
+       confirmed   somebody said so. Green, and every view can rely on it.
+       detected    the channel count supports a guess and nobody has
+                   agreed. The guess is USED -- a dual implant drawn as one
+                   array is worse than one drawn as two and marked
+                   unconfirmed -- but it is never drawn as a fact.
+       unknown     no count, or a count that supports nothing. A question
+                   mark, not a default: "H3" and "we do not know" are
+                   different things and only one of them is safe to run a
+                   CSD on.
+
+     The server decides which is which (`probes.state_of`), so this only
+     draws. A view that worked it out from `probe` and `n_channels` itself
+     would be the second copy of the rule. */
+  const PROBE_WORD = {
+    confirmed: "confirmed",
+    detected: "detected, not confirmed",
+    unknown: "not known",
+  };
+
+  function probeChip(s, opts) {
+    const st = (s && s.probe_state) || null;
+    if (!st) return null;                  // absent is not "unknown"
+    const o = opts || {};
+    const cls = "probechip " + st.state;
+    const node = el(o.onclick ? "button" : "span", {
+      class: cls + (o.small ? " sm" : ""),
+      "data-probe-state": st.state,
+      title: probeTitle(s, st),
+      /* The event is handed on, because the caller needs the button it
+         was fired from to hang a popover off -- and reaching for a global
+         `event` to get it works in exactly one browser by accident. */
+      onclick: o.onclick
+        ? (e) => { e.stopPropagation(); o.onclick(s, st, e); }
+        : null,
+    }, [
+      el("span", { class: "pc-dot" }),
+      el("span", { class: "pc-name", text: st.short || "?" }),
+    ]);
+    return node;
+  }
+
+  function probeTitle(s, st) {
+    const head = st.state === "confirmed"
+      ? "Probe: " + (st.short || "?") + " — confirmed"
+      : st.state === "detected"
+        ? "Probe: probably " + (st.short || "?")
+          + " — nobody has confirmed it"
+        : "Probe: not known";
+    const tail = st.state === "confirmed"
+      ? "Everything reads this: Xplorefinder lays the panes out by it and a "
+        + "CSD is run down each line of contacts separately."
+      : st.state === "detected"
+        ? "It is being used, because drawing a dual implant as one array is "
+          + "worse than drawing it as two and saying so — but it is a "
+          + "guess from the channel count until somebody agrees."
+        : "Anything that needs a line of contacts will treat this as a "
+          + "single array, which is right for most recordings and wrong for "
+          + "a dual implant.";
+    return head + '\n\n' + (st.why || '') + '\n\n' + tail
+         + '\n\nClick to set it.';
+  }
+
+  /* Setting it, from wherever the chip was clicked.
+
+     One popover for all three surfaces. The detected guess is offered
+     first and as a single button, because agreeing with it is the common
+     case by a wide margin -- 70 of the 71 dual implants here are detected
+     and unconfirmed, and making somebody pick from a list to say "yes,
+     that one" 70 times is how a queue stops getting worked. */
+  let PROBE_DEFS = null;
+
+  function setProbeMenu(button, s, after) {
+    const draw = () => {
+      const box = el('div', { class: 'ctl-pop-body probe-pop' });
+      const st = s.probe_state || {};
+      box.appendChild(el('div', { class: 'ctl-pop-title', text: 'Probe' }));
+
+      if (!PROBE_DEFS) {
+        box.appendChild(el('p', { class: 'hint quiet', text: 'Reading the '
+                                  + 'templates…' }));
+        api('/api/probes').then((d) => {
+          PROBE_DEFS = d.probes || [];
+          const open = document.querySelector('.ctl-pop');
+          if (open && open.firstChild) open.replaceChild(draw(), open.firstChild);
+        }).catch(() => { PROBE_DEFS = []; });
+        return box;
+      }
+
+      box.appendChild(el('p', { class: 'hint', style: 'max-width:44ch',
+        text: st.why || '' }));
+
+      /* Agreeing with the guess: one button, and it says what it is
+         agreeing to rather than just "confirm". */
+      if (st.state === 'detected' && st.probe) {
+        box.appendChild(el('button', {
+          class: 'btn sm probe-confirm',
+          text: 'Confirm — ' + (st.short || st.probe),
+          onclick: () => { closePopover(); apply(s, st.probe, after); },
+        }));
+      }
+
+      const list = el('div', { class: 'ctl-pop-group' });
+      for (const p of PROBE_DEFS) {
+        const on = (s.probe || '') === p.id;
+        list.appendChild(el('button', {
+          class: 'ctl-pop-opt probe-opt' + (on ? ' on' : ''),
+          'data-probe': p.id, title: p.note || '',
+          onclick: () => { closePopover(); apply(s, p.id, after); },
+        }, [
+          el('span', { class: 'pc-name', text: SHORT_OF(p.id) }),
+          el('span', { text: p.name }),
+        ]));
+      }
+      box.appendChild(list);
+
+      if (s.probe) {
+        box.appendChild(el('button', {
+          class: 'linkish', text: 'Nobody has said',
+          title: 'Clear it. Not the same as saying H3 — one is an '
+               + 'answer and the other is the absence of one.',
+          onclick: () => { closePopover(); apply(s, '', after); },
+        }));
+      }
+      return box;
+    };
+    openPopover(button, draw);
+  }
+
+  function SHORT_OF(id) {
+    return ({ h3: 'H3', h10d: 'H10', dual: 'HIP/M2' })[id]
+        || String(id || '?').toUpperCase();
+  }
+
+  async function apply(s, probe, after) {
+    if (!s.gid) {
+      toast('This recording has no permanent id yet, so there is nothing '
+            + 'to attach a probe to. Open it once, or scan the folder it '
+            + 'is in.', 'err', 8000);
+      return;
+    }
+    try {
+      const res = await apiPost(
+        '/api/registry/' + encodeURIComponent(s.gid) + '/probe', { probe });
+      const named = (res.channel_banks || [])
+        .filter((b) => (b.said_via || '').indexOf('probe:') === 0);
+      toast(probe
+        ? ('Probe set to ' + SHORT_OF(probe)
+           + (named.length
+              ? ', and ' + named.map((b) => b.region).join(' and ')
+                + ' labelled from it.' : '.'))
+        : 'Cleared — nobody has said what probe this is.', 'ok', 6000);
+      if (after) after(res);
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  return {
+    flatten, attrsFor, attributes, groupsOf, probeChip, PROBE_WORD,
+    setProbeMenu, SHORT_OF,
+    SESSION_COLS, mouseCols, miceRows, sortRows, table, toTSV,
+  };
+}());

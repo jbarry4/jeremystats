@@ -1,0 +1,261 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rcmeta: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal's Meta Workflow (2026-11-11): web/js/rcmeta.js.
+
+   WHAT WAS ASKED: a Meta Workflow beside The Workflow, that finds the
+   measurement settings leaving the fewest ambiguous (purple) events under
+   the Ambiguous Dataset's two boxes -- "a single output of the best
+   parameters" -- in two instances, 5% and 10% grace.
+
+   ON FIXTURES. Every /api/rootcanal/meta* answer is made here:
+     - the view bar has Meta Workflow, and it paints its own part;
+     - an instance that has run shows ONE answer: the purple count it
+       leaves against today's, and the four settings, today's beside the
+       best, the changed ones marked; the four classes as two bars;
+     - how it got there, the next best and the checks are folded;
+     - Run starts the search and the page follows it until it is done;
+     - one not yet run says so; one that failed says why;
+     - New meta workflow makes one from the Ambiguous workflow and grace;
+     - while it searches: every step of the plan, ticked as it finishes, the
+       running one in words with a bar, how far and about how long is left,
+       and the best so far; one interrupted (a restart, a crash) says where
+       it stopped and offers Resume; one waiting says behind whom; Run all
+       puts every one not already going in line.
+   IT WRITES NOTHING: every POST is answered here. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+/* ---------- the fixtures ---------- */
+const SET = (f, fw, w, c, lo, hi) => ({ filter: f, filter_words: fw, win_ms: w, cross_ms: c, band_lo: lo, band_hi: hi });
+const TODAY = SET(['ds'], 'DS filter, 5–100 Hz', 25, 100, 500, 1000);
+const BEST = SET(['custom', 10, 150], '10–150 Hz', 15, 100, 740, 1360);
+const SCORE = (p, d, s, n) => ({ purple: p, ds: d, pspike: s, neither: n, none: 1, n: 3018, ok: true,
+  measured: { ctl: 2183, p: 39, tgt: 3017 } });
+const RESULT = {
+  grace: 0.05, guard: 0.95, evaluated: 812, eligible: 790, passes: 96, seconds_total: 1500,
+  at: '2026-11-11T15:30:00-05:00', by: 'Debug_Bot',
+  today: Object.assign({}, TODAY, { score: SCORE(1334, 1209, 241, 233) }),
+  best: Object.assign({}, BEST, { score: SCORE(402, 2101, 190, 324), words: 'best words' }),
+  trail: [{ stage: 'today', words: 'Today’s settings', setting: TODAY, purple: 1334, tried: 1 },
+          { stage: 'coarse', words: 'Each knob alone, coarse', setting: BEST, purple: 610, tried: 211 },
+          { stage: 'together', words: 'The best few of each, together', setting: BEST, purple: 455, tried: 162 },
+          { stage: 'refine', words: 'Round 1, each knob finer', setting: BEST, purple: 402, tried: 160 }],
+  near: [{ setting: BEST, purple: 402 }, { setting: TODAY, purple: 410 }],
+  dataset: { artifact_id: 'amb1', version: 7, nickname: 'Ambiguous Dataset', purple: 1334, grace: 0.05 },
+  pools: { ctl: { nickname: 'CTL Baseline v2', n: 2185 }, tgt: { nickname: 'PTEN Baseline v2', n: 3018 }, p: { sets: 5, n: 39 } },
+  check: {}, mismatch: [],
+};
+const ROW = (id, name, g, result, run) => ({ artifact_id: id, name, version: result ? 2 : 1,
+  definition: { grace: g, name, ambiguous: { artifact_id: 'amb1', nickname: 'Ambiguous Dataset' } },
+  result, run: run || null });
+const FIX = {
+  metas: [ROW('m5', 'Fewest ambiguous · 5% grace', 0.05, RESULT),
+          ROW('m10', 'Fewest ambiguous · 10% grace', 0.1, null),
+          ROW('mX', 'A failed one', 0.05, null, { status: 'failed', error: 'harness: a read is missing',
+                                                  words: 'Stage 1 of 3 · the HF band alone' }),
+          ROW('mI', 'An interrupted one', 0.1, null, { status: 'interrupted', was: 'running',
+            words: 'Stage 1 of 3 · the amplitude filter alone: 23 filters', ended: 1794430000 })],
+  ambiguous: [{ artifact_id: 'amb1', nickname: 'Ambiguous Dataset', version: 7 }],
+  plan: [['reads', 'Open the reads'], ['today', 'Today’s settings, measured again here'],
+         ['band', 'Stage 1 of 3 · the HF band alone'], ['filter', 'Stage 1 of 3 · the amplitude filter alone'],
+         ['win', 'Stage 1 of 3 · the peak window alone'], ['cross', 'Stage 1 of 3 · the half-width search alone'],
+         ['together', 'Stage 2 of 3 · the best few of each, together'],
+         ['refine', 'Stage 3 of 3 · finer around the best, round by round'], ['save', 'Save the answer']],
+};
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'), 25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal && BARRY.rcMeta)'), 10000, 'the modules');
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+  ev('window.__mtFix = ' + JSON.stringify(FIX));
+  ev('(function(){ var W = window; if (W.__mtFetch) return; W.__mtFetch = W.fetch; W.__mtSent = [];'
+     + ' W.__mtLog = BARRY.activity.log; BARRY.activity.log = function(){};'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u); var p = s.split("?")[0];'
+     + '  var body = (o && o.body) ? JSON.parse(o.body) : null; var F = W.__mtFix;'
+     + '  var hit = function(k) { W.__mtSent.push([k, body]); };'
+     + '  if (p === "/api/rootcanal/meta" && !(o && o.method === "POST")) { hit("list");'
+     + '    return json({ ok: true, metas: F.metas, ambiguous: F.ambiguous, plan: F.plan }); }'
+     + '  if (p === "/api/rootcanal/meta") { hit("new"); return json({ ok: true, artifact_id: "mNew" }); }'
+     + '  var m = p.match(/^\\/api\\/rootcanal\\/meta\\/([^\\/]+)\\/run$/);'
+     + '  if (m) { hit("run:" + m[1]); return json({ ok: true, run: { status: "running" } }); }'
+     + '  if (o && o.method === "POST" && /^\\/api\\/(rootcanal|bank)/.test(p)) { hit("refused");'
+     + '    return json({ ok: false, error: "harness: no writes" }, 400); }'
+     + '  return W.__mtFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__mtSent)'));
+  const txt = (sel, root) => (((root || D()).querySelector(sel)) || {}).textContent || '';
+  const btn = (re, scope) => Array.from((scope || D()).querySelectorAll('button'))
+    .find((b) => re.test(b.textContent.trim()));
+  const cards = () => Array.from(D().querySelectorAll('.meta-card'));
+  const cardOf = (id) => D().querySelector('.meta-card[data-id="' + id + '"]');
+  const W_load = () => ev('BARRY.rcMeta._load()');
+
+  try {
+    head('THE VIEW BAR HAS META WORKFLOW');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    const segs = Array.from(D().querySelectorAll('.rc-viewseg button')).map((b) => b.textContent);
+    ok('Single, Pooled, Workflow and Meta Workflow',
+       JSON.stringify(segs) === '["Single","Pooled","Workflow","Meta Workflow"]', JSON.stringify(segs));
+    btn(/^Meta Workflow$/, D().querySelector('.rc-viewseg')).click();
+    await until(() => cards().length === 4, 10000, 'the cards');
+    ok('pressed, it paints a card per meta workflow', cards().length === 4
+       && /active/.test(btn(/^Meta Workflow$/, D().querySelector('.rc-viewseg')).className));
+
+    head('ONE ANSWER: THE BEST SETTINGS, BESIDE TODAY’S');
+    const c5 = cardOf('m5');
+    ok('it says which dataset it improves, at which grace', /grace 5% · improves ‘Ambiguous Dataset’ · v2/.test(txt('.meta-title', c5)),
+       txt('.meta-title', c5));
+    ok('the purple it leaves, of how many, against today’s',
+       txt('.meta-num', c5) === '402' && /ambiguous of 3,018 \(13%\)/.test(txt('.meta-of', c5))
+       && /today 1,334 \(44%\) · 70% fewer/.test(txt('.meta-was', c5)), txt('.meta-big', c5));
+    const rows = Array.from(c5.querySelectorAll('.meta-table tbody tr')).map((r) => Array.from(r.children).map((x) => x.textContent));
+    ok('the four settings, today’s and the best', JSON.stringify(rows) === JSON.stringify([
+      ['Amplitude filter', 'DS filter, 5–100 Hz', '10–150 Hz'], ['Peak window', '±25 ms', '±15 ms'],
+      ['Half-width search', '±100 ms', '±100 ms'], ['HF power band', '500–1000 Hz', '740–1360 Hz']]), JSON.stringify(rows));
+    ok('the ones that changed are marked, the one that did not is not',
+       Array.from(c5.querySelectorAll('.meta-table tbody tr')).map((r) => r.classList.contains('meta-changed')).join() === 'true,true,false,true');
+    ok('the four classes as two bars, purple first, with the counts in the key',
+       c5.querySelectorAll('.meta-bar').length === 2 && c5.querySelector('.meta-bar .meta-seg').classList.contains('meta-c-both')
+       && /both \(ambiguous\) 1,334 → 402/.test(txt('.meta-key', c5)), txt('.meta-key', c5));
+    ok('the purple is the Workflow tab’s purple', frame.contentWindow.getComputedStyle(c5.querySelector('.meta-c-both')).backgroundColor
+       === frame.contentWindow.getComputedStyle(c5.querySelector('.meta-purple-dot')).backgroundColor);
+    ok('how it got there, the next best and the checks are folded, closed',
+       Array.from(c5.querySelectorAll('details.meta-fold summary')).map((s) => s.textContent).join('|')
+       === 'How it got there|The next best settings|Checks'
+       && !Array.from(c5.querySelectorAll('details.meta-fold')).some((d) => d.open));
+    ok('how it got there: each stage, its purple, how many it tried',
+       c5.querySelectorAll('.meta-trail')[0].children.length === 4
+       && /Each knob alone, coarse: 610 purple/.test(c5.querySelectorAll('.meta-trail')[0].textContent));
+    ok('the checks say today’s settings give the dataset’s own count, and the guard',
+       /leave 1,334 purple: the same as ‘Ambiguous Dataset’ v7 itself/.test(txt('.meta-checks', c5))
+       && /fewer than 95% as many events/.test(txt('.meta-checks', c5)), txt('.meta-checks', c5));
+
+    head('NOT RUN, FAILED, AND RUN');
+    ok('one not run yet says so, with Run', /Not run yet/.test(cardOf('m10').textContent) && !!btn(/^Run$/, cardOf('m10')));
+    ok('one that failed says why, and offers Resume', /The last search stopped with an error while: Stage 1 of 3 · the HF band alone\./.test(cardOf('mX').textContent)
+       && /harness: a read is missing/.test(cardOf('mX').textContent) && !!btn(/^Resume$/, cardOf('mX')));
+    ok('one interrupted says where it stopped, and that Resume picks up from there',
+       /The last search was interrupted while: Stage 1 of 3 · the amplitude filter alone: 23 filters/.test(cardOf('mI').textContent)
+       && /Resume picks up where it left off/.test(cardOf('mI').textContent) && !!btn(/^Resume$/, cardOf('mI')));
+    btn(/^Resume$/, cardOf('mI')).click();
+    await until(() => sent().some((x) => x[0] === 'run:mI'), 4000, 'the resume');
+    ok('Resume asks the server to run it again (it reads its measurements back from disk)', sent().some((x) => x[0] === 'run:mI'));
+    ok('one that has run offers Run again', !!btn(/^Run again$/, c5));
+    // The list answers "running" from now on, then "done".
+    ev('window.__mtFix.metas[1].run = { status: "running", step: "band", done_steps: ["reads", "today"],'
+       + ' words: "Stage 1 of 3 · the HF band alone: 171 bands from 0 to 2000 Hz, the rest as today",'
+       + ' done: 40, of: 160, item: "measuring HF power in 20 bands, HF 100–500 Hz to HF 150–900 Hz",'
+       + ' started: Date.now() / 1000 - 70, step_started: Date.now() / 1000 - 20, best: 72, today: 1334,'
+       + ' best_words: "DS filter, 5–100 Hz · peak ±25 ms · half-width search ±100 ms · HF 300–400 Hz" }');
+    btn(/^Run$/, cardOf('m10')).click();
+    await until(() => sent().some((x) => x[0] === 'run:m10'), 4000, 'the run');
+    ok('Run asks the server to search that one', sent().some((x) => x[0] === 'run:m10'));
+    await until(() => !!(cardOf('m10') || D()).querySelector('.meta-progress'), 5000, 'the progress');
+    const pr = () => cardOf('m10').querySelector('.meta-progress');
+    const stepsOf = () => Array.from(pr().querySelectorAll('.meta-step')).map((li) => li.dataset.step + ':' + li.className.replace('meta-step ', ''));
+    ok('while it searches: how long, and the best so far against today’s',
+       /^Searching · 1 min$/.test(txt('.meta-prog-head strong', pr())) && txt('.meta-sofar', pr()) === 'best so far 72 purple (today 1,334)',
+       txt('.meta-prog-head', pr()));
+    ok('every step of the plan: those done ticked, the one running, the rest to come',
+       stepsOf().join(',') === 'reads:done,today:done,band:now,filter:todo,win:todo,cross:todo,together:todo,refine:todo,save:todo',
+       stepsOf().join(','));
+    ok('the one running in its own words, with a bar as far as it has got',
+       /^Stage 1 of 3 · the HF band alone: 171 bands/.test(txt('.meta-now-words', pr()))
+       && parseFloat(pr().querySelector('.meta-prog > span').style.width) === 25, pr().querySelector('.meta-prog > span').style.width);
+    ok('what it is measuring, how many of how many, and about how long is left in the step',
+       /^40 of 160 · measuring HF power in 20 bands, HF 100–500 Hz to HF 150–900 Hz · about 1 min left in this step$/.test(txt('.meta-now-item', pr())),
+       txt('.meta-now-item', pr()));
+    ok('and that it is kept on disk as it goes, so Resume can pick up', /if Jarvis stops, Resume picks up from here/.test(pr().textContent));
+    ok('Run waits while it searches', !!btn(/^Searching…$/, cardOf('m10')) && btn(/^Searching…$/, cardOf('m10')).disabled);
+    const nl = sent().filter((x) => x[0] === 'list').length;
+    ev('window.__mtFix.metas[1].run = { status: "done" }; window.__mtFix.metas[1].result = window.__mtFix.metas[0].result;');
+    await until(() => sent().filter((x) => x[0] === 'list').length > nl && !!(cardOf('m10') || {}).querySelector, 6000, 'the next look');
+    await until(() => cardOf('m10') && cardOf('m10').querySelector('.meta-num'), 6000, 'the answer');
+    ok('it keeps asking until the search is done, then shows the answer', !!cardOf('m10').querySelector('.meta-num'));
+
+    head('IN LINE, AND RUN ALL');
+    ev('window.__mtFix.metas[3].run = { status: "queued" }');
+    await W_load();
+    await until(() => /Waiting in line/.test((cardOf('mI') || {}).textContent || ''), 5000, 'the line');
+    ok('one waiting says it is in line', /Waiting in line/.test(cardOf('mI').textContent) && !!btn(/^Waiting…$/, cardOf('mI')));
+    ev('window.__mtFix.metas[1].run = { status: "running", step: "filter", done_steps: ["reads", "today", "band"],'
+       + ' words: "Stage 1 of 3 · the amplitude filter alone", done: 3, of: 23, started: Date.now() / 1000 - 60,'
+       + ' step_started: Date.now() / 1000 - 5 }');
+    await W_load();
+    await until(() => /Waiting in line behind ‘Fewest ambiguous · 10% grace’/.test((cardOf('mI') || {}).textContent || ''), 5000, 'behind whom');
+    ok('and behind whom', /Waiting in line behind ‘Fewest ambiguous · 10% grace’/.test(cardOf('mI').textContent));
+    const nr = sent().length;
+    btn(/^Run all$/).click();
+    await until(() => sent().slice(nr).filter((x) => /^run:/.test(x[0])).length >= 2, 4000, 'run all');
+    const ran = sent().slice(nr).filter((x) => /^run:/.test(x[0])).map((x) => x[0]).sort();
+    ok('Run all puts in line every one not already going, and only those', ran.join(',') === 'run:m5,run:mX', ran.join(','));
+
+    head('A NEW ONE');
+    btn(/^New meta workflow$/).click();
+    await until(() => D().querySelector('.meta-newcard'), 3000, 'the form');
+    ok('the form: which Ambiguous workflow, which grace', D().querySelector('#metaAmb').value === 'amb1'
+       && /5%/.test(txt('.meta-grace')) && /10%/.test(txt('.meta-grace')));
+    btn(/^10%$/, D().querySelector('.meta-grace')).click();
+    btn(/^Make it$/).click();
+    await until(() => sent().some((x) => x[0] === 'new'), 4000, 'the new one');
+    const nb = (sent().find((x) => x[0] === 'new') || [])[1] || {};
+    ok('made from what was picked', nb.grace === 0.1 && nb.ambiguous && nb.ambiguous.artifact_id === 'amb1', JSON.stringify(nb));
+    ok('nothing went anywhere but the stub', !sent().some((x) => x[0] === 'refused'));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message) + ' | ' + String((err && err.stack) || '').split('\n').slice(0, 3).join(' | '), 'bad');
+  } finally {
+    try {
+      ev('(function(){ var W = window; if (W.__mtFetch) { W.fetch = W.__mtFetch; delete W.__mtFetch; }'
+         + ' if (W.__mtLog) { BARRY.activity.log = W.__mtLog; delete W.__mtLog; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(300);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rcmeta: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

@@ -1,0 +1,67 @@
+{
+  "_at": {
+    "created": "2026-09-10T02:57:01.646049+00:00",
+    "gid": "2026-09-10T02:57:01.646049+00:00",
+    "group": "2026-09-10T02:57:01.646049+00:00",
+    "key": "2026-09-10T02:57:01.646049+00:00",
+    "label": "2026-09-10T02:57:01.646049+00:00",
+    "loose_key": "2026-09-10T02:57:01.646049+00:00",
+    "mouse": "2026-09-10T02:57:01.646049+00:00",
+    "project": "2026-09-10T02:57:01.646049+00:00",
+    "project_source": "2026-09-10T02:57:01.646049+00:00",
+    "retired": "2026-09-10T02:57:01.646049+00:00",
+    "schema": "2026-09-10T02:57:01.646049+00:00",
+    "session": "2026-09-10T02:57:01.646049+00:00",
+    "start": "2026-09-10T02:57:01.646049+00:00",
+    "updated": "2026-09-10T03:41:53.633326+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00": [
+        "set",
+        "2026-09-10T03:41:53.633326+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00": [
+        "set",
+        "2026-09-10T03:41:53.633326+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens1oct2\\2023-10-02_16-49-04": [
+        "set",
+        "2026-09-10T03:41:53.633326+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T03:41:53.633326+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-09T22:57:01-04:00",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "asull"
+  },
+  "gid": "s4d77fa7c7734",
+  "key": "m001_s001_2023-10-02_16-49-04",
+  "label": "PTEN m1 s1 2023-10-02",
+  "loose_key": "m001_s001",
+  "mouse": 1,
+  "paths": [
+    "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens1oct2\\2023-10-02_16-49-04",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2023-10-02T20:49:04+00:00",
+  "updated": {
+    "at": "2026-09-09T23:41:53-04:00",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "asull"
+  }
+}

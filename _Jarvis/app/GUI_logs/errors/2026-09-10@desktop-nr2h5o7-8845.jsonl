@@ -1,0 +1,1 @@
+{"id": "72f8b4424f03", "at": "2026-09-10T02:59:38-04:00", "where": "cloud.sync", "message": "cannot reach https://svyymanowlfoyblinnny.supabase.co: [Errno 11001] getaddrinfo failed", "detail": null, "context": {}, "machine": "DESKTOP-NR2H5O7", "shard": "desktop-nr2h5o7-8845", "user": "asull"}

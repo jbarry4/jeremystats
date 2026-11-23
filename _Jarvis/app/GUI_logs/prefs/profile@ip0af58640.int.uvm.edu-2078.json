@@ -1,0 +1,17 @@
+{
+  "_at": {
+    "email": "2026-11-19T21:22:27.363051+00:00",
+    "initials": "2026-11-19T21:22:27.363051+00:00",
+    "name": "2026-11-19T21:22:27.363051+00:00",
+    "role": "2026-11-19T21:22:27.363051+00:00"
+  },
+  "_shard": {
+    "at": "2026-11-19T21:22:27.363051+00:00",
+    "machine": "ip0af58640.int.uvm.edu-2078",
+    "schema": 1
+  },
+  "email": "dlyons1@uvm.edu",
+  "initials": "DCL",
+  "name": "Daphne Lyons",
+  "role": "Undergraduate Student"
+}

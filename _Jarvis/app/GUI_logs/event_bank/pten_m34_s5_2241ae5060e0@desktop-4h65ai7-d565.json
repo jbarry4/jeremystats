@@ -1,0 +1,491 @@
+{
+  "_at": {
+    "added": "2026-10-20T19:02:16.120592+00:00",
+    "by_label": "2026-10-20T19:02:16.120592+00:00",
+    "curation_label": "2026-10-20T19:02:16.120592+00:00",
+    "duration_s": "2026-10-20T19:02:16.120592+00:00",
+    "events": "2026-10-20T19:02:16.120592+00:00",
+    "gid": "2026-10-20T19:02:16.120592+00:00",
+    "id": "2026-10-20T19:02:16.120592+00:00",
+    "label_names": "2026-10-20T19:02:16.120592+00:00",
+    "mouse": "2026-10-20T19:02:16.120592+00:00",
+    "n": "2026-10-20T19:02:16.120592+00:00",
+    "name": "2026-10-20T19:02:16.120592+00:00",
+    "note": "2026-10-20T19:02:16.120592+00:00",
+    "project": "2026-10-20T19:02:16.120592+00:00",
+    "recording_start": "2026-10-20T19:02:16.120592+00:00",
+    "schema": "2026-10-20T19:02:16.120592+00:00",
+    "session": "2026-10-20T19:02:16.120592+00:00",
+    "session_key": "2026-10-20T19:02:16.120592+00:00",
+    "session_label": "2026-10-20T19:02:16.120592+00:00",
+    "session_loose_key": "2026-10-20T19:02:16.120592+00:00",
+    "session_path": "2026-10-20T19:02:16.120592+00:00",
+    "source": "2026-10-20T19:02:16.120592+00:00",
+    "specified": "2026-10-20T19:02:16.120592+00:00",
+    "type": "2026-10-20T19:02:16.120592+00:00",
+    "type_name": "2026-10-20T19:02:16.120592+00:00",
+    "units": "2026-10-20T19:02:16.120592+00:00",
+    "version": "2026-10-20T19:02:16.120592+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "61b5ee03b17c": [
+        "set",
+        "2026-10-20T19:02:16.120592+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T19:02:16.120592+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T15:02:16-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "unspecified": 49
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 19.1279
+    },
+    {
+      "start": 29.734203
+    },
+    {
+      "start": 132.988304
+    },
+    {
+      "start": 170.295947
+    },
+    {
+      "start": 180.671655
+    },
+    {
+      "start": 193.421988
+    },
+    {
+      "start": 213.112885
+    },
+    {
+      "start": 230.705898
+    },
+    {
+      "start": 242.235733
+    },
+    {
+      "start": 286.261503
+    },
+    {
+      "start": 286.881386
+    },
+    {
+      "start": 287.373259
+    },
+    {
+      "start": 327.061289
+    },
+    {
+      "start": 367.613309
+    },
+    {
+      "start": 411.707966
+    },
+    {
+      "start": 419.756988
+    },
+    {
+      "start": 420.069803
+    },
+    {
+      "start": 425.06172
+    },
+    {
+      "start": 518.581287
+    },
+    {
+      "start": 523.335371
+    },
+    {
+      "start": 614.654037
+    },
+    {
+      "start": 622.690425
+    },
+    {
+      "start": 630.319372
+    },
+    {
+      "start": 688.976501
+    },
+    {
+      "start": 701.235571
+    },
+    {
+      "start": 719.158238
+    },
+    {
+      "start": 729.555184
+    },
+    {
+      "start": 739.222133
+    },
+    {
+      "start": 782.339774
+    },
+    {
+      "start": 782.908222
+    },
+    {
+      "start": 785.726341
+    },
+    {
+      "start": 785.726724
+    },
+    {
+      "start": 812.654749
+    },
+    {
+      "start": 899.930476
+    },
+    {
+      "start": 1045.296836
+    },
+    {
+      "start": 1078.047961
+    },
+    {
+      "start": 1079.85861
+    },
+    {
+      "start": 1098.673293
+    },
+    {
+      "start": 1104.026552
+    },
+    {
+      "start": 1104.026851
+    },
+    {
+      "start": 1104.99422
+    },
+    {
+      "start": 1147.813467
+    },
+    {
+      "start": 1148.237993
+    },
+    {
+      "start": 1155.957728
+    },
+    {
+      "start": 1159.478734
+    },
+    {
+      "start": 1196.858214
+    },
+    {
+      "start": 1197.365736
+    },
+    {
+      "start": 1209.200708
+    },
+    {
+      "start": 1209.201674
+    }
+  ],
+  "gid": "s14510e30e1bd",
+  "id": "2241ae5060e0",
+  "label_names": {},
+  "mouse": 34,
+  "n": 49,
+  "name": "Hidden IEDs (Root Canal)",
+  "note": "Taken out of the dentate spike set 80ca39fd6931 by Root Canal. A classifier's call, not a person's: these are candidates for Checkup.",
+  "project": "PTEN",
+  "recording_start": "2024-06-10T14:45:34",
+  "schema": 1,
+  "session": 5,
+  "session_key": "m034_s005_2024-06-10_14-45-34",
+  "session_label": "PTEN m34 s5 2024-06-10",
+  "session_loose_key": "m034_s005",
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "band_hi": 1000.0,
+      "band_lo": 500.0,
+      "centres": null,
+      "cluster_calls": {},
+      "cluster_names": {},
+      "complete_only": true,
+      "cross_ms": 100.0,
+      "drawn": [],
+      "entry_id": "80ca39fd6931",
+      "filt": "ds",
+      "flank_ms": [
+        30.0,
+        60.0
+      ],
+      "flipped": [],
+      "flips": [],
+      "from_entry": "80ca39fd6931",
+      "from_version": "br-5e7b6f7778",
+      "hf_base_off_ms": 150.0,
+      "hf_base_win_ms": 40.0,
+      "hf_win_ms": 25.0,
+      "hi_hz": 100.0,
+      "k": 2,
+      "lo_hz": 5.0,
+      "mains_out": true,
+      "margin": null,
+      "n_init": 10,
+      "order": 3,
+      "pad_s": 0.3,
+      "params_hash": "26481f71357a",
+      "partial_t": [],
+      "read_fs": 5000.0,
+      "read_hash": "40f38ef349b0",
+      "retry": [],
+      "seed": 0,
+      "snip_fs": 2000.0,
+      "snip_ms": 250.0,
+      "stamps_hash": "a3a4c30dbeac",
+      "tool": "rootcanal",
+      "wide_t": [],
+      "win_ms": 25.0
+    },
+    "pipeline": "Root Canal",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-20T15:02:16-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 49
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "61b5ee03b17c",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 49,
+      "note": "Root Canal: 49 event(s) called IED in PTEN m34 s5 2024-06-10 (entry 80ca39fd6931, read from vbr-5e7b6f7778). The cluster whose centre has more 500\u20131000 Hz power is called IED: +23.3 dB against +13.6 dB for the other, which is called DS (110 DS, 49 IED). measured on DS filter, 5\u2013100 Hz, 60 Hz mains out, amplitude window \u00b125 ms, half-width search \u00b1100 ms, 500\u20131000 Hz power.  Numbers and figures: results bank rootcanal/s14510e30e1bd__26481f71357a. JA Management",
+      "snap": [
+        [
+          19.1279,
+          null
+        ],
+        [
+          29.734203,
+          null
+        ],
+        [
+          132.988304,
+          null
+        ],
+        [
+          170.295947,
+          null
+        ],
+        [
+          180.671655,
+          null
+        ],
+        [
+          193.421988,
+          null
+        ],
+        [
+          213.112885,
+          null
+        ],
+        [
+          230.705898,
+          null
+        ],
+        [
+          242.235733,
+          null
+        ],
+        [
+          286.261503,
+          null
+        ],
+        [
+          286.881386,
+          null
+        ],
+        [
+          287.373259,
+          null
+        ],
+        [
+          327.061289,
+          null
+        ],
+        [
+          367.613309,
+          null
+        ],
+        [
+          411.707966,
+          null
+        ],
+        [
+          419.756988,
+          null
+        ],
+        [
+          420.069803,
+          null
+        ],
+        [
+          425.06172,
+          null
+        ],
+        [
+          518.581287,
+          null
+        ],
+        [
+          523.335371,
+          null
+        ],
+        [
+          614.654037,
+          null
+        ],
+        [
+          622.690425,
+          null
+        ],
+        [
+          630.319372,
+          null
+        ],
+        [
+          688.976501,
+          null
+        ],
+        [
+          701.235571,
+          null
+        ],
+        [
+          719.158238,
+          null
+        ],
+        [
+          729.555184,
+          null
+        ],
+        [
+          739.222133,
+          null
+        ],
+        [
+          782.339774,
+          null
+        ],
+        [
+          782.908222,
+          null
+        ],
+        [
+          785.726341,
+          null
+        ],
+        [
+          785.726724,
+          null
+        ],
+        [
+          812.654749,
+          null
+        ],
+        [
+          899.930476,
+          null
+        ],
+        [
+          1045.296836,
+          null
+        ],
+        [
+          1078.047961,
+          null
+        ],
+        [
+          1079.85861,
+          null
+        ],
+        [
+          1098.673293,
+          null
+        ],
+        [
+          1104.026552,
+          null
+        ],
+        [
+          1104.026851,
+          null
+        ],
+        [
+          1104.99422,
+          null
+        ],
+        [
+          1147.813467,
+          null
+        ],
+        [
+          1148.237993,
+          null
+        ],
+        [
+          1155.957728,
+          null
+        ],
+        [
+          1159.478734,
+          null
+        ],
+        [
+          1196.858214,
+          null
+        ],
+        [
+          1197.365736,
+          null
+        ],
+        [
+          1209.200708,
+          null
+        ],
+        [
+          1209.201674,
+          null
+        ]
+      ],
+      "tag": "rootcanal",
+      "v": 0
+    }
+  ]
+}

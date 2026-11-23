@@ -1,0 +1,10141 @@
+{
+  "_at": {
+    "added": "2026-10-27T18:39:32.537238+00:00",
+    "aligned": "2026-10-29T14:01:29.451817+00:00",
+    "by_label": "2026-10-29T14:01:29.451817+00:00",
+    "curation_label": "2026-10-28T20:19:36.913657+00:00",
+    "duration_s": "2026-10-28T20:19:36.913657+00:00",
+    "events": "2026-10-29T14:01:29.451817+00:00",
+    "gid": "2026-10-28T20:19:36.913657+00:00",
+    "id": "2026-10-28T20:19:36.913657+00:00",
+    "label_names": "2026-10-28T20:19:36.913657+00:00",
+    "mouse": "2026-10-28T20:19:36.913657+00:00",
+    "n": "2026-10-29T14:01:29.451817+00:00",
+    "name": "2026-10-28T20:19:36.913657+00:00",
+    "note": "2026-10-28T20:19:36.913657+00:00",
+    "project": "2026-10-28T20:19:36.913657+00:00",
+    "recording_start": "2026-10-28T20:19:36.913657+00:00",
+    "schema": "2026-10-28T20:19:36.913657+00:00",
+    "session": "2026-10-28T20:19:36.913657+00:00",
+    "session_key": "2026-10-28T20:19:36.913657+00:00",
+    "session_label": "2026-10-28T20:19:36.913657+00:00",
+    "session_loose_key": "2026-10-28T20:19:36.913657+00:00",
+    "session_path": "2026-10-28T20:19:36.913657+00:00",
+    "source": "2026-10-28T20:19:36.913657+00:00",
+    "specified": "2026-10-28T20:19:36.913657+00:00",
+    "type": "2026-10-28T20:19:36.913657+00:00",
+    "type_name": "2026-10-28T20:19:36.913657+00:00",
+    "units": "2026-10-28T20:19:36.913657+00:00",
+    "version": "2026-10-28T20:19:36.913657+00:00"
+  },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-28T16:19:36-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 398, \"was_n\": 406, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-10-28T20:19:36.913657+00:00"
+      ]
+    },
+    "versions": {
+      "41bd8e60cd56": [
+        "set",
+        "2026-10-28T20:19:36.913657+00:00"
+      ],
+      "545585206305": [
+        "set",
+        "2026-10-28T20:19:36.913657+00:00"
+      ],
+      "68af5b7d3917": [
+        "set",
+        "2026-10-28T20:19:36.913657+00:00"
+      ],
+      "br-d1ab3ed64c": [
+        "set",
+        "2026-10-29T14:01:29.451817+00:00"
+      ],
+      "d79fc991b7ba": [
+        "set",
+        "2026-10-28T20:19:36.913657+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-29T14:01:29.451817+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-27T14:39:32-04:00",
+    "by": "Rain Younger",
+    "machine": "LCOM549913"
+  },
+  "aligned": {
+    "at": "2026-10-29T10:01:29-04:00",
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by": "Rain Younger",
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    "computed_on": {
+      "file": "result_0.json",
+      "host": "login.vacc.uvm.edu",
+      "kind": "vacc",
+      "max_rss": null,
+      "netid": "sakhava1",
+      "partition": "general",
+      "rid": "99ccbb75740e",
+      "slurm_id": "6098750_0",
+      "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/99ccbb75740e"
+    },
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      8,
+      41,
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "lock_reach_ms": 20.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "pinned": 249,
+    "profile": {
+      "47": 0.147512,
+      "48": -0.018655,
+      "49": -0.16121,
+      "50": 0.109374,
+      "51": 0.194532,
+      "52": 0.139506,
+      "53": 0.317258,
+      "54": 0.388185,
+      "55": 0.152444,
+      "56": -0.241211,
+      "57": -0.467995,
+      "58": -0.371981,
+      "59": -0.275573,
+      "60": -0.302969,
+      "61": -0.139853,
+      "62": 0.072077
+    },
+    "request": {
+      "band_kind": "ds",
+      "channels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "depth_band": 16,
+      "entry_id": "a4eeaa794729",
+      "from_version": "68af5b7d3917",
+      "hold": [
+        "both",
+        "incisor"
+      ],
+      "kind": "pooled",
+      "n_pinned": 249,
+      "pinned": "1a803afe0126",
+      "stamps": "b1b12632e868"
+    },
+    "request_hash": "52f7e43e431e679a",
+    "screened": {
+      "41": "not ticked",
+      "59": "dead (0.5 uV against a median of 58)",
+      "8": "not ticked"
+    },
+    "smooth_ms": 0.0,
+    "source_version": 1,
+    "source_version_id": "68af5b7d3917",
+    "spacing_um": 30.0,
+    "tool": "jarvis.lock/1",
+    "version": 2,
+    "window_ms": 200.0
+  },
+  "by_label": {
+    "Spike": 336
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 7.360298
+    },
+    {
+      "from_t": 50.04179,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 50.040365
+    },
+    {
+      "from_t": 52.677779,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 52.639627
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 60.056748
+    },
+    {
+      "from_t": 61.577742,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 61.581324
+    },
+    {
+      "align_flag": "locked_peak",
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 69.997706
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 70.087706
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 70.298705
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 76.838041
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 81.975656
+    },
+    {
+      "align_flag": "edge",
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 83.692149
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 83.98683
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 85.257142
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 106.171555
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 108.002547
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 109.127542
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 143.364871
+    },
+    {
+      "from_t": 161.125324,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 161.132153
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 170.207348
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 187.432214
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 202.203152
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 209.636121
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 244.484619
+    },
+    {
+      "from_t": 256.752423,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 256.793471
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 268.477374
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 284.17751
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 286.419799
+    },
+    {
+      "from_t": 298.526248,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 298.64838
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 323.586001
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 324.092454
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 331.88241
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 335.333593
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 336.610969
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 340.613571
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 343.634184
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 348.225039
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 349.236548
+    },
+    {
+      "align_flag": "locked_peak",
+      "from_t": 355.038511,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 355.037404
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 355.059538
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 355.493505
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 359.571917
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 363.55061
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 372.281438
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 372.556437
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 381.175284
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 382.033432
+    },
+    {
+      "align_flag": "edge",
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 384.250388
+    },
+    {
+      "from_t": 387.544874,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 387.550035
+    },
+    {
+      "from_t": 391.03636,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 391.029482
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 392.862257
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 396.620336
+    },
+    {
+      "align_flag": "edge",
+      "from_t": 397.327833,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 397.418686
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 408.80526
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 415.103759
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 415.332615
+    },
+    {
+      "from_t": 427.772206,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 427.787207
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 428.607312
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 434.988175
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 440.98715
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 441.110026
+    },
+    {
+      "from_t": 446.348628,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 446.39209
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 451.031893
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 454.421953
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 459.524576
+    },
+    {
+      "from_t": 461.520064,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 461.532736
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 468.316036
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 472.043136
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 472.328019
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 473.189015
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 473.599013
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 473.993826
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 474.784035
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 476.040503
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 505.859526
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 536.725749
+    },
+    {
+      "from_t": 540.089734,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 540.091305
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 541.466729
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 543.786692
+    },
+    {
+      "from_t": 548.570699,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 548.585489
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 551.210785
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 553.040322
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 553.277679
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 555.650168
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 563.535636
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 565.718627
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 566.155319
+    },
+    {
+      "from_t": 567.215621,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 567.216982
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 575.134359
+    },
+    {
+      "from_t": 578.540073,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 578.559898
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 578.909572
+    },
+    {
+      "align_flag": "edge",
+      "from_t": 588.076533,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 588.247046
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 588.671531
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 589.903955
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 590.635522
+    },
+    {
+      "from_t": 601.065479,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 601.066607
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 602.957471
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 603.770442
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 605.489811
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 606.375245
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 606.695455
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 608.458059
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 609.01126
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 609.549246
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 609.551443
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 613.797425
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 617.45641
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 618.525405
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 619.576401
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 619.844369
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 620.163399
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 620.668396
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 621.479393
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 621.930368
+    },
+    {
+      "from_t": 622.11389,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 622.210842
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 635.553334
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 635.944332
+    },
+    {
+      "align_flag": "locked_peak",
+      "from_t": 636.034832,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 636.033225
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 640.303681
+    },
+    {
+      "from_t": 640.696312,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 640.695176
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 642.358069
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 642.835304
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 644.054298
+    },
+    {
+      "from_t": 644.436297,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 644.399322
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 647.387284
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 653.071261
+    },
+    {
+      "from_t": 653.472259,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 653.622514
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 654.743195
+    },
+    {
+      "from_t": 655.850749,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 655.962327
+    },
+    {
+      "from_t": 657.747741,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 657.76665
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 711.517406
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 713.887005
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 718.580986
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 726.140954
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 736.978439
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 747.895846
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 748.251861
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 750.602249
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 757.826821
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 761.622805
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 764.030953
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 773.292756
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 775.738746
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 781.105483
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 781.478161
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 781.727235
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 782.133705
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 785.035707
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 797.05608
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 797.952653
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 798.71465
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 808.858607
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 813.090651
+    },
+    {
+      "from_t": 821.484054,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 821.590577
+    },
+    {
+      "from_t": 829.751019,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 829.770376
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 841.703879
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 848.134123
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 894.790247
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 906.546197
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 930.582241
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 944.506294
+    },
+    {
+      "from_t": 954.501496,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 954.487051
+    },
+    {
+      "from_t": 955.257493,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 955.214606
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 999.449808
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1005.792781
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1009.426746
+    },
+    {
+      "from_t": 1021.274216,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1021.272399
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1025.737302
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1030.798564
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1031.109976
+    },
+    {
+      "from_t": 1034.073662,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1034.07132
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1037.835647
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1039.44964
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1040.220263
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1042.914035
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1047.827392
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1052.799491
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1054.419577
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1056.753567
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1057.511718
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1058.118562
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1058.293561
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1062.68618
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1147.349187
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1189.795791
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1233.790825
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1249.833689
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1267.232684
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1286.180657
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1286.445338
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1287.608934
+    },
+    {
+      "from_t": 1297.898056,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1297.896214
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1298.228534
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1301.266112
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1307.237517
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1308.466511
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1308.92576
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1309.211728
+    },
+    {
+      "from_t": 1311.989497,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1312.038808
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1319.872464
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1319.989013
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1321.646456
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1322.157454
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1326.377453
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1327.749431
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1328.552427
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1331.712276
+    },
+    {
+      "from_t": 1335.0729,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1335.071277
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1344.233919
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1344.365318
+    },
+    {
+      "from_t": 1346.356352,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1346.357367
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1348.759662
+    },
+    {
+      "from_t": 1349.38484,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1349.430731
+    },
+    {
+      "from_t": 1351.564331,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1351.565865
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1357.024308
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1365.037274
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1369.284256
+    },
+    {
+      "from_t": 1380.923707,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1380.932875
+    },
+    {
+      "from_t": 1391.421663,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1391.429969
+    },
+    {
+      "from_t": 1395.692146,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1395.677028
+    },
+    {
+      "from_t": 1402.554617,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1402.576118
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1402.990115
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1403.6917
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1403.967838
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1407.525489
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1408.73513
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1410.023381
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1426.200578
+    },
+    {
+      "from_t": 1442.765948,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1442.733097
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1444.956939
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1453.203904
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1457.123889
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1461.767283
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1471.646685
+    },
+    {
+      "from_t": 1473.32882,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1473.301923
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1473.641584
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1480.180791
+    },
+    {
+      "from_t": 1480.693789,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1480.567599
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1481.626785
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1481.779784
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1484.836653
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1486.738764
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1490.992746
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1491.119745
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1491.765636
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1492.126741
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1493.653308
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1505.992683
+    },
+    {
+      "align_flag": "locked_peak",
+      "from_t": 1506.104182,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1506.105802
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1508.66819
+    },
+    {
+      "from_t": 1512.733155,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1512.730825
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1513.160653
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1513.328002
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1515.661642
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1520.247363
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1521.213619
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1523.457586
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1525.433352
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1526.765987
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1527.875591
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1542.120531
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1546.583022
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1548.426992
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1549.102502
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1550.048943
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1552.606629
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1552.898897
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1553.148025
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1554.221481
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1554.81462
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1556.435471
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1557.721466
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1567.170426
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1572.516404
+    },
+    {
+      "from_t": 1573.586399,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1573.611236
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1577.163384
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1577.307384
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1578.466707
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1579.171153
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1579.56002
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1580.626156
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1587.339342
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1589.753611
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1590.057607
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1590.05833
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1590.794325
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1593.807356
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1595.712675
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1597.3533
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1599.027293
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1599.651683
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1600.455588
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1601.025874
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1604.025226
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1604.224271
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1604.757795
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1605.056995
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1616.22822
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1616.594904
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1625.843426
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1641.769169
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1689.811326
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1692.208607
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1692.455901
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1747.196671
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1753.084646
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1757.544669
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1759.626534
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1773.860559
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1774.455382
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1778.009542
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1791.644985
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1792.978479
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1796.746463
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1800.468448
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1800.761991
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1807.186809
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1810.577905
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1821.073975
+    },
+    {
+      "from_t": 1835.241802,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1835.239112
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1837.94829
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1841.873128
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1844.982203
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1845.677258
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1858.071812
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1859.582179
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1860.165504
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1861.331833
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1870.615153
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1870.825152
+    },
+    {
+      "from_t": 1878.208121,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1878.157175
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1879.025995
+    },
+    {
+      "from_t": 1879.853615,
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1879.856423
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1880.146113
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1883.757098
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1884.111671
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
+      "start": 1885.087593
+    }
+  ],
+  "gid": "sf357f48d27eb",
+  "history": [
+    {
+      "at": "2026-10-28T16:19:36-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 398,
+      "was_n": 406,
+      "why": "re-banked from the curation set"
+    }
+  ],
+  "id": "a4eeaa794729",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "spike": "Spike"
+  },
+  "mouse": 22,
+  "n": 336,
+  "name": "PTEN m22 s6 2024-07-15 \u2014 pooled (Incisor + Doppler, 20 ms)",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-07-15T17:49:43",
+  "schema": 1,
+  "session": 6,
+  "session_key": "m022_s006_2024-07-15_17-49-43",
+  "session_label": "PTEN m22 s6 2024-07-15",
+  "session_loose_key": "m022_s006",
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "ds_aligned": true,
+      "ds_entry": "0f4b3b8ac1a3",
+      "ds_name": "PTEN m22 s6 2024-07-15  \u00b7  Incisor CSC1\u2013CSC64",
+      "ds_version": "7",
+      "ied_aligned": false,
+      "ied_entry": "6946ec6df880",
+      "ied_name": "PTEN m22 s6 2024-07-15  \u00b7  Doppler 20\u2013300 Hz",
+      "ied_version": "2",
+      "keep": "incisor",
+      "rule": "time only, any channel; one to one, nearest first; Incisor's time kept, Doppler's as pair_t",
+      "stats": {
+        "doppler_only": 157,
+        "ds_left_out": 0,
+        "ied_left_out": 0,
+        "incisor_only": 141,
+        "keep": "incisor",
+        "merged": 108,
+        "n": 406,
+        "n_ds": 249,
+        "n_ied": 265,
+        "window_ms": 20.0
+      },
+      "window_ms": 20.0
+    },
+    "pipeline": "The Confluence: Junction (Incisor + Doppler, 20 ms)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "pooled",
+  "type_name": "pooled",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-10-27T14:38:15-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 406
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "d79fc991b7ba",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 406,
+      "note": "Junction's pool: 141 from Incisor, 157 from Doppler, 108 merged within 20 ms.",
+      "snap": [
+        [
+          7.360298,
+          null
+        ],
+        [
+          50.04179,
+          null
+        ],
+        [
+          52.677779,
+          null
+        ],
+        [
+          60.056748,
+          null
+        ],
+        [
+          61.577742,
+          null
+        ],
+        [
+          69.997706,
+          null
+        ],
+        [
+          70.087706,
+          null
+        ],
+        [
+          70.298705,
+          null
+        ],
+        [
+          76.838041,
+          null
+        ],
+        [
+          81.975656,
+          null
+        ],
+        [
+          83.692149,
+          null
+        ],
+        [
+          83.98683,
+          null
+        ],
+        [
+          85.257142,
+          null
+        ],
+        [
+          106.171555,
+          null
+        ],
+        [
+          108.002547,
+          null
+        ],
+        [
+          109.127542,
+          null
+        ],
+        [
+          143.364871,
+          null
+        ],
+        [
+          145.886888,
+          null
+        ],
+        [
+          161.125324,
+          null
+        ],
+        [
+          170.207348,
+          null
+        ],
+        [
+          187.432214,
+          null
+        ],
+        [
+          202.203152,
+          null
+        ],
+        [
+          209.636121,
+          null
+        ],
+        [
+          244.484619,
+          null
+        ],
+        [
+          256.752423,
+          null
+        ],
+        [
+          268.477374,
+          null
+        ],
+        [
+          284.17751,
+          null
+        ],
+        [
+          286.419799,
+          null
+        ],
+        [
+          298.526248,
+          null
+        ],
+        [
+          323.586001,
+          null
+        ],
+        [
+          324.092454,
+          null
+        ],
+        [
+          331.88241,
+          null
+        ],
+        [
+          335.333593,
+          null
+        ],
+        [
+          336.610969,
+          null
+        ],
+        [
+          340.613571,
+          null
+        ],
+        [
+          343.634184,
+          null
+        ],
+        [
+          348.225039,
+          null
+        ],
+        [
+          349.236548,
+          null
+        ],
+        [
+          355.038511,
+          null
+        ],
+        [
+          355.059538,
+          null
+        ],
+        [
+          355.493505,
+          null
+        ],
+        [
+          359.571917,
+          null
+        ],
+        [
+          361.561483,
+          null
+        ],
+        [
+          363.55061,
+          null
+        ],
+        [
+          366.111964,
+          null
+        ],
+        [
+          372.281438,
+          null
+        ],
+        [
+          372.556437,
+          null
+        ],
+        [
+          381.175284,
+          null
+        ],
+        [
+          381.878898,
+          null
+        ],
+        [
+          382.033432,
+          null
+        ],
+        [
+          384.250388,
+          null
+        ],
+        [
+          386.742878,
+          null
+        ],
+        [
+          387.544874,
+          null
+        ],
+        [
+          391.03636,
+          null
+        ],
+        [
+          392.862257,
+          null
+        ],
+        [
+          393.156351,
+          null
+        ],
+        [
+          396.620336,
+          null
+        ],
+        [
+          397.327833,
+          null
+        ],
+        [
+          408.80526,
+          null
+        ],
+        [
+          415.103759,
+          null
+        ],
+        [
+          415.332615,
+          null
+        ],
+        [
+          427.772206,
+          null
+        ],
+        [
+          428.607312,
+          null
+        ],
+        [
+          434.988175,
+          null
+        ],
+        [
+          440.98715,
+          null
+        ],
+        [
+          441.110026,
+          null
+        ],
+        [
+          446.348628,
+          null
+        ],
+        [
+          451.031893,
+          null
+        ],
+        [
+          454.421953,
+          null
+        ],
+        [
+          459.524576,
+          null
+        ],
+        [
+          461.520064,
+          null
+        ],
+        [
+          468.316036,
+          null
+        ],
+        [
+          469.907029,
+          null
+        ],
+        [
+          472.043136,
+          null
+        ],
+        [
+          472.328019,
+          null
+        ],
+        [
+          473.189015,
+          null
+        ],
+        [
+          473.599013,
+          null
+        ],
+        [
+          473.993826,
+          null
+        ],
+        [
+          474.784035,
+          null
+        ],
+        [
+          476.040503,
+          null
+        ],
+        [
+          505.835878,
+          null
+        ],
+        [
+          505.859526,
+          null
+        ],
+        [
+          527.012789,
+          null
+        ],
+        [
+          536.725749,
+          null
+        ],
+        [
+          540.089734,
+          null
+        ],
+        [
+          541.466729,
+          null
+        ],
+        [
+          543.786692,
+          null
+        ],
+        [
+          548.570699,
+          null
+        ],
+        [
+          551.210785,
+          null
+        ],
+        [
+          553.040322,
+          null
+        ],
+        [
+          553.277679,
+          null
+        ],
+        [
+          555.650168,
+          null
+        ],
+        [
+          557.78016,
+          null
+        ],
+        [
+          563.535636,
+          null
+        ],
+        [
+          565.718627,
+          null
+        ],
+        [
+          566.155319,
+          null
+        ],
+        [
+          567.215621,
+          null
+        ],
+        [
+          575.134359,
+          null
+        ],
+        [
+          578.540073,
+          null
+        ],
+        [
+          578.909572,
+          null
+        ],
+        [
+          583.074054,
+          null
+        ],
+        [
+          588.076533,
+          null
+        ],
+        [
+          588.671531,
+          null
+        ],
+        [
+          589.903955,
+          null
+        ],
+        [
+          590.635522,
+          null
+        ],
+        [
+          601.065479,
+          null
+        ],
+        [
+          602.957471,
+          null
+        ],
+        [
+          603.770442,
+          null
+        ],
+        [
+          605.489811,
+          null
+        ],
+        [
+          606.375245,
+          null
+        ],
+        [
+          606.695455,
+          null
+        ],
+        [
+          608.458059,
+          null
+        ],
+        [
+          609.01126,
+          null
+        ],
+        [
+          609.549246,
+          null
+        ],
+        [
+          609.551443,
+          null
+        ],
+        [
+          613.141928,
+          null
+        ],
+        [
+          613.797425,
+          null
+        ],
+        [
+          617.45641,
+          null
+        ],
+        [
+          618.525405,
+          null
+        ],
+        [
+          619.576401,
+          null
+        ],
+        [
+          619.844369,
+          null
+        ],
+        [
+          620.163399,
+          null
+        ],
+        [
+          620.668396,
+          null
+        ],
+        [
+          621.479393,
+          null
+        ],
+        [
+          621.930368,
+          null
+        ],
+        [
+          622.11389,
+          null
+        ],
+        [
+          635.553334,
+          null
+        ],
+        [
+          635.944332,
+          null
+        ],
+        [
+          636.034832,
+          null
+        ],
+        [
+          640.303681,
+          null
+        ],
+        [
+          640.696312,
+          null
+        ],
+        [
+          642.358069,
+          null
+        ],
+        [
+          642.398305,
+          null
+        ],
+        [
+          642.835304,
+          null
+        ],
+        [
+          644.054298,
+          null
+        ],
+        [
+          644.436297,
+          null
+        ],
+        [
+          647.387284,
+          null
+        ],
+        [
+          653.071261,
+          null
+        ],
+        [
+          653.472259,
+          null
+        ],
+        [
+          654.743195,
+          null
+        ],
+        [
+          655.850749,
+          null
+        ],
+        [
+          657.747741,
+          null
+        ],
+        [
+          658.448238,
+          null
+        ],
+        [
+          658.871736,
+          null
+        ],
+        [
+          659.448734,
+          null
+        ],
+        [
+          704.375045,
+          null
+        ],
+        [
+          711.517406,
+          null
+        ],
+        [
+          713.887005,
+          null
+        ],
+        [
+          718.580986,
+          null
+        ],
+        [
+          726.140954,
+          null
+        ],
+        [
+          736.978439,
+          null
+        ],
+        [
+          738.686901,
+          null
+        ],
+        [
+          747.895846,
+          null
+        ],
+        [
+          748.251861,
+          null
+        ],
+        [
+          750.602249,
+          null
+        ],
+        [
+          757.826821,
+          null
+        ],
+        [
+          761.622805,
+          null
+        ],
+        [
+          764.030953,
+          null
+        ],
+        [
+          768.879775,
+          null
+        ],
+        [
+          773.292756,
+          null
+        ],
+        [
+          775.738746,
+          null
+        ],
+        [
+          781.105483,
+          null
+        ],
+        [
+          781.478161,
+          null
+        ],
+        [
+          781.727235,
+          null
+        ],
+        [
+          782.133705,
+          null
+        ],
+        [
+          782.154219,
+          null
+        ],
+        [
+          785.035707,
+          null
+        ],
+        [
+          792.443676,
+          null
+        ],
+        [
+          797.05608,
+          null
+        ],
+        [
+          797.952653,
+          null
+        ],
+        [
+          798.71465,
+          null
+        ],
+        [
+          808.858607,
+          null
+        ],
+        [
+          813.090651,
+          null
+        ],
+        [
+          821.484054,
+          null
+        ],
+        [
+          828.954523,
+          null
+        ],
+        [
+          829.751019,
+          null
+        ],
+        [
+          836.119993,
+          null
+        ],
+        [
+          841.703879,
+          null
+        ],
+        [
+          848.134123,
+          null
+        ],
+        [
+          876.107825,
+          null
+        ],
+        [
+          894.790247,
+          null
+        ],
+        [
+          906.546197,
+          null
+        ],
+        [
+          930.582241,
+          null
+        ],
+        [
+          944.506294,
+          null
+        ],
+        [
+          954.501496,
+          null
+        ],
+        [
+          955.257493,
+          null
+        ],
+        [
+          969.096935,
+          null
+        ],
+        [
+          999.449808,
+          null
+        ],
+        [
+          1005.792781,
+          null
+        ],
+        [
+          1009.401766,
+          null
+        ],
+        [
+          1009.426746,
+          null
+        ],
+        [
+          1021.274216,
+          null
+        ],
+        [
+          1025.737302,
+          null
+        ],
+        [
+          1030.798564,
+          null
+        ],
+        [
+          1031.109976,
+          null
+        ],
+        [
+          1034.073662,
+          null
+        ],
+        [
+          1037.835647,
+          null
+        ],
+        [
+          1039.44964,
+          null
+        ],
+        [
+          1040.220263,
+          null
+        ],
+        [
+          1042.914035,
+          null
+        ],
+        [
+          1047.827392,
+          null
+        ],
+        [
+          1052.799491,
+          null
+        ],
+        [
+          1054.419577,
+          null
+        ],
+        [
+          1056.753567,
+          null
+        ],
+        [
+          1057.424564,
+          null
+        ],
+        [
+          1057.511718,
+          null
+        ],
+        [
+          1058.118562,
+          null
+        ],
+        [
+          1058.293561,
+          null
+        ],
+        [
+          1062.68618,
+          null
+        ],
+        [
+          1122.692291,
+          null
+        ],
+        [
+          1147.349187,
+          null
+        ],
+        [
+          1189.795791,
+          null
+        ],
+        [
+          1195.952483,
+          null
+        ],
+        [
+          1215.451402,
+          null
+        ],
+        [
+          1233.790825,
+          null
+        ],
+        [
+          1249.833689,
+          null
+        ],
+        [
+          1257.281226,
+          null
+        ],
+        [
+          1267.232684,
+          null
+        ],
+        [
+          1276.982143,
+          null
+        ],
+        [
+          1286.180657,
+          null
+        ],
+        [
+          1286.445338,
+          null
+        ],
+        [
+          1287.608934,
+          null
+        ],
+        [
+          1297.898056,
+          null
+        ],
+        [
+          1298.228534,
+          null
+        ],
+        [
+          1298.400054,
+          null
+        ],
+        [
+          1301.266112,
+          null
+        ],
+        [
+          1305.039526,
+          null
+        ],
+        [
+          1307.237517,
+          null
+        ],
+        [
+          1308.466511,
+          null
+        ],
+        [
+          1308.92576,
+          null
+        ],
+        [
+          1309.186008,
+          null
+        ],
+        [
+          1309.211728,
+          null
+        ],
+        [
+          1311.989497,
+          null
+        ],
+        [
+          1319.872464,
+          null
+        ],
+        [
+          1319.989013,
+          null
+        ],
+        [
+          1321.646456,
+          null
+        ],
+        [
+          1322.157454,
+          null
+        ],
+        [
+          1324.285445,
+          null
+        ],
+        [
+          1326.377453,
+          null
+        ],
+        [
+          1327.749431,
+          null
+        ],
+        [
+          1328.552427,
+          null
+        ],
+        [
+          1331.712276,
+          null
+        ],
+        [
+          1335.0729,
+          null
+        ],
+        [
+          1344.233919,
+          null
+        ],
+        [
+          1344.365318,
+          null
+        ],
+        [
+          1346.356352,
+          null
+        ],
+        [
+          1348.759662,
+          null
+        ],
+        [
+          1349.38484,
+          null
+        ],
+        [
+          1351.564331,
+          null
+        ],
+        [
+          1357.024308,
+          null
+        ],
+        [
+          1365.037274,
+          null
+        ],
+        [
+          1369.284256,
+          null
+        ],
+        [
+          1380.923707,
+          null
+        ],
+        [
+          1391.421663,
+          null
+        ],
+        [
+          1395.692146,
+          null
+        ],
+        [
+          1402.554617,
+          null
+        ],
+        [
+          1402.990115,
+          null
+        ],
+        [
+          1403.6917,
+          null
+        ],
+        [
+          1403.967838,
+          null
+        ],
+        [
+          1404.09911,
+          null
+        ],
+        [
+          1407.525489,
+          null
+        ],
+        [
+          1408.555092,
+          null
+        ],
+        [
+          1408.73513,
+          null
+        ],
+        [
+          1410.023381,
+          null
+        ],
+        [
+          1416.404559,
+          null
+        ],
+        [
+          1426.090518,
+          null
+        ],
+        [
+          1426.200578,
+          null
+        ],
+        [
+          1442.765948,
+          null
+        ],
+        [
+          1444.956939,
+          null
+        ],
+        [
+          1450.359416,
+          null
+        ],
+        [
+          1453.203904,
+          null
+        ],
+        [
+          1457.123889,
+          null
+        ],
+        [
+          1461.767283,
+          null
+        ],
+        [
+          1471.646685,
+          null
+        ],
+        [
+          1473.32882,
+          null
+        ],
+        [
+          1473.641584,
+          null
+        ],
+        [
+          1480.180791,
+          null
+        ],
+        [
+          1480.693789,
+          null
+        ],
+        [
+          1481.626785,
+          null
+        ],
+        [
+          1481.779784,
+          null
+        ],
+        [
+          1484.793772,
+          null
+        ],
+        [
+          1484.836653,
+          null
+        ],
+        [
+          1486.738764,
+          null
+        ],
+        [
+          1487.52276,
+          null
+        ],
+        [
+          1490.277249,
+          null
+        ],
+        [
+          1490.992746,
+          null
+        ],
+        [
+          1491.119745,
+          null
+        ],
+        [
+          1491.765636,
+          null
+        ],
+        [
+          1491.871742,
+          null
+        ],
+        [
+          1492.126741,
+          null
+        ],
+        [
+          1493.653308,
+          null
+        ],
+        [
+          1505.992683,
+          null
+        ],
+        [
+          1506.104182,
+          null
+        ],
+        [
+          1508.66819,
+          null
+        ],
+        [
+          1512.733155,
+          null
+        ],
+        [
+          1513.160653,
+          null
+        ],
+        [
+          1513.328002,
+          null
+        ],
+        [
+          1515.661642,
+          null
+        ],
+        [
+          1516.763138,
+          null
+        ],
+        [
+          1520.247363,
+          null
+        ],
+        [
+          1521.213619,
+          null
+        ],
+        [
+          1523.457586,
+          null
+        ],
+        [
+          1525.433352,
+          null
+        ],
+        [
+          1526.062099,
+          null
+        ],
+        [
+          1526.607096,
+          null
+        ],
+        [
+          1526.765987,
+          null
+        ],
+        [
+          1527.875591,
+          null
+        ],
+        [
+          1529.111086,
+          null
+        ],
+        [
+          1542.120531,
+          null
+        ],
+        [
+          1546.424513,
+          null
+        ],
+        [
+          1546.583022,
+          null
+        ],
+        [
+          1548.426992,
+          null
+        ],
+        [
+          1549.102502,
+          null
+        ],
+        [
+          1549.865999,
+          null
+        ],
+        [
+          1550.048943,
+          null
+        ],
+        [
+          1552.606629,
+          null
+        ],
+        [
+          1552.898897,
+          null
+        ],
+        [
+          1553.148025,
+          null
+        ],
+        [
+          1554.221481,
+          null
+        ],
+        [
+          1554.81462,
+          null
+        ],
+        [
+          1555.247476,
+          null
+        ],
+        [
+          1556.435471,
+          null
+        ],
+        [
+          1556.984969,
+          null
+        ],
+        [
+          1557.721466,
+          null
+        ],
+        [
+          1567.170426,
+          null
+        ],
+        [
+          1572.516404,
+          null
+        ],
+        [
+          1573.586399,
+          null
+        ],
+        [
+          1577.163384,
+          null
+        ],
+        [
+          1577.307384,
+          null
+        ],
+        [
+          1578.428879,
+          null
+        ],
+        [
+          1578.466707,
+          null
+        ],
+        [
+          1579.171153,
+          null
+        ],
+        [
+          1579.284375,
+          null
+        ],
+        [
+          1579.56002,
+          null
+        ],
+        [
+          1580.626156,
+          null
+        ],
+        [
+          1583.903356,
+          null
+        ],
+        [
+          1587.339342,
+          null
+        ],
+        [
+          1588.926835,
+          null
+        ],
+        [
+          1589.753611,
+          null
+        ],
+        [
+          1590.057607,
+          null
+        ],
+        [
+          1590.05833,
+          null
+        ],
+        [
+          1590.794325,
+          null
+        ],
+        [
+          1593.807356,
+          null
+        ],
+        [
+          1595.712675,
+          null
+        ],
+        [
+          1596.892302,
+          null
+        ],
+        [
+          1597.3533,
+          null
+        ],
+        [
+          1597.752798,
+          null
+        ],
+        [
+          1599.027293,
+          null
+        ],
+        [
+          1599.651683,
+          null
+        ],
+        [
+          1600.011788,
+          null
+        ],
+        [
+          1600.455588,
+          null
+        ],
+        [
+          1601.025874,
+          null
+        ],
+        [
+          1602.706777,
+          null
+        ],
+        [
+          1604.025226,
+          null
+        ],
+        [
+          1604.224271,
+          null
+        ],
+        [
+          1604.757795,
+          null
+        ],
+        [
+          1605.056995,
+          null
+        ],
+        [
+          1605.420766,
+          null
+        ],
+        [
+          1616.22822,
+          null
+        ],
+        [
+          1616.594904,
+          null
+        ],
+        [
+          1625.843426,
+          null
+        ],
+        [
+          1633.996646,
+          null
+        ],
+        [
+          1641.769169,
+          null
+        ],
+        [
+          1655.891054,
+          null
+        ],
+        [
+          1689.811326,
+          null
+        ],
+        [
+          1692.208607,
+          null
+        ],
+        [
+          1692.455901,
+          null
+        ],
+        [
+          1699.075873,
+          null
+        ],
+        [
+          1747.196671,
+          null
+        ],
+        [
+          1753.084646,
+          null
+        ],
+        [
+          1757.544669,
+          null
+        ],
+        [
+          1759.626534,
+          null
+        ],
+        [
+          1773.860559,
+          null
+        ],
+        [
+          1774.455382,
+          null
+        ],
+        [
+          1778.009542,
+          null
+        ],
+        [
+          1791.644985,
+          null
+        ],
+        [
+          1792.978479,
+          null
+        ],
+        [
+          1796.746463,
+          null
+        ],
+        [
+          1800.468448,
+          null
+        ],
+        [
+          1800.761991,
+          null
+        ],
+        [
+          1802.004941,
+          null
+        ],
+        [
+          1807.186809,
+          null
+        ],
+        [
+          1810.577905,
+          null
+        ],
+        [
+          1821.073975,
+          null
+        ],
+        [
+          1832.866312,
+          null
+        ],
+        [
+          1835.241802,
+          null
+        ],
+        [
+          1837.94829,
+          null
+        ],
+        [
+          1841.873128,
+          null
+        ],
+        [
+          1844.982203,
+          null
+        ],
+        [
+          1845.677258,
+          null
+        ],
+        [
+          1858.071812,
+          null
+        ],
+        [
+          1859.582179,
+          null
+        ],
+        [
+          1860.165504,
+          null
+        ],
+        [
+          1861.331833,
+          null
+        ],
+        [
+          1861.602191,
+          null
+        ],
+        [
+          1870.615153,
+          null
+        ],
+        [
+          1870.825152,
+          null
+        ],
+        [
+          1873.350642,
+          null
+        ],
+        [
+          1878.208121,
+          null
+        ],
+        [
+          1878.854119,
+          null
+        ],
+        [
+          1879.025995,
+          null
+        ],
+        [
+          1879.853615,
+          null
+        ],
+        [
+          1880.146113,
+          null
+        ],
+        [
+          1883.757098,
+          null
+        ],
+        [
+          1884.111671,
+          null
+        ],
+        [
+          1885.087593,
+          null
+        ]
+      ],
+      "tag": "junction",
+      "v": 0
+    },
+    {
+      "at": "2026-10-27T14:40:09-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 406
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "545585206305",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-NR2H5O7",
+      "moves": {},
+      "n": 406,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 406 candidates, none decided yet.",
+      "snap": [
+        [
+          7.360298,
+          null
+        ],
+        [
+          50.04179,
+          null
+        ],
+        [
+          52.677779,
+          null
+        ],
+        [
+          60.056748,
+          null
+        ],
+        [
+          61.577742,
+          null
+        ],
+        [
+          69.997706,
+          null
+        ],
+        [
+          70.087706,
+          null
+        ],
+        [
+          70.298705,
+          null
+        ],
+        [
+          76.838041,
+          null
+        ],
+        [
+          81.975656,
+          null
+        ],
+        [
+          83.692149,
+          null
+        ],
+        [
+          83.98683,
+          null
+        ],
+        [
+          85.257142,
+          null
+        ],
+        [
+          106.171555,
+          null
+        ],
+        [
+          108.002547,
+          null
+        ],
+        [
+          109.127542,
+          null
+        ],
+        [
+          143.364871,
+          null
+        ],
+        [
+          145.886888,
+          null
+        ],
+        [
+          161.125324,
+          null
+        ],
+        [
+          170.207348,
+          null
+        ],
+        [
+          187.432214,
+          null
+        ],
+        [
+          202.203152,
+          null
+        ],
+        [
+          209.636121,
+          null
+        ],
+        [
+          244.484619,
+          null
+        ],
+        [
+          256.752423,
+          null
+        ],
+        [
+          268.477374,
+          null
+        ],
+        [
+          284.17751,
+          null
+        ],
+        [
+          286.419799,
+          null
+        ],
+        [
+          298.526248,
+          null
+        ],
+        [
+          323.586001,
+          null
+        ],
+        [
+          324.092454,
+          null
+        ],
+        [
+          331.88241,
+          null
+        ],
+        [
+          335.333593,
+          null
+        ],
+        [
+          336.610969,
+          null
+        ],
+        [
+          340.613571,
+          null
+        ],
+        [
+          343.634184,
+          null
+        ],
+        [
+          348.225039,
+          null
+        ],
+        [
+          349.236548,
+          null
+        ],
+        [
+          355.038511,
+          null
+        ],
+        [
+          355.059538,
+          null
+        ],
+        [
+          355.493505,
+          null
+        ],
+        [
+          359.571917,
+          null
+        ],
+        [
+          361.561483,
+          null
+        ],
+        [
+          363.55061,
+          null
+        ],
+        [
+          366.111964,
+          null
+        ],
+        [
+          372.281438,
+          null
+        ],
+        [
+          372.556437,
+          null
+        ],
+        [
+          381.175284,
+          null
+        ],
+        [
+          381.878898,
+          null
+        ],
+        [
+          382.033432,
+          null
+        ],
+        [
+          384.250388,
+          null
+        ],
+        [
+          386.742878,
+          null
+        ],
+        [
+          387.544874,
+          null
+        ],
+        [
+          391.03636,
+          null
+        ],
+        [
+          392.862257,
+          null
+        ],
+        [
+          393.156351,
+          null
+        ],
+        [
+          396.620336,
+          null
+        ],
+        [
+          397.327833,
+          null
+        ],
+        [
+          408.80526,
+          null
+        ],
+        [
+          415.103759,
+          null
+        ],
+        [
+          415.332615,
+          null
+        ],
+        [
+          427.772206,
+          null
+        ],
+        [
+          428.607312,
+          null
+        ],
+        [
+          434.988175,
+          null
+        ],
+        [
+          440.98715,
+          null
+        ],
+        [
+          441.110026,
+          null
+        ],
+        [
+          446.348628,
+          null
+        ],
+        [
+          451.031893,
+          null
+        ],
+        [
+          454.421953,
+          null
+        ],
+        [
+          459.524576,
+          null
+        ],
+        [
+          461.520064,
+          null
+        ],
+        [
+          468.316036,
+          null
+        ],
+        [
+          469.907029,
+          null
+        ],
+        [
+          472.043136,
+          null
+        ],
+        [
+          472.328019,
+          null
+        ],
+        [
+          473.189015,
+          null
+        ],
+        [
+          473.599013,
+          null
+        ],
+        [
+          473.993826,
+          null
+        ],
+        [
+          474.784035,
+          null
+        ],
+        [
+          476.040503,
+          null
+        ],
+        [
+          505.835878,
+          null
+        ],
+        [
+          505.859526,
+          null
+        ],
+        [
+          527.012789,
+          null
+        ],
+        [
+          536.725749,
+          null
+        ],
+        [
+          540.089734,
+          null
+        ],
+        [
+          541.466729,
+          null
+        ],
+        [
+          543.786692,
+          null
+        ],
+        [
+          548.570699,
+          null
+        ],
+        [
+          551.210785,
+          null
+        ],
+        [
+          553.040322,
+          null
+        ],
+        [
+          553.277679,
+          null
+        ],
+        [
+          555.650168,
+          null
+        ],
+        [
+          557.78016,
+          null
+        ],
+        [
+          563.535636,
+          null
+        ],
+        [
+          565.718627,
+          null
+        ],
+        [
+          566.155319,
+          null
+        ],
+        [
+          567.215621,
+          null
+        ],
+        [
+          575.134359,
+          null
+        ],
+        [
+          578.540073,
+          null
+        ],
+        [
+          578.909572,
+          null
+        ],
+        [
+          583.074054,
+          null
+        ],
+        [
+          588.076533,
+          null
+        ],
+        [
+          588.671531,
+          null
+        ],
+        [
+          589.903955,
+          null
+        ],
+        [
+          590.635522,
+          null
+        ],
+        [
+          601.065479,
+          null
+        ],
+        [
+          602.957471,
+          null
+        ],
+        [
+          603.770442,
+          null
+        ],
+        [
+          605.489811,
+          null
+        ],
+        [
+          606.375245,
+          null
+        ],
+        [
+          606.695455,
+          null
+        ],
+        [
+          608.458059,
+          null
+        ],
+        [
+          609.01126,
+          null
+        ],
+        [
+          609.549246,
+          null
+        ],
+        [
+          609.551443,
+          null
+        ],
+        [
+          613.141928,
+          null
+        ],
+        [
+          613.797425,
+          null
+        ],
+        [
+          617.45641,
+          null
+        ],
+        [
+          618.525405,
+          null
+        ],
+        [
+          619.576401,
+          null
+        ],
+        [
+          619.844369,
+          null
+        ],
+        [
+          620.163399,
+          null
+        ],
+        [
+          620.668396,
+          null
+        ],
+        [
+          621.479393,
+          null
+        ],
+        [
+          621.930368,
+          null
+        ],
+        [
+          622.11389,
+          null
+        ],
+        [
+          635.553334,
+          null
+        ],
+        [
+          635.944332,
+          null
+        ],
+        [
+          636.034832,
+          null
+        ],
+        [
+          640.303681,
+          null
+        ],
+        [
+          640.696312,
+          null
+        ],
+        [
+          642.358069,
+          null
+        ],
+        [
+          642.398305,
+          null
+        ],
+        [
+          642.835304,
+          null
+        ],
+        [
+          644.054298,
+          null
+        ],
+        [
+          644.436297,
+          null
+        ],
+        [
+          647.387284,
+          null
+        ],
+        [
+          653.071261,
+          null
+        ],
+        [
+          653.472259,
+          null
+        ],
+        [
+          654.743195,
+          null
+        ],
+        [
+          655.850749,
+          null
+        ],
+        [
+          657.747741,
+          null
+        ],
+        [
+          658.448238,
+          null
+        ],
+        [
+          658.871736,
+          null
+        ],
+        [
+          659.448734,
+          null
+        ],
+        [
+          704.375045,
+          null
+        ],
+        [
+          711.517406,
+          null
+        ],
+        [
+          713.887005,
+          null
+        ],
+        [
+          718.580986,
+          null
+        ],
+        [
+          726.140954,
+          null
+        ],
+        [
+          736.978439,
+          null
+        ],
+        [
+          738.686901,
+          null
+        ],
+        [
+          747.895846,
+          null
+        ],
+        [
+          748.251861,
+          null
+        ],
+        [
+          750.602249,
+          null
+        ],
+        [
+          757.826821,
+          null
+        ],
+        [
+          761.622805,
+          null
+        ],
+        [
+          764.030953,
+          null
+        ],
+        [
+          768.879775,
+          null
+        ],
+        [
+          773.292756,
+          null
+        ],
+        [
+          775.738746,
+          null
+        ],
+        [
+          781.105483,
+          null
+        ],
+        [
+          781.478161,
+          null
+        ],
+        [
+          781.727235,
+          null
+        ],
+        [
+          782.133705,
+          null
+        ],
+        [
+          782.154219,
+          null
+        ],
+        [
+          785.035707,
+          null
+        ],
+        [
+          792.443676,
+          null
+        ],
+        [
+          797.05608,
+          null
+        ],
+        [
+          797.952653,
+          null
+        ],
+        [
+          798.71465,
+          null
+        ],
+        [
+          808.858607,
+          null
+        ],
+        [
+          813.090651,
+          null
+        ],
+        [
+          821.484054,
+          null
+        ],
+        [
+          828.954523,
+          null
+        ],
+        [
+          829.751019,
+          null
+        ],
+        [
+          836.119993,
+          null
+        ],
+        [
+          841.703879,
+          null
+        ],
+        [
+          848.134123,
+          null
+        ],
+        [
+          876.107825,
+          null
+        ],
+        [
+          894.790247,
+          null
+        ],
+        [
+          906.546197,
+          null
+        ],
+        [
+          930.582241,
+          null
+        ],
+        [
+          944.506294,
+          null
+        ],
+        [
+          954.501496,
+          null
+        ],
+        [
+          955.257493,
+          null
+        ],
+        [
+          969.096935,
+          null
+        ],
+        [
+          999.449808,
+          null
+        ],
+        [
+          1005.792781,
+          null
+        ],
+        [
+          1009.401766,
+          null
+        ],
+        [
+          1009.426746,
+          null
+        ],
+        [
+          1021.274216,
+          null
+        ],
+        [
+          1025.737302,
+          null
+        ],
+        [
+          1030.798564,
+          null
+        ],
+        [
+          1031.109976,
+          null
+        ],
+        [
+          1034.073662,
+          null
+        ],
+        [
+          1037.835647,
+          null
+        ],
+        [
+          1039.44964,
+          null
+        ],
+        [
+          1040.220263,
+          null
+        ],
+        [
+          1042.914035,
+          null
+        ],
+        [
+          1047.827392,
+          null
+        ],
+        [
+          1052.799491,
+          null
+        ],
+        [
+          1054.419577,
+          null
+        ],
+        [
+          1056.753567,
+          null
+        ],
+        [
+          1057.424564,
+          null
+        ],
+        [
+          1057.511718,
+          null
+        ],
+        [
+          1058.118562,
+          null
+        ],
+        [
+          1058.293561,
+          null
+        ],
+        [
+          1062.68618,
+          null
+        ],
+        [
+          1122.692291,
+          null
+        ],
+        [
+          1147.349187,
+          null
+        ],
+        [
+          1189.795791,
+          null
+        ],
+        [
+          1195.952483,
+          null
+        ],
+        [
+          1215.451402,
+          null
+        ],
+        [
+          1233.790825,
+          null
+        ],
+        [
+          1249.833689,
+          null
+        ],
+        [
+          1257.281226,
+          null
+        ],
+        [
+          1267.232684,
+          null
+        ],
+        [
+          1276.982143,
+          null
+        ],
+        [
+          1286.180657,
+          null
+        ],
+        [
+          1286.445338,
+          null
+        ],
+        [
+          1287.608934,
+          null
+        ],
+        [
+          1297.898056,
+          null
+        ],
+        [
+          1298.228534,
+          null
+        ],
+        [
+          1298.400054,
+          null
+        ],
+        [
+          1301.266112,
+          null
+        ],
+        [
+          1305.039526,
+          null
+        ],
+        [
+          1307.237517,
+          null
+        ],
+        [
+          1308.466511,
+          null
+        ],
+        [
+          1308.92576,
+          null
+        ],
+        [
+          1309.186008,
+          null
+        ],
+        [
+          1309.211728,
+          null
+        ],
+        [
+          1311.989497,
+          null
+        ],
+        [
+          1319.872464,
+          null
+        ],
+        [
+          1319.989013,
+          null
+        ],
+        [
+          1321.646456,
+          null
+        ],
+        [
+          1322.157454,
+          null
+        ],
+        [
+          1324.285445,
+          null
+        ],
+        [
+          1326.377453,
+          null
+        ],
+        [
+          1327.749431,
+          null
+        ],
+        [
+          1328.552427,
+          null
+        ],
+        [
+          1331.712276,
+          null
+        ],
+        [
+          1335.0729,
+          null
+        ],
+        [
+          1344.233919,
+          null
+        ],
+        [
+          1344.365318,
+          null
+        ],
+        [
+          1346.356352,
+          null
+        ],
+        [
+          1348.759662,
+          null
+        ],
+        [
+          1349.38484,
+          null
+        ],
+        [
+          1351.564331,
+          null
+        ],
+        [
+          1357.024308,
+          null
+        ],
+        [
+          1365.037274,
+          null
+        ],
+        [
+          1369.284256,
+          null
+        ],
+        [
+          1380.923707,
+          null
+        ],
+        [
+          1391.421663,
+          null
+        ],
+        [
+          1395.692146,
+          null
+        ],
+        [
+          1402.554617,
+          null
+        ],
+        [
+          1402.990115,
+          null
+        ],
+        [
+          1403.6917,
+          null
+        ],
+        [
+          1403.967838,
+          null
+        ],
+        [
+          1404.09911,
+          null
+        ],
+        [
+          1407.525489,
+          null
+        ],
+        [
+          1408.555092,
+          null
+        ],
+        [
+          1408.73513,
+          null
+        ],
+        [
+          1410.023381,
+          null
+        ],
+        [
+          1416.404559,
+          null
+        ],
+        [
+          1426.090518,
+          null
+        ],
+        [
+          1426.200578,
+          null
+        ],
+        [
+          1442.765948,
+          null
+        ],
+        [
+          1444.956939,
+          null
+        ],
+        [
+          1450.359416,
+          null
+        ],
+        [
+          1453.203904,
+          null
+        ],
+        [
+          1457.123889,
+          null
+        ],
+        [
+          1461.767283,
+          null
+        ],
+        [
+          1471.646685,
+          null
+        ],
+        [
+          1473.32882,
+          null
+        ],
+        [
+          1473.641584,
+          null
+        ],
+        [
+          1480.180791,
+          null
+        ],
+        [
+          1480.693789,
+          null
+        ],
+        [
+          1481.626785,
+          null
+        ],
+        [
+          1481.779784,
+          null
+        ],
+        [
+          1484.793772,
+          null
+        ],
+        [
+          1484.836653,
+          null
+        ],
+        [
+          1486.738764,
+          null
+        ],
+        [
+          1487.52276,
+          null
+        ],
+        [
+          1490.277249,
+          null
+        ],
+        [
+          1490.992746,
+          null
+        ],
+        [
+          1491.119745,
+          null
+        ],
+        [
+          1491.765636,
+          null
+        ],
+        [
+          1491.871742,
+          null
+        ],
+        [
+          1492.126741,
+          null
+        ],
+        [
+          1493.653308,
+          null
+        ],
+        [
+          1505.992683,
+          null
+        ],
+        [
+          1506.104182,
+          null
+        ],
+        [
+          1508.66819,
+          null
+        ],
+        [
+          1512.733155,
+          null
+        ],
+        [
+          1513.160653,
+          null
+        ],
+        [
+          1513.328002,
+          null
+        ],
+        [
+          1515.661642,
+          null
+        ],
+        [
+          1516.763138,
+          null
+        ],
+        [
+          1520.247363,
+          null
+        ],
+        [
+          1521.213619,
+          null
+        ],
+        [
+          1523.457586,
+          null
+        ],
+        [
+          1525.433352,
+          null
+        ],
+        [
+          1526.062099,
+          null
+        ],
+        [
+          1526.607096,
+          null
+        ],
+        [
+          1526.765987,
+          null
+        ],
+        [
+          1527.875591,
+          null
+        ],
+        [
+          1529.111086,
+          null
+        ],
+        [
+          1542.120531,
+          null
+        ],
+        [
+          1546.424513,
+          null
+        ],
+        [
+          1546.583022,
+          null
+        ],
+        [
+          1548.426992,
+          null
+        ],
+        [
+          1549.102502,
+          null
+        ],
+        [
+          1549.865999,
+          null
+        ],
+        [
+          1550.048943,
+          null
+        ],
+        [
+          1552.606629,
+          null
+        ],
+        [
+          1552.898897,
+          null
+        ],
+        [
+          1553.148025,
+          null
+        ],
+        [
+          1554.221481,
+          null
+        ],
+        [
+          1554.81462,
+          null
+        ],
+        [
+          1555.247476,
+          null
+        ],
+        [
+          1556.435471,
+          null
+        ],
+        [
+          1556.984969,
+          null
+        ],
+        [
+          1557.721466,
+          null
+        ],
+        [
+          1567.170426,
+          null
+        ],
+        [
+          1572.516404,
+          null
+        ],
+        [
+          1573.586399,
+          null
+        ],
+        [
+          1577.163384,
+          null
+        ],
+        [
+          1577.307384,
+          null
+        ],
+        [
+          1578.428879,
+          null
+        ],
+        [
+          1578.466707,
+          null
+        ],
+        [
+          1579.171153,
+          null
+        ],
+        [
+          1579.284375,
+          null
+        ],
+        [
+          1579.56002,
+          null
+        ],
+        [
+          1580.626156,
+          null
+        ],
+        [
+          1583.903356,
+          null
+        ],
+        [
+          1587.339342,
+          null
+        ],
+        [
+          1588.926835,
+          null
+        ],
+        [
+          1589.753611,
+          null
+        ],
+        [
+          1590.057607,
+          null
+        ],
+        [
+          1590.05833,
+          null
+        ],
+        [
+          1590.794325,
+          null
+        ],
+        [
+          1593.807356,
+          null
+        ],
+        [
+          1595.712675,
+          null
+        ],
+        [
+          1596.892302,
+          null
+        ],
+        [
+          1597.3533,
+          null
+        ],
+        [
+          1597.752798,
+          null
+        ],
+        [
+          1599.027293,
+          null
+        ],
+        [
+          1599.651683,
+          null
+        ],
+        [
+          1600.011788,
+          null
+        ],
+        [
+          1600.455588,
+          null
+        ],
+        [
+          1601.025874,
+          null
+        ],
+        [
+          1602.706777,
+          null
+        ],
+        [
+          1604.025226,
+          null
+        ],
+        [
+          1604.224271,
+          null
+        ],
+        [
+          1604.757795,
+          null
+        ],
+        [
+          1605.056995,
+          null
+        ],
+        [
+          1605.420766,
+          null
+        ],
+        [
+          1616.22822,
+          null
+        ],
+        [
+          1616.594904,
+          null
+        ],
+        [
+          1625.843426,
+          null
+        ],
+        [
+          1633.996646,
+          null
+        ],
+        [
+          1641.769169,
+          null
+        ],
+        [
+          1655.891054,
+          null
+        ],
+        [
+          1689.811326,
+          null
+        ],
+        [
+          1692.208607,
+          null
+        ],
+        [
+          1692.455901,
+          null
+        ],
+        [
+          1699.075873,
+          null
+        ],
+        [
+          1747.196671,
+          null
+        ],
+        [
+          1753.084646,
+          null
+        ],
+        [
+          1757.544669,
+          null
+        ],
+        [
+          1759.626534,
+          null
+        ],
+        [
+          1773.860559,
+          null
+        ],
+        [
+          1774.455382,
+          null
+        ],
+        [
+          1778.009542,
+          null
+        ],
+        [
+          1791.644985,
+          null
+        ],
+        [
+          1792.978479,
+          null
+        ],
+        [
+          1796.746463,
+          null
+        ],
+        [
+          1800.468448,
+          null
+        ],
+        [
+          1800.761991,
+          null
+        ],
+        [
+          1802.004941,
+          null
+        ],
+        [
+          1807.186809,
+          null
+        ],
+        [
+          1810.577905,
+          null
+        ],
+        [
+          1821.073975,
+          null
+        ],
+        [
+          1832.866312,
+          null
+        ],
+        [
+          1835.241802,
+          null
+        ],
+        [
+          1837.94829,
+          null
+        ],
+        [
+          1841.873128,
+          null
+        ],
+        [
+          1844.982203,
+          null
+        ],
+        [
+          1845.677258,
+          null
+        ],
+        [
+          1858.071812,
+          null
+        ],
+        [
+          1859.582179,
+          null
+        ],
+        [
+          1860.165504,
+          null
+        ],
+        [
+          1861.331833,
+          null
+        ],
+        [
+          1861.602191,
+          null
+        ],
+        [
+          1870.615153,
+          null
+        ],
+        [
+          1870.825152,
+          null
+        ],
+        [
+          1873.350642,
+          null
+        ],
+        [
+          1878.208121,
+          null
+        ],
+        [
+          1878.854119,
+          null
+        ],
+        [
+          1879.025995,
+          null
+        ],
+        [
+          1879.853615,
+          null
+        ],
+        [
+          1880.146113,
+          null
+        ],
+        [
+          1883.757098,
+          null
+        ],
+        [
+          1884.111671,
+          null
+        ],
+        [
+          1885.087593,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-10-27T14:39:32-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 406
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "41bd8e60cd56",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 406,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 406 candidates, none decided yet.",
+      "snap": [
+        [
+          7.360298,
+          null
+        ],
+        [
+          50.04179,
+          null
+        ],
+        [
+          52.677779,
+          null
+        ],
+        [
+          60.056748,
+          null
+        ],
+        [
+          61.577742,
+          null
+        ],
+        [
+          69.997706,
+          null
+        ],
+        [
+          70.087706,
+          null
+        ],
+        [
+          70.298705,
+          null
+        ],
+        [
+          76.838041,
+          null
+        ],
+        [
+          81.975656,
+          null
+        ],
+        [
+          83.692149,
+          null
+        ],
+        [
+          83.98683,
+          null
+        ],
+        [
+          85.257142,
+          null
+        ],
+        [
+          106.171555,
+          null
+        ],
+        [
+          108.002547,
+          null
+        ],
+        [
+          109.127542,
+          null
+        ],
+        [
+          143.364871,
+          null
+        ],
+        [
+          145.886888,
+          null
+        ],
+        [
+          161.125324,
+          null
+        ],
+        [
+          170.207348,
+          null
+        ],
+        [
+          187.432214,
+          null
+        ],
+        [
+          202.203152,
+          null
+        ],
+        [
+          209.636121,
+          null
+        ],
+        [
+          244.484619,
+          null
+        ],
+        [
+          256.752423,
+          null
+        ],
+        [
+          268.477374,
+          null
+        ],
+        [
+          284.17751,
+          null
+        ],
+        [
+          286.419799,
+          null
+        ],
+        [
+          298.526248,
+          null
+        ],
+        [
+          323.586001,
+          null
+        ],
+        [
+          324.092454,
+          null
+        ],
+        [
+          331.88241,
+          null
+        ],
+        [
+          335.333593,
+          null
+        ],
+        [
+          336.610969,
+          null
+        ],
+        [
+          340.613571,
+          null
+        ],
+        [
+          343.634184,
+          null
+        ],
+        [
+          348.225039,
+          null
+        ],
+        [
+          349.236548,
+          null
+        ],
+        [
+          355.038511,
+          null
+        ],
+        [
+          355.059538,
+          null
+        ],
+        [
+          355.493505,
+          null
+        ],
+        [
+          359.571917,
+          null
+        ],
+        [
+          361.561483,
+          null
+        ],
+        [
+          363.55061,
+          null
+        ],
+        [
+          366.111964,
+          null
+        ],
+        [
+          372.281438,
+          null
+        ],
+        [
+          372.556437,
+          null
+        ],
+        [
+          381.175284,
+          null
+        ],
+        [
+          381.878898,
+          null
+        ],
+        [
+          382.033432,
+          null
+        ],
+        [
+          384.250388,
+          null
+        ],
+        [
+          386.742878,
+          null
+        ],
+        [
+          387.544874,
+          null
+        ],
+        [
+          391.03636,
+          null
+        ],
+        [
+          392.862257,
+          null
+        ],
+        [
+          393.156351,
+          null
+        ],
+        [
+          396.620336,
+          null
+        ],
+        [
+          397.327833,
+          null
+        ],
+        [
+          408.80526,
+          null
+        ],
+        [
+          415.103759,
+          null
+        ],
+        [
+          415.332615,
+          null
+        ],
+        [
+          427.772206,
+          null
+        ],
+        [
+          428.607312,
+          null
+        ],
+        [
+          434.988175,
+          null
+        ],
+        [
+          440.98715,
+          null
+        ],
+        [
+          441.110026,
+          null
+        ],
+        [
+          446.348628,
+          null
+        ],
+        [
+          451.031893,
+          null
+        ],
+        [
+          454.421953,
+          null
+        ],
+        [
+          459.524576,
+          null
+        ],
+        [
+          461.520064,
+          null
+        ],
+        [
+          468.316036,
+          null
+        ],
+        [
+          469.907029,
+          null
+        ],
+        [
+          472.043136,
+          null
+        ],
+        [
+          472.328019,
+          null
+        ],
+        [
+          473.189015,
+          null
+        ],
+        [
+          473.599013,
+          null
+        ],
+        [
+          473.993826,
+          null
+        ],
+        [
+          474.784035,
+          null
+        ],
+        [
+          476.040503,
+          null
+        ],
+        [
+          505.835878,
+          null
+        ],
+        [
+          505.859526,
+          null
+        ],
+        [
+          527.012789,
+          null
+        ],
+        [
+          536.725749,
+          null
+        ],
+        [
+          540.089734,
+          null
+        ],
+        [
+          541.466729,
+          null
+        ],
+        [
+          543.786692,
+          null
+        ],
+        [
+          548.570699,
+          null
+        ],
+        [
+          551.210785,
+          null
+        ],
+        [
+          553.040322,
+          null
+        ],
+        [
+          553.277679,
+          null
+        ],
+        [
+          555.650168,
+          null
+        ],
+        [
+          557.78016,
+          null
+        ],
+        [
+          563.535636,
+          null
+        ],
+        [
+          565.718627,
+          null
+        ],
+        [
+          566.155319,
+          null
+        ],
+        [
+          567.215621,
+          null
+        ],
+        [
+          575.134359,
+          null
+        ],
+        [
+          578.540073,
+          null
+        ],
+        [
+          578.909572,
+          null
+        ],
+        [
+          583.074054,
+          null
+        ],
+        [
+          588.076533,
+          null
+        ],
+        [
+          588.671531,
+          null
+        ],
+        [
+          589.903955,
+          null
+        ],
+        [
+          590.635522,
+          null
+        ],
+        [
+          601.065479,
+          null
+        ],
+        [
+          602.957471,
+          null
+        ],
+        [
+          603.770442,
+          null
+        ],
+        [
+          605.489811,
+          null
+        ],
+        [
+          606.375245,
+          null
+        ],
+        [
+          606.695455,
+          null
+        ],
+        [
+          608.458059,
+          null
+        ],
+        [
+          609.01126,
+          null
+        ],
+        [
+          609.549246,
+          null
+        ],
+        [
+          609.551443,
+          null
+        ],
+        [
+          613.141928,
+          null
+        ],
+        [
+          613.797425,
+          null
+        ],
+        [
+          617.45641,
+          null
+        ],
+        [
+          618.525405,
+          null
+        ],
+        [
+          619.576401,
+          null
+        ],
+        [
+          619.844369,
+          null
+        ],
+        [
+          620.163399,
+          null
+        ],
+        [
+          620.668396,
+          null
+        ],
+        [
+          621.479393,
+          null
+        ],
+        [
+          621.930368,
+          null
+        ],
+        [
+          622.11389,
+          null
+        ],
+        [
+          635.553334,
+          null
+        ],
+        [
+          635.944332,
+          null
+        ],
+        [
+          636.034832,
+          null
+        ],
+        [
+          640.303681,
+          null
+        ],
+        [
+          640.696312,
+          null
+        ],
+        [
+          642.358069,
+          null
+        ],
+        [
+          642.398305,
+          null
+        ],
+        [
+          642.835304,
+          null
+        ],
+        [
+          644.054298,
+          null
+        ],
+        [
+          644.436297,
+          null
+        ],
+        [
+          647.387284,
+          null
+        ],
+        [
+          653.071261,
+          null
+        ],
+        [
+          653.472259,
+          null
+        ],
+        [
+          654.743195,
+          null
+        ],
+        [
+          655.850749,
+          null
+        ],
+        [
+          657.747741,
+          null
+        ],
+        [
+          658.448238,
+          null
+        ],
+        [
+          658.871736,
+          null
+        ],
+        [
+          659.448734,
+          null
+        ],
+        [
+          704.375045,
+          null
+        ],
+        [
+          711.517406,
+          null
+        ],
+        [
+          713.887005,
+          null
+        ],
+        [
+          718.580986,
+          null
+        ],
+        [
+          726.140954,
+          null
+        ],
+        [
+          736.978439,
+          null
+        ],
+        [
+          738.686901,
+          null
+        ],
+        [
+          747.895846,
+          null
+        ],
+        [
+          748.251861,
+          null
+        ],
+        [
+          750.602249,
+          null
+        ],
+        [
+          757.826821,
+          null
+        ],
+        [
+          761.622805,
+          null
+        ],
+        [
+          764.030953,
+          null
+        ],
+        [
+          768.879775,
+          null
+        ],
+        [
+          773.292756,
+          null
+        ],
+        [
+          775.738746,
+          null
+        ],
+        [
+          781.105483,
+          null
+        ],
+        [
+          781.478161,
+          null
+        ],
+        [
+          781.727235,
+          null
+        ],
+        [
+          782.133705,
+          null
+        ],
+        [
+          782.154219,
+          null
+        ],
+        [
+          785.035707,
+          null
+        ],
+        [
+          792.443676,
+          null
+        ],
+        [
+          797.05608,
+          null
+        ],
+        [
+          797.952653,
+          null
+        ],
+        [
+          798.71465,
+          null
+        ],
+        [
+          808.858607,
+          null
+        ],
+        [
+          813.090651,
+          null
+        ],
+        [
+          821.484054,
+          null
+        ],
+        [
+          828.954523,
+          null
+        ],
+        [
+          829.751019,
+          null
+        ],
+        [
+          836.119993,
+          null
+        ],
+        [
+          841.703879,
+          null
+        ],
+        [
+          848.134123,
+          null
+        ],
+        [
+          876.107825,
+          null
+        ],
+        [
+          894.790247,
+          null
+        ],
+        [
+          906.546197,
+          null
+        ],
+        [
+          930.582241,
+          null
+        ],
+        [
+          944.506294,
+          null
+        ],
+        [
+          954.501496,
+          null
+        ],
+        [
+          955.257493,
+          null
+        ],
+        [
+          969.096935,
+          null
+        ],
+        [
+          999.449808,
+          null
+        ],
+        [
+          1005.792781,
+          null
+        ],
+        [
+          1009.401766,
+          null
+        ],
+        [
+          1009.426746,
+          null
+        ],
+        [
+          1021.274216,
+          null
+        ],
+        [
+          1025.737302,
+          null
+        ],
+        [
+          1030.798564,
+          null
+        ],
+        [
+          1031.109976,
+          null
+        ],
+        [
+          1034.073662,
+          null
+        ],
+        [
+          1037.835647,
+          null
+        ],
+        [
+          1039.44964,
+          null
+        ],
+        [
+          1040.220263,
+          null
+        ],
+        [
+          1042.914035,
+          null
+        ],
+        [
+          1047.827392,
+          null
+        ],
+        [
+          1052.799491,
+          null
+        ],
+        [
+          1054.419577,
+          null
+        ],
+        [
+          1056.753567,
+          null
+        ],
+        [
+          1057.424564,
+          null
+        ],
+        [
+          1057.511718,
+          null
+        ],
+        [
+          1058.118562,
+          null
+        ],
+        [
+          1058.293561,
+          null
+        ],
+        [
+          1062.68618,
+          null
+        ],
+        [
+          1122.692291,
+          null
+        ],
+        [
+          1147.349187,
+          null
+        ],
+        [
+          1189.795791,
+          null
+        ],
+        [
+          1195.952483,
+          null
+        ],
+        [
+          1215.451402,
+          null
+        ],
+        [
+          1233.790825,
+          null
+        ],
+        [
+          1249.833689,
+          null
+        ],
+        [
+          1257.281226,
+          null
+        ],
+        [
+          1267.232684,
+          null
+        ],
+        [
+          1276.982143,
+          null
+        ],
+        [
+          1286.180657,
+          null
+        ],
+        [
+          1286.445338,
+          null
+        ],
+        [
+          1287.608934,
+          null
+        ],
+        [
+          1297.898056,
+          null
+        ],
+        [
+          1298.228534,
+          null
+        ],
+        [
+          1298.400054,
+          null
+        ],
+        [
+          1301.266112,
+          null
+        ],
+        [
+          1305.039526,
+          null
+        ],
+        [
+          1307.237517,
+          null
+        ],
+        [
+          1308.466511,
+          null
+        ],
+        [
+          1308.92576,
+          null
+        ],
+        [
+          1309.186008,
+          null
+        ],
+        [
+          1309.211728,
+          null
+        ],
+        [
+          1311.989497,
+          null
+        ],
+        [
+          1319.872464,
+          null
+        ],
+        [
+          1319.989013,
+          null
+        ],
+        [
+          1321.646456,
+          null
+        ],
+        [
+          1322.157454,
+          null
+        ],
+        [
+          1324.285445,
+          null
+        ],
+        [
+          1326.377453,
+          null
+        ],
+        [
+          1327.749431,
+          null
+        ],
+        [
+          1328.552427,
+          null
+        ],
+        [
+          1331.712276,
+          null
+        ],
+        [
+          1335.0729,
+          null
+        ],
+        [
+          1344.233919,
+          null
+        ],
+        [
+          1344.365318,
+          null
+        ],
+        [
+          1346.356352,
+          null
+        ],
+        [
+          1348.759662,
+          null
+        ],
+        [
+          1349.38484,
+          null
+        ],
+        [
+          1351.564331,
+          null
+        ],
+        [
+          1357.024308,
+          null
+        ],
+        [
+          1365.037274,
+          null
+        ],
+        [
+          1369.284256,
+          null
+        ],
+        [
+          1380.923707,
+          null
+        ],
+        [
+          1391.421663,
+          null
+        ],
+        [
+          1395.692146,
+          null
+        ],
+        [
+          1402.554617,
+          null
+        ],
+        [
+          1402.990115,
+          null
+        ],
+        [
+          1403.6917,
+          null
+        ],
+        [
+          1403.967838,
+          null
+        ],
+        [
+          1404.09911,
+          null
+        ],
+        [
+          1407.525489,
+          null
+        ],
+        [
+          1408.555092,
+          null
+        ],
+        [
+          1408.73513,
+          null
+        ],
+        [
+          1410.023381,
+          null
+        ],
+        [
+          1416.404559,
+          null
+        ],
+        [
+          1426.090518,
+          null
+        ],
+        [
+          1426.200578,
+          null
+        ],
+        [
+          1442.765948,
+          null
+        ],
+        [
+          1444.956939,
+          null
+        ],
+        [
+          1450.359416,
+          null
+        ],
+        [
+          1453.203904,
+          null
+        ],
+        [
+          1457.123889,
+          null
+        ],
+        [
+          1461.767283,
+          null
+        ],
+        [
+          1471.646685,
+          null
+        ],
+        [
+          1473.32882,
+          null
+        ],
+        [
+          1473.641584,
+          null
+        ],
+        [
+          1480.180791,
+          null
+        ],
+        [
+          1480.693789,
+          null
+        ],
+        [
+          1481.626785,
+          null
+        ],
+        [
+          1481.779784,
+          null
+        ],
+        [
+          1484.793772,
+          null
+        ],
+        [
+          1484.836653,
+          null
+        ],
+        [
+          1486.738764,
+          null
+        ],
+        [
+          1487.52276,
+          null
+        ],
+        [
+          1490.277249,
+          null
+        ],
+        [
+          1490.992746,
+          null
+        ],
+        [
+          1491.119745,
+          null
+        ],
+        [
+          1491.765636,
+          null
+        ],
+        [
+          1491.871742,
+          null
+        ],
+        [
+          1492.126741,
+          null
+        ],
+        [
+          1493.653308,
+          null
+        ],
+        [
+          1505.992683,
+          null
+        ],
+        [
+          1506.104182,
+          null
+        ],
+        [
+          1508.66819,
+          null
+        ],
+        [
+          1512.733155,
+          null
+        ],
+        [
+          1513.160653,
+          null
+        ],
+        [
+          1513.328002,
+          null
+        ],
+        [
+          1515.661642,
+          null
+        ],
+        [
+          1516.763138,
+          null
+        ],
+        [
+          1520.247363,
+          null
+        ],
+        [
+          1521.213619,
+          null
+        ],
+        [
+          1523.457586,
+          null
+        ],
+        [
+          1525.433352,
+          null
+        ],
+        [
+          1526.062099,
+          null
+        ],
+        [
+          1526.607096,
+          null
+        ],
+        [
+          1526.765987,
+          null
+        ],
+        [
+          1527.875591,
+          null
+        ],
+        [
+          1529.111086,
+          null
+        ],
+        [
+          1542.120531,
+          null
+        ],
+        [
+          1546.424513,
+          null
+        ],
+        [
+          1546.583022,
+          null
+        ],
+        [
+          1548.426992,
+          null
+        ],
+        [
+          1549.102502,
+          null
+        ],
+        [
+          1549.865999,
+          null
+        ],
+        [
+          1550.048943,
+          null
+        ],
+        [
+          1552.606629,
+          null
+        ],
+        [
+          1552.898897,
+          null
+        ],
+        [
+          1553.148025,
+          null
+        ],
+        [
+          1554.221481,
+          null
+        ],
+        [
+          1554.81462,
+          null
+        ],
+        [
+          1555.247476,
+          null
+        ],
+        [
+          1556.435471,
+          null
+        ],
+        [
+          1556.984969,
+          null
+        ],
+        [
+          1557.721466,
+          null
+        ],
+        [
+          1567.170426,
+          null
+        ],
+        [
+          1572.516404,
+          null
+        ],
+        [
+          1573.586399,
+          null
+        ],
+        [
+          1577.163384,
+          null
+        ],
+        [
+          1577.307384,
+          null
+        ],
+        [
+          1578.428879,
+          null
+        ],
+        [
+          1578.466707,
+          null
+        ],
+        [
+          1579.171153,
+          null
+        ],
+        [
+          1579.284375,
+          null
+        ],
+        [
+          1579.56002,
+          null
+        ],
+        [
+          1580.626156,
+          null
+        ],
+        [
+          1583.903356,
+          null
+        ],
+        [
+          1587.339342,
+          null
+        ],
+        [
+          1588.926835,
+          null
+        ],
+        [
+          1589.753611,
+          null
+        ],
+        [
+          1590.057607,
+          null
+        ],
+        [
+          1590.05833,
+          null
+        ],
+        [
+          1590.794325,
+          null
+        ],
+        [
+          1593.807356,
+          null
+        ],
+        [
+          1595.712675,
+          null
+        ],
+        [
+          1596.892302,
+          null
+        ],
+        [
+          1597.3533,
+          null
+        ],
+        [
+          1597.752798,
+          null
+        ],
+        [
+          1599.027293,
+          null
+        ],
+        [
+          1599.651683,
+          null
+        ],
+        [
+          1600.011788,
+          null
+        ],
+        [
+          1600.455588,
+          null
+        ],
+        [
+          1601.025874,
+          null
+        ],
+        [
+          1602.706777,
+          null
+        ],
+        [
+          1604.025226,
+          null
+        ],
+        [
+          1604.224271,
+          null
+        ],
+        [
+          1604.757795,
+          null
+        ],
+        [
+          1605.056995,
+          null
+        ],
+        [
+          1605.420766,
+          null
+        ],
+        [
+          1616.22822,
+          null
+        ],
+        [
+          1616.594904,
+          null
+        ],
+        [
+          1625.843426,
+          null
+        ],
+        [
+          1633.996646,
+          null
+        ],
+        [
+          1641.769169,
+          null
+        ],
+        [
+          1655.891054,
+          null
+        ],
+        [
+          1689.811326,
+          null
+        ],
+        [
+          1692.208607,
+          null
+        ],
+        [
+          1692.455901,
+          null
+        ],
+        [
+          1699.075873,
+          null
+        ],
+        [
+          1747.196671,
+          null
+        ],
+        [
+          1753.084646,
+          null
+        ],
+        [
+          1757.544669,
+          null
+        ],
+        [
+          1759.626534,
+          null
+        ],
+        [
+          1773.860559,
+          null
+        ],
+        [
+          1774.455382,
+          null
+        ],
+        [
+          1778.009542,
+          null
+        ],
+        [
+          1791.644985,
+          null
+        ],
+        [
+          1792.978479,
+          null
+        ],
+        [
+          1796.746463,
+          null
+        ],
+        [
+          1800.468448,
+          null
+        ],
+        [
+          1800.761991,
+          null
+        ],
+        [
+          1802.004941,
+          null
+        ],
+        [
+          1807.186809,
+          null
+        ],
+        [
+          1810.577905,
+          null
+        ],
+        [
+          1821.073975,
+          null
+        ],
+        [
+          1832.866312,
+          null
+        ],
+        [
+          1835.241802,
+          null
+        ],
+        [
+          1837.94829,
+          null
+        ],
+        [
+          1841.873128,
+          null
+        ],
+        [
+          1844.982203,
+          null
+        ],
+        [
+          1845.677258,
+          null
+        ],
+        [
+          1858.071812,
+          null
+        ],
+        [
+          1859.582179,
+          null
+        ],
+        [
+          1860.165504,
+          null
+        ],
+        [
+          1861.331833,
+          null
+        ],
+        [
+          1861.602191,
+          null
+        ],
+        [
+          1870.615153,
+          null
+        ],
+        [
+          1870.825152,
+          null
+        ],
+        [
+          1873.350642,
+          null
+        ],
+        [
+          1878.208121,
+          null
+        ],
+        [
+          1878.854119,
+          null
+        ],
+        [
+          1879.025995,
+          null
+        ],
+        [
+          1879.853615,
+          null
+        ],
+        [
+          1880.146113,
+          null
+        ],
+        [
+          1883.757098,
+          null
+        ],
+        [
+          1884.111671,
+          null
+        ],
+        [
+          1885.087593,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-10-28T16:19:36-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 62,
+        "spike": 336
+      },
+      "changed": 398,
+      "from_id": "545585206305",
+      "from_v": 0,
+      "gained": 0,
+      "id": "68af5b7d3917",
+      "lost": 8,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Garbage": 62,
+        "undecided \u2192 Spike": 336
+      },
+      "n": 398,
+      "note": "Every event decided in Panning.",
+      "snap": [
+        [
+          7.360298,
+          "spike"
+        ],
+        [
+          50.04179,
+          "spike"
+        ],
+        [
+          52.677779,
+          "spike"
+        ],
+        [
+          60.056748,
+          "spike"
+        ],
+        [
+          61.577742,
+          "spike"
+        ],
+        [
+          69.997706,
+          "spike"
+        ],
+        [
+          70.087706,
+          "spike"
+        ],
+        [
+          70.298705,
+          "spike"
+        ],
+        [
+          76.838041,
+          "spike"
+        ],
+        [
+          81.975656,
+          "spike"
+        ],
+        [
+          83.692149,
+          "spike"
+        ],
+        [
+          83.98683,
+          "spike"
+        ],
+        [
+          85.257142,
+          "spike"
+        ],
+        [
+          106.171555,
+          "spike"
+        ],
+        [
+          108.002547,
+          "spike"
+        ],
+        [
+          109.127542,
+          "spike"
+        ],
+        [
+          143.364871,
+          "spike"
+        ],
+        [
+          145.886888,
+          "garbage"
+        ],
+        [
+          161.125324,
+          "spike"
+        ],
+        [
+          170.207348,
+          "spike"
+        ],
+        [
+          187.432214,
+          "spike"
+        ],
+        [
+          202.203152,
+          "spike"
+        ],
+        [
+          209.636121,
+          "spike"
+        ],
+        [
+          244.484619,
+          "spike"
+        ],
+        [
+          256.752423,
+          "spike"
+        ],
+        [
+          268.477374,
+          "spike"
+        ],
+        [
+          284.17751,
+          "spike"
+        ],
+        [
+          286.419799,
+          "spike"
+        ],
+        [
+          298.526248,
+          "spike"
+        ],
+        [
+          323.586001,
+          "spike"
+        ],
+        [
+          324.092454,
+          "spike"
+        ],
+        [
+          331.88241,
+          "spike"
+        ],
+        [
+          335.333593,
+          "spike"
+        ],
+        [
+          336.610969,
+          "spike"
+        ],
+        [
+          340.613571,
+          "spike"
+        ],
+        [
+          343.634184,
+          "spike"
+        ],
+        [
+          348.225039,
+          "spike"
+        ],
+        [
+          349.236548,
+          "spike"
+        ],
+        [
+          355.038511,
+          "spike"
+        ],
+        [
+          355.059538,
+          "spike"
+        ],
+        [
+          355.493505,
+          "spike"
+        ],
+        [
+          359.571917,
+          "spike"
+        ],
+        [
+          361.561483,
+          "garbage"
+        ],
+        [
+          363.55061,
+          "spike"
+        ],
+        [
+          366.111964,
+          "garbage"
+        ],
+        [
+          372.281438,
+          "spike"
+        ],
+        [
+          372.556437,
+          "spike"
+        ],
+        [
+          381.175284,
+          "spike"
+        ],
+        [
+          381.878898,
+          "garbage"
+        ],
+        [
+          382.033432,
+          "spike"
+        ],
+        [
+          384.250388,
+          "spike"
+        ],
+        [
+          386.742878,
+          "garbage"
+        ],
+        [
+          387.544874,
+          "spike"
+        ],
+        [
+          391.03636,
+          "spike"
+        ],
+        [
+          392.862257,
+          "spike"
+        ],
+        [
+          393.156351,
+          "garbage"
+        ],
+        [
+          396.620336,
+          "spike"
+        ],
+        [
+          397.327833,
+          "spike"
+        ],
+        [
+          408.80526,
+          "spike"
+        ],
+        [
+          415.103759,
+          "spike"
+        ],
+        [
+          415.332615,
+          "spike"
+        ],
+        [
+          427.772206,
+          "spike"
+        ],
+        [
+          428.607312,
+          "spike"
+        ],
+        [
+          434.988175,
+          "spike"
+        ],
+        [
+          440.98715,
+          "spike"
+        ],
+        [
+          441.110026,
+          "spike"
+        ],
+        [
+          446.348628,
+          "spike"
+        ],
+        [
+          451.031893,
+          "spike"
+        ],
+        [
+          454.421953,
+          "spike"
+        ],
+        [
+          459.524576,
+          "spike"
+        ],
+        [
+          461.520064,
+          "spike"
+        ],
+        [
+          468.316036,
+          "spike"
+        ],
+        [
+          469.907029,
+          "garbage"
+        ],
+        [
+          472.043136,
+          "spike"
+        ],
+        [
+          472.328019,
+          "spike"
+        ],
+        [
+          473.189015,
+          "spike"
+        ],
+        [
+          473.599013,
+          "spike"
+        ],
+        [
+          473.993826,
+          "spike"
+        ],
+        [
+          474.784035,
+          "spike"
+        ],
+        [
+          476.040503,
+          "spike"
+        ],
+        [
+          505.859526,
+          "spike"
+        ],
+        [
+          527.012789,
+          "garbage"
+        ],
+        [
+          536.725749,
+          "spike"
+        ],
+        [
+          540.089734,
+          "spike"
+        ],
+        [
+          541.466729,
+          "spike"
+        ],
+        [
+          543.786692,
+          "spike"
+        ],
+        [
+          548.570699,
+          "spike"
+        ],
+        [
+          551.210785,
+          "spike"
+        ],
+        [
+          553.040322,
+          "spike"
+        ],
+        [
+          553.277679,
+          "spike"
+        ],
+        [
+          555.650168,
+          "spike"
+        ],
+        [
+          557.78016,
+          "garbage"
+        ],
+        [
+          563.535636,
+          "spike"
+        ],
+        [
+          565.718627,
+          "spike"
+        ],
+        [
+          566.155319,
+          "spike"
+        ],
+        [
+          567.215621,
+          "spike"
+        ],
+        [
+          575.134359,
+          "spike"
+        ],
+        [
+          578.540073,
+          "spike"
+        ],
+        [
+          578.909572,
+          "spike"
+        ],
+        [
+          583.074054,
+          "garbage"
+        ],
+        [
+          588.076533,
+          "spike"
+        ],
+        [
+          588.671531,
+          "spike"
+        ],
+        [
+          589.903955,
+          "spike"
+        ],
+        [
+          590.635522,
+          "spike"
+        ],
+        [
+          601.065479,
+          "spike"
+        ],
+        [
+          602.957471,
+          "spike"
+        ],
+        [
+          603.770442,
+          "spike"
+        ],
+        [
+          605.489811,
+          "spike"
+        ],
+        [
+          606.375245,
+          "spike"
+        ],
+        [
+          606.695455,
+          "spike"
+        ],
+        [
+          608.458059,
+          "spike"
+        ],
+        [
+          609.01126,
+          "spike"
+        ],
+        [
+          609.549246,
+          "spike"
+        ],
+        [
+          609.551443,
+          "spike"
+        ],
+        [
+          613.141928,
+          "garbage"
+        ],
+        [
+          613.797425,
+          "spike"
+        ],
+        [
+          617.45641,
+          "spike"
+        ],
+        [
+          618.525405,
+          "spike"
+        ],
+        [
+          619.576401,
+          "spike"
+        ],
+        [
+          619.844369,
+          "spike"
+        ],
+        [
+          620.163399,
+          "spike"
+        ],
+        [
+          620.668396,
+          "spike"
+        ],
+        [
+          621.479393,
+          "spike"
+        ],
+        [
+          621.930368,
+          "spike"
+        ],
+        [
+          622.11389,
+          "spike"
+        ],
+        [
+          635.553334,
+          "spike"
+        ],
+        [
+          635.944332,
+          "spike"
+        ],
+        [
+          636.034832,
+          "spike"
+        ],
+        [
+          640.303681,
+          "spike"
+        ],
+        [
+          640.696312,
+          "spike"
+        ],
+        [
+          642.358069,
+          "spike"
+        ],
+        [
+          642.835304,
+          "spike"
+        ],
+        [
+          644.054298,
+          "spike"
+        ],
+        [
+          644.436297,
+          "spike"
+        ],
+        [
+          647.387284,
+          "spike"
+        ],
+        [
+          653.071261,
+          "spike"
+        ],
+        [
+          653.472259,
+          "spike"
+        ],
+        [
+          654.743195,
+          "spike"
+        ],
+        [
+          655.850749,
+          "spike"
+        ],
+        [
+          657.747741,
+          "spike"
+        ],
+        [
+          658.448238,
+          "garbage"
+        ],
+        [
+          658.871736,
+          "garbage"
+        ],
+        [
+          659.448734,
+          "garbage"
+        ],
+        [
+          704.375045,
+          "garbage"
+        ],
+        [
+          711.517406,
+          "spike"
+        ],
+        [
+          713.887005,
+          "spike"
+        ],
+        [
+          718.580986,
+          "spike"
+        ],
+        [
+          726.140954,
+          "spike"
+        ],
+        [
+          736.978439,
+          "spike"
+        ],
+        [
+          738.686901,
+          "garbage"
+        ],
+        [
+          747.895846,
+          "spike"
+        ],
+        [
+          748.251861,
+          "spike"
+        ],
+        [
+          750.602249,
+          "spike"
+        ],
+        [
+          757.826821,
+          "spike"
+        ],
+        [
+          761.622805,
+          "spike"
+        ],
+        [
+          764.030953,
+          "spike"
+        ],
+        [
+          768.879775,
+          "garbage"
+        ],
+        [
+          773.292756,
+          "spike"
+        ],
+        [
+          775.738746,
+          "spike"
+        ],
+        [
+          781.105483,
+          "spike"
+        ],
+        [
+          781.478161,
+          "spike"
+        ],
+        [
+          781.727235,
+          "spike"
+        ],
+        [
+          782.133705,
+          "spike"
+        ],
+        [
+          785.035707,
+          "spike"
+        ],
+        [
+          792.443676,
+          "garbage"
+        ],
+        [
+          797.05608,
+          "spike"
+        ],
+        [
+          797.952653,
+          "spike"
+        ],
+        [
+          798.71465,
+          "spike"
+        ],
+        [
+          808.858607,
+          "spike"
+        ],
+        [
+          813.090651,
+          "spike"
+        ],
+        [
+          821.484054,
+          "spike"
+        ],
+        [
+          828.954523,
+          "garbage"
+        ],
+        [
+          829.751019,
+          "spike"
+        ],
+        [
+          836.119993,
+          "garbage"
+        ],
+        [
+          841.703879,
+          "spike"
+        ],
+        [
+          848.134123,
+          "spike"
+        ],
+        [
+          876.107825,
+          "garbage"
+        ],
+        [
+          894.790247,
+          "spike"
+        ],
+        [
+          906.546197,
+          "spike"
+        ],
+        [
+          930.582241,
+          "spike"
+        ],
+        [
+          944.506294,
+          "spike"
+        ],
+        [
+          954.501496,
+          "spike"
+        ],
+        [
+          955.257493,
+          "spike"
+        ],
+        [
+          969.096935,
+          "garbage"
+        ],
+        [
+          999.449808,
+          "spike"
+        ],
+        [
+          1005.792781,
+          "spike"
+        ],
+        [
+          1009.426746,
+          "spike"
+        ],
+        [
+          1021.274216,
+          "spike"
+        ],
+        [
+          1025.737302,
+          "spike"
+        ],
+        [
+          1030.798564,
+          "spike"
+        ],
+        [
+          1031.109976,
+          "spike"
+        ],
+        [
+          1034.073662,
+          "spike"
+        ],
+        [
+          1037.835647,
+          "spike"
+        ],
+        [
+          1039.44964,
+          "spike"
+        ],
+        [
+          1040.220263,
+          "spike"
+        ],
+        [
+          1042.914035,
+          "spike"
+        ],
+        [
+          1047.827392,
+          "spike"
+        ],
+        [
+          1052.799491,
+          "spike"
+        ],
+        [
+          1054.419577,
+          "spike"
+        ],
+        [
+          1056.753567,
+          "spike"
+        ],
+        [
+          1057.511718,
+          "spike"
+        ],
+        [
+          1058.118562,
+          "spike"
+        ],
+        [
+          1058.293561,
+          "spike"
+        ],
+        [
+          1062.68618,
+          "spike"
+        ],
+        [
+          1122.692291,
+          "garbage"
+        ],
+        [
+          1147.349187,
+          "spike"
+        ],
+        [
+          1189.795791,
+          "spike"
+        ],
+        [
+          1195.952483,
+          "garbage"
+        ],
+        [
+          1215.451402,
+          "garbage"
+        ],
+        [
+          1233.790825,
+          "spike"
+        ],
+        [
+          1249.833689,
+          "spike"
+        ],
+        [
+          1257.281226,
+          "garbage"
+        ],
+        [
+          1267.232684,
+          "spike"
+        ],
+        [
+          1276.982143,
+          "garbage"
+        ],
+        [
+          1286.180657,
+          "spike"
+        ],
+        [
+          1286.445338,
+          "spike"
+        ],
+        [
+          1287.608934,
+          "spike"
+        ],
+        [
+          1297.898056,
+          "spike"
+        ],
+        [
+          1298.228534,
+          "spike"
+        ],
+        [
+          1298.400054,
+          "garbage"
+        ],
+        [
+          1301.266112,
+          "spike"
+        ],
+        [
+          1305.039526,
+          "garbage"
+        ],
+        [
+          1307.237517,
+          "spike"
+        ],
+        [
+          1308.466511,
+          "spike"
+        ],
+        [
+          1308.92576,
+          "spike"
+        ],
+        [
+          1309.211728,
+          "spike"
+        ],
+        [
+          1311.989497,
+          "spike"
+        ],
+        [
+          1319.872464,
+          "spike"
+        ],
+        [
+          1319.989013,
+          "spike"
+        ],
+        [
+          1321.646456,
+          "spike"
+        ],
+        [
+          1322.157454,
+          "spike"
+        ],
+        [
+          1324.285445,
+          "garbage"
+        ],
+        [
+          1326.377453,
+          "spike"
+        ],
+        [
+          1327.749431,
+          "spike"
+        ],
+        [
+          1328.552427,
+          "spike"
+        ],
+        [
+          1331.712276,
+          "spike"
+        ],
+        [
+          1335.0729,
+          "spike"
+        ],
+        [
+          1344.233919,
+          "spike"
+        ],
+        [
+          1344.365318,
+          "spike"
+        ],
+        [
+          1346.356352,
+          "spike"
+        ],
+        [
+          1348.759662,
+          "spike"
+        ],
+        [
+          1349.38484,
+          "spike"
+        ],
+        [
+          1351.564331,
+          "spike"
+        ],
+        [
+          1357.024308,
+          "spike"
+        ],
+        [
+          1365.037274,
+          "spike"
+        ],
+        [
+          1369.284256,
+          "spike"
+        ],
+        [
+          1380.923707,
+          "spike"
+        ],
+        [
+          1391.421663,
+          "spike"
+        ],
+        [
+          1395.692146,
+          "spike"
+        ],
+        [
+          1402.554617,
+          "spike"
+        ],
+        [
+          1402.990115,
+          "spike"
+        ],
+        [
+          1403.6917,
+          "spike"
+        ],
+        [
+          1403.967838,
+          "spike"
+        ],
+        [
+          1404.09911,
+          "garbage"
+        ],
+        [
+          1407.525489,
+          "spike"
+        ],
+        [
+          1408.555092,
+          "garbage"
+        ],
+        [
+          1408.73513,
+          "spike"
+        ],
+        [
+          1410.023381,
+          "spike"
+        ],
+        [
+          1416.404559,
+          "garbage"
+        ],
+        [
+          1426.090518,
+          "garbage"
+        ],
+        [
+          1426.200578,
+          "spike"
+        ],
+        [
+          1442.765948,
+          "spike"
+        ],
+        [
+          1444.956939,
+          "spike"
+        ],
+        [
+          1450.359416,
+          "garbage"
+        ],
+        [
+          1453.203904,
+          "spike"
+        ],
+        [
+          1457.123889,
+          "spike"
+        ],
+        [
+          1461.767283,
+          "spike"
+        ],
+        [
+          1471.646685,
+          "spike"
+        ],
+        [
+          1473.32882,
+          "spike"
+        ],
+        [
+          1473.641584,
+          "spike"
+        ],
+        [
+          1480.180791,
+          "spike"
+        ],
+        [
+          1480.693789,
+          "spike"
+        ],
+        [
+          1481.626785,
+          "spike"
+        ],
+        [
+          1481.779784,
+          "spike"
+        ],
+        [
+          1484.836653,
+          "spike"
+        ],
+        [
+          1486.738764,
+          "spike"
+        ],
+        [
+          1487.52276,
+          "garbage"
+        ],
+        [
+          1490.277249,
+          "garbage"
+        ],
+        [
+          1490.992746,
+          "spike"
+        ],
+        [
+          1491.119745,
+          "spike"
+        ],
+        [
+          1491.765636,
+          "spike"
+        ],
+        [
+          1491.871742,
+          "garbage"
+        ],
+        [
+          1492.126741,
+          "spike"
+        ],
+        [
+          1493.653308,
+          "spike"
+        ],
+        [
+          1505.992683,
+          "spike"
+        ],
+        [
+          1506.104182,
+          "spike"
+        ],
+        [
+          1508.66819,
+          "spike"
+        ],
+        [
+          1512.733155,
+          "spike"
+        ],
+        [
+          1513.160653,
+          "spike"
+        ],
+        [
+          1513.328002,
+          "spike"
+        ],
+        [
+          1515.661642,
+          "spike"
+        ],
+        [
+          1516.763138,
+          "garbage"
+        ],
+        [
+          1520.247363,
+          "spike"
+        ],
+        [
+          1521.213619,
+          "spike"
+        ],
+        [
+          1523.457586,
+          "spike"
+        ],
+        [
+          1525.433352,
+          "spike"
+        ],
+        [
+          1526.062099,
+          "garbage"
+        ],
+        [
+          1526.607096,
+          "garbage"
+        ],
+        [
+          1526.765987,
+          "spike"
+        ],
+        [
+          1527.875591,
+          "spike"
+        ],
+        [
+          1529.111086,
+          "garbage"
+        ],
+        [
+          1542.120531,
+          "spike"
+        ],
+        [
+          1546.424513,
+          "garbage"
+        ],
+        [
+          1546.583022,
+          "spike"
+        ],
+        [
+          1548.426992,
+          "spike"
+        ],
+        [
+          1549.102502,
+          "spike"
+        ],
+        [
+          1549.865999,
+          "garbage"
+        ],
+        [
+          1550.048943,
+          "spike"
+        ],
+        [
+          1552.606629,
+          "spike"
+        ],
+        [
+          1552.898897,
+          "spike"
+        ],
+        [
+          1553.148025,
+          "spike"
+        ],
+        [
+          1554.221481,
+          "spike"
+        ],
+        [
+          1554.81462,
+          "spike"
+        ],
+        [
+          1555.247476,
+          "garbage"
+        ],
+        [
+          1556.435471,
+          "spike"
+        ],
+        [
+          1556.984969,
+          "garbage"
+        ],
+        [
+          1557.721466,
+          "spike"
+        ],
+        [
+          1567.170426,
+          "spike"
+        ],
+        [
+          1572.516404,
+          "spike"
+        ],
+        [
+          1573.586399,
+          "spike"
+        ],
+        [
+          1577.163384,
+          "spike"
+        ],
+        [
+          1577.307384,
+          "spike"
+        ],
+        [
+          1578.466707,
+          "spike"
+        ],
+        [
+          1579.171153,
+          "spike"
+        ],
+        [
+          1579.284375,
+          "garbage"
+        ],
+        [
+          1579.56002,
+          "spike"
+        ],
+        [
+          1580.626156,
+          "spike"
+        ],
+        [
+          1583.903356,
+          "garbage"
+        ],
+        [
+          1587.339342,
+          "spike"
+        ],
+        [
+          1588.926835,
+          "garbage"
+        ],
+        [
+          1589.753611,
+          "spike"
+        ],
+        [
+          1590.057607,
+          "spike"
+        ],
+        [
+          1590.05833,
+          "spike"
+        ],
+        [
+          1590.794325,
+          "spike"
+        ],
+        [
+          1593.807356,
+          "spike"
+        ],
+        [
+          1595.712675,
+          "spike"
+        ],
+        [
+          1596.892302,
+          "garbage"
+        ],
+        [
+          1597.3533,
+          "spike"
+        ],
+        [
+          1597.752798,
+          "garbage"
+        ],
+        [
+          1599.027293,
+          "spike"
+        ],
+        [
+          1599.651683,
+          "spike"
+        ],
+        [
+          1600.011788,
+          "garbage"
+        ],
+        [
+          1600.455588,
+          "spike"
+        ],
+        [
+          1601.025874,
+          "spike"
+        ],
+        [
+          1602.706777,
+          "garbage"
+        ],
+        [
+          1604.025226,
+          "spike"
+        ],
+        [
+          1604.224271,
+          "spike"
+        ],
+        [
+          1604.757795,
+          "spike"
+        ],
+        [
+          1605.056995,
+          "spike"
+        ],
+        [
+          1605.420766,
+          "garbage"
+        ],
+        [
+          1616.22822,
+          "spike"
+        ],
+        [
+          1616.594904,
+          "spike"
+        ],
+        [
+          1625.843426,
+          "spike"
+        ],
+        [
+          1633.996646,
+          "garbage"
+        ],
+        [
+          1641.769169,
+          "spike"
+        ],
+        [
+          1655.891054,
+          "garbage"
+        ],
+        [
+          1689.811326,
+          "spike"
+        ],
+        [
+          1692.208607,
+          "spike"
+        ],
+        [
+          1692.455901,
+          "spike"
+        ],
+        [
+          1699.075873,
+          "garbage"
+        ],
+        [
+          1747.196671,
+          "spike"
+        ],
+        [
+          1753.084646,
+          "spike"
+        ],
+        [
+          1757.544669,
+          "spike"
+        ],
+        [
+          1759.626534,
+          "spike"
+        ],
+        [
+          1773.860559,
+          "spike"
+        ],
+        [
+          1774.455382,
+          "spike"
+        ],
+        [
+          1778.009542,
+          "spike"
+        ],
+        [
+          1791.644985,
+          "spike"
+        ],
+        [
+          1792.978479,
+          "spike"
+        ],
+        [
+          1796.746463,
+          "spike"
+        ],
+        [
+          1800.468448,
+          "spike"
+        ],
+        [
+          1800.761991,
+          "spike"
+        ],
+        [
+          1802.004941,
+          "garbage"
+        ],
+        [
+          1807.186809,
+          "spike"
+        ],
+        [
+          1810.577905,
+          "spike"
+        ],
+        [
+          1821.073975,
+          "spike"
+        ],
+        [
+          1832.866312,
+          "garbage"
+        ],
+        [
+          1835.241802,
+          "spike"
+        ],
+        [
+          1837.94829,
+          "spike"
+        ],
+        [
+          1841.873128,
+          "spike"
+        ],
+        [
+          1844.982203,
+          "spike"
+        ],
+        [
+          1845.677258,
+          "spike"
+        ],
+        [
+          1858.071812,
+          "spike"
+        ],
+        [
+          1859.582179,
+          "spike"
+        ],
+        [
+          1860.165504,
+          "spike"
+        ],
+        [
+          1861.331833,
+          "spike"
+        ],
+        [
+          1861.602191,
+          "garbage"
+        ],
+        [
+          1870.615153,
+          "spike"
+        ],
+        [
+          1870.825152,
+          "spike"
+        ],
+        [
+          1873.350642,
+          "garbage"
+        ],
+        [
+          1878.208121,
+          "spike"
+        ],
+        [
+          1878.854119,
+          "garbage"
+        ],
+        [
+          1879.025995,
+          "spike"
+        ],
+        [
+          1879.853615,
+          "spike"
+        ],
+        [
+          1880.146113,
+          "spike"
+        ],
+        [
+          1883.757098,
+          "spike"
+        ],
+        [
+          1884.111671,
+          "spike"
+        ],
+        [
+          1885.087593,
+          "spike"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63
+        ],
+        "computed_on": {
+          "file": "result_0.json",
+          "host": "login.vacc.uvm.edu",
+          "kind": "vacc",
+          "max_rss": null,
+          "netid": "sakhava1",
+          "partition": "general",
+          "rid": "99ccbb75740e",
+          "slurm_id": "6098750_0",
+          "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/99ccbb75740e"
+        },
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {
+          "edge": 4,
+          "locked_peak": 4
+        },
+        "invert": true,
+        "left_out": [
+          8,
+          41,
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "lock_reach_ms": 20.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 51,
+        "n_unmoved": 347,
+        "order": 3,
+        "order_held": true,
+        "pinned": 249,
+        "profile": {
+          "47": 0.147512,
+          "48": -0.018655,
+          "49": -0.16121,
+          "50": 0.109374,
+          "51": 0.194532,
+          "52": 0.139506,
+          "53": 0.317258,
+          "54": 0.388185,
+          "55": 0.152444,
+          "56": -0.241211,
+          "57": -0.467995,
+          "58": -0.371981,
+          "59": -0.275573,
+          "60": -0.302969,
+          "61": -0.139853,
+          "62": 0.072077
+        },
+        "request": {
+          "band_kind": "ds",
+          "channels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            60,
+            61,
+            62,
+            63,
+            64
+          ],
+          "depth_band": 16,
+          "entry_id": "a4eeaa794729",
+          "from_version": "68af5b7d3917",
+          "hold": [
+            "both",
+            "incisor"
+          ],
+          "kind": "pooled",
+          "n_pinned": 249,
+          "pinned": "1a803afe0126",
+          "stamps": "b1b12632e868"
+        },
+        "request_hash": "52f7e43e431e679a",
+        "resorted": 0,
+        "screened": {
+          "41": "not ticked",
+          "59": "dead (0.5 uV against a median of 58)",
+          "8": "not ticked"
+        },
+        "shift_max_ms": 170.513,
+        "shift_median_ms": 14.79,
+        "shift_min_ms": -126.19,
+        "smooth_ms": 0.0,
+        "source_version": 1,
+        "source_version_id": "68af5b7d3917",
+        "spacing_um": 30.0,
+        "tool": "jarvis.lock/1",
+        "window_ms": 200.0
+      },
+      "at": "2026-10-29T10:01:29-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Spike": 336
+      },
+      "changed": 0,
+      "from_id": "68af5b7d3917",
+      "from_v": 1,
+      "gained": 0,
+      "id": "br-d1ab3ed64c",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 336,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1200 ms, reading v1. 51 stamp(s) moved by -126.2 to 170.5 ms; 347 left where they were. No labels changed.",
+      "shifted": 51,
+      "snap": [
+        [
+          7.360298,
+          "spike"
+        ],
+        [
+          50.040365,
+          "spike"
+        ],
+        [
+          52.639627,
+          "spike"
+        ],
+        [
+          60.056748,
+          "spike"
+        ],
+        [
+          61.581324,
+          "spike"
+        ],
+        [
+          69.997706,
+          "spike"
+        ],
+        [
+          70.087706,
+          "spike"
+        ],
+        [
+          70.298705,
+          "spike"
+        ],
+        [
+          76.838041,
+          "spike"
+        ],
+        [
+          81.975656,
+          "spike"
+        ],
+        [
+          83.692149,
+          "spike"
+        ],
+        [
+          83.98683,
+          "spike"
+        ],
+        [
+          85.257142,
+          "spike"
+        ],
+        [
+          106.171555,
+          "spike"
+        ],
+        [
+          108.002547,
+          "spike"
+        ],
+        [
+          109.127542,
+          "spike"
+        ],
+        [
+          143.364871,
+          "spike"
+        ],
+        [
+          161.132153,
+          "spike"
+        ],
+        [
+          170.207348,
+          "spike"
+        ],
+        [
+          187.432214,
+          "spike"
+        ],
+        [
+          202.203152,
+          "spike"
+        ],
+        [
+          209.636121,
+          "spike"
+        ],
+        [
+          244.484619,
+          "spike"
+        ],
+        [
+          256.793471,
+          "spike"
+        ],
+        [
+          268.477374,
+          "spike"
+        ],
+        [
+          284.17751,
+          "spike"
+        ],
+        [
+          286.419799,
+          "spike"
+        ],
+        [
+          298.64838,
+          "spike"
+        ],
+        [
+          323.586001,
+          "spike"
+        ],
+        [
+          324.092454,
+          "spike"
+        ],
+        [
+          331.88241,
+          "spike"
+        ],
+        [
+          335.333593,
+          "spike"
+        ],
+        [
+          336.610969,
+          "spike"
+        ],
+        [
+          340.613571,
+          "spike"
+        ],
+        [
+          343.634184,
+          "spike"
+        ],
+        [
+          348.225039,
+          "spike"
+        ],
+        [
+          349.236548,
+          "spike"
+        ],
+        [
+          355.037404,
+          "spike"
+        ],
+        [
+          355.059538,
+          "spike"
+        ],
+        [
+          355.493505,
+          "spike"
+        ],
+        [
+          359.571917,
+          "spike"
+        ],
+        [
+          363.55061,
+          "spike"
+        ],
+        [
+          372.281438,
+          "spike"
+        ],
+        [
+          372.556437,
+          "spike"
+        ],
+        [
+          381.175284,
+          "spike"
+        ],
+        [
+          382.033432,
+          "spike"
+        ],
+        [
+          384.250388,
+          "spike"
+        ],
+        [
+          387.550035,
+          "spike"
+        ],
+        [
+          391.029482,
+          "spike"
+        ],
+        [
+          392.862257,
+          "spike"
+        ],
+        [
+          396.620336,
+          "spike"
+        ],
+        [
+          397.418686,
+          "spike"
+        ],
+        [
+          408.80526,
+          "spike"
+        ],
+        [
+          415.103759,
+          "spike"
+        ],
+        [
+          415.332615,
+          "spike"
+        ],
+        [
+          427.787207,
+          "spike"
+        ],
+        [
+          428.607312,
+          "spike"
+        ],
+        [
+          434.988175,
+          "spike"
+        ],
+        [
+          440.98715,
+          "spike"
+        ],
+        [
+          441.110026,
+          "spike"
+        ],
+        [
+          446.39209,
+          "spike"
+        ],
+        [
+          451.031893,
+          "spike"
+        ],
+        [
+          454.421953,
+          "spike"
+        ],
+        [
+          459.524576,
+          "spike"
+        ],
+        [
+          461.532736,
+          "spike"
+        ],
+        [
+          468.316036,
+          "spike"
+        ],
+        [
+          472.043136,
+          "spike"
+        ],
+        [
+          472.328019,
+          "spike"
+        ],
+        [
+          473.189015,
+          "spike"
+        ],
+        [
+          473.599013,
+          "spike"
+        ],
+        [
+          473.993826,
+          "spike"
+        ],
+        [
+          474.784035,
+          "spike"
+        ],
+        [
+          476.040503,
+          "spike"
+        ],
+        [
+          505.859526,
+          "spike"
+        ],
+        [
+          536.725749,
+          "spike"
+        ],
+        [
+          540.091305,
+          "spike"
+        ],
+        [
+          541.466729,
+          "spike"
+        ],
+        [
+          543.786692,
+          "spike"
+        ],
+        [
+          548.585489,
+          "spike"
+        ],
+        [
+          551.210785,
+          "spike"
+        ],
+        [
+          553.040322,
+          "spike"
+        ],
+        [
+          553.277679,
+          "spike"
+        ],
+        [
+          555.650168,
+          "spike"
+        ],
+        [
+          563.535636,
+          "spike"
+        ],
+        [
+          565.718627,
+          "spike"
+        ],
+        [
+          566.155319,
+          "spike"
+        ],
+        [
+          567.216982,
+          "spike"
+        ],
+        [
+          575.134359,
+          "spike"
+        ],
+        [
+          578.559898,
+          "spike"
+        ],
+        [
+          578.909572,
+          "spike"
+        ],
+        [
+          588.247046,
+          "spike"
+        ],
+        [
+          588.671531,
+          "spike"
+        ],
+        [
+          589.903955,
+          "spike"
+        ],
+        [
+          590.635522,
+          "spike"
+        ],
+        [
+          601.066607,
+          "spike"
+        ],
+        [
+          602.957471,
+          "spike"
+        ],
+        [
+          603.770442,
+          "spike"
+        ],
+        [
+          605.489811,
+          "spike"
+        ],
+        [
+          606.375245,
+          "spike"
+        ],
+        [
+          606.695455,
+          "spike"
+        ],
+        [
+          608.458059,
+          "spike"
+        ],
+        [
+          609.01126,
+          "spike"
+        ],
+        [
+          609.549246,
+          "spike"
+        ],
+        [
+          609.551443,
+          "spike"
+        ],
+        [
+          613.797425,
+          "spike"
+        ],
+        [
+          617.45641,
+          "spike"
+        ],
+        [
+          618.525405,
+          "spike"
+        ],
+        [
+          619.576401,
+          "spike"
+        ],
+        [
+          619.844369,
+          "spike"
+        ],
+        [
+          620.163399,
+          "spike"
+        ],
+        [
+          620.668396,
+          "spike"
+        ],
+        [
+          621.479393,
+          "spike"
+        ],
+        [
+          621.930368,
+          "spike"
+        ],
+        [
+          622.210842,
+          "spike"
+        ],
+        [
+          635.553334,
+          "spike"
+        ],
+        [
+          635.944332,
+          "spike"
+        ],
+        [
+          636.033225,
+          "spike"
+        ],
+        [
+          640.303681,
+          "spike"
+        ],
+        [
+          640.695176,
+          "spike"
+        ],
+        [
+          642.358069,
+          "spike"
+        ],
+        [
+          642.835304,
+          "spike"
+        ],
+        [
+          644.054298,
+          "spike"
+        ],
+        [
+          644.399322,
+          "spike"
+        ],
+        [
+          647.387284,
+          "spike"
+        ],
+        [
+          653.071261,
+          "spike"
+        ],
+        [
+          653.622514,
+          "spike"
+        ],
+        [
+          654.743195,
+          "spike"
+        ],
+        [
+          655.962327,
+          "spike"
+        ],
+        [
+          657.76665,
+          "spike"
+        ],
+        [
+          711.517406,
+          "spike"
+        ],
+        [
+          713.887005,
+          "spike"
+        ],
+        [
+          718.580986,
+          "spike"
+        ],
+        [
+          726.140954,
+          "spike"
+        ],
+        [
+          736.978439,
+          "spike"
+        ],
+        [
+          747.895846,
+          "spike"
+        ],
+        [
+          748.251861,
+          "spike"
+        ],
+        [
+          750.602249,
+          "spike"
+        ],
+        [
+          757.826821,
+          "spike"
+        ],
+        [
+          761.622805,
+          "spike"
+        ],
+        [
+          764.030953,
+          "spike"
+        ],
+        [
+          773.292756,
+          "spike"
+        ],
+        [
+          775.738746,
+          "spike"
+        ],
+        [
+          781.105483,
+          "spike"
+        ],
+        [
+          781.478161,
+          "spike"
+        ],
+        [
+          781.727235,
+          "spike"
+        ],
+        [
+          782.133705,
+          "spike"
+        ],
+        [
+          785.035707,
+          "spike"
+        ],
+        [
+          797.05608,
+          "spike"
+        ],
+        [
+          797.952653,
+          "spike"
+        ],
+        [
+          798.71465,
+          "spike"
+        ],
+        [
+          808.858607,
+          "spike"
+        ],
+        [
+          813.090651,
+          "spike"
+        ],
+        [
+          821.590577,
+          "spike"
+        ],
+        [
+          829.770376,
+          "spike"
+        ],
+        [
+          841.703879,
+          "spike"
+        ],
+        [
+          848.134123,
+          "spike"
+        ],
+        [
+          894.790247,
+          "spike"
+        ],
+        [
+          906.546197,
+          "spike"
+        ],
+        [
+          930.582241,
+          "spike"
+        ],
+        [
+          944.506294,
+          "spike"
+        ],
+        [
+          954.487051,
+          "spike"
+        ],
+        [
+          955.214606,
+          "spike"
+        ],
+        [
+          999.449808,
+          "spike"
+        ],
+        [
+          1005.792781,
+          "spike"
+        ],
+        [
+          1009.426746,
+          "spike"
+        ],
+        [
+          1021.272399,
+          "spike"
+        ],
+        [
+          1025.737302,
+          "spike"
+        ],
+        [
+          1030.798564,
+          "spike"
+        ],
+        [
+          1031.109976,
+          "spike"
+        ],
+        [
+          1034.07132,
+          "spike"
+        ],
+        [
+          1037.835647,
+          "spike"
+        ],
+        [
+          1039.44964,
+          "spike"
+        ],
+        [
+          1040.220263,
+          "spike"
+        ],
+        [
+          1042.914035,
+          "spike"
+        ],
+        [
+          1047.827392,
+          "spike"
+        ],
+        [
+          1052.799491,
+          "spike"
+        ],
+        [
+          1054.419577,
+          "spike"
+        ],
+        [
+          1056.753567,
+          "spike"
+        ],
+        [
+          1057.511718,
+          "spike"
+        ],
+        [
+          1058.118562,
+          "spike"
+        ],
+        [
+          1058.293561,
+          "spike"
+        ],
+        [
+          1062.68618,
+          "spike"
+        ],
+        [
+          1147.349187,
+          "spike"
+        ],
+        [
+          1189.795791,
+          "spike"
+        ],
+        [
+          1233.790825,
+          "spike"
+        ],
+        [
+          1249.833689,
+          "spike"
+        ],
+        [
+          1267.232684,
+          "spike"
+        ],
+        [
+          1286.180657,
+          "spike"
+        ],
+        [
+          1286.445338,
+          "spike"
+        ],
+        [
+          1287.608934,
+          "spike"
+        ],
+        [
+          1297.896214,
+          "spike"
+        ],
+        [
+          1298.228534,
+          "spike"
+        ],
+        [
+          1301.266112,
+          "spike"
+        ],
+        [
+          1307.237517,
+          "spike"
+        ],
+        [
+          1308.466511,
+          "spike"
+        ],
+        [
+          1308.92576,
+          "spike"
+        ],
+        [
+          1309.211728,
+          "spike"
+        ],
+        [
+          1312.038808,
+          "spike"
+        ],
+        [
+          1319.872464,
+          "spike"
+        ],
+        [
+          1319.989013,
+          "spike"
+        ],
+        [
+          1321.646456,
+          "spike"
+        ],
+        [
+          1322.157454,
+          "spike"
+        ],
+        [
+          1326.377453,
+          "spike"
+        ],
+        [
+          1327.749431,
+          "spike"
+        ],
+        [
+          1328.552427,
+          "spike"
+        ],
+        [
+          1331.712276,
+          "spike"
+        ],
+        [
+          1335.071277,
+          "spike"
+        ],
+        [
+          1344.233919,
+          "spike"
+        ],
+        [
+          1344.365318,
+          "spike"
+        ],
+        [
+          1346.357367,
+          "spike"
+        ],
+        [
+          1348.759662,
+          "spike"
+        ],
+        [
+          1349.430731,
+          "spike"
+        ],
+        [
+          1351.565865,
+          "spike"
+        ],
+        [
+          1357.024308,
+          "spike"
+        ],
+        [
+          1365.037274,
+          "spike"
+        ],
+        [
+          1369.284256,
+          "spike"
+        ],
+        [
+          1380.932875,
+          "spike"
+        ],
+        [
+          1391.429969,
+          "spike"
+        ],
+        [
+          1395.677028,
+          "spike"
+        ],
+        [
+          1402.576118,
+          "spike"
+        ],
+        [
+          1402.990115,
+          "spike"
+        ],
+        [
+          1403.6917,
+          "spike"
+        ],
+        [
+          1403.967838,
+          "spike"
+        ],
+        [
+          1407.525489,
+          "spike"
+        ],
+        [
+          1408.73513,
+          "spike"
+        ],
+        [
+          1410.023381,
+          "spike"
+        ],
+        [
+          1426.200578,
+          "spike"
+        ],
+        [
+          1442.733097,
+          "spike"
+        ],
+        [
+          1444.956939,
+          "spike"
+        ],
+        [
+          1453.203904,
+          "spike"
+        ],
+        [
+          1457.123889,
+          "spike"
+        ],
+        [
+          1461.767283,
+          "spike"
+        ],
+        [
+          1471.646685,
+          "spike"
+        ],
+        [
+          1473.301923,
+          "spike"
+        ],
+        [
+          1473.641584,
+          "spike"
+        ],
+        [
+          1480.180791,
+          "spike"
+        ],
+        [
+          1480.567599,
+          "spike"
+        ],
+        [
+          1481.626785,
+          "spike"
+        ],
+        [
+          1481.779784,
+          "spike"
+        ],
+        [
+          1484.836653,
+          "spike"
+        ],
+        [
+          1486.738764,
+          "spike"
+        ],
+        [
+          1490.992746,
+          "spike"
+        ],
+        [
+          1491.119745,
+          "spike"
+        ],
+        [
+          1491.765636,
+          "spike"
+        ],
+        [
+          1492.126741,
+          "spike"
+        ],
+        [
+          1493.653308,
+          "spike"
+        ],
+        [
+          1505.992683,
+          "spike"
+        ],
+        [
+          1506.105802,
+          "spike"
+        ],
+        [
+          1508.66819,
+          "spike"
+        ],
+        [
+          1512.730825,
+          "spike"
+        ],
+        [
+          1513.160653,
+          "spike"
+        ],
+        [
+          1513.328002,
+          "spike"
+        ],
+        [
+          1515.661642,
+          "spike"
+        ],
+        [
+          1520.247363,
+          "spike"
+        ],
+        [
+          1521.213619,
+          "spike"
+        ],
+        [
+          1523.457586,
+          "spike"
+        ],
+        [
+          1525.433352,
+          "spike"
+        ],
+        [
+          1526.765987,
+          "spike"
+        ],
+        [
+          1527.875591,
+          "spike"
+        ],
+        [
+          1542.120531,
+          "spike"
+        ],
+        [
+          1546.583022,
+          "spike"
+        ],
+        [
+          1548.426992,
+          "spike"
+        ],
+        [
+          1549.102502,
+          "spike"
+        ],
+        [
+          1550.048943,
+          "spike"
+        ],
+        [
+          1552.606629,
+          "spike"
+        ],
+        [
+          1552.898897,
+          "spike"
+        ],
+        [
+          1553.148025,
+          "spike"
+        ],
+        [
+          1554.221481,
+          "spike"
+        ],
+        [
+          1554.81462,
+          "spike"
+        ],
+        [
+          1556.435471,
+          "spike"
+        ],
+        [
+          1557.721466,
+          "spike"
+        ],
+        [
+          1567.170426,
+          "spike"
+        ],
+        [
+          1572.516404,
+          "spike"
+        ],
+        [
+          1573.611236,
+          "spike"
+        ],
+        [
+          1577.163384,
+          "spike"
+        ],
+        [
+          1577.307384,
+          "spike"
+        ],
+        [
+          1578.466707,
+          "spike"
+        ],
+        [
+          1579.171153,
+          "spike"
+        ],
+        [
+          1579.56002,
+          "spike"
+        ],
+        [
+          1580.626156,
+          "spike"
+        ],
+        [
+          1587.339342,
+          "spike"
+        ],
+        [
+          1589.753611,
+          "spike"
+        ],
+        [
+          1590.057607,
+          "spike"
+        ],
+        [
+          1590.05833,
+          "spike"
+        ],
+        [
+          1590.794325,
+          "spike"
+        ],
+        [
+          1593.807356,
+          "spike"
+        ],
+        [
+          1595.712675,
+          "spike"
+        ],
+        [
+          1597.3533,
+          "spike"
+        ],
+        [
+          1599.027293,
+          "spike"
+        ],
+        [
+          1599.651683,
+          "spike"
+        ],
+        [
+          1600.455588,
+          "spike"
+        ],
+        [
+          1601.025874,
+          "spike"
+        ],
+        [
+          1604.025226,
+          "spike"
+        ],
+        [
+          1604.224271,
+          "spike"
+        ],
+        [
+          1604.757795,
+          "spike"
+        ],
+        [
+          1605.056995,
+          "spike"
+        ],
+        [
+          1616.22822,
+          "spike"
+        ],
+        [
+          1616.594904,
+          "spike"
+        ],
+        [
+          1625.843426,
+          "spike"
+        ],
+        [
+          1641.769169,
+          "spike"
+        ],
+        [
+          1689.811326,
+          "spike"
+        ],
+        [
+          1692.208607,
+          "spike"
+        ],
+        [
+          1692.455901,
+          "spike"
+        ],
+        [
+          1747.196671,
+          "spike"
+        ],
+        [
+          1753.084646,
+          "spike"
+        ],
+        [
+          1757.544669,
+          "spike"
+        ],
+        [
+          1759.626534,
+          "spike"
+        ],
+        [
+          1773.860559,
+          "spike"
+        ],
+        [
+          1774.455382,
+          "spike"
+        ],
+        [
+          1778.009542,
+          "spike"
+        ],
+        [
+          1791.644985,
+          "spike"
+        ],
+        [
+          1792.978479,
+          "spike"
+        ],
+        [
+          1796.746463,
+          "spike"
+        ],
+        [
+          1800.468448,
+          "spike"
+        ],
+        [
+          1800.761991,
+          "spike"
+        ],
+        [
+          1807.186809,
+          "spike"
+        ],
+        [
+          1810.577905,
+          "spike"
+        ],
+        [
+          1821.073975,
+          "spike"
+        ],
+        [
+          1835.239112,
+          "spike"
+        ],
+        [
+          1837.94829,
+          "spike"
+        ],
+        [
+          1841.873128,
+          "spike"
+        ],
+        [
+          1844.982203,
+          "spike"
+        ],
+        [
+          1845.677258,
+          "spike"
+        ],
+        [
+          1858.071812,
+          "spike"
+        ],
+        [
+          1859.582179,
+          "spike"
+        ],
+        [
+          1860.165504,
+          "spike"
+        ],
+        [
+          1861.331833,
+          "spike"
+        ],
+        [
+          1870.615153,
+          "spike"
+        ],
+        [
+          1870.825152,
+          "spike"
+        ],
+        [
+          1878.157175,
+          "spike"
+        ],
+        [
+          1879.025995,
+          "spike"
+        ],
+        [
+          1879.856423,
+          "spike"
+        ],
+        [
+          1880.146113,
+          "spike"
+        ],
+        [
+          1883.757098,
+          "spike"
+        ],
+        [
+          1884.111671,
+          "spike"
+        ],
+        [
+          1885.087593,
+          "spike"
+        ]
+      ],
+      "v": 2
+    }
+  ]
+}

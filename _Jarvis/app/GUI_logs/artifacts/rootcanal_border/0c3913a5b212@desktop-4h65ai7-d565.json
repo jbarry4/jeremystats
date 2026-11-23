@@ -1,0 +1,146 @@
+{
+  "_at": {
+    "added": "2026-11-11T20:44:22.412410+00:00",
+    "deleted": "2026-11-11T20:44:22.412410+00:00",
+    "id": "2026-11-11T20:44:22.412410+00:00",
+    "kind": "2026-11-11T20:44:22.412410+00:00",
+    "name": "2026-11-11T20:44:22.412410+00:00",
+    "nickname": "2026-11-11T20:44:22.412410+00:00",
+    "schema": "2026-11-11T20:44:22.412410+00:00",
+    "subject": "2026-11-11T20:44:22.412410+00:00",
+    "subject_key": "2026-11-11T20:44:22.412410+00:00",
+    "version": "2026-11-11T20:44:22.412410+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "d023a4accc8c": [
+        "set",
+        "2026-11-11T20:44:22.412410+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-11T20:44:22.412410+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-11T15:44:22-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "0c3913a5b212",
+  "kind": "rootcanal_border",
+  "name": "Envelope \u00b7 P-spike \u00b7 401 to 2666 \u00b5V \u00b7 10.8 to 39.0 dB \u00b7 7.1 to 41.1 ms",
+  "nickname": "P-spike border \u00b7 Scoop 5% \u00b7 Verified P-spike",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "wf-0809d8cff8cb429cae8a747d67c5fc36",
+    "gids": [
+      "s14510e30e1bd",
+      "s38b9e61c5684",
+      "s4a67210fc7ac",
+      "sc74c98b2495d",
+      "sd0d0bded958b"
+    ],
+    "level": "workflow",
+    "name": "Envelope \u00b7 P-spike \u00b7 401 to 2666 \u00b5V \u00b7 10.8 to 39.0 dB \u00b7 7.1 to 41.1 ms"
+  },
+  "subject_key": "rootcanal_border|wf-0809d8cff8cb429cae8a747d67c5fc36",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.11.4",
+      "at": "2026-11-11T15:44:22-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "3fda9f447a1c",
+      "id": "d023a4accc8c",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 39,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "grace": 0.05,
+        "group": "ied",
+        "kind": "envelope",
+        "level": "workflow",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 0,
+              "ied": 39,
+              "none": 0
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 0,
+              "ied": 39,
+              "none": 0
+            },
+            "grace": 0.01,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 1,
+              "ds": 0,
+              "ied": 38,
+              "none": 0
+            },
+            "grace": 0.05,
+            "outside_rate": 0.02564102564102564,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 5,
+        "recordings": 5,
+        "source": null,
+        "strict": {
+          "amp_uV": {
+            "hi": 2665.7831928715223,
+            "lo": 400.51150697399237
+          },
+          "hf_db": {
+            "hi": 38.9830085278379,
+            "lo": 10.824583346788593
+          },
+          "hw_ms": {
+            "hi": 41.08492014426582,
+            "lo": 7.05272863566222
+          }
+        }
+      },
+      "nickname": "P-spike border \u00b7 Scoop 5% \u00b7 Verified P-spike",
+      "nickname_at": "2026-11-11T15:44:22-05:00",
+      "note": null,
+      "params": {
+        "grace": 0.05,
+        "level": "workflow",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "96e0856ecb48",
+      "v": 1
+    }
+  ]
+}

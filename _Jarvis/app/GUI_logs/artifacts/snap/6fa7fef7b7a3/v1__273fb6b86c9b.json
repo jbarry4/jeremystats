@@ -1,0 +1,24 @@
+{
+ "definition": {
+  "kind": "ambiguous",
+  "target": {
+   "artifact_id": "3561fc988afd",
+   "nickname": "CTL & PTEN Baseline v2 (Optimized parameters)",
+   "version": 2
+  },
+  "uses": {
+   "ds": {
+    "artifact_id": "178daabb125c",
+    "nickname": "CTL Baseline (Optimized Paramters/Snap)",
+    "version": 3
+   },
+   "pspike": {
+    "artifact_id": "4e5ce690d4b1",
+    "nickname": "PTEN Baseline (Optimized Parameters/Snap)",
+    "version": 2
+   }
+  }
+ },
+ "run": null,
+ "schema": 1
+}

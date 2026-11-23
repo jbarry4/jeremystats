@@ -1,0 +1,194 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "group": "ds",
+  "n_group": 1263,
+  "n_other": 0
+ },
+ "gids": [
+  "s016e132432c8",
+  "s0a9e96cf1739",
+  "s37c7c8edfe10",
+  "s43b16cd74bcb",
+  "s79ba9ba163c4",
+  "s8d7f397b9708",
+  "s9eb56573e0b4",
+  "sd42a6992b76c",
+  "sd94396e874c7"
+ ],
+ "grace_default": 0.05,
+ "group": "ds",
+ "identity": "cls_single",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "kind": "envelope",
+ "level": "pool",
+ "levels": [
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 1263,
+    "ied": 0,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3801.925861802178,
+     "lo": 206.74645424905128
+    },
+    "hf_db": {
+     "hi": 25.67663298782695,
+     "lo": -7.1429977917795835
+    },
+    "hw_ms": {
+     "hi": 71.00421738538981,
+     "lo": 6.0418884749646224
+    }
+   },
+   "grace": 0.0,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 12,
+    "ds": 1251,
+    "ied": 0,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3235.9636270953615,
+     "lo": 248.3434346606334
+    },
+    "hf_db": {
+     "hi": 24.347866940523048,
+     "lo": -3.9409232594058574
+    },
+    "hw_ms": {
+     "hi": 62.770341240193694,
+     "lo": 6.445789571236313
+    }
+   },
+   "grace": 0.01,
+   "outside": 12,
+   "outside_rate": 0.009501187648456057,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.001585,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 59,
+    "ds": 1204,
+    "ied": 0,
+    "none": 0
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2733.1141097819595,
+     "lo": 319.1472911576087
+    },
+    "hf_db": {
+     "hi": 22.25056244542593,
+     "lo": -2.189536543401767
+    },
+    "hw_ms": {
+     "hi": 55.09187871856762,
+     "lo": 7.28418348390524
+    }
+   },
+   "grace": 0.05,
+   "outside": 59,
+   "outside_rate": 0.04671417260490895,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.007924,
+   "wrong": 0
+  }
+ ],
+ "made_from": [
+  "u:841aad39cfff:01a913aa64df",
+  "u:c0e55458531c:39c1c9f64a2c",
+  "u:af587732a900:6182a80d3639",
+  "u:39d439a95f7c:54775b49c294",
+  "u:6a2ade1040d3:5cdb0ebe287f",
+  "u:dbf2676df67a:f90c134c439d",
+  "u:3fc6bf1e2588:8ddf80324321",
+  "u:adc84ab8c916:b2c0380f768b",
+  "u:9b801cb6e235:45397eaf12a2"
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 50.0,
+  "filt": "lfp",
+  "filter_label": "LFP filter, 1–100 Hz, 60 Hz mains left in",
+  "hi_hz": 100.0,
+  "lo_hz": 1.0,
+  "mains_out": false,
+  "order": 4,
+  "win_ms": 25.0
+ },
+ "n": 1263,
+ "n_complete": 1263,
+ "n_identity": 1263,
+ "n_mice": 9,
+ "n_recordings": 9,
+ "rules": {
+  "0.0": "Solid DS: inside max amplitude 207 to 3802 µV, HF power -7.1 to 25.7 dB, half-width 6.0 to 71.0 ms. Outside it on any axis is ambiguous (grace none: the box wraps every DS event).",
+  "0.01": "Solid DS: inside max amplitude 248 to 3236 µV, HF power -3.9 to 24.3 dB, half-width 6.4 to 62.8 ms. Outside it on any axis is ambiguous (grace 1%: the box leaves out the outermost 1% of the DS events).",
+  "0.05": "Solid DS: inside max amplitude 319 to 2733 µV, HF power -2.2 to 22.3 dB, half-width 7.3 to 55.1 ms. Outside it on any axis is ambiguous (grace 5%: the box leaves out the outermost 5% of the DS events)."
+ },
+ "schema": 1,
+ "source": {
+  "kind": "pool",
+  "unsaved": true
+ },
+ "strict": {
+  "amp_uV": {
+   "hi": 3801.925861802178,
+   "lo": 206.74645424905128
+  },
+  "hf_db": {
+   "hi": 25.67663298782695,
+   "lo": -7.1429977917795835
+  },
+  "hw_ms": {
+   "hi": 71.00421738538981,
+   "lo": 6.0418884749646224
+  }
+ },
+ "strict_counts": {
+  "amb": 0,
+  "ds": 1263,
+  "ied": 0,
+  "none": 0
+ },
+ "strict_rate": 0.0,
+ "strict_wrong": 0
+}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>testorigin: running</title>
+<style>
+  body { font: 12px/1.6 ui-monospace, Consolas, monospace; background:#0a1310;
+         color:#dfeae4; margin:0; display:flex; }
+  #log { width: 720px; padding: 10px; overflow:auto; height:100vh;
+         white-space: pre-wrap; margin:0; }
+  iframe { flex:1; height:100vh; border:0; }
+  .ok { color:#5cc98d; } .bad { color:#ff6b5e; } .dim { color:#6f8c7d; }
+</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The app in a harness's frame says so on every request.
+
+   2026-10-30: rootcanalborder.html, run against the live app rather than
+   the harness server, filed its refusal on purpose ("The border hb-other
+   is not on this machine") as a real fault, and it led Bluebarry's
+   end-of-day report. The server knew a harness only by the referrer, and
+   the frame's requests name the frame. api() now sends X-Barry-Test from a
+   frame a /_dev/ page holds; tools/check_testorigin.py checks that the
+   server marks such a request as a test's.
+
+   IT WRITES NOTHING. The two requests checked never leave the frame: they
+   are answered here, and the frame's fetch is put back after. The frame is
+   unloaded at the end -- without that, headless Edge never dumps and the
+   runner reports TIMED OUT. Run under PowerShell. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+};
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+  const A = document.getElementById('app');
+  let W = null, realFetch = null;
+  try {
+    await new Promise((r) => A.addEventListener('load', r, { once: true }));
+    W = A.contentWindow;
+    const ev = (c) => W.eval(c);
+    for (let i = 0; i < 250; i++) {
+      try { if (ev('typeof BARRY') === 'object' && ev('typeof api') === 'function') break; }
+      catch (e) { /* not yet */ }
+      await sleep(100);
+    }
+
+    let frameSays;
+    try { frameSays = ev('HARNESS_FRAME'); } catch (e) { frameSays = 'missing: ' + e.message; }
+    ok('the frame knows a harness holds it', frameSays === true,
+       'HARNESS_FRAME = ' + JSON.stringify(frameSays));
+
+    realFetch = W.fetch;
+    const seen = [];
+    W.fetch = function (u, o) {
+      const s = String(u);
+      if (s.indexOf('/api/__testorigin') >= 0) {
+        seen.push({ u: s, h: new W.Headers((o && o.headers) || {}).get('X-Barry-Test') });
+        return Promise.resolve(new W.Response('{"ok":true}', {
+          status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return realFetch.apply(this, arguments);
+    };
+    await ev('api("/api/__testorigin/get")');
+    await ev('apiPost("/api/__testorigin/post", {})');
+    const g = seen.find((x) => /get$/.test(x.u));
+    const p = seen.find((x) => /post$/.test(x.u));
+    ok('a GET through api() says it is a test\'s', !!g && g.h === '1',
+       JSON.stringify(g || null));
+    ok('a POST through apiPost() says so too', !!p && p.h === '1',
+       JSON.stringify(p || null));
+  } catch (e) {
+    ok('the run finished', false, String(e && e.stack || e));
+  } finally {
+    if (W && realFetch) W.fetch = realFetch;
+    try { A.src = 'about:blank'; } catch (e) { /* the frame may be gone */ }
+    say(pass + ' pass, ' + fail + ' fail', 'dim');
+    document.title = 'testorigin: ' + pass + ' pass, ' + fail + ' fail';
+  }
+})();
+</script></body></html>

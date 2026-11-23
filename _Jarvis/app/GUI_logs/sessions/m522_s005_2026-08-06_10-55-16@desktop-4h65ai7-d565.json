@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-11-02T19:21:38.042954+00:00",
+    "gid": "2026-11-02T19:21:38.042954+00:00",
+    "group": "2026-11-02T19:21:38.042954+00:00",
+    "key": "2026-11-02T19:21:38.042954+00:00",
+    "label": "2026-11-02T19:21:38.042954+00:00",
+    "loose_key": "2026-11-02T19:21:38.042954+00:00",
+    "mouse": "2026-11-02T19:21:38.042954+00:00",
+    "project": "2026-11-02T19:21:38.042954+00:00",
+    "project_source": "2026-11-02T19:21:38.042954+00:00",
+    "retired": "2026-11-02T19:21:38.042954+00:00",
+    "schema": "2026-11-02T19:21:38.042954+00:00",
+    "session": "2026-11-02T19:21:38.042954+00:00",
+    "start": "2026-11-02T19:21:38.042954+00:00",
+    "updated": "2026-11-02T19:22:55.693949+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\KCNT1_m0522_s05_080626\\2026-08-06_10-55-16": [
+        "set",
+        "2026-11-02T19:22:55.693949+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T19:22:55.693949+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:21:38-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s8399d73db5af",
+  "group": null,
+  "key": "m522_s005_2026-08-06_10-55-16",
+  "label": "KCNT1 m522 s5 2026-08-06",
+  "loose_key": "m522_s005",
+  "mouse": 522,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\KCNT1_m0522_s05_080626\\2026-08-06_10-55-16"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 5,
+  "start": "2026-08-06T14:55:16+00:00",
+  "updated": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:22:55-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

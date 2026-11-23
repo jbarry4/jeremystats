@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-11-04T20:11:48.881165+00:00",
+    "gid": "2026-11-04T20:11:48.881165+00:00",
+    "group": "2026-11-04T20:11:48.881165+00:00",
+    "key": "2026-11-04T20:11:48.881165+00:00",
+    "label": "2026-11-04T20:11:48.881165+00:00",
+    "loose_key": "2026-11-04T20:11:48.881165+00:00",
+    "mouse": "2026-11-04T20:11:48.881165+00:00",
+    "project": "2026-11-04T20:11:48.881165+00:00",
+    "project_source": "2026-11-04T20:11:48.881165+00:00",
+    "retired": "2026-11-04T20:11:48.881165+00:00",
+    "schema": "2026-11-04T20:11:48.881165+00:00",
+    "session": "2026-11-04T20:11:48.881165+00:00",
+    "start": "2026-11-04T20:11:48.881165+00:00",
+    "updated": "2026-11-04T20:12:25.279336+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_524\\Kcnt1_m524_s3_apr29\\2026-04-30_16-17-55": [
+        "set",
+        "2026-11-04T20:12:25.279336+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-04T20:12:25.279336+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-04T15:11:48-05:00",
+    "commit": "5acf4b4f",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s64845ee9f573",
+  "group": null,
+  "key": "m524_s003_2026-04-30_16-17-55",
+  "label": "KCNT1 m524 s3 2026-04-30",
+  "loose_key": "m524_s003",
+  "mouse": 524,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_524\\Kcnt1_m524_s3_apr29\\2026-04-30_16-17-55"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2026-04-30T20:17:55+00:00",
+  "updated": {
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-04T15:12:25-05:00",
+    "commit": "5acf4b4f",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

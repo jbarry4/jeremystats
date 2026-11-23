@@ -1,0 +1,141 @@
+{
+  "_at": {
+    "added": "2026-10-19T16:40:58.025688+00:00",
+    "deleted": "2026-10-19T16:40:58.025688+00:00",
+    "id": "2026-10-19T16:40:58.025688+00:00",
+    "kind": "2026-10-19T16:40:58.025688+00:00",
+    "name": "2026-10-19T16:40:58.025688+00:00",
+    "nickname": "2026-10-19T16:40:58.025688+00:00",
+    "schema": "2026-10-19T16:40:58.025688+00:00",
+    "subject": "2026-10-19T16:40:58.025688+00:00",
+    "subject_key": "2026-10-19T16:40:58.025688+00:00",
+    "version": "2026-10-19T16:40:58.025688+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "2331a918267f": [
+        "set",
+        "2026-10-19T16:40:58.025688+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T16:40:58.025688+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-19T12:40:58-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "15226fe7fabc",
+  "kind": "rootcanal_border",
+  "name": "Border \u00b7 1659 \u00b5V \u00b7 13.4 dB \u00b7 23.5 ms",
+  "nickname": "border \u00b7 PTEN Baseline All CTL (Shahriar Test)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "a93d0ffcb65a49ab9d6b9f54169c8ea4",
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "level": "pool",
+    "name": "Border \u00b7 1659 \u00b5V \u00b7 13.4 dB \u00b7 23.5 ms"
+  },
+  "subject_key": "rootcanal_border|a93d0ffcb65a49ab9d6b9f54169c8ea4",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.19.2",
+      "at": "2026-10-19T12:40:58-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "a4626323",
+      "digest": "293fce032df9",
+      "id": "2331a918267f",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 1263,
+        "filter": "LFP filter, 1\u2013100 Hz, 60 Hz mains left in",
+        "grace": 0.0,
+        "group": null,
+        "kind": "between",
+        "level": "pool",
+        "levels": [
+          {
+            "counts": {
+              "amb": 1241,
+              "ds": 21,
+              "ied": 1,
+              "none": 0
+            },
+            "grace": 0.0,
+            "outside_rate": null,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 873,
+              "ds": 368,
+              "ied": 22,
+              "none": 0
+            },
+            "grace": 0.01,
+            "outside_rate": null,
+            "switch_rate": 0.00870942201108472
+          },
+          {
+            "counts": {
+              "amb": 726,
+              "ds": 478,
+              "ied": 59,
+              "none": 0
+            },
+            "grace": 0.05,
+            "outside_rate": null,
+            "switch_rate": 0.026128266033254157
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": null,
+        "strict": {
+          "amp_uV": 1658.8083987497832,
+          "hf_db": 13.38798908725956,
+          "hw_ms": 23.537002775691956
+        }
+      },
+      "nickname": "border \u00b7 PTEN Baseline All CTL (Shahriar Test)",
+      "nickname_at": "2026-10-19T12:40:58-04:00",
+      "note": null,
+      "params": {
+        "grace": 0.0,
+        "level": "pool",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 50.0,
+          "filt": "lfp",
+          "filter_label": "LFP filter, 1\u2013100 Hz, 60 Hz mains left in",
+          "hi_hz": 100.0,
+          "lo_hz": 1.0,
+          "mains_out": false,
+          "order": 4,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "f05d4cc1c20b",
+      "v": 1
+    }
+  ]
+}

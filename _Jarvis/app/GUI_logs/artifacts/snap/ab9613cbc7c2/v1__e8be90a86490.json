@@ -1,0 +1,19 @@
+{
+ "definition": {
+  "grace": 0.05,
+  "kind": "ds",
+  "source": {
+   "artifact_id": "292d870b84ff",
+   "nickname": "PTEN CTL Baseline Full Incisor",
+   "type": "pool",
+   "version": 1
+  },
+  "target": {
+   "artifact_id": "f669e8c87dc9",
+   "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+   "version": 1
+  }
+ },
+ "run": null,
+ "schema": 1
+}

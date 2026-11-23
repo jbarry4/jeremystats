@@ -1,0 +1,209 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-04T15:57:01.894929+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.894929+00:00",
+    "condition": "2026-09-04T15:57:01.894929+00:00",
+    "converted": "2026-09-04T15:57:01.894929+00:00",
+    "created": "2026-09-02T23:21:29.114853+00:00",
+    "duration_s": "2026-09-04T15:57:01.894929+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.894929+00:00",
+    "fs": "2026-09-04T15:57:01.894929+00:00",
+    "gid": "2026-09-02T23:21:29.114853+00:00",
+    "group": "2026-09-04T15:57:01.894929+00:00",
+    "has_video": "2026-09-04T15:57:01.894929+00:00",
+    "hemisphere": "2026-09-09T00:01:09.333129+00:00",
+    "hemisphere_source": "2026-09-09T00:01:09.333129+00:00",
+    "key": "2026-09-04T15:57:01.894929+00:00",
+    "label": "2026-09-04T15:57:01.894929+00:00",
+    "loose_key": "2026-09-04T15:57:01.894929+00:00",
+    "mouse": "2026-09-04T15:57:01.894929+00:00",
+    "n_channels": "2026-09-04T15:57:01.894929+00:00",
+    "project": "2026-09-04T15:57:01.894929+00:00",
+    "project_source": "2026-09-04T15:57:01.894929+00:00",
+    "retired": "2026-09-04T15:57:01.894929+00:00",
+    "schema": "2026-09-04T15:57:01.894929+00:00",
+    "session": "2026-09-04T15:57:01.894929+00:00",
+    "start": "2026-09-04T15:57:01.894929+00:00",
+    "updated": "2026-10-14T18:09:29.152507+00:00",
+    "view_state": "2026-10-14T18:09:29.152507+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s11_Baseline": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "vacc:se942a3f42a33": [
+        "set",
+        "2026-10-14T17:36:51.220857+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-09T15:54:19.301394+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-24T13:43:00.808712+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-14T18:09:29.152507+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "cno",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2475.6736,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "se942a3f42a33",
+  "group": "PTEN",
+  "has_video": true,
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
+  "key": "m059_s011_2025-07-09_12-19-54",
+  "label": "PTEN m59 s11 2025-07-09",
+  "loose_key": "m059_s011",
+  "mouse": 59,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
+    "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s11_Baseline",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline",
+    "vacc:se942a3f42a33"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:06-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-09T11:54:19-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-24T09:43:00-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
+      "root": "D:/PTEN/CTL",
+      "scan": "scan_febb6fcb03"
+    }
+  },
+  "session": 11,
+  "start": "2025-07-09T12:19:54",
+  "updated": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T14:09:29-04:00",
+    "commit": "917483c9",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 2.5,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 0.4,
+    "stft_mode": null,
+    "t0": 2473.561176,
+    "ylim": null
+  }
+}

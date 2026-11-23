@@ -1,0 +1,36 @@
+# Run web/_dev harnesses against a server this script starts and stops.
+#
+#   powershell -File tools/harness_run.ps1 -Names rootcanalswitch,bounce
+#
+# The server has to live inside the same call: one started by Start-Process
+# in an earlier tool call dies at the call boundary. Run from PowerShell, not
+# Bash; under Bash, Edge dumps nothing and every harness reads as clean.
+#   powershell -File tools/harness_run.ps1 -Names monolith -Port 8795   (when 8791 is held)
+param([string[]]$Names, [int]$Port = 8791)
+$app = Split-Path -Parent $PSScriptRoot
+Set-Location $app
+$held = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+if ($held) { "port $Port already held by pid $($held.OwningProcess); not starting another (try -Port)"; exit 1 }
+$env:JARVIS_HARNESS_PORT = "$Port"
+$env:JARVIS_WARM = "0"
+# A harness server, as tools/harness_run.py says too: what it files is a
+# test's, its deletions write no tombstones, it writes no day report and
+# never reaches the shelf. Without it a harness's refusals on purpose were
+# real faults in Bluebarry's report (2026-10-30).
+$env:BARRY_HARNESS_SERVER = "1"
+$log = Join-Path $env:TEMP "jarvis_harness_server.log"
+$p = Start-Process python -ArgumentList '-c', ('"from backend.app import app; app.run(host=''127.0.0.1'', port=' + $Port + ', debug=False, threaded=True, use_reloader=False)"') -PassThru -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+try {
+  $up = $false
+  for ($i = 0; $i -lt 90; $i++) {
+    Start-Sleep -Seconds 2
+    try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 "http://127.0.0.1:$Port/" | Out-Null; $up = $true; break } catch {}
+  }
+  if (-not $up) { "server never came up"; Get-Content "$log.err" -Tail 20; exit 1 }
+  Start-Sleep -Seconds 20
+  # The first run against a fresh server often dumps nothing; take the second.
+  python tools/run_harnesses.py @Names | Out-Null
+  python tools/run_harnesses.py @Names
+} finally {
+  Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+}

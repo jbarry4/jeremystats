@@ -1,0 +1,36 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-19
+computer    Isabellas-MacBook-Air.local (isabellas-macbook-air.lo-56af)
+person      Isabella Piatek
+build       2026.11.19.2 2d84737b
+written     2026-11-19T18:41:44-05:00
+faults      1 error(s), 1 distinct
+activity    55 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    17:06:51-17:06:51  cloud.sync: The shared database is not answering (no connection), so it is not being asked again until 17:07:01. Nothing is lost; it is all kept here.
+
+==========================================================================
+1/1  cloud.sync  x1
+==========================================================================
+first       2026-11-19T17:06:51-05:00
+latest      2026-11-19T17:06:51-05:00
+who         Isabella Piatek
+signature   cloud.sync||The shared database is not answering (no connection), so it is not being asked again until N:N:N. Nothing is lost; it is all kept here.
+
+message
+    The shared database is not answering (no connection), so it is not being asked again until 17:07:01. Nothing is lost; it is all kept here.
+
+--- around 2026-11-19T17:06:51-05:00 ---
+    17:06:42     -8.1s  link.scope  [sessions]  {"scope":"session"}
+    17:06:43     -8.0s  welcome.open  [sessions]  {"forced":false,"from":"boot"}
+    17:06:51     +0.0s  >>> cloud.sync: The shared database is not answering (no connection), so it is not being asked again until 17:07:01. Nothing is lost; it is all kept here.
+    17:06:51     +0.3s  welcome.profile  [sessions]  {"picked":true}
+    17:07:16    +25.5s  welcome.ready  [sessions]
+    17:07:20    +29.9s  welcome.close  [sessions]  {"did":{"find":"done","ready":"done","sync":"skipped","vacc":"done","you":"done"},"how":"finished"}

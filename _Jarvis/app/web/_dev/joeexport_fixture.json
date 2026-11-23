@@ -1,0 +1,657 @@
+{
+"ok": true,
+"schema": 1,
+"made": "2026-10-26T12:00:00",
+"joe_at": "2026-10-21T13:42:21",
+"figs_at": "2026-10-23T15:32:16",
+"rats": 8,
+"days": [
+"Precon1",
+"Precon4"
+],
+"n_figures": 27,
+"n_files": 149,
+"bytes": 66436872,
+"budget_mb": 95.0,
+"fp": {
+"read": true,
+"rat_days": 16,
+"fake_trials": 1017,
+"step_s": 10.0,
+"of": 16
+},
+"n_perm": 10000,
+"sections": [
+{
+"id": "figures",
+"title": "The figures",
+"say": "Nature format (Arial, 183 mm wide): PDF and SVG to edit, a 600 dpi PNG to paste. Each ring figure comes three ways, one per test; each figure’s numbers come for Prism.",
+"groups": [
+{
+"key": "S",
+"title": "Supplementary",
+"band": "gamma",
+"gated": null,
+"figures": [
+{
+"id": "S1",
+"name": "Supplementary Figure S1",
+"kind": "schematic",
+"pair": "R ACC – R RSC",
+"title": "How each row of the ring figures is made.",
+"tests": [],
+"views": [
+{
+"null": null,
+"say": null,
+"legend": {
+"title": "How each row of the ring figures is made.",
+"body": "Shown for one pair, R ACC – R RSC (comparison 1, gamma coherence; the pair whose change is largest), each bar the mean over the rats. a, the Precon1 cue effect: the cue window's coherence minus the baseline's, on Precon1 (a–c of a ring figure). b, the Precon4 cue effect, the same on Precon4 (d–f). c, the change in cue effect: Precon4's minus Precon1's (g–i), the number tab 8's light tests. Orange arrows: up; purple: down. A ring draws this for every pair at once, each line's width the size of its number."
+},
+"files": [
+{
+"name": "fig_S1.pdf",
+"size": 47696,
+"say": "PDF"
+},
+{
+"name": "fig_S1.svg",
+"size": 21254,
+"say": "SVG"
+},
+{
+"name": "fig_S1.png",
+"size": 178298,
+"say": "PNG"
+}
+],
+"preview": "fig_S1.svg"
+}
+],
+"prism": null
+}
+]
+},
+{
+"key": "m1|gamma",
+"title": "Comparison 1 · Baseline (20 s) → both cues · gamma",
+"band": "gamma",
+"gated": true,
+"figures": [
+{
+"id": "2",
+"name": "Figure 2",
+"kind": "connectome",
+"pair": null,
+"title": "Baseline (20 s) → both cues, gamma 30–90 Hz: the connectome of the change from Baseline (20 s) to Cue 1 + Cue 2 (20 s).",
+"tests": [
+{
+"key": "fp",
+"say": "FP",
+"pass": false
+},
+{
+"key": "shuffle",
+"say": "Shuffles",
+"pass": false
+},
+{
+"key": "t",
+"say": "Rats’ flips",
+"pass": true
+}
+],
+"views": [
+{
+"null": "fp",
+"say": "Against FP",
+"legend": {
+"title": "Baseline (20 s) → both cues, gamma 30–90 Hz: the connectome of the change from Baseline (20 s) to Cue 1 + Cue 2 (20 s).",
+"body": "a–c, the Precon1 cue effect (Cues − Baseline, on Precon1); d–f, the Precon4 cue effect; g–i, the change in cue effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Baseline (20 s) to Cue 1 + Cue 2 (20 s) over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against 10,000 sets of fake trials from the same rats’ FP1 and FP2 recordings, where there were no cues: a fake cue onset every 10 s of FP, the trial’s own windows round it, measured as a trial’s are; in each set every session gets as many fake trials as it had real ones, drawn at random with replacement, each with its two windows in random order (with no cue, either can stand for it) and losing the windows the matching real trial lost to clipping, and its change is made as the real one is. The vertical line is the observed value, with its rank among the sets and its P (increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: none."
+},
+"files": [
+{
+"name": "fig_2_fp.pdf",
+"size": 84833,
+"say": "PDF"
+},
+{
+"name": "fig_2_fp.svg",
+"size": 230322,
+"say": "SVG"
+},
+{
+"name": "fig_2_fp.png",
+"size": 1753388,
+"say": "PNG"
+}
+],
+"preview": "fig_2_fp.svg"
+},
+{
+"null": "trials",
+"say": "Against the shuffles",
+"legend": {
+"title": "Baseline (20 s) → both cues, gamma 30–90 Hz: the connectome of the change from Baseline (20 s) to Cue 1 + Cue 2 (20 s).",
+"body": "a–c, the Precon1 cue effect (Cues − Baseline, on Precon1); d–f, the Precon4 cue effect; g–i, the change in cue effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Baseline (20 s) to Cue 1 + Cue 2 (20 s) over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against 10,000 shuffles in which each session’s trials had their two windows swapped at random (the sign of that trial’s change flipped: trial-to-trial noise inside each session), the vertical line the observed value, with its rank among the shuffles and its permutation P (increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: none."
+},
+"files": [
+{
+"name": "fig_2_trials.pdf",
+"size": 84977,
+"say": "PDF"
+},
+{
+"name": "fig_2_trials.svg",
+"size": 230354,
+"say": "SVG"
+},
+{
+"name": "fig_2_trials.png",
+"size": 1758670,
+"say": "PNG"
+}
+],
+"preview": "fig_2_trials.svg"
+},
+{
+"null": "rats",
+"say": "Against the rats’ flips",
+"legend": {
+"title": "Baseline (20 s) → both cues, gamma 30–90 Hz: the connectome of the change from Baseline (20 s) to Cue 1 + Cue 2 (20 s).",
+"body": "a–c, the Precon1 cue effect (Cues − Baseline, on Precon1); d–f, the Precon4 cue effect; g–i, the change in cue effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Baseline (20 s) to Cue 1 + Cue 2 (20 s) over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against every way of flipping the sign of each rat’s change (256 sign patterns; the rat is the unit, as in the mixed model that lit tab 8’s light), the vertical line the observed value, with its rank among them and its exact P (the share at least as extreme; with 8 rats P moves in steps of 1/256, so the smallest possible is 1/256 for the increases or the decreases and 2/256 for both; increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: Change in cue effect, increases: P = 0.012; Change in cue effect, both: P = 0.023."
+},
+"files": [
+{
+"name": "fig_2.pdf",
+"size": 86505,
+"say": "PDF"
+},
+{
+"name": "fig_2.svg",
+"size": 229944,
+"say": "SVG"
+},
+{
+"name": "fig_2.png",
+"size": 1753393,
+"say": "PNG"
+}
+],
+"preview": "fig_2.svg"
+}
+],
+"prism": {
+"name": "fig_2_prism.zip",
+"size": 2085257,
+"say": "Prism (.xlsx and .pzfx)"
+}
+},
+{
+"id": "2.1",
+"name": "Figure 2.1",
+"kind": "follow",
+"pair": "R ACC – R RSC",
+"title": "Baseline (20 s) → both cues · followed up from the gamma coherence of R ACC – R RSC: direction.",
+"tests": [
+{
+"key": "fp",
+"say": "FP",
+"pass": true
+},
+{
+"key": "shuffle",
+"say": "Shuffles",
+"pass": true
+},
+{
+"key": "t",
+"say": "t-test",
+"pass": true
+}
+],
+"views": [
+{
+"null": null,
+"say": null,
+"legend": {
+"title": "Baseline (20 s) → both cues · followed up from the gamma coherence of R ACC – R RSC: direction.",
+"body": "a, the pair on the ring of regions (the arrow, the direction measured). Then, for each measure: its value for each rat at Baseline (20 s) and Cue 1 + Cue 2 (20 s) on Precon1 (grey) and Precon4 (black), each rat's two windows joined, the mean ± s.e.m. beside them; each rat's change between the days, (Precon4 Cue 1 + Cue 2 (20 s) − Baseline (20 s)) − (Precon1 Cue 1 + Cue 2 (20 s) − Baseline (20 s)), with the mean ± 95% confidence interval; and that mean against 10,000 shuffles in which each session's trials had their two windows swapped at random (grey) and against 10,000 sets of fake trials from the same rats' FP1 and FP2, where there were no cues, each session as many as it had real trials, in random order, losing the windows its real trials lost (blue). The pair was followed up because its own change in coherence had P < 0.05 (uncorrected; no pair survives correction on its own), and of the measures run on it these are the ones whose t-test had P < 0.05: they are leads, chosen by that test. Granger R RSC → R ACC: FP intervals P < 0.001, rank 9,998 of 10,001; within-session shuffles P = 0.002, rank 9,990 of 10,001; t(5) = 2.68, P = 0.044 (one-sample t-test of each rat's change, uncorrected)."
+},
+"files": [
+{
+"name": "fig_2_1.pdf",
+"size": 65331,
+"say": "PDF"
+},
+{
+"name": "fig_2_1.svg",
+"size": 45133,
+"say": "SVG"
+},
+{
+"name": "fig_2_1.png",
+"size": 226818,
+"say": "PNG"
+}
+],
+"preview": "fig_2_1.svg"
+}
+],
+"prism": {
+"name": "fig_2_1_prism.zip",
+"size": 269118,
+"say": "Prism (.xlsx and .pzfx)"
+}
+},
+{
+"id": "2.2",
+"name": "Figure 2.2",
+"kind": "follow",
+"pair": "R ACC – R RSC",
+"title": "Baseline (20 s) → both cues · followed up from the gamma coherence of R ACC – R RSC: theta–gamma coupling, R RSC θ → R ACC γ.",
+"tests": [
+{
+"key": "fp",
+"say": "FP",
+"pass": true
+},
+{
+"key": "shuffle",
+"say": "Shuffles",
+"pass": true
+},
+{
+"key": "t",
+"say": "t-test",
+"pass": true
+}
+],
+"views": [
+{
+"null": null,
+"say": null,
+"legend": {
+"title": "Baseline (20 s) → both cues · followed up from the gamma coherence of R ACC – R RSC: theta–gamma coupling, R RSC θ → R ACC γ.",
+"body": "a, the pair on the ring of regions (the arrow, the direction measured). Then, for each measure: its value for each rat at Baseline (20 s) and Cue 1 + Cue 2 (20 s) on Precon1 (grey) and Precon4 (black), each rat's values as dots (PAC is never drawn as lines), the mean ± s.e.m. beside them; each rat's change between the days, (Precon4 Cue 1 + Cue 2 (20 s) − Baseline (20 s)) − (Precon1 Cue 1 + Cue 2 (20 s) − Baseline (20 s)), with the mean ± 95% confidence interval; and that mean against 10,000 shuffles in which each session's trials had their two windows swapped at random (grey) and against 10,000 sets of fake trials from the same rats' FP1 and FP2, where there were no cues, each session as many as it had real trials, in random order, losing the windows its real trials lost (blue). The pair was followed up because its own change in coherence had P < 0.05 (uncorrected; no pair survives correction on its own), and of the measures run on it these are the ones whose t-test had P < 0.05: they are leads, chosen by that test. PAC is Tort's modulation index (18 theta-phase bins) of gamma (30–90 Hz) amplitude over theta (5–12 Hz) phase, computed over each trial's whole window (the whole baseline, or the whole cue window), then averaged over the session's trials: a dot is one rat. The roses are the same windows' gamma amplitude in each theta-phase bin, normalised, averaged over the trials and then the rats; the comodulogram is the change in cue effect in narrow theta (2 Hz) and gamma (10 Hz) bands. PAC R RSC θ → R ACC γ: FP intervals P = 0.006, rank 31 of 10,001; within-session shuffles P = 0.025, rank 114 of 10,001; t(5) = −3.74, P = 0.013 (one-sample t-test of each rat's change, uncorrected)."
+},
+"files": [
+{
+"name": "fig_2_2.pdf",
+"size": 85705,
+"say": "PDF"
+},
+{
+"name": "fig_2_2.svg",
+"size": 117469,
+"say": "SVG"
+},
+{
+"name": "fig_2_2.png",
+"size": 563854,
+"say": "PNG"
+}
+],
+"preview": "fig_2_2.svg"
+}
+],
+"prism": {
+"name": "fig_2_2_prism.zip",
+"size": 281580,
+"say": "Prism (.xlsx and .pzfx)"
+}
+}
+]
+},
+{
+"key": "m5|theta",
+"title": "Comparison 5 · Cue 1 → cue 2 · theta",
+"band": "theta",
+"gated": false,
+"figures": [
+{
+"id": "5",
+"name": "Figure 5",
+"kind": "connectome",
+"pair": null,
+"title": "Cue 1 → cue 2, theta 5–12 Hz: the connectome of the change from Cue 1 to Cue 2.",
+"tests": [
+{
+"key": "fp",
+"say": "FP",
+"pass": false
+},
+{
+"key": "shuffle",
+"say": "Shuffles",
+"pass": false
+},
+{
+"key": "t",
+"say": "Rats’ flips",
+"pass": false
+}
+],
+"views": [
+{
+"null": "fp",
+"say": "Against FP",
+"legend": {
+"title": "Cue 1 → cue 2, theta 5–12 Hz: the connectome of the change from Cue 1 to Cue 2.",
+"body": "a–c, the Precon1 cue 1→2 effect (Cue 2 − Cue 1, on Precon1); d–f, the Precon4 cue 1→2 effect; g–i, the change in cue 1→2 effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Cue 1 to Cue 2 over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against 10,000 sets of fake trials from the same rats’ FP1 and FP2 recordings, where there were no cues: a fake cue onset every 10 s of FP, the trial’s own windows round it, measured as a trial’s are; in each set every session gets as many fake trials as it had real ones, drawn at random with replacement, each with its two windows in random order (with no cue, either can stand for it) and losing the windows the matching real trial lost to clipping, and its change is made as the real one is. The vertical line is the observed value, with its rank among the sets and its P (increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: Precon4 cue 1→2 effect, decreases: P = 0.009; Precon4 cue 1→2 effect, both: P = 0.021."
+},
+"files": [
+{
+"name": "fig_5_fp.pdf",
+"size": 87288,
+"say": "PDF"
+},
+{
+"name": "fig_5_fp.svg",
+"size": 230763,
+"say": "SVG"
+},
+{
+"name": "fig_5_fp.png",
+"size": 1797824,
+"say": "PNG"
+}
+],
+"preview": "fig_5_fp.svg"
+},
+{
+"null": "trials",
+"say": "Against the shuffles",
+"legend": {
+"title": "Cue 1 → cue 2, theta 5–12 Hz: the connectome of the change from Cue 1 to Cue 2.",
+"body": "a–c, the Precon1 cue 1→2 effect (Cue 2 − Cue 1, on Precon1); d–f, the Precon4 cue 1→2 effect; g–i, the change in cue 1→2 effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Cue 1 to Cue 2 over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against 10,000 shuffles in which each session’s trials had their two windows swapped at random (the sign of that trial’s change flipped: trial-to-trial noise inside each session), the vertical line the observed value, with its rank among the shuffles and its permutation P (increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: none."
+},
+"files": [
+{
+"name": "fig_5_trials.pdf",
+"size": 85665,
+"say": "PDF"
+},
+{
+"name": "fig_5_trials.svg",
+"size": 230315,
+"say": "SVG"
+},
+{
+"name": "fig_5_trials.png",
+"size": 1802733,
+"say": "PNG"
+}
+],
+"preview": "fig_5_trials.svg"
+},
+{
+"null": "rats",
+"say": "Against the rats’ flips",
+"legend": {
+"title": "Cue 1 → cue 2, theta 5–12 Hz: the connectome of the change from Cue 1 to Cue 2.",
+"body": "a–c, the Precon1 cue 1→2 effect (Cue 2 − Cue 1, on Precon1); d–f, the Precon4 cue 1→2 effect; g–i, the change in cue 1→2 effect (Precon4’s minus Precon1’s). Each ring holds the 12 regions (open, a region no pair reaches with at least 4 rats); each edge is one of the 44 pairs tested, curving toward the centre, its width the mean change in coherence from Cue 1 to Cue 2 over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, 2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, the summed decreases, or the sum of all) against every way of flipping the sign of each rat’s change (256 sign patterns; the rat is the unit, as in the mixed model that lit tab 8’s light), the vertical line the observed value, with its rank among them and its exact P (the share at least as extreme; with 8 rats P moves in steps of 1/256, so the smallest possible is 1/256 for the increases or the decreases and 2/256 for both; increases one-sided upward, decreases downward, both two-sided; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = 8 rats, 12–16 trials per session. Significant: none."
+},
+"files": [
+{
+"name": "fig_5.pdf",
+"size": 85093,
+"say": "PDF"
+},
+{
+"name": "fig_5.svg",
+"size": 230685,
+"say": "SVG"
+},
+{
+"name": "fig_5.png",
+"size": 1800182,
+"say": "PNG"
+}
+],
+"preview": "fig_5.svg"
+}
+],
+"prism": {
+"name": "fig_5_prism.zip",
+"size": 2082324,
+"say": "Prism (.xlsx and .pzfx)"
+}
+}
+]
+}
+],
+"files": [
+{
+"name": "Joe_figure_legends.txt",
+"size": 56352,
+"say": "Every legend, in one text file"
+}
+]
+},
+{
+"id": "stats",
+"title": "The statistics",
+"say": "Tab 8’s twelve comparisons in theta and gamma: the mixed models behind the lights, as tables and as SPSS files.",
+"lights": [
+{
+"no": 1,
+"title": "Baseline (20 s) → both cues",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.40687434746456885
+},
+"gamma": {
+"lit": true,
+"p": 0.017478395608414014
+}
+}
+},
+{
+"no": 2,
+"title": "Baseline (10 s) → cue 1",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.3539530494175456
+},
+"gamma": {
+"lit": true,
+"p": 0.03471367379302257
+}
+}
+},
+{
+"no": 3,
+"title": "Baseline (10 s) → cue 2",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.5453134013912662
+},
+"gamma": {
+"lit": false,
+"p": 0.1268264585397185
+}
+}
+},
+{
+"no": 4,
+"title": "The switch: end of cue 1 → start of cue 2",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.40653903905565686
+},
+"gamma": {
+"lit": false,
+"p": 0.6664703916679453
+}
+}
+},
+{
+"no": 5,
+"title": "Cue 1 → cue 2",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.43228908622631546
+},
+"gamma": {
+"lit": false,
+"p": 0.2943995717169608
+}
+}
+},
+{
+"no": 6,
+"title": "Trials vs FP, 20 s",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.1614896224134529
+},
+"gamma": {
+"lit": false,
+"p": 0.36028280132448376
+}
+}
+},
+{
+"no": 7,
+"title": "Trials vs FP, 10 s",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.2772564303511715
+},
+"gamma": {
+"lit": false,
+"p": 0.9175087132200574
+}
+}
+},
+{
+"no": 8,
+"title": "Power, baseline (20 s) → both cues",
+"check": false,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.5592782996751362
+},
+"gamma": {
+"lit": false,
+"p": 0.16433546699510865
+}
+}
+},
+{
+"no": 9,
+"title": "Noise vs Click",
+"check": true,
+"bands": {
+"theta": {
+"lit": true,
+"p": 0.03864669728929297
+},
+"gamma": {
+"lit": false,
+"p": 0.09236394742668502
+}
+}
+},
+{
+"no": 10,
+"title": "All four sounds",
+"check": true,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.126288544963194
+},
+"gamma": {
+"lit": false,
+"p": 0.053325371001719093
+}
+}
+},
+{
+"no": 11,
+"title": "A/B/C/D",
+"check": true,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.5517015508797862
+},
+"gamma": {
+"lit": false,
+"p": 0.6478102730964166
+}
+}
+},
+{
+"no": 12,
+"title": "High vs Low tone",
+"check": true,
+"bands": {
+"theta": {
+"lit": false,
+"p": 0.5772388898658778
+},
+"gamma": {
+"lit": false,
+"p": 0.2271217181931744
+}
+}
+}
+],
+"files": [
+{
+"name": "joe_tab8_results.csv",
+"size": 4652,
+"say": "Every comparison’s result, one row each"
+},
+{
+"name": "joe_tab8_README.txt",
+"size": 7420,
+"say": "What every file and column is"
+},
+{
+"name": "joe_tab8_spss.zip",
+"size": 458602,
+"say": "The data and SPSS syntax to recreate every result"
+}
+]
+},
+{
+"id": "repro",
+"title": "Make the numbers again",
+"say": "One Python file that reads the recordings and makes tab 8’s tables without Jarvis. Run on 2026-10-22, its output matched Jarvis’s to 1e-06 in every cell.",
+"files": [
+{
+"name": "joe_standalone.py",
+"size": 33790,
+"say": "The standalone script (numpy and scipy only)"
+},
+{
+"name": "joe_inputs.json",
+"size": 386761,
+"say": "Its inputs: folders, channels, regions, seed"
+}
+]
+}
+],
+"site": {
+"built": false
+}
+}

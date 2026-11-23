@@ -1,0 +1,220 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "group": "ds",
+  "n_group": 2183,
+  "n_other": 0
+ },
+ "gids": [
+  "s016e132432c8",
+  "s0a9e96cf1739",
+  "s37c7c8edfe10",
+  "s43b16cd74bcb",
+  "s79ba9ba163c4",
+  "s8d7f397b9708",
+  "s9eb56573e0b4",
+  "sd42a6992b76c",
+  "sd94396e874c7"
+ ],
+ "grace_default": 0.1,
+ "group": "ds",
+ "identity": "wf_id",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "kind": "envelope",
+ "level": "workflow",
+ "levels": [
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 2183,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3611.557056898117,
+     "lo": 198.62015065261326
+    },
+    "hf_db": {
+     "hi": 25.358565636871482,
+     "lo": -5.1227495565039325
+    },
+    "hw_ms": {
+     "hi": 63.423733008442106,
+     "lo": 5.982065540213711
+    }
+   },
+   "grace": 0.0,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "peeled": 0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 21,
+    "ds": 2162,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2713.0377412518665,
+     "lo": 237.19535739221277
+    },
+    "hf_db": {
+     "hi": 24.98305122240223,
+     "lo": -3.360494773502082
+    },
+    "hw_ms": {
+     "hi": 53.22107809601957,
+     "lo": 6.257337202488259
+    }
+   },
+   "grace": 0.01,
+   "outside": 21,
+   "outside_rate": 0.00961978928080623,
+   "peeled": 3,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.001375,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 109,
+    "ds": 2074,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2388.7619826309356,
+     "lo": 291.05683276871883
+    },
+    "hf_db": {
+     "hi": 22.141585202238403,
+     "lo": -0.09617336044344386
+    },
+    "hw_ms": {
+     "hi": 47.25424322238166,
+     "lo": 6.803739240362972
+    }
+   },
+   "grace": 0.05,
+   "outside": 109,
+   "outside_rate": 0.04993128721942281,
+   "peeled": 1,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.008249,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 218,
+    "ds": 1965,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2249.292421720684,
+     "lo": 328.46870626959816
+    },
+    "hf_db": {
+     "hi": 20.601520745187493,
+     "lo": 1.8351236983113548
+    },
+    "hw_ms": {
+     "hi": 44.13710889991975,
+     "lo": 7.216132089065013
+    }
+   },
+   "grace": 0.1,
+   "outside": 218,
+   "outside_rate": 0.09986257443884562,
+   "peeled": 3,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.016957,
+   "wrong": 0
+  }
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "n": 2185,
+ "n_complete": 2183,
+ "n_identity": 2185,
+ "n_mice": 9,
+ "n_recordings": 9,
+ "rules": {
+  "0.0": "Solid DS: inside max amplitude 199 to 3612 µV, HF power -5.1 to 25.4 dB, half-width 6.0 to 63.4 ms. Outside it on any axis is ambiguous (grace none: the box wraps every DS event).",
+  "0.01": "Solid DS: inside max amplitude 237 to 2713 µV, HF power -3.4 to 25.0 dB, half-width 6.3 to 53.2 ms. Outside it on any axis is ambiguous (grace 1%: the box leaves out the outermost 1% of the DS events).",
+  "0.05": "Solid DS: inside max amplitude 291 to 2389 µV, HF power -0.1 to 22.1 dB, half-width 6.8 to 47.3 ms. Outside it on any axis is ambiguous (grace 5%: the box leaves out the outermost 5% of the DS events).",
+  "0.1": "Solid DS: inside max amplitude 328 to 2249 µV, HF power 1.8 to 20.6 dB, half-width 7.2 to 44.1 ms. Outside it on any axis is ambiguous (grace 10%: the box leaves out the outermost 10% of the DS events)."
+ },
+ "schema": 1,
+ "source": {
+  "artifact_id": "07cdcb084c86",
+  "kind": "workflow",
+  "nickname": "CTL Baseline v2",
+  "type": "pool",
+  "version": 1
+ },
+ "strict": {
+  "amp_uV": {
+   "hi": 3611.557056898117,
+   "lo": 198.62015065261326
+  },
+  "hf_db": {
+   "hi": 25.358565636871482,
+   "lo": -5.1227495565039325
+  },
+  "hw_ms": {
+   "hi": 63.423733008442106,
+   "lo": 5.982065540213711
+  }
+ },
+ "strict_counts": {
+  "amb": 0,
+  "ds": 2183,
+  "ied": 0,
+  "none": 2
+ },
+ "strict_rate": 0.0,
+ "strict_wrong": 0
+}

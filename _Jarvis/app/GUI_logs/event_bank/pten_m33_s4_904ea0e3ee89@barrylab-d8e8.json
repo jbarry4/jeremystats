@@ -1,0 +1,444 @@
+{
+  "_at": {
+    "added": "2026-10-20T20:30:09.178550+00:00",
+    "by_label": "2026-10-20T20:30:09.178550+00:00",
+    "curation_label": "2026-10-20T20:30:09.178550+00:00",
+    "duration_s": "2026-10-20T20:30:09.178550+00:00",
+    "events": "2026-10-20T20:30:09.178550+00:00",
+    "gid": "2026-10-20T20:30:09.178550+00:00",
+    "id": "2026-10-20T20:30:09.178550+00:00",
+    "label_names": "2026-10-20T20:30:09.178550+00:00",
+    "mouse": "2026-10-20T20:30:09.178550+00:00",
+    "n": "2026-10-20T20:30:09.178550+00:00",
+    "name": "2026-10-20T20:30:09.178550+00:00",
+    "note": "2026-10-20T20:30:09.178550+00:00",
+    "project": "2026-10-20T20:30:09.178550+00:00",
+    "recording_start": "2026-10-20T20:30:09.178550+00:00",
+    "schema": "2026-10-20T20:30:09.178550+00:00",
+    "session": "2026-10-20T20:30:09.178550+00:00",
+    "session_key": "2026-10-20T20:30:09.178550+00:00",
+    "session_label": "2026-10-20T20:30:09.178550+00:00",
+    "session_loose_key": "2026-10-20T20:30:09.178550+00:00",
+    "session_path": "2026-10-20T20:30:09.178550+00:00",
+    "source": "2026-10-20T20:30:09.178550+00:00",
+    "specified": "2026-10-20T20:30:09.178550+00:00",
+    "type": "2026-10-20T20:30:09.178550+00:00",
+    "type_name": "2026-10-20T20:30:09.178550+00:00",
+    "units": "2026-10-20T20:30:09.178550+00:00",
+    "version": "2026-10-20T20:30:09.178550+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "265e02f1db36": [
+        "set",
+        "2026-10-20T20:30:09.178550+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T20:30:09.178550+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T16:30:09-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 42
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 29.612915
+    },
+    {
+      "start": 32.677481
+    },
+    {
+      "start": 36.764132
+    },
+    {
+      "start": 42.397188
+    },
+    {
+      "start": 126.091218
+    },
+    {
+      "start": 157.682054
+    },
+    {
+      "start": 159.323899
+    },
+    {
+      "start": 159.673034
+    },
+    {
+      "start": 160.596556
+    },
+    {
+      "start": 295.733946
+    },
+    {
+      "start": 312.132083
+    },
+    {
+      "start": 331.155899
+    },
+    {
+      "start": 340.261516
+    },
+    {
+      "start": 345.995097
+    },
+    {
+      "start": 346.092245
+    },
+    {
+      "start": 942.226075
+    },
+    {
+      "start": 978.080828
+    },
+    {
+      "start": 986.539773
+    },
+    {
+      "start": 1025.940058
+    },
+    {
+      "start": 1036.285742
+    },
+    {
+      "start": 1053.457678
+    },
+    {
+      "start": 1055.162358
+    },
+    {
+      "start": 1061.050117
+    },
+    {
+      "start": 1064.951868
+    },
+    {
+      "start": 1067.694549
+    },
+    {
+      "start": 1080.503866
+    },
+    {
+      "start": 1210.812155
+    },
+    {
+      "start": 1225.839726
+    },
+    {
+      "start": 1229.700266
+    },
+    {
+      "start": 1237.263004
+    },
+    {
+      "start": 1264.937466
+    },
+    {
+      "start": 1267.724243
+    },
+    {
+      "start": 1282.435519
+    },
+    {
+      "start": 1294.596782
+    },
+    {
+      "start": 1307.271932
+    },
+    {
+      "start": 1393.029692
+    },
+    {
+      "start": 1402.426815
+    },
+    {
+      "start": 1402.426929
+    },
+    {
+      "start": 1403.112264
+    },
+    {
+      "start": 1443.784479
+    },
+    {
+      "start": 1595.449983
+    },
+    {
+      "start": 1652.972039
+    }
+  ],
+  "gid": "s6cdd64d005c4",
+  "id": "904ea0e3ee89",
+  "label_names": {},
+  "mouse": 33,
+  "n": 42,
+  "name": "Hidden IEDs (Root Canal)",
+  "note": "Taken out of the dentate spike set a28cf9b10de0 by Root Canal. A classifier's call, not a person's: these are candidates for Checkup.",
+  "project": "PTEN",
+  "recording_start": "2024-06-14T15:46:54+00:00",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m033_s004_2024-06-14_11-46-54",
+  "session_label": "PTEN m33 s4 2024-06-14",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "band_hi": 1000.0,
+      "band_lo": 500.0,
+      "centres": null,
+      "cluster_calls": {},
+      "cluster_names": {},
+      "complete_only": true,
+      "cross_ms": 100.0,
+      "drawn": [],
+      "entry_id": "a28cf9b10de0",
+      "filt": "ds",
+      "flank_ms": [
+        30.0,
+        60.0
+      ],
+      "flipped": [],
+      "flips": [],
+      "from_entry": "a28cf9b10de0",
+      "from_version": "br-1ed07298a0",
+      "hf_base_off_ms": 150.0,
+      "hf_base_win_ms": 40.0,
+      "hf_win_ms": 25.0,
+      "hi_hz": 100.0,
+      "k": 2,
+      "lo_hz": 5.0,
+      "mains_out": true,
+      "margin": null,
+      "n_init": 10,
+      "order": 3,
+      "pad_s": 0.3,
+      "params_hash": "7bc41bca727c",
+      "partial_t": [],
+      "read_fs": 5000.0,
+      "read_hash": "214540505b96",
+      "retry": [],
+      "seed": 0,
+      "snip_fs": 2000.0,
+      "snip_ms": 250.0,
+      "stamps_hash": "750aeab68462",
+      "tool": "rootcanal",
+      "wide_t": [
+        160.596556,
+        346.092245
+      ],
+      "win_ms": 25.0
+    },
+    "pipeline": "Root Canal",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-20T16:30:09-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 42
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "265e02f1db36",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 42,
+      "note": "Imported from Root Canal. 42 candidates, none decided yet.",
+      "snap": [
+        [
+          29.612915,
+          null
+        ],
+        [
+          32.677481,
+          null
+        ],
+        [
+          36.764132,
+          null
+        ],
+        [
+          42.397188,
+          null
+        ],
+        [
+          126.091218,
+          null
+        ],
+        [
+          157.682054,
+          null
+        ],
+        [
+          159.323899,
+          null
+        ],
+        [
+          159.673034,
+          null
+        ],
+        [
+          160.596556,
+          null
+        ],
+        [
+          295.733946,
+          null
+        ],
+        [
+          312.132083,
+          null
+        ],
+        [
+          331.155899,
+          null
+        ],
+        [
+          340.261516,
+          null
+        ],
+        [
+          345.995097,
+          null
+        ],
+        [
+          346.092245,
+          null
+        ],
+        [
+          942.226075,
+          null
+        ],
+        [
+          978.080828,
+          null
+        ],
+        [
+          986.539773,
+          null
+        ],
+        [
+          1025.940058,
+          null
+        ],
+        [
+          1036.285742,
+          null
+        ],
+        [
+          1053.457678,
+          null
+        ],
+        [
+          1055.162358,
+          null
+        ],
+        [
+          1061.050117,
+          null
+        ],
+        [
+          1064.951868,
+          null
+        ],
+        [
+          1067.694549,
+          null
+        ],
+        [
+          1080.503866,
+          null
+        ],
+        [
+          1210.812155,
+          null
+        ],
+        [
+          1225.839726,
+          null
+        ],
+        [
+          1229.700266,
+          null
+        ],
+        [
+          1237.263004,
+          null
+        ],
+        [
+          1264.937466,
+          null
+        ],
+        [
+          1267.724243,
+          null
+        ],
+        [
+          1282.435519,
+          null
+        ],
+        [
+          1294.596782,
+          null
+        ],
+        [
+          1307.271932,
+          null
+        ],
+        [
+          1393.029692,
+          null
+        ],
+        [
+          1402.426815,
+          null
+        ],
+        [
+          1402.426929,
+          null
+        ],
+        [
+          1403.112264,
+          null
+        ],
+        [
+          1443.784479,
+          null
+        ],
+        [
+          1595.449983,
+          null
+        ],
+        [
+          1652.972039,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}
