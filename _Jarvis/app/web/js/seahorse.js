@@ -36,6 +36,8 @@ BARRY.views.seahorse = (function () {
     cut: { kind: 'coronal', pos: 8490 }, story: true, exploded: false, crowd: true,
     play: null, stage: null, three: null, loading: null, volumesUp: false, crowdMade: false,
     lab: { notes: {}, views: {}, me: '' }, quiz: null, rec: null, railW: null, railSplit: 0.52,
+    times: {}, paths: true, labels: true, hist: { list: [], i: -1 }, evSpeed: null, evLoop: true, folds: {},
+    compose: { lec: { on: true, amp: 1, t: 24 }, mec: { on: false, amp: 1, t: 30 }, ca3: { on: false, amp: 1, t: 72 }, ec3: { on: false, amp: 0.8, t: 40 }, ripple: false, theta: false },
   };
   let root = null;
   const $ = (sel, r) => (r || root).querySelector(sel);
@@ -56,6 +58,8 @@ BARRY.views.seahorse = (function () {
     const n = parseInt(c.slice(1, 7), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
+  /* how long the heavy steps took (ms), for the frame-time sweep: _state.times */
+  function timed(name, fn) { const t0 = performance.now(); const r = fn(); S.times[name] = Math.round(performance.now() - t0); return r; }
   const fmtMB = (b) => (b / 1048576).toFixed(b > 1048576 * 10 ? 0 : 1) + ' MB';
   const reducedMotion = () => !!(BARRY.ui && BARRY.ui.reducedMotion && BARRY.ui.reducedMotion());
   const cellOf = (k) => S.kb && S.kb.cells.find((c) => c.key === k);
@@ -97,11 +101,8 @@ BARRY.views.seahorse = (function () {
                    'not seen': 'Not seen in data', cited: 'Cited, not tested', untested: 'Not testable here', error: 'Check failed' }[v.status] || v.status;
     return el('span', { class: 'sh-verdict ' + cls, text: word });
   }
-  const SEAHORSE_SVG = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
-    + '<path d="M27 8c-4.5 0-7.5 3.2-7.5 7 0 2.2 1 3.7 2.2 4.8-3.7 2.3-6.2 6.3-6.2 10.9 0 5.4 3.9 8.8 8.4 8.8 3.6 0 5.9-2.3 5.9-5.2 0-2.6-1.9-4.2-4-4.2-1.8 0-3 1.2-3 2.6"/>'
-    + '<path d="M27 8l8.5 1.6-4.7 3.6"/><circle cx="25.3" cy="12.6" r="1.1" fill="currentColor"/>'
-    + '<path d="M21.7 19.8c3.8 1.4 6 4.6 6 8.4"/><path d="M15.8 27.4c-2.6-.4-4.4-2.1-4.6-4.4"/>'
-    + '<path d="M29.4 18.2c2.2.2 3.8 1.4 4.6 3.2"/></svg>';
+  /* the tab's mark: a filled seahorse, snout left, tail curled (round 2) */
+  const SEAHORSE_SVG = '<svg viewBox="4 2 50 62" style="fill:currentColor;stroke:none"><path fill-rule="evenodd" d="M9 19.6 L19.6 18 C20.6 12.8 24.6 8.8 29.6 8.2 L31.4 3.8 L33.2 8.4 L36.6 6 L36.4 10.4 C39.6 12.2 41.2 15.8 40.8 19.4 L45 20.8 L41.4 23.6 C44.6 26.4 46.8 30.4 46.6 35 L51 37 L46.4 39.2 C45.6 44 42.4 47.8 38 49.8 C35.4 51 34 53.4 34.6 56 C35.6 59.8 33 62.4 29.4 61.8 C25.8 61.2 24.4 57.6 26.4 55.4 C27.8 53.9 30.4 54.6 30.2 56.6 C31.8 55 31.6 51.8 29.6 49.2 C26.4 45 23.6 39.6 24.6 33.6 C25.2 30.4 26.6 28 27.6 25.6 C27.9 24.8 27.7 23.6 26.9 23.2 L19.6 22.4 L9 22.6 C8 22.6 8 19.6 9 19.6 Z M30.6 13.6 a2.3 2.3 0 1 0 .01 0 Z"/></svg>';
   /* a named two-or-more-state switch (pressed = what is showing) */
   function seg(label, opts, cur, on) {
     const g = el('div', { class: 'seg', role: 'group', 'aria-label': label },
@@ -202,6 +203,7 @@ BARRY.views.seahorse = (function () {
           for (let x = 0; x < tw; x++) vol[dst + x] = px[src + x * 4];
         }
       }
+      if (r % 2 === 1) await new Promise((z) => setTimeout(z, 0));     // let the loading window breathe
     }
     bmp.close && bmp.close();
     return vol;
@@ -277,14 +279,14 @@ BARRY.views.seahorse = (function () {
       for (const n of want) {
         win.start(n);
         if (n === 'three') {
-          S.three = await import('./seahorse3d.js?v=2');
+          S.three = await import('./seahorse3d.js?v=3');
           win.bytes(n, 700000, 700000);
         } else if (n === 'rides.json') {
           S.rides = await getJSON('rides.json');
         } else {
           const raw = await fetchBytes(n, (g, t) => win.bytes(n, g, t));
           S.blobs[n] = unpack(await gunzip(raw));
-          if (n === 'fine10.shb.gz') { win.building('Unpacking the 10 µm Nissl…'); S.blobs[n].nissl = await decodeFine(S.blobs[n]); }
+          if (n === 'fine10.shb.gz') { win.building('Unpacking the 10 µm Nissl…'); const t0 = performance.now(); S.blobs[n].nissl = await decodeFine(S.blobs[n]); S.times.decodeFine = Math.round(performance.now() - t0); }
         }
         win.done(n);
       }
@@ -307,20 +309,46 @@ BARRY.views.seahorse = (function () {
   async function afterLoad() {
     const st = S.stage;
     if (!st) return;
-    if (S.blobs['mesh_brain.shb.gz'] && !st.has('brain')) st.addBrain(S.blobs['mesh_brain.shb.gz']);
-    if (S.blobs['mesh_hpf.shb.gz'] && !st.has('hpf')) st.addHpf(S.blobs['mesh_hpf.shb.gz'], (k) => REGION_COLORS[k]);
-    if (S.blobs['mesh_lamina.shb.gz'] && !st.has('lamina')) st.addLamina(S.blobs['mesh_lamina.shb.gz'], S.kb.lamina_colors);
+    if (S.blobs['mesh_brain.shb.gz'] && !st.has('brain')) timed('addBrain', () => st.addBrain(S.blobs['mesh_brain.shb.gz']));
+    if (S.blobs['mesh_hpf.shb.gz'] && !st.has('hpf')) timed('addHpf', () => st.addHpf(S.blobs['mesh_hpf.shb.gz'], (k) => REGION_COLORS[k]));
+    if (S.blobs['mesh_lamina.shb.gz'] && !st.has('lamina')) timed('addLamina', () => st.addLamina(S.blobs['mesh_lamina.shb.gz'], S.kb.lamina_colors));
     if (S.blobs['cells.shb.gz'] && !st.has('cells')) {
-      st.addCells(S.blobs['cells.shb.gz'], (t) => (cellOf(t) || {}).color || '#ccc');
+      timed('addCells', () => st.addCells(S.blobs['cells.shb.gz'], (t) => (cellOf(t) || {}).color || '#ccc'));
       st.setStory(S.story);
       showExtras();
     }
     if (!S.volumesUp && S.blobs['brain50.shb.gz'] && S.blobs['hip20.shb.gz']) {
-      st.setVolumes(volumesForStage());
+      S.volumesUp = 'loading';
+      const t0 = performance.now();
+      await st.setVolumes(volumesForStage());
+      S.times.volumes = Math.round(performance.now() - t0);
       st.setLuts(luts());
       S.volumesUp = true;
       applyHighlights();
     }
+    makePaths();
+  }
+  /* The two inputs no single tracing shows, drawn as bundles: the medial
+     perforant path (MEC II -> the middle molecular layer) and the
+     temporoammonic path (EC III -> CA1 lacunosum-moleculare). Their
+     routes are the ones the rides use (rides.json). */
+  const DRAWN = { mpp: { ride: 'ds2', color: () => (cellOf('stel') || {}).color || '#3d7dd8' },
+                  ta: { ride: 'caside', color: () => '#7a8fd9' } };
+  function drawnPath(key) {
+    const r = S.rides && (S.rides.rides || []).find((x) => x.key === DRAWN[key].ride);
+    const st = r && r.steps.find((s) => s.conn === key && s.path && s.path.length);
+    return st ? st.path : null;
+  }
+  function makePaths() {
+    const st = S.stage;
+    if (!st || S.pathsMade || !S.rides || !st.has('cells') || !st.setPath) return;
+    S.pathsMade = true;
+    Object.keys(DRAWN).forEach((k) => { const p = drawnPath(k); if (p) st.setPath(k, p, DRAWN[k].color(), S.paths); });
+  }
+  function showPaths(on) {
+    S.paths = !!on;
+    store.set({ paths: S.paths });
+    if (S.stage) Object.keys(DRAWN).forEach((k) => { const p = drawnPath(k); if (p) S.stage.setPath(k, p, DRAWN[k].color(), S.paths); });
   }
   /* The second LEC cell (AA1002: 230 mm of axon) only joins in when it has
      something to show: the DS1 volley, or when LEC cells are selected. */
@@ -392,7 +420,7 @@ BARRY.views.seahorse = (function () {
   function build() {
     root = document.getElementById('view-seahorse');
     const saved = store.get();
-    ['mode', 'level', 'schemPick', 'follow', 'story', 'crowd', 'railW', 'railSplit'].forEach((k) => { if (saved[k] != null) S[k] = saved[k]; });
+    ['mode', 'level', 'schemPick', 'follow', 'story', 'crowd', 'railW', 'railSplit', 'paths', 'labels', 'evSpeed', 'evLoop', 'folds'].forEach((k) => { if (saved[k] != null) S[k] = saved[k]; });
     if (saved.slice) Object.assign(S.slice, saved.slice);
     if (saved.probe) Object.assign(S.probe, saved.probe);
     if (saved.cut) Object.assign(S.cut, saved.cut);
@@ -430,6 +458,7 @@ BARRY.views.seahorse = (function () {
     body.appendChild(el('div', { class: 'sh-steps' }));
     wireDividers(body);
     applyRailSize();
+    new ResizeObserver(() => { fitSchemText(); updateLabels(); }).observe(body);
     S.built = true;
     new MutationObserver(() => { if (BARRY.state.view === 'seahorse') themeChanged(); })
       .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
@@ -482,7 +511,10 @@ BARRY.views.seahorse = (function () {
           S.story ? 'story' : 'traced', (k) => { S.story = k === 'story'; store.set({ story: S.story }); if (S.stage) S.stage.setStory(S.story); renderBar();
             toast(S.story ? 'Showing cells positioned for the story: each moved by its gap to touch its partner.' : 'Showing every tracing where it was registered; the synapses open up by their gaps.', 'ok'); }));
         bar.appendChild(seg('Crowd', [['on', 'Shown'], ['off', 'Hidden']], S.crowd ? 'on' : 'off', (k) => { S.crowd = k === 'on'; store.set({ crowd: S.crowd }); ensureCrowd(); if (S.stage) S.stage.showCrowd(S.crowd); renderBar(); }));
+        if (S.cut.kind !== 'none' || S.level === 'slab') bar.appendChild(seg('Labels', [[true, 'Shown'], [false, 'Hidden']], S.labels, (k) => { S.labels = k; store.set({ labels: k }); updateLabels(); renderBar(); }));
       }
+      bar.appendChild(seg('Paths', [[true, 'Shown', 'The medial perforant path (MEC → dentate) and the temporoammonic path (EC III → CA1), drawn: no single tracing shows them'], [false, 'Hidden']],
+        S.paths, (k) => { showPaths(k); renderBar(); }));
     }
     if (S.mode === 'slice') {
       bar.appendChild(seg('', [['coronal', 'Coronal'], ['sagittal', 'Sagittal'], ['horizontal', 'Horizontal']], S.slice.plane, (k) => {
@@ -496,6 +528,7 @@ BARRY.views.seahorse = (function () {
       bar.appendChild(seg('Color', [['lamina', 'Layers'], ['allen', 'Allen'], ['nissl', 'Nissl']], S.slice.layer, (k) => { S.slice.layer = k; if (S.stage) S.stage.setSliceMode(k); renderBar(); saveSlice(); }));
       bar.appendChild(seg('Probe', [[true, 'Shown'], [false, 'Hidden']], S.probe.on, (k) => { showProbe(k); renderBar(); }));
       bar.appendChild(seg('Mini 3D', [[true, 'Shown'], [false, 'Hidden']], S.slice.mini, (k) => { S.slice.mini = k; if (S.stage) S.stage.mini = k; renderBar(); saveSlice(); }));
+      bar.appendChild(seg('Labels', [[true, 'Shown'], [false, 'Hidden']], S.labels, (k) => { S.labels = k; store.set({ labels: k }); updateLabels(); renderBar(); }));
       bar.appendChild(el('span', { class: 'sh-gap' }));
       bar.appendChild(el('button', { class: 'mini', text: 'Whole section', onclick: () => sliceZoom('whole') }));
       bar.appendChild(el('button', { class: 'mini', text: 'Hippocampus', onclick: () => sliceZoom('hippocampus') }));
@@ -519,7 +552,7 @@ BARRY.views.seahorse = (function () {
     store.set({ mode: m });
     root.classList.toggle('sh-mode-schem', m === 'schematic');
     renderBar();
-    if (m === 'schematic') { renderSchemFull(); if (S.stage) S.stage.pause(); renderRail(); return; }
+    if (m === 'schematic') { renderSchemFull(); if (S.stage) S.stage.pause(); renderRail(); updateLabels(); return; }
     const ok = await ensureStage();
     if (!ok) return;
     S.stage.resume();
@@ -539,6 +572,7 @@ BARRY.views.seahorse = (function () {
     syncProbe();
     applyFocusAll();
     renderRail();
+    updateLabels();
   }
   async function ensureStage() {
     if (S.stage) return true;
@@ -589,6 +623,7 @@ BARRY.views.seahorse = (function () {
     if (S.level === 'brain') S.stage.setCut({ kind: 'none' });
     else if (S.level === 'slab') S.stage.setCut({ kind: 'slab', pos: S.cut.pos, thick: 300 });
     else S.stage.setCut({ kind: S.cut.kind, pos: S.cut.pos });
+    updateLabels();
   }
 
   /* ---------- the slice ---------- */
@@ -739,15 +774,20 @@ BARRY.views.seahorse = (function () {
   }
   function onStagePick(ud) {
     const info = infoFor(ud);
-    select(info ? info.sel : null);
+    if (info) pick(info.sel, 'stage'); else select(null);
   }
   let camT = 0;
   function onStageCamera() {
     clearTimeout(camT);
     camT = setTimeout(updateHere, 160);
+    const lb = $('.sh-labels');
+    if (lb && S.mode === '3d') lb.classList.add('moving');
+    clearTimeout(labT);
+    labT = setTimeout(() => { drawLabels(); const l2 = $('.sh-labels'); if (l2) l2.classList.remove('moving'); }, S.mode === '3d' ? 220 : 60);
   }
   function onStageFrame() {
     if (S.play && S.play.kind === 'ride') updateRideTag();
+    else placeSelTag();
   }
   /* What sits at the middle of the view: the "you are here" of the schematic. */
   function updateHere() {
@@ -775,8 +815,137 @@ BARRY.views.seahorse = (function () {
   }
 
   /* ==================================================================
+     Words on the stage: layer names on the section, the probe's runs of
+     contacts, and a tag on whatever is selected
+     ================================================================== */
+  let labT = 0;
+  function updateLabels() { clearTimeout(labT); labT = setTimeout(drawLabels, 90); }
+  function stageBox() {
+    const host = $('.sh-host'), stg = $('.sh-stage');
+    if (!host || !stg) return null;
+    const hr = host.getBoundingClientRect(), sr = stg.getBoundingClientRect();
+    return { ox: hr.left - sr.left, oy: hr.top - sr.top, W: hr.width, H: hr.height };
+  }
+  const sectionShowing = () => S.mode === 'slice' || (S.mode === '3d' && S.level !== 'brain' && (S.cut.kind !== 'none' || S.level === 'slab'));
+  function drawLabels() { timed('labels', drawLabels0); }
+  function drawLabels0() {
+    const stg = $('.sh-stage');
+    if (!stg) return;
+    let box = $('.sh-labels');
+    if (!box) { box = el('div', { class: 'sh-labels', 'aria-hidden': 'true' }); stg.appendChild(box); }
+    box.innerHTML = '';
+    S.labelPos = new Map();
+    const B = stageBox();
+    if (!B || !S.stage || S.mode === 'schematic' || !S.volumesUp || (S.play && S.play.kind === 'ride')) { placeSelTag(); return; }
+    const placed = [];
+    // the mini 3D view sits in the bottom-left corner of a section: words stay off it
+    if (S.mode === 'slice' && S.slice.mini) { const w = Math.round(Math.min(220, B.W * 0.24)), h = Math.round(w * 0.78); placed.push([6, B.H - 18 - h, w + 12, h + 12]); }
+    const put = (x, y, text, cls, w0) => {
+      const w = w0 || text.length * 6.4 + 12, h = 18;
+      const bx = x - w / 2, by = y - h / 2;
+      if (bx < 4 || by < 4 || bx + w > B.W - 4 || by + h > B.H - 4) return false;
+      if (placed.some((r) => bx < r[0] + r[2] + 3 && bx + w + 3 > r[0] && by < r[1] + r[3] + 2 && by + h + 2 > r[1])) return false;
+      placed.push([bx, by, w, h]);
+      box.appendChild(el('span', { class: 'sh-word ' + (cls || ''), text, style: 'left:' + Math.round(B.ox + x) + 'px;top:' + Math.round(B.oy + y) + 'px' }));
+      return true;
+    };
+    // the probe: each run of contacts in one layer, beside the ribbon
+    if (S.probe.on && S.blobs['brain50.shb.gz']) {
+      computeProbe();
+      const W = S.three.W;
+      probeRuns().forEach((r) => {
+        const mid = contactCcf(Math.round((r.from + r.to) / 2) - 1);
+        let p;
+        if (S.mode === 'slice') { p = S.stage.ccfToSlicePx(mid); if (Math.abs(p[2]) > 250) return; }
+        else { p = S.stage.project(W(mid[0], mid[1], mid[2])); if (p[2] > 1) return; }
+        const text = (r.from === r.to ? 'ch ' + r.from : 'ch ' + r.from + '–' + r.to) + ' · ' + r.name;
+        const w = text.length * 6.2 + 12;
+        if (!put(p[0] + 26 + w / 2, p[1], text, 'probe', w)) put(p[0] - 26 - w / 2, p[1], text, 'probe', w);
+      });
+    }
+    if (S.labels && sectionShowing()) {
+      const step = 12, acc = new Map();
+      const wide = S.mode === 'slice' && S.slice.k > 9;
+      const Bl = S.blobs['brain50.shb.gz'];
+      for (let y = step / 2; y < B.H; y += step) for (let x = step / 2; x < B.W; x += step) {
+        const c = S.stage.screenToSection(x, y);
+        if (!c) continue;
+        let key = null;
+        const lab = labAt(c[0], c[1], c[2]);
+        if (lab) key = 'L' + lab;
+        else if (wide && Bl) {
+          const i = Math.floor(c[0] / 50), j = Math.floor(c[1] / 50), k = Math.floor(c[2] / 50);
+          if (i >= 0 && j >= 0 && k >= 0 && i < 264 && j < 160 && k < 228) { const a = Bl.arrays.labels[(i * 160 + j) * 228 + k]; if (a) key = 'A' + a; }
+        }
+        if (!key) continue;
+        let g = acc.get(key);
+        if (!g) { g = { n: 0, sx: 0, sy: 0, pts: [] }; acc.set(key, g); }
+        g.n++; g.sx += x; g.sy += y; g.pts.push(x, y);
+      }
+      const groups = [...acc.entries()].filter(([k, g]) => g.n >= (k[0] === 'L' ? 5 : 30)).sort((a, b) => b[1].n - a[1].n);
+      for (const [k, g] of groups) {
+        // the sample nearest the middle that is inside it (a C-shaped layer's middle is outside)
+        const mx = g.sx / g.n, my = g.sy / g.n;
+        let bx = 0, by = 0, bd = 1e18;
+        for (let i = 0; i < g.pts.length; i += 2) { const d = (g.pts[i] - mx) ** 2 + (g.pts[i + 1] - my) ** 2; if (d < bd) { bd = d; bx = g.pts[i]; by = g.pts[i + 1]; } }
+        S.labelPos.set(k, [bx, by]);
+        let text;
+        if (k[0] === 'L') { const l = lamByCode(+k.slice(1)); text = l ? l.label : ''; }
+        else { const st = allenStruct(+k.slice(1)); text = st.acronym || ''; }
+        if (text) put(bx, by, text, k[0] === 'L' ? 'layer' : 'allen');
+      }
+    }
+    placeSelTag();
+  }
+  /* the selected thing's tag: on its label in a section, else at its middle */
+  function selName(sel) {
+    if (sel.type === 'cell') return (cellOf(sel.key) || {}).label || sel.key;
+    if (sel.type === 'region') return (regionOf(sel.key) || {}).label || sel.key;
+    if (sel.type === 'lamina') { const l = lamOf(sel.key); return l ? l.label + ' · ' + l.name : sel.key; }
+    if (sel.type === 'conn') return (connOf(sel.key) || {}).label || sel.key;
+    return sel.name || sel.key;
+  }
+  function selWorld(sel) {
+    const st = S.stage;
+    const t = targetsFor(sel);
+    if (t.cells.size) return st.cellSomaW([...t.cells][0]);
+    const b = (t.layers.size === 1 && st.bounds('lamina', [...t.layers][0], true)) || ([...t.regions].length && st.bounds('hpf', [...t.regions][0], true));
+    return b ? b[0].clone().add(b[1]).multiplyScalar(0.5) : null;
+  }
+  function placeSelTag() {
+    const stg = $('.sh-stage');
+    if (!stg) return;
+    let tag = $('.sh-seltag');
+    const sel = S.sel;
+    const show = sel && NAVIGABLE.has(sel.type) && S.stage && S.mode !== 'schematic' && !(S.play && S.play.kind === 'ride');
+    if (!show) { if (tag) tag.style.display = 'none'; return; }
+    if (!tag) { tag = el('div', { class: 'sh-seltag', 'aria-hidden': 'true' }); stg.appendChild(tag); }
+    const B = stageBox();
+    let p = null;
+    if (sel.type === 'lamina' || sel.type === 'region') {
+      const t = targetsFor(sel);
+      const room = (q) => B && q[0] > 30 && q[1] > 40 && q[0] < B.W - 30 && q[1] < B.H - 10;
+      for (const k of t.layers) { const q = S.labelPos && S.labelPos.get('L' + (lamOf(k) || {}).code); if (q && room(q)) { p = q; break; } }
+    }
+    if (!p && sel.type !== 'allen') {
+      if (!S.selAnchor) S.selAnchor = selWorld(sel);
+      if (S.selAnchor) { const q = S.stage.project(S.selAnchor); if (q[2] <= 1) p = q; }
+    }
+    // the tag rides 30 px above its point: too near the top and it would be cut off, so it waits
+    if (!p || !B || p[0] < 4 || p[1] < 36 || p[0] > B.W - 4 || p[1] > B.H - 4) { tag.style.display = 'none'; return; }
+    const text = selName(sel);
+    if (tag.textContent !== text) tag.textContent = text;
+    tag.style.display = 'block';
+    // near the right edge the tag hangs to the left of its point, so it is never cut off
+    const left = p[0] + 16 + tag.offsetWidth > B.W - 6;
+    tag.classList.toggle('left', left);
+    tag.style.transform = 'translate(' + Math.round(B.ox + p[0] - (left ? tag.offsetWidth + 20 : 0)) + 'px,' + Math.round(B.oy + p[1]) + 'px)';
+  }
+
+  /* ==================================================================
      Selection, hover and focus, kept in step across the views
      ================================================================== */
+  const NAVIGABLE = new Set(['cell', 'region', 'conn', 'lamina', 'allen']);
   function select(sel, o) {
     o = o || {};
     S.sel = sel;
@@ -786,9 +955,168 @@ BARRY.views.seahorse = (function () {
       S.focus = sel ? focusFor(sel) : null;
       applyFocusAll();
     }
+    // back / forward: every selection of a thing is a stop
+    if (!o.hist && sel && NAVIGABLE.has(sel.type)) {
+      const H = S.hist, cur = H.list[H.i];
+      if (!cur || cur.type !== sel.type || cur.key !== sel.key) {
+        H.list = H.list.slice(0, H.i + 1);
+        H.list.push(Object.assign({}, sel));
+        if (H.list.length > 60) H.list.shift();
+        H.i = H.list.length - 1;
+      }
+    }
+    if (S.stage && S.stage.highlight) S.stage.highlight('sel', sel && NAVIGABLE.has(sel.type) ? targetsFor(sel) : null);
+    S.selAnchor = null;
     showExtras();
     showCard(sel);
     renderRail();
+    placeSelTag();
+  }
+  /* A click from the schematic, a card or the search: select it and hone
+     the view in on it (with context: about 40% of the view). */
+  function pick(sel, from) {
+    select(sel);
+    if (sel && NAVIGABLE.has(sel.type)) hone(sel, from);
+  }
+  function histGo(d) {
+    const H = S.hist;
+    const i = H.i + d;
+    if (i < 0 || i >= H.list.length) return;
+    H.i = i;
+    const sel = H.list[i];
+    select(sel, { hist: true });
+    hone(sel, 'hist');
+  }
+  /* What a selection is on the stage: hpf meshes (their Allen keys),
+     lamina keys and cell instances. */
+  const HPF_KEYS = ['DG', 'CA1', 'CA2', 'CA3', 'SUB', 'ProS', 'ENTl', 'ENTm', 'PRE', 'POST', 'PAR', 'PERI', 'ECT', 'VISpor'];
+  const hpfKeyOf = (acr) => HPF_KEYS.filter((k) => acr === k || acr.startsWith(k)).sort((a, b) => b.length - a.length)[0] || null;
+  const layersOfRegion = (rk) => S.kb.lamina.filter((l) => regionOfLayer(l.key) === rk).map((l) => l.key);
+  function targetsFor(sel) {
+    const t = { regions: new Set(), layers: new Set(), cells: new Set(), allen: new Set() };
+    if (!sel || !S.kb) return t;
+    const addRegion = (rk) => ((regionOf(rk) || {}).allen || []).forEach((a) => { t.allen.add(a); const h = hpfKeyOf(a); if (h) t.regions.add(h); });
+    if (sel.type === 'cell') instancesOfType(sel.key).forEach((k) => t.cells.add(k));
+    else if (sel.type === 'region') { addRegion(sel.key); layersOfRegion(sel.key).forEach((k) => t.layers.add(k)); }
+    else if (sel.type === 'lamina') { t.layers.add(sel.key); const rk = regionOfLayer(sel.key); if (rk) ((regionOf(rk) || {}).allen || []).forEach((a) => { const h = hpfKeyOf(a); if (h) t.regions.add(h); }); }
+    else if (sel.type === 'conn') {
+      const c = connOf(sel.key);
+      if (c) {
+        [c.from, c.to].forEach((k) => { if (cellOf(k)) instancesOfType(k).forEach((i) => t.cells.add(i)); else addRegion(k); });
+        (c.layer || []).forEach((l) => t.layers.add(l));
+      }
+    } else if (sel.type === 'allen' && sel.key) { t.allen.add(sel.key); const h = hpfKeyOf(sel.key); if (h) t.regions.add(h); }
+    return t;
+  }
+  /* Allen acronym -> every label index under it in the 50 um annotation. */
+  const allenIdxCache = new Map();
+  function allenIdxFor(acr) {
+    if (allenIdxCache.has(acr)) return allenIdxCache.get(acr);
+    const B = S.blobs['brain50.shb.gz'];
+    const out = [];
+    if (B) {
+      const st = B.header.structures;
+      const top = st.find((s) => s.acronym === acr);
+      if (top) st.forEach((s, i) => { if (s.id === top.id || (s.path || []).includes(top.id)) out.push(i); });
+      allenIdxCache.set(acr, out);
+    }
+    return out;
+  }
+  /* The middle of a label in the 20 um hippocampus volume (CCF um), right side. */
+  const codeCentre = new Map();
+  function labelCentre(codes) {
+    const key = codes.slice().sort().join(',');
+    if (codeCentre.has(key)) return codeCentre.get(key);
+    const H = S.blobs['hip20.shb.gz'];
+    if (!H) return null;
+    const want = new Set(codes);
+    const o = H.header.origin_um, sh = H.header.arrays[0].shape, L = H.arrays.labels;
+    let n = 0, a = 0, d = 0, m = 0;
+    for (let i = 0; i < sh[0]; i += 2) for (let j = 0; j < sh[1]; j++) for (let k = 0; k < sh[2]; k++) {
+      if (!want.has(L[(i * sh[1] + j) * sh[2] + k])) continue;
+      n++; a += i; d += j; m += k;
+    }
+    const c = n ? [o[0] + (a / n) * 20 + 10, o[1] + (d / n) * 20 + 10, o[2] + (m / n) * 20 + 10] : null;
+    codeCentre.set(key, c);
+    return c;
+  }
+  /* Hone in: frame the thing with room around it; open a cut through it
+     when it is hidden inside the clay; in a section, move to the plane
+     nearest it. */
+  async function hone(sel, from) {
+    if (!sel || !S.stage || S.mode === 'schematic' || (S.play && S.play.kind === 'ride')) return;
+    const t = targetsFor(sel);
+    const THREE_W = S.three.W;
+    if (S.mode === '3d') {
+      if (from === 'stage' && sel.type !== 'cell' && sel.type !== 'region') return;
+      if (S.level === 'brain' && sel.type !== 'allen') { await setLevel('hpf'); }
+      const st = S.stage;
+      const pts = [];
+      const pad = (v, r) => { pts.push({ x: v.x - r, y: v.y - r, z: v.z - r }, { x: v.x + r, y: v.y + r, z: v.z + r }); };
+      t.cells.forEach((k) => { const s = st.cellSomaW(k); if (s) pad(s, 0.28); });
+      let lamBox = null;
+      t.layers.forEach((k) => { const b = st.bounds('lamina', k, true); if (b) { pts.push(...b); lamBox = lamBox || b; } });
+      if (!t.layers.size) t.regions.forEach((k) => { const b = st.bounds('hpf', k, true); if (b) pts.push(...b); });
+      if (!pts.length) return;
+      let dir = null;
+      // a layer is inside the clay: cut through it, and look at the cut face
+      if (sel.type === 'lamina' && from !== 'stage') {
+        const code = (lamOf(sel.key) || {}).code;
+        const c = code ? labelCentre([code]) : null;
+        if (c) {
+          if (S.level === 'slab') { S.cut.pos = Math.round(c[0] / 10) * 10; }
+          else {
+            if (S.cut.kind === 'none') S.cut.kind = 'coronal';
+            S.cut.pos = Math.round((S.cut.kind === 'coronal' ? c[0] : S.cut.kind === 'sagittal' ? c[2] : c[1]) / 10) * 10;
+          }
+          store.set({ cut: S.cut });
+          applyCut();
+          renderBar();
+          const kind = S.level === 'slab' ? 'coronal' : S.cut.kind;
+          const n = kind === 'coronal' ? [0, 0, 1] : kind === 'sagittal' ? [1, 0, 0] : [0, -1, 0];
+          const d0 = st.camDir();
+          const dn = d0[0] * n[0] + d0[1] * n[1] + d0[2] * n[2];
+          if (dn > -0.45) dir = [0, 1, 2].map((i) => d0[i] - n[i] * (dn + 0.8));
+          // frame the layer where the cut crosses it, not its whole sweep
+          const w = THREE_W(c[0], c[1], c[2]);
+          pts.length = 0;
+          pad({ x: w[0], y: w[1], z: w[2] }, 0.55);
+        }
+      }
+      st.frameOn(pts, 1100, 0.4, dir, { noFarther: true });
+      return;
+    }
+    if (S.mode === 'slice') {
+      if (from === 'stage') return;
+      let c = null;
+      if (t.cells.size) { const s = S.stage.cellSomaW([...t.cells][0]); if (s) c = S.stage.toCcf(s.x, s.y, s.z); }
+      if (!c) {
+        const codes = [...t.layers].map((k) => (lamOf(k) || {}).code).filter(Boolean);
+        if (codes.length) c = labelCentre(codes);
+      }
+      if (!c) return;
+      const ax = S.slice.custom || sliceAxes();
+      // move the plane (keeping its tilt) so it passes through the thing
+      const b = BASES[S.slice.plane];
+      S.slice.pos = Math.round(c[0] * b.N[0] + c[1] * b.N[1] + c[2] * b.N[2]);
+      const onPlane = c.slice();
+      S.slice.C = onPlane;
+      // centre on the nearest voxel of a layer on this plane (its middle can be in the hilus)
+      const codes = new Set([...t.layers].map((k) => (lamOf(k) || {}).code).filter(Boolean));
+      if (codes.size && !t.cells.size) {
+        let best = null, bd = 1e18;
+        for (let du = -1500; du <= 1500; du += 40) for (let dv = -1500; dv <= 1500; dv += 40) {
+          const p = [0, 1, 2].map((i) => onPlane[i] + ax.U[i] * du + ax.V[i] * dv);
+          if (codes.has(sampleAt(p[0], p[1], p[2]).lam)) { const d = du * du + dv * dv; if (d < bd) { bd = d; best = p; } }
+        }
+        if (best) S.slice.C = best;
+      }
+      const host = $('.sh-host').getBoundingClientRect();
+      const want = Math.max(2600 / Math.max(100, host.width), 2000 / Math.max(100, host.height));
+      if (S.slice.k > want) S.slice.k = want;
+      renderBar();
+      pushSlice();
+    }
   }
   function normHere(sel) {
     if (sel.type === 'allen') return null;
@@ -798,12 +1126,10 @@ BARRY.views.seahorse = (function () {
     const same = (a, b) => (!a && !b) || (a && b && a.type === b.type && a.key === b.key);
     if (same(sel, S.hover)) return;
     S.hover = sel;
+    S.hoverFrom = from;
     applySchem();
-    if (from !== 'stage' && S.stage) {
-      // the schematic is hovering: light the same thing on the stage
-      if (sel && sel.type === 'cell') S.stage.glowCells(instances().map((c) => c.key), false), S.stage.glowCells(instancesOfType(sel.key), true);
-      else S.stage.glowCells(instances().map((c) => c.key), false);
-    }
+    // the schematic or a card is hovering: the same thing glows on the stage and the rest steps back
+    if (from !== 'stage' && S.stage && S.stage.highlight) S.stage.highlight('hover', sel ? targetsFor(sel) : null);
     applyHighlights();
   }
   function focusFor(sel) {
@@ -859,17 +1185,33 @@ BARRY.views.seahorse = (function () {
     if (S.focus) S.focus.layers.forEach((k) => { const c = codeOf(k); if (c) lam.set(c, acc.concat(0.32)); });
     if (S.sel && S.sel.type === 'lamina') { const c = codeOf(S.sel.key); if (c) lam.set(c, acc.concat(0.5)); }
     if (S.sel && S.sel.type === 'allen' && S.sel.idx) allen.set(S.sel.idx, acc.concat(0.4));
-    if (S.hover && S.hover.type === 'lamina') { const c = codeOf(S.hover.key); if (c) lam.set(c, acc.concat(0.42)); }
-    if (S.hover && S.hover.type === 'allen' && S.hover.idx) allen.set(S.hover.idx, acc.concat(0.3));
+    // hover: the thing glows in the section and everything else steps back
+    let dimRest = false;
+    if (S.hover) {
+      if (S.hover.type === 'allen') { if (S.hover.idx) { allen.set(S.hover.idx, acc.concat(0.45)); dimRest = true; } }
+      else {
+        const t = targetsFor(S.hover);
+        t.layers.forEach((k) => { const c = codeOf(k); if (c) { lam.set(c, acc.concat(0.55)); dimRest = true; } });
+        if (!t.layers.size) t.allen.forEach((a) => allenIdxFor(a).forEach((i) => { allen.set(i, acc.concat(0.42)); dimRest = true; }));
+      }
+    }
     // the quiz's layer: lit strongly, and pulsing, so it is unmistakable
     if (S.quiz && S.quiz.open && S.quizLayer) { const c = codeOf(S.quizLayer); if (c) pulse.set(c, acc.concat(0.85)); }
-    const ev = S.play && (S.play.kind === 'event' || (S.play.kind === 'ride' && S.play.sink)) ? S.play : null;
-    if (ev && ev.sink) {
+    const P = S.play;
+    if (P && P.kind === 'event' && P.model) {
+      // the event's current source density at this moment, painted into its layers
       const sink = hexRgb(tok('--err', '#d6362e')), src = hexRgb('#2e70d6');
-      ev.sink.forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, sink.concat(0.7)); });
-      (ev.source || []).forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, src.concat(0.45)); });
+      const live = liveCsd(P);
+      for (const [k, v] of live) { const c = codeOf(k); if (c && Math.abs(v) > 0.04) pulse.set(c, (v < 0 ? sink : src).concat(Math.min(0.9, 0.25 + Math.abs(v) * 0.7))); }
+      // the layers' own colors step back, so red and blue mean sink and source only
+      dimRest = true;
+    } else if (P && P.kind === 'ride' && P.sink) {
+      const sink = hexRgb(tok('--err', '#d6362e')), src = hexRgb('#2e70d6');
+      P.sink.forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, sink.concat(0.7)); });
+      (P.source || []).forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, src.concat(0.45)); });
     }
-    S.stage.setHighlights({ lam, allen, pulse });
+    S.stage.setHighlights({ lam, allen, pulse, dimRest });
+    if (P && P.kind === 'event' && S.stage.setPulse) S.stage.setPulse(1);
   }
 
   /* ==================================================================
@@ -877,14 +1219,14 @@ BARRY.views.seahorse = (function () {
      ================================================================== */
   const schemHelpers = () => ({
     kb: S.kb, cellOf, regionOf, connOf, lamOf, verdictOf, regionOfLayer,
-    select: (sel) => select(sel), hover: (sel) => { setHover(sel, 'schem'); if (sel) showSchemTip(sel); else hideSchemTip(); },
+    select: (sel) => pick(sel, 'schem'), hover: (sel) => { setHover(sel, 'schem'); if (sel) showSchemTip(sel); else hideSchemTip(); },
     notes: (type, key) => notesFor(type, key).length,
   });
   function schemKind() {
     if (S.schemPick !== 'auto') return S.schemPick;
     if (S.mode === 'schematic') return S.schemFullPick || 'circuit';
     if (S.sel && S.sel.type === 'cell' && !(S.play && S.play.kind === 'ride')) return 'cell';
-    if (S.play && ['ds1', 'ds2', 'dentate'].includes(S.play.key)) return 'dentate';
+    if (S.play && (S.play.kind === 'event' || ['ds1', 'ds2', 'dentate'].includes(S.play.key))) return 'dentate';
     if (S.mode === '3d' && S.level === 'slab') return 'dentate';
     const hr = S.here ? (S.here.type === 'lamina' ? regionOfLayer(S.here.key) : S.here.type === 'region' ? S.here.key : null) : null;
     if (S.mode === 'slice' && S.slice.k && S.slice.k < 5 && (hr === 'dg' || hr === 'ca3')) return 'dentate';
@@ -896,10 +1238,15 @@ BARRY.views.seahorse = (function () {
     const kind = S.mode === 'schematic' ? null : schemKind();
     root.classList.toggle('sh-no-schem', S.mode === 'schematic');
     head.innerHTML = '';
+    const H = S.hist;
+    head.appendChild(el('span', { class: 'sh-hist' }, [
+      el('button', { class: 'mini', text: '‹', title: 'Back to the last thing you selected (Alt+←)', 'aria-label': 'Back', disabled: H.i <= 0, onclick: () => histGo(-1) }),
+      el('button', { class: 'mini', text: '›', title: 'Forward (Alt+→)', 'aria-label': 'Forward', disabled: H.i >= H.list.length - 1, onclick: () => histGo(1) }),
+    ]));
     if (kind) {
       head.appendChild(seg('', [['auto', 'Auto', 'Follows what you look at'], ['circuit', 'Circuit'], ['dentate', 'By layer'], ['cell', 'Cell', 'The selected cell\'s inputs and outputs']], S.schemPick,
         (k) => { S.schemPick = k; store.set({ schemPick: k }); renderRail(); }));
-      head.appendChild(el('span', { class: 'sh-rail-what', text: kind === 'cell' ? 'Wiring of the ' + ((cellOf((S.sel || {}).key) || {}).label || 'cell') : kind === 'dentate' ? 'Dentate and CA3, by layer' : 'Hippocampal formation' }));
+      head.appendChild(el('span', { class: 'sh-rail-what', text: kind === 'cell' ? 'Wiring of the ' + ((cellOf((S.sel || {}).key) || {}).label || 'cell') : kind === 'dentate' ? 'Dentate to subiculum, by layer' : 'Hippocampal formation' }));
       head.appendChild(seg('Follow', [[true, 'On'], [false, 'Off']], S.follow, (k) => { S.follow = k; store.set({ follow: k }); renderRail(); }));
     }
     const box = $('.sh-rail-schem');
@@ -907,6 +1254,8 @@ BARRY.views.seahorse = (function () {
     const sig = kind + ':' + (cellKey || '') + ':' + Object.keys(S.lab.notes || {}).length;
     if (kind && (S.schemShown !== sig || !box.firstChild)) {
       const svgNode = kind === 'cell' ? BARRY.shSchem.cell(schemHelpers(), cellKey) : kind === 'dentate' ? BARRY.shSchem.dentate(schemHelpers()) : BARRY.shSchem.circuit(schemHelpers());
+      // the drawing under the pointer is going away: so is its hover (no pointerleave will come)
+      if (S.hover && S.hoverFrom === 'schem') { setHover(null, 'schem'); hideSchemTip(); }
       box.innerHTML = '';
       box.appendChild(svgNode);
       if (!reducedMotion()) { svgNode.classList.add('sh-fade-in'); }
@@ -914,24 +1263,34 @@ BARRY.views.seahorse = (function () {
     }
     if (cellKey) S.lastCell = cellKey;
     applySchem();
+    fitSchemText();
+  }
+  /* words in the drawings stay the same size on screen however the rail is sized */
+  let fitT = 0;
+  function fitSchemText(later) {
+    clearTimeout(fitT);
+    const go = () => { if (!root) return; root.querySelectorAll('.sh-rail-schem svg, .sh-schem-full svg').forEach((s) => BARRY.shSchem.fitText(s)); };
+    if (later) fitT = setTimeout(go, later); else go();
   }
   function applySchem() {
     const st = { focus: S.focus, hover: S.hover, sel: S.sel, here: S.here, trail: S.trail,
                  ds: S.play && S.play.sink ? { sink: S.play.sink, source: S.play.source || [] } : null,
                  cellRegion: (k) => (cellOf(k) || {}).region };
     const rail = $('.sh-rail-schem svg');
-    if (rail) { BARRY.shSchem.apply(rail, st); BARRY.shSchem.follow(rail, S.here, S.follow); }
+    if (rail) { BARRY.shSchem.apply(rail, st); BARRY.shSchem.follow(rail, S.here, S.follow); fitSchemText(650); }
     const full = $('.sh-schem-full svg');
     if (full) BARRY.shSchem.apply(full, st);
   }
   function renderSchemFull() {
     const box = $('.sh-schem-full');
+    if (S.hover && S.hoverFrom === 'schem') setHover(null, 'schem');
     box.innerHTML = '';
     const pick = S.schemFullPick || 'circuit';
-    box.appendChild(el('div', { class: 'sh-schem-tabs' }, [seg('', [['circuit', 'Circuit'], ['dentate', 'Dentate, by layer']], pick,
+    box.appendChild(el('div', { class: 'sh-schem-tabs' }, [seg('', [['circuit', 'Circuit'], ['dentate', 'By layer']], pick,
       (k) => { S.schemFullPick = k; renderSchemFull(); })]));
     box.appendChild(pick === 'dentate' ? BARRY.shSchem.dentate(schemHelpers()) : BARRY.shSchem.circuit(schemHelpers()));
     applySchem();
+    fitSchemText();
   }
   let schemTipT = 0;
   function showSchemTip(sel) {
@@ -954,9 +1313,17 @@ BARRY.views.seahorse = (function () {
   function showCard(sel) {
     if (S.quiz && S.quiz.open && !(sel && sel.type === 'quiz')) S.quiz.open = false;
     const card = $('.sh-card');
+    if (S.hover && S.hoverFrom === 'card') setHover(null, 'card');
     card.innerHTML = '';
     card.scrollTop = 0;
+    if (sel && (sel.type === 'quiz' || sel.type === 'event' || sel.type === 'compose' || sel.type === 'pspike')) return routeCard(card, sel);
+    routeCard(card, sel);
+    foldCard(card);
+  }
+  function routeCard(card, sel) {
     if (!sel) return renderAbout(card);
+    if (sel.type === 'compose') return renderCompose(card);
+    if (sel.type === 'pspike') return renderPspike(card);
     if (sel.type === 'cell') return renderCell(card, cellOf(sel.key), sel.inst);
     if (sel.type === 'region') return renderRegion(card, regionOf(sel.key));
     if (sel.type === 'conn') return renderConn(card, connOf(sel.key));
@@ -973,6 +1340,38 @@ BARRY.views.seahorse = (function () {
       card.appendChild(notesBlock('allen', sel.key));
     }
   }
+  /* A card keeps its name in view as it scrolls, and each section folds
+     (remembered by its heading). References start folded. */
+  const foldKey = (t) => t.replace(/\s*\(.*\)\s*$/, '').trim();
+  function foldCard(card) {
+    const kids = Array.from(card.children);
+    const h2 = kids.findIndex((n) => n.tagName === 'H2');
+    if (h2 >= 0 && h2 < 3) {
+      const head = el('div', { class: 'sh-card-head' });
+      kids.slice(0, h2 + 1).forEach((n) => head.appendChild(n));
+      card.prepend(head);
+    }
+    let cur = null;
+    const fold = (title) => {
+      const k = foldKey(title);
+      const open = S.folds[k] != null ? S.folds[k] : k !== 'References';
+      const d = el('details', { class: 'sh-fold', open: open ? '' : null });
+      d.appendChild(el('summary', { text: title }));
+      d.addEventListener('toggle', () => { S.folds[k] = d.open; store.set({ folds: S.folds }); });
+      return d;
+    };
+    for (const n of Array.from(card.children)) {
+      if (n.classList.contains('sh-card-head')) continue;
+      if (n.tagName === 'H3') { cur = fold(n.textContent); n.replaceWith(cur); continue; }
+      if (n.classList.contains('sh-notes')) {
+        const h = n.querySelector(':scope > h3');
+        if (h) { const d = fold(h.textContent); h.remove(); n.replaceWith(d); d.appendChild(n); }
+        cur = null;
+        continue;
+      }
+      if (cur) cur.appendChild(n);
+    }
+  }
   const refsList = (keys) => el('ol', { class: 'sh-refs' }, (keys || []).map((k) => el('li', { text: refText(k) })));
   const citeChips = (keys) => el('span', { class: 'sh-cites' }, (keys || []).map((k) => el('button', { class: 'sh-cite', text: refShort(k), title: refText(k), onclick: () => showRefs([k]) })));
   function showRefs(keys) {
@@ -984,7 +1383,7 @@ BARRY.views.seahorse = (function () {
   function connRow(c) {
     const v = verdictOf(c.key);
     const name = (k) => (cellOf(k) || regionOf(k) || { label: k }).label;
-    return el('div', { class: 'sh-check', onclick: () => select({ type: 'conn', key: c.key }), onpointerenter: () => setHover({ type: 'conn', key: c.key }, 'card'),
+    return el('div', { class: 'sh-check', onclick: () => pick({ type: 'conn', key: c.key }, 'card'), onpointerenter: () => setHover({ type: 'conn', key: c.key }, 'card'),
       onpointerleave: () => setHover(null, 'card'), style: 'cursor:pointer' }, [
       el('div', {}, [el('b', { text: c.label }), document.createTextNode(' · ' + name(c.from) + ' → ' + name(c.to)
         + (c.layer && c.layer.length ? ', in ' + c.layer.map((k) => (lamOf(k) || { label: k }).label).join(', ') : ''))]),
@@ -1000,14 +1399,14 @@ BARRY.views.seahorse = (function () {
     card.appendChild(el('div', { class: 'sh-links' }, ((S.rides && S.rides.rides) || []).filter((r) => r.kind !== 'event').map((r) =>
       el('button', { class: 'pill', text: r.label, title: r.blurb || '', onclick: () => startRide(r.key) }))));
     card.appendChild(el('h3', { text: 'Cells' }));
-    card.appendChild(el('div', { class: 'sh-links' }, kb.cells.map((c) => el('button', { class: 'pill', onclick: () => select({ type: 'cell', key: c.key }),
+    card.appendChild(el('div', { class: 'sh-links' }, kb.cells.map((c) => el('button', { class: 'pill', onclick: () => pick({ type: 'cell', key: c.key }, 'card'),
       onpointerenter: () => setHover({ type: 'cell', key: c.key }, 'card'), onpointerleave: () => setHover(null, 'card') },
       [el('span', { class: 'sh-sw', style: 'display:inline-block;margin-right:6px;background:' + c.color }), document.createTextNode(c.short)]))));
     const t = tally();
     card.appendChild(el('h3', { text: 'What was checked' }));
     card.appendChild(el('div', { class: 'sh-tally' }, Object.entries(t).map(([k, n]) => el('span', {}, [verdictChip({ status: k }), document.createTextNode(' ' + n)]))));
     card.appendChild(el('button', { class: 'mini', text: 'Open the checks', onclick: () => showCard({ type: 'checks' }) }));
-    if (kb.crowd) { card.appendChild(el('h3', { text: 'The crowd' })); card.appendChild(el('p', { class: 'sh-small', text: kb.crowd.note + (S.crowdN ? ' ' + S.crowdN.toLocaleString() + ' somata placed.' : '') })); }
+    if (kb.crowd) { card.appendChild(el('h3', { text: 'The crowd' })); card.appendChild(el('p', { class: 'sh-small', text: kb.crowd.note + (S.crowdN ? ' ' + S.crowdN.toLocaleString() + ' somata placed.' : '') + ' Up close, the cells in the section are drawn out with dendrites in the shape of their kind: drawn, not traced; a third of the granule cells and half the pyramids, so the layers stay readable.' })); }
     card.appendChild(el('h3', { text: 'Sources' }));
     card.appendChild(el('p', { class: 'sh-small', text: 'Anatomy: Allen Mouse Brain CCFv3 (Wang et al. 2020), 2017 annotation, with the Allen ARA Nissl at 10 µm. Connectivity tests: Allen Mouse Connectivity Atlas (Oh et al. 2014). Cells: NeuroMorpho.Org (Ascoli et al. 2007); whole-brain tracings from MouseLight (Winnubst et al. 2019). Built on this computer by tools/seahorse; nothing is fetched while you use the tab.' }));
   }
@@ -1087,15 +1486,26 @@ BARRY.views.seahorse = (function () {
     const want = { gc: 'trisynaptic', fan: 'trisynaptic', ca3: 'trisynaptic', ca1: 'trisynaptic', mc: 'dentate', hipp: 'dentate', pvbc: 'dentate', aac: 'dentate', olm: 'caside', stel: 'ds2' };
     return want[type] || null;
   }
+  /* For the schematic's boxes the Allen lines do not cover (a layer of a
+     region, or a group of regions). */
+  const REGION_ABOUT = {
+    ctx: 'The association neocortex: where what reaches the hippocampus starts (through perirhinal and postrhinal cortex) and where what it sends out ends up.',
+    lec2: 'Layer II of the lateral entorhinal cortex. Its fan cells send the lateral perforant path to the outer third of the dentate molecular layer and to CA3 lacunosum-moleculare.',
+    mec2: 'Layer II of the medial entorhinal cortex, where grid cells are. Its stellate cells send the medial perforant path to the middle third of the dentate molecular layer.',
+    ec3: 'Layer III pyramidal cells of both entorhinal areas: the temporoammonic path, straight to CA1 stratum lacunosum-moleculare and to the subiculum.',
+    ec5: 'The deep layers (V and VI) of the entorhinal cortex take in CA1 and subiculum output and pass it on to the neocortex and back up to the superficial layers.',
+    subc: 'Through the fimbria-fornix the hippocampus reaches the septum, the mammillary bodies, the nucleus accumbens and the hypothalamus.',
+  };
   function renderRegion(card, r) {
     if (!r) return renderAbout(card);
     card.appendChild(el('div', { class: 'sh-kicker', text: 'Region' }));
     card.appendChild(el('h2', { text: r.label }));
-    card.appendChild(el('p', { text: (r.allen || []).map((a) => (S.kb.region_lines || {})[a]).filter(Boolean)[0] || r.sub }));
+    card.appendChild(el('p', { text: (r.allen || []).map((a) => (S.kb.region_lines || {})[a]).filter(Boolean)[0] || REGION_ABOUT[r.key] || r.sub }));
     card.appendChild(el('dl', {}, [el('dt', { text: 'Allen' }), el('dd', { text: (r.allen || []).join(', ') })]));
     if ((r.cells || []).length) {
       card.appendChild(el('h3', { text: 'Cells here' }));
-      card.appendChild(el('div', { class: 'sh-links' }, r.cells.map((k) => el('button', { class: 'pill', text: cellOf(k).label, onclick: () => select({ type: 'cell', key: k }) }))));
+      card.appendChild(el('div', { class: 'sh-links' }, r.cells.map((k) => el('button', { class: 'pill', text: cellOf(k).label, onclick: () => pick({ type: 'cell', key: k }, 'card'),
+        onpointerenter: () => setHover({ type: 'cell', key: k }, 'card'), onpointerleave: () => setHover(null, 'card') }))));
     }
     const conns = S.kb.connections.filter((c) => !c.hidden && [c.from, c.to].some((k) => k === r.key || (cellOf(k) && cellOf(k).region === r.key)));
     if (conns.length) { card.appendChild(el('h3', { text: 'In and out' })); conns.forEach((x) => card.appendChild(connRow(x))); }
@@ -1137,7 +1547,8 @@ BARRY.views.seahorse = (function () {
     const here = S.kb.cells.filter((c) => instancesOfType(c.key).some((k) => (instOf(k) || {}).soma_lamina === key));
     if (here.length) {
       card.appendChild(el('h3', { text: 'Somata here' }));
-      card.appendChild(el('div', { class: 'sh-links' }, here.map((c) => el('button', { class: 'pill', text: c.label, onclick: () => select({ type: 'cell', key: c.key }) }))));
+      card.appendChild(el('div', { class: 'sh-links' }, here.map((c) => el('button', { class: 'pill', text: c.label, onclick: () => pick({ type: 'cell', key: c.key }, 'card'),
+        onpointerenter: () => setHover({ type: 'cell', key: c.key }, 'card'), onpointerleave: () => setHover(null, 'card') }))));
     }
     card.appendChild(notesBlock('lamina', key));
   }
@@ -1326,7 +1737,11 @@ BARRY.views.seahorse = (function () {
   }
   function syncProbe() {
     if (!S.stage) return;
-    S.stage.setProbe(S.probe.on ? probeForStage() : null);
+    const pr = S.probe.on ? probeForStage() : null;
+    // the ribbon beside the shank: each contact in its layer's color
+    if (pr && S.blobs['brain50.shb.gz']) pr.ribbon = contactLayers().map((k) => (k ? S.kb.lamina_colors[k] : null) || '#8a8a8a');
+    S.stage.setProbe(pr);
+    updateLabels();
   }
   function showProbe(on) {
     S.probe.on = !!on;
@@ -1400,60 +1815,127 @@ BARRY.views.seahorse = (function () {
   function ensureCrowd() {
     if (S.crowdMade || !S.crowd || !S.stage || !S.volumesUp) return;
     S.crowdMade = true;
-    setTimeout(makeCrowd, 60);
+    setTimeout(() => { makeCrowd().catch((e) => reportClientError('seahorse:crowd', e.message, e.stack)); }, 60);
   }
-  function makeCrowd() {
+  /* Drawn-out crowd cells: their shape, and which way their dendrites run
+     (toward these layers, away from those). */
+  const GLYPH = {
+    gc: { shape: 'gc', alpha: 0.26, every: 3, to: ['iml1', 'iml2', 'mml1', 'mml2', 'oml1', 'oml2'], away: ['hil'] },
+    ca1: { shape: 'pyr1', alpha: 0.36, every: 2, to: ['ca1sr', 'ca1slm'], away: ['ca1so', 'alv'] },
+    ca3: { shape: 'pyr3', alpha: 0.4, every: 2, to: ['ca3slu', 'ca3sr', 'ca3slm', 'ca2sr', 'ca2slm'], away: ['ca3so', 'ca2so', 'alv'] },
+    mc: { shape: 'multi', alpha: 0.55 },
+    hipp: { shape: 'hipp', alpha: 0.55 },
+    pvbc: { shape: 'basket', alpha: 0.4 },
+  };
+  /* the finest layer label at a point (no Allen lookup: this runs for every drawn cell) */
+  function labAt(ap, dv, ml) {
+    if (ml < 5700) ml = 11400 - ml;
+    const F = S.blobs['fine10.shb.gz'], H = S.blobs['hip20.shb.gz'];
+    if (F) {
+      const o = F.header.origin_um, sh = F.header.shape;
+      const i = Math.floor((ap - o[0]) / 10), j = Math.floor((dv - o[1]) / 10), k = Math.floor((ml - o[2]) / 10);
+      if (i >= 0 && j >= 0 && k >= 0 && i < sh[0] && j < sh[1] && k < sh[2]) return F.arrays.labels[(i * sh[1] + j) * sh[2] + k];
+    }
+    if (H) {
+      const o = H.header.origin_um, sh = H.header.arrays[0].shape;
+      const i = Math.floor((ap - o[0]) / 20), j = Math.floor((dv - o[1]) / 20), k = Math.floor((ml - o[2]) / 20);
+      if (i >= 0 && j >= 0 && k >= 0 && i < sh[0] && j < sh[1] && k < sh[2]) return H.arrays.labels[(i * sh[1] + j) * sh[2] + k];
+    }
+    return 0;
+  }
+  // 14 directions (the 6 axes and 8 diagonals), two distances: enough to tell which way a layer lies
+  const DIRS26 = (() => { const out = []; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) { const n = Math.abs(a) + Math.abs(b) + Math.abs(c); if (n !== 1 && n !== 3) continue; const l = Math.hypot(a, b, c); out.push([a / l, b / l, c / l]); } return out; })();
+  function orientAt(kd, ccf) {
+    if (!kd || !kd.orient) return null;
+    let x = 0, y = 0, z = 0;
+    for (const d of DIRS26) {
+      for (const r of [70, 170]) {
+        const c = labAt(ccf[0] + d[0] * r, ccf[1] + d[1] * r, ccf[2] + d[2] * r);
+        const w = kd.to.has(c) ? 1 : kd.away.has(c) ? -1 : 0;
+        if (w) { x += d[0] * w; y += d[1] * w; z += d[2] * w; }
+      }
+    }
+    return (x || y || z) ? [x, y, z] : null;
+  }
+  /* Built in slices of about 25 ms so opening the hippocampus never
+     freezes the page (it took 1.4 s in one go: sweep 1, 11-21). */
+  async function makeCrowd() {
+    const t00 = performance.now();
+    let t = t00;
+    const breathe = async () => { if (performance.now() - t > 25) { await new Promise((r) => setTimeout(r, 0)); t = performance.now(); } };
     const H = S.blobs['hip20.shb.gz'], F = S.blobs['fine10.shb.gz'];
     const spec = (S.kb.crowd || {}).kinds || [];
     if (!H || !spec.length) return;
     const codeOf = (k) => (lamOf(k) || {}).code;
-    const kindOfCode = new Map();
-    spec.forEach((s, i) => s.layers.forEach((k) => { const c = codeOf(k); if (c) { if (!kindOfCode.has(c)) kindOfCode.set(c, []); kindOfCode.get(c).push(i); } }));
+    // code -> bit mask of the kinds that live in it
+    const mask = new Uint16Array(256);
+    spec.forEach((sp, i) => sp.layers.forEach((k) => { const c = codeOf(k); if (c) mask[c] |= 1 << i; }));
     const lists = spec.map(() => ({ fine: [], hip: [] }));
     const fo = F ? F.header.origin_um : null, fs = F ? F.header.shape : null;
-    const inFine = (ap, dv, ml) => F && ap >= fo[0] && dv >= fo[1] && ml >= fo[2] && ap < fo[0] + fs[0] * 10 && dv < fo[1] + fs[1] * 10 && ml < fo[2] + fs[2] * 10;
     if (F) {
-      const L = F.arrays.labels;
-      for (let n = 0; n < L.length; n++) { const ks = kindOfCode.get(L[n]); if (ks) for (const k of ks) lists[k].fine.push(n); }
+      const L = F.arrays.labels, row = fs[1] * fs[2];
+      for (let n0 = 0; n0 < L.length; n0 += row) {
+        const n1 = Math.min(L.length, n0 + row);
+        for (let n = n0; n < n1; n++) { const m = mask[L[n]]; if (m) for (let k = 0; m >> k; k++) if (m & (1 << k)) lists[k].fine.push(n); }
+        await breathe();
+      }
     }
     const ho = H.header.origin_um, hs = H.header.arrays[0].shape, LH = H.arrays.labels;
-    for (let i = 0; i < hs[0]; i++) for (let j = 0; j < hs[1]; j++) for (let k = 0; k < hs[2]; k++) {
-      const n = (i * hs[1] + j) * hs[2] + k;
-      const ks = kindOfCode.get(LH[n]);
-      if (!ks) continue;
-      if (inFine(ho[0] + i * 20 + 10, ho[1] + j * 20 + 10, ho[2] + k * 20 + 10)) continue;
-      for (const kk of ks) lists[kk].hip.push(n);
+    const inFine = (ap, dv, ml) => F && ap >= fo[0] && dv >= fo[1] && ml >= fo[2] && ap < fo[0] + fs[0] * 10 && dv < fo[1] + fs[1] * 10 && ml < fo[2] + fs[2] * 10;
+    for (let i = 0; i < hs[0]; i++) {
+      for (let j = 0; j < hs[1]; j++) for (let k = 0; k < hs[2]; k++) {
+        const n = (i * hs[1] + j) * hs[2] + k;
+        const m = mask[LH[n]];
+        if (!m) continue;
+        if (inFine(ho[0] + i * 20 + 10, ho[1] + j * 20 + 10, ho[2] + k * 20 + 10)) continue;
+        for (let kk = 0; m >> kk; kk++) if (m & (1 << kk)) lists[kk].hip.push(n);
+      }
+      await breathe();
     }
     let seed = 12345;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const pos = [], col = [], size = [];
+    const pos = [], col = [], size = [], kind = [];
     let total = 0;
-    spec.forEach((s, si) => {
+    let tick = 0;
+    for (let si = 0; si < spec.length; si++) {
+      const s = spec[si];
       const vol = lists[si].fine.length * 1000 + lists[si].hip.length * 8000;
-      if (!vol) return;
+      if (!vol) continue;
       const per = s.total ? s.total / vol : s.per_um3;
       const c = hexRgb((cellOf(s.key) || {}).color || '#aaa').map((x) => x / 255);
       const put = (ap, dv, ml) => {
         pos.push((ml - 5700) / 1000, (4000 - dv) / 1000, (ap - 6600) / 1000);
         col.push(c[0] * 0.85, c[1] * 0.85, c[2] * 0.85);
         size.push(s.soma_um / 1000);
+        kind.push(si);
         total++;
       };
       for (const n of lists[si].fine) {
+        if ((++tick & 4095) === 0) await breathe();
         let m = per * 1000; let cnt = Math.floor(m); if (rnd() < m - cnt) cnt++;
         if (!cnt) continue;
         const i = Math.floor(n / (fs[1] * fs[2])), j = Math.floor(n / fs[2]) % fs[1], k = n % fs[2];
         for (let q = 0; q < cnt; q++) put(fo[0] + (i + rnd()) * 10, fo[1] + (j + rnd()) * 10, fo[2] + (k + rnd()) * 10);
       }
       for (const n of lists[si].hip) {
+        if ((++tick & 4095) === 0) await breathe();
         let m = per * 8000; let cnt = Math.floor(m); if (rnd() < m - cnt) cnt++;
         if (!cnt) continue;
         const i = Math.floor(n / (hs[1] * hs[2])), j = Math.floor(n / hs[2]) % hs[1], k = n % hs[2];
         for (let q = 0; q < cnt; q++) put(ho[0] + (i + rnd()) * 20, ho[1] + (j + rnd()) * 20, ho[2] + (k + rnd()) * 20);
       }
-    });
+    }
     S.crowdN = total;
-    S.stage.setCrowd({ pos: new Float32Array(pos), col: new Float32Array(col), size: new Float32Array(size) });
+    const kinds = spec.map((s) => {
+      const g = GLYPH[s.key] || GLYPH.mc;
+      const c = hexRgb((cellOf(s.key) || {}).color || '#aaa').map((x) => x / 255);
+      return { shape: g.shape, col: c, alpha: g.alpha, every: g.every || 1, orient: !!g.to,
+               to: new Set((g.to || []).map(codeOf).filter(Boolean)), away: new Set((g.away || []).map(codeOf).filter(Boolean)) };
+    });
+    if (!S.stage) return;
+    S.times.crowd = Math.round(performance.now() - t00);
+    S.stage.setCrowd({ pos: new Float32Array(pos), col: new Float32Array(col), size: new Float32Array(size), kind: new Uint8Array(kind),
+                       kinds, orient: (ki, ccf) => orientAt(kinds[ki], ccf) });
     S.stage.showCrowd(S.crowd);
   }
 
@@ -1510,26 +1992,50 @@ BARRY.views.seahorse = (function () {
     applySchem();
     applyHighlights();
     renderSteps();
-    if (st.kind === 'sink' && S.play.event) showEventPanel(S.play.event);
+  }
+  /* the somata the ride went through, to frame when it ends */
+  function ridePts(ride) {
+    const keys = [...new Set((ride.steps || []).map((s) => s.cell).filter(Boolean))];
+    return keys.map((k) => S.stage.cellSomaW(k)).filter(Boolean);
   }
   function onRideDone() {
-    if (!S.play || S.play.kind !== 'ride') return;
-    S.play.done = true;
+    const P = S.play;
+    if (!P || P.kind !== 'ride') return;
+    P.done = true;
     hideInset();
     renderSteps();
     if (S.rec && S.rec.untilDone) stopRecord();
-    if (S.play.fromTour) setTimeout(() => { const tour = S.play && S.play.fromTour; if (tour) resumeTour(tour); }, 900);
+    // hold on the last moment, then fade back to the light stage and glide
+    // out to everything the ride went through (no snap, no lost camera)
+    setTimeout(() => {
+      if (S.play !== P) return;
+      const tour = P.fromTour;
+      settleRide(P);
+      if (tour) resumeTour(tour);
+    }, reducedMotion() ? 0 : 1400);
+  }
+  function settleRide(P) {
+    if (S.stage) S.stage.settle(ridePts(P.ride), 1800);
+    S.play = null;
+    $('.sh-ridetag') && $('.sh-ridetag').remove();
+    hideInset();
+    showExtras();
+    S.focus = S.sel ? focusFor(S.sel) : null;
+    applyFocusAll();
+    applyCut();
+    renderSteps();
+    renderRail();
   }
   function stopPlay(quiet) {
     if (!S.play) return;
     const p = S.play;
     if (p.kind === 'ride' && S.stage) {
+      if (!quiet && S.mode === '3d') { settleRide(p); return; }
       S.stage.stopRide(true);
-      // back out to where you were looking from, so the end of a ride is not a lost camera
-      if (!quiet && S.mode === '3d') S.stage.setLevel(S.level);
     }
-    if (p.kind === 'event' || p.event) stopEventAnim();
+    if (p.kind === 'event') { stopEventAnim(); if (S.stage && S.stage.setPulse) S.stage.setPulse(null); }
     S.play = null;
+    if (p.kind === 'event') applyHighlights();      // the sink and source paint goes with the event
     hideInset();
     // an event's model panel belongs to the event: give the card back
     if ($('.sh-card .sh-lam') && !(S.quiz && S.quiz.open)) showCard(S.sel);
@@ -1609,62 +2115,193 @@ BARRY.views.seahorse = (function () {
   }
 
   /* ==================================================================
-     Events: model laminar profiles
+     Events: model laminar profiles, played wherever you are
      ================================================================== */
+  /* What each source sets off, for every view: the cells that fire, the
+     drawn bundle that carries it, the regions a volley crosses at the
+     whole-brain scale, and the connections lit in the schematic. */
+  const SOURCES = {
+    lec: { label: 'LEC II', cells: ['fan'], from: 'ENTl', to: 'DG', conns: ['lpp'], regions: ['lec2', 'dg'] },
+    mec: { label: 'MEC II', cells: ['stel'], path: 'mpp', from: 'ENTm', to: 'DG', conns: ['mpp'], regions: ['mec2', 'dg'] },
+    ca3: { label: 'CA3', cells: ['ca3'], then: ['ca1'], from: 'CA3', to: 'CA1', conns: ['sc', 'rc'], regions: ['ca3', 'ca1'] },
+    ec3: { label: 'EC III', cells: [], path: 'ta', from: 'ENTm', to: 'CA1', conns: ['ta'], regions: ['ec3', 'ca1'] },
+    burst: { label: 'Hilar interneurons', cells: ['hipp', 'pvbc'], conns: ['hipp_gc', 'pv_gc'], regions: ['dg'] },
+    theta: { label: 'Theta', cells: [], path: 'ta', conns: ['ta', 'lpp', 'mpp'], regions: ['ec3', 'ca1', 'dg'] },
+  };
+  const SPEEDS = [[0.02, '1/50'], [0.05, '1/20'], [0.2, '1/5']];
   async function playEvent(key, o) {
     o = o || {};
+    if (key === 'pspike') { if (!o.fromTour) endTour(); stopPlay(true); S.sel = { type: 'pspike' }; showCard(S.sel); renderSteps(); return; }
     if (!o.fromTour) endTour();
-    const ev = BARRY.shPhys.EVENTS[key];
-    if (!ev) return;
-    const ok = await need(['brain50.shb.gz', 'hip20.shb.gz', 'fine10.shb.gz'], 'Getting the layers ready', 'The probe reads the layers it crosses.');
+    const ev = key === 'custom' ? BARRY.shPhys.compose(S.compose) : BARRY.shPhys.EVENTS[key];
+    if (!ev) { toast('Switch on at least one source to play your event.', 'warn'); return; }
+    const files = ['brain50.shb.gz', 'hip20.shb.gz', 'fine10.shb.gz'];
+    if (S.mode === '3d' && S.stage) files.push('mesh_hpf.shb.gz', 'mesh_lamina.shb.gz', 'cells.shb.gz', 'rides.json');
+    const ok = await need(files, 'Getting the layers ready', 'The event is read by the probe from the layers it crosses.');
     if (!ok) return;
-    // DS1/DS2 in 3D ride the real cells too
-    if ((key === 'ds1' || key === 'ds2') && S.mode === '3d' && !o.modelOnly && S.stage) { await startRide(key, o); S.play && (S.play.event = key); showEventPanel(key); return; }
     stopPlay(true);
-    if (!S.probe.on) { S.probe.on = true; syncProbe(); renderBar(); }
-    const sink = [], source = [];
-    ev.comps.forEach((c) => (c.amp < 0 ? sink : source).push(...c.layers));
-    S.play = { kind: 'event', key, ev, sink: [...new Set(sink)], source: [...new Set(source)].filter((k) => !sink.includes(k)), fromTour: o.fromTour || null };
-    applyHighlights();
-    applySchem();
-    if (S.stage && S.mode === '3d') {
-      (ev.cells || []).forEach((k, i) => setTimeout(() => S.stage && S.stage.pulseCell(k, 1400), i * 500));
-    }
-    showEventPanel(key);
-    renderSteps();
-    renderRail();
-  }
-  let evAnim = 0;
-  function showEventPanel(key) {
-    const ev = BARRY.shPhys.EVENTS[key];
+    if (S.mode === 'slice' && !S.probe.on) { S.probe.on = true; syncProbe(); renderBar(); }
     const layers = contactLayers();
     const z = layers.map((_, i) => S.probe.first + i * S.probe.pitch);
-    const model = BARRY.shPhys.compute(key, layers, z);
-    S.eventModel = model;
+    const model = BARRY.shPhys.compute(ev, layers, z);
+    const speed = SPEEDS.some(([v]) => v === S.evSpeed) ? S.evSpeed : (ev.ms > 300 ? 0.2 : 0.02);
+    S.play = { kind: 'event', key, ev, model, t: 0, speed, paused: false, fired: new Set(), fromTour: o.fromTour || null, sink: [], source: [], sig: '' };
+    // the schematic lights the pathways the event runs along
+    const f = { cells: new Set(), regionKeys: new Set(), conns: new Set(), layers: new Set() };
+    (ev.drives || []).forEach((d) => { const s = SOURCES[d.src]; if (s) { s.conns.forEach((c) => f.conns.add(c)); s.regions.forEach((r) => f.regionKeys.add(r)); } });
+    S.focus = f;
+    applySchem();
+    if (reducedMotion()) { peakMoment(S.play); S.play.paused = true; }
+    if (o.card !== false) showEventPanel();
+    renderSteps();
+    renderRail();
+    startEventClock();
+  }
+  /* the moment of the strongest current, for a still picture */
+  function peakMoment(P) {
+    let best = 0, bt = 0;
+    for (let t = 0; t <= P.ev.ms; t += 1) {
+      let m = 0;
+      for (const v of BARRY.shPhys.layerCsd(P.ev, t).values()) m = Math.max(m, Math.abs(v));
+      if (m > best) { best = m; bt = t; }
+    }
+    P.t = bt;
+    (P.ev.drives || []).forEach((d, i) => { if (d.t <= bt) P.fired.add(i); });
+  }
+  function liveCsd(P) {
+    const m = BARRY.shPhys.layerCsd(P.ev, P.t);
+    const cm = P.model.cmax || 1;
+    for (const [k, v] of m) m.set(k, v / cm);
+    return m;
+  }
+  let evRaf = 0, evLast = 0;
+  function startEventClock() {
+    if (evRaf) cancelAnimationFrame(evRaf);
+    evLast = performance.now();
+    const tick = (now) => {
+      const P = S.play;
+      if (!P || P.kind !== 'event') { evRaf = 0; return; }
+      const dt = Math.min(100, now - evLast);
+      evLast = now;
+      if (!P.paused) {
+        P.t += dt * P.speed;
+        if (P.t >= P.ev.ms) {
+          if (S.evLoop) { P.t = 0; P.fired.clear(); }
+          else { P.t = P.ev.ms; P.paused = true; renderSteps(); }
+        }
+      }
+      eventFrame(P);
+      evRaf = requestAnimationFrame(tick);
+    };
+    evRaf = requestAnimationFrame(tick);
+  }
+  function eventFrame(P) {
+    // what fires now
+    (P.ev.drives || []).forEach((d, i) => { if (d.t <= P.t && !P.fired.has(i)) { P.fired.add(i); fireDrive(d, P); } });
+    if (P.lastT === P.t) return;
+    P.lastT = P.t;
+    applyHighlights();
+    // the schematic's sink and source boxes follow the moment
+    const live = liveCsd(P), sink = [], source = [];
+    for (const [k, v] of live) { if (v < -0.15) sink.push(k); else if (v > 0.15) source.push(k); }
+    const sig = sink.join(',') + '|' + source.join(',');
+    if (sig !== P.sig) { P.sig = sig; P.sink = sink; P.source = source; applySchem(); }
+    const cv = $('.sh-card canvas.sh-lam');
+    if (cv) BARRY.shPhys.draw(cv, P.model, { cursor: P.t, layerColors: S.kb.lamina_colors, labelOf: (k) => (lamOf(k) || {}).label, ink: tok('--text-2', '#888'), accent: tok('--accent', '#e5a823'), font: tok('--sans', 'sans-serif') });
+    const sc = $('.sh-scrub input');
+    if (sc && document.activeElement !== sc) sc.value = P.t;
+    const tt = $('.sh-ev-time');
+    if (tt) tt.textContent = 't = ' + P.t.toFixed(1) + ' ms';
+  }
+  /* One source going off, drawn at the scale you are looking at. */
+  function fireDrive(d, P) {
+    const s = SOURCES[d.src];
+    const st = S.stage;
+    if (!s || !st || S.mode === 'schematic') return;
+    const dur = Math.max(700, Math.min(3600, 24 / P.speed));
+    if (S.mode === '3d' && S.level === 'brain') {
+      const col = (cellOf(s.cells[0]) || {}).color || '#7a8fd9';
+      if (s.from && s.to) {
+        const a = st.centroid('hpf', s.from, true), b = st.centroid('hpf', s.to, true);
+        if (a && b) st.volley(a, b, col, dur);
+      } else {
+        const c = st.centroid('hpf', s.to || 'DG', true) || st.centroid('hpf', 'CA1', true);
+        if (c) st.flareAt(c, col, dur);
+      }
+      return;
+    }
+    if (S.mode === '3d') {
+      s.cells.forEach((t) => instancesOfType(t).forEach((k) => st.pulseCell(k, dur)));
+      (s.then || []).forEach((t) => setTimeout(() => { if (S.play === P) instancesOfType(t).forEach((k) => st.pulseCell(k, dur)); }, dur * 0.4));
+      if (s.path && S.paths) st.pulsePath(s.path, dur);
+    }
+  }
+  /* The laminar panel for the playing event, in the card. */
+  function showEventPanel() {
+    const P = S.play;
+    if (!P || P.kind !== 'event') return;
+    const ev = P.ev;
     const card = $('.sh-card');
     card.innerHTML = '';
-    card.appendChild(el('div', { class: 'sh-kicker', text: 'Model · not a recording' }));
-    card.appendChild(el('h2', { text: ev.label + ' on the probe\'s 64 contacts' }));
+    card.appendChild(el('div', { class: 'sh-card-head' }, [el('div', { class: 'sh-kicker', text: 'Model · not a recording' }),
+      el('h2', { text: ev.label + ' on the probe\'s ' + S.probe.contacts + ' contacts' })]));
     card.appendChild(el('p', {}, [document.createTextNode(ev.say + ' '), citeChips(ev.refs)]));
-    const cv = el('canvas', { class: 'sh-lam' });
-    card.appendChild(cv);
+    card.appendChild(el('canvas', { class: 'sh-lam' }));
     card.appendChild(el('div', { class: 'sh-lam-legend' }, [el('span', { class: 'sink', text: 'sink' }), el('span', { class: 'source', text: 'source' }),
       el('span', { text: 'lines: potential (every other contact); top = shallowest contact' })]));
-    card.appendChild(el('p', { class: 'sh-small', text: 'Currents placed in the layers the literature names, read by each contact\'s layer; potentials from the laminar disc model (Nicholson & Freeman 1975). Shape, not amplitude. Replace with your recordings when they are linked.' }));
-    card.appendChild(el('div', { class: 'sh-links' }, Object.entries(BARRY.shPhys.EVENTS).map(([k, e]) =>
-      el('button', { class: 'pill' + (k === key ? ' active' : ''), text: e.label, onclick: () => playEvent(k, { modelOnly: true }) }))));
-    stopEventAnim();
-    const t0 = performance.now(), loop = ev.ms > 300 ? 4000 : 2600;
-    const draw = (now) => {
-      if (!cv.isConnected) { evAnim = 0; return; }
-      const cur = reducedMotion() ? ev.ms : ((now - t0) % loop) / loop * ev.ms;
-      BARRY.shPhys.draw(cv, model, { cursor: cur, layerColors: S.kb.lamina_colors, labelOf: (k) => (lamOf(k) || {}).label, ink: tok('--text-2', '#888'), accent: tok('--accent', '#e5a823'), font: tok('--sans', 'sans-serif') });
-      if (!reducedMotion()) evAnim = requestAnimationFrame(draw);
-    };
-    evAnim = requestAnimationFrame(draw);
+    card.appendChild(el('p', { class: 'sh-small', text: 'Currents placed in the layers the literature names, read by each contact\'s layer; potentials from the laminar disc model (Nicholson & Freeman 1975). Shape, not amplitude. The same currents light the layers in the sections as the event plays.' }));
+    card.appendChild(el('div', { class: 'sh-links' }, eventChips(P.key).concat([
+      el('button', { class: 'pill' + (P.key === 'custom' ? ' active' : ''), text: 'Make your own', onclick: () => showCard({ type: 'compose' }) })])));
+    P.lastT = null;
   }
-  function stopEventAnim() { if (evAnim) cancelAnimationFrame(evAnim); evAnim = 0; }
-  function renderEventCard(card) { if (S.play && S.play.kind === 'event') showEventPanel(S.play.key); else renderAbout(card); }
+  function eventChips(cur) {
+    return Object.entries(BARRY.shPhys.EVENTS).map(([k, e]) => el('button', { class: 'pill sh-ev ' + e.kind + (k === cur ? ' active' : ''), text: e.label,
+      title: k === 'pspike' ? 'The Barry lab is working on the P-spike profile' : e.say, 'aria-pressed': String(k === cur),
+      onclick: () => (S.play && S.play.key === k ? stopPlay() : playEvent(k)) }));
+  }
+  function stopEventAnim() { if (evRaf) cancelAnimationFrame(evRaf); evRaf = 0; }
+  function renderEventCard(card) { if (S.play && S.play.kind === 'event') showEventPanel(); else renderAbout(card); }
+  function renderPspike(card) {
+    card.appendChild(el('div', { class: 'sh-card-head' }, [el('div', { class: 'sh-kicker', text: 'Event' }), el('h2', { text: 'P-spike' })]));
+    card.appendChild(el('div', { class: 'sh-lab' }, [el('b', { text: 'The Barry lab is working on it. ' }),
+      document.createTextNode('The P-spike profile will play here from the lab\'s own recordings once it is ready. Until then Seahorse has no model of it, on purpose: a made-up profile would teach the wrong shape.')]));
+    card.appendChild(el('div', { class: 'sh-links' }, eventChips('pspike')));
+  }
+  /* Make your own event: sources, strengths, onsets; presets fill it in. */
+  const PRESET_SPEC = {
+    ds1: { lec: { on: true, amp: 1, t: 24 }, mec: { on: false }, ca3: { on: false }, ec3: { on: false }, ripple: false, theta: false },
+    ds2: { lec: { on: false }, mec: { on: true, amp: 1, t: 24 }, ca3: { on: false }, ec3: { on: false }, ripple: false, theta: false },
+    swr: { lec: { on: false }, mec: { on: false }, ca3: { on: true, amp: 1, t: 72 }, ec3: { on: false }, ripple: true, theta: false },
+    theta: { lec: { on: false }, mec: { on: false }, ca3: { on: false }, ec3: { on: false }, ripple: false, theta: true },
+  };
+  function renderCompose(card) {
+    const C = S.compose;
+    card.appendChild(el('div', { class: 'sh-card-head' }, [el('div', { class: 'sh-kicker', text: 'Model · make your own' }), el('h2', { text: 'Compose an event' })]));
+    card.appendChild(el('p', { text: 'Switch sources on, set how strong each is and when it fires, then play it. Each source puts its sink in the layers the literature names; the probe reads it and the sections light as it plays.' }));
+    card.appendChild(el('div', { class: 'sh-links' }, [el('span', { class: 'sh-kicker', text: 'Start from' })].concat(Object.keys(PRESET_SPEC).map((k) =>
+      el('button', { class: 'pill', text: BARRY.shPhys.EVENTS[k].label, onclick: () => {
+        const p = PRESET_SPEC[k];
+        ['lec', 'mec', 'ca3', 'ec3'].forEach((s) => { C[s].on = !!p[s].on; if (p[s].amp != null) C[s].amp = p[s].amp; if (p[s].t != null) C[s].t = p[s].t; });
+        C.ripple = p.ripple; C.theta = p.theta;
+        showCard({ type: 'compose' });
+      } })))));
+    const rows = [['lec', 'to the outer molecular layer (lateral perforant path)'], ['mec', 'to the middle molecular layer (medial perforant path)'],
+      ['ca3', 'to CA1 radiatum (Schaffer collaterals)'], ['ec3', 'to CA1 lacunosum-moleculare (temporoammonic path)']];
+    rows.forEach(([k, what]) => {
+      const c = C[k];
+      card.appendChild(el('div', { class: 'sh-compose' + (c.on ? '' : ' off') }, [
+        el('div', { class: 'sh-compose-head' }, [el('b', { text: SOURCES[k].label }), el('span', { class: 'sh-small', text: what }),
+          seg('', [[true, 'On'], [false, 'Off']], !!c.on, (v) => { c.on = v; showCard({ type: 'compose' }); })]),
+        rangeField('Strength', 0.1, 2, 0.05, c.amp, (v) => '×' + (+v).toFixed(2), (v) => { c.amp = v; }),
+        rangeField('Onset', 0, 300, 1, c.t, (v) => v + ' ms', (v) => { c.t = v; }),
+      ]));
+    });
+    card.appendChild(el('div', { class: 'sh-links' }, [
+      seg('Ripple', [[true, 'On'], [false, 'Off']], !!C.ripple, (v) => { C.ripple = v; showCard({ type: 'compose' }); }),
+      seg('Theta', [[true, 'On'], [false, 'Off']], !!C.theta, (v) => { C.theta = v; showCard({ type: 'compose' }); }),
+    ]));
+    card.appendChild(el('div', { class: 'sh-links' }, [el('button', { class: 'btn sm', text: 'Play it', onclick: () => playEvent('custom') })]));
+  }
 
   /* ==================================================================
      Tours
@@ -1769,8 +2406,9 @@ BARRY.views.seahorse = (function () {
       .filter((r) => r.kind !== 'event').forEach((r) => row.appendChild(el('button', { class: 'pill' + (S.play && S.play.kind === 'ride' && S.play.key === r.key ? ' active' : ''), text: r.label, title: r.blurb || '',
         'aria-pressed': String(!!(S.play && S.play.key === r.key)), onclick: () => (S.play && S.play.key === r.key ? stopPlay() : startRide(r.key)) })));
     row.appendChild(el('span', { class: 'sh-kicker', text: 'Play', style: 'margin-left:10px' }));
-    Object.entries(BARRY.shPhys.EVENTS).forEach(([k, e]) => row.appendChild(el('button', { class: 'pill sh-ev ' + e.kind + (S.play && S.play.key === k ? ' active' : ''), text: e.label,
-      title: e.say, 'aria-pressed': String(!!(S.play && S.play.key === k)), onclick: () => (S.play && S.play.key === k ? stopPlay() : playEvent(k)) })));
+    eventChips(S.play && S.play.kind === 'event' ? S.play.key : (S.sel && S.sel.type === 'pspike' ? 'pspike' : null)).forEach((b) => row.appendChild(b));
+    row.appendChild(el('button', { class: 'pill' + (S.play && S.play.key === 'custom' ? ' active' : ''), text: 'Your own', title: 'Compose an event: sources, strengths, onsets',
+      onclick: () => showCard({ type: 'compose' }) }));
     bar.appendChild(row);
     const P = S.play;
     if (S.tour) {
@@ -1820,8 +2458,7 @@ BARRY.views.seahorse = (function () {
       ]));
     } else if (P.kind === 'event') {
       cap.appendChild(el('div', { class: 'sh-say' }, [el('span', { class: 'sh-tag model', text: 'Model' }), el('b', { text: ' ' + P.ev.label + '. ' }), document.createTextNode(P.ev.say + ' '), citeChips(P.ev.refs)]));
-      cap.appendChild(el('div', { class: 'sh-ctl' }, [el('button', { class: 'btn ghost sm', text: 'Again', onclick: () => playEvent(P.key, { modelOnly: true }) }),
-        el('button', { class: 'btn sm', text: 'Done', onclick: () => stopPlay() })]));
+      cap.appendChild(eventControls(P));
     } else if (P.kind === 'path') {
       const hop = P.path.hops[P.i];
       cap.appendChild(el('span', { class: 'sh-step', text: P.path.label + ' · ' + (P.i + 1) + ' / ' + P.path.hops.length }));
@@ -1832,6 +2469,31 @@ BARRY.views.seahorse = (function () {
       ]));
     }
     bar.appendChild(cap);
+  }
+
+  /* Play, scrub, slow motion and loop for an event. */
+  function eventControls(P) {
+    const scrub = el('input', { type: 'range', min: 0, max: P.ev.ms, step: P.ev.ms > 300 ? 1 : 0.25, value: P.t, 'aria-label': 'Time in the event' });
+    scrub.addEventListener('input', () => {
+      P.paused = true;
+      P.t = +scrub.value;
+      P.fired = new Set((P.ev.drives || []).map((d, i) => (d.t <= P.t - 4 ? i : -1)).filter((i) => i >= 0));
+      const b = $('.sh-ev-play'); if (b) b.textContent = 'Play';
+    });
+    return el('div', { class: 'sh-ctl sh-evctl' }, [
+      el('button', { class: 'btn ghost sm sh-ev-play', text: P.paused ? 'Play' : 'Pause', title: 'Space', onclick: () => toggleEventPause() }),
+      el('label', { class: 'sh-scrub' }, [scrub, el('span', { class: 'sh-ev-time', text: 't = ' + P.t.toFixed(1) + ' ms' })]),
+      seg('Speed', SPEEDS.map(([v, t]) => [v, t, t + ' of real time']), P.speed, (v) => { P.speed = v; S.evSpeed = v; store.set({ evSpeed: v }); renderSteps(); }),
+      seg('Loop', [[true, 'On'], [false, 'Off']], S.evLoop, (v) => { S.evLoop = v; store.set({ evLoop: v }); renderSteps(); }),
+      el('button', { class: 'btn sm', text: 'Done', onclick: () => stopPlay() }),
+    ]);
+  }
+  function toggleEventPause() {
+    const P = S.play;
+    if (!P || P.kind !== 'event') return;
+    if (P.paused && P.t >= P.ev.ms) { P.t = 0; P.fired.clear(); }
+    P.paused = !P.paused;
+    const b = $('.sh-ev-play'); if (b) b.textContent = P.paused ? 'Play' : 'Pause';
   }
 
   /* ==================================================================
@@ -1922,7 +2584,7 @@ BARRY.views.seahorse = (function () {
       else if (t.event) playEvent(t.event);
       else if (t.tour) startTour(t.tour);
       else if (t.view) openView((S.lab.views[t.view] || {}).state);
-      else { select(t); goTo(t); }
+      else pick(t, 'search');
     };
     input.addEventListener('input', () => {
       const v = input.value.trim();
@@ -1945,34 +2607,6 @@ BARRY.views.seahorse = (function () {
     });
     input.addEventListener('blur', () => setTimeout(() => { items = []; paint(); }, 150));
   }
-  /* fly the current view to a selection */
-  async function goTo(sel) {
-    if (!sel) return;
-    if (sel.type === 'cell') return flyToCell(instancesOfType(sel.key)[0]);
-    if (sel.type === 'lamina' || sel.type === 'region') {
-      if (S.mode === 'schematic') return;
-      if (S.mode === '3d' && S.stage) {
-        if (S.level === 'brain') await setLevel('hpf');
-        const r = sel.type === 'region' ? regionOf(sel.key) : regionOf(regionOfLayer(sel.key));
-        const acr = r && (r.allen || [])[0];
-        const c = acr && (S.stage.centroid('hpf', acr, true) || S.stage.centroid('brain', acr, true));
-        if (c) S.stage.frameOn([{ x: c[0] - 0.6, y: c[1] - 0.5, z: c[2] - 0.6 }, { x: c[0] + 0.6, y: c[1] + 0.5, z: c[2] + 0.6 }]);
-      } else if (S.mode === 'slice' && sel.type === 'lamina') {
-        // centre the section on the nearest voxel of that layer, on this plane
-        const code = (lamOf(sel.key) || {}).code;
-        const C = S.slice.C;
-        if (!C || !code) return;
-        let best = null, bd = 1e18;
-        const ax = S.stage.slice;
-        for (let du = -2500; du <= 2500; du += 50) for (let dv = -2500; dv <= 2500; dv += 50) {
-          const p = [0, 1, 2].map((i) => C[i] + ax.U[i] * du + ax.V[i] * dv);
-          if (sampleAt(p[0], p[1], p[2]).lam === code) { const d = du * du + dv * dv; if (d < bd) { bd = d; best = p; } }
-        }
-        if (best) { S.slice.C = best; pushSlice(); }
-      }
-    }
-  }
-
   /* ==================================================================
      Figures and video
      ================================================================== */
@@ -2062,14 +2696,18 @@ BARRY.views.seahorse = (function () {
      ================================================================== */
   function onKey(e) {
     if (BARRY.state.view !== 'seahorse') return;
-    if (/^(input|textarea|select)$/i.test((e.target && e.target.tagName) || '')) return;
+    const tg = (e.target && e.target.tagName) || '';
+    if (/^(input|textarea|select)$/i.test(tg)) return;
+    if (e.key === ' ' && /^(button|summary|a)$/i.test(tg)) return;     // space presses the focused control
     const P = S.play;
+    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); histGo(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (P && P.kind === 'ride' && S.stage) {
       if (e.key === ' ') { e.preventDefault(); S.stage.pauseRide(); renderSteps(); return; }
       if (e.key === 'ArrowRight') { S.stage.stepRide(1); return; }
       if (e.key === 'ArrowLeft') { S.stage.stepRide(-1); return; }
       if (e.key === 'f' || e.key === 'F') { S.stage.reframe(); renderSteps(); return; }
     }
+    if (P && P.kind === 'event' && e.key === ' ') { e.preventDefault(); toggleEventPause(); return; }
     if (e.key === 'Escape') { if (S.play) stopPlay(); else select(null); }
   }
   function themeChanged() {
@@ -2116,7 +2754,7 @@ BARRY.views.seahorse = (function () {
   }
   function onReturn() {
     if (S.stage && S.mode !== 'schematic') S.stage.resume();
-    if (S.play && S.play.kind === 'event') showEventPanel(S.play.key);
+    if (S.play && S.play.kind === 'event') { showEventPanel(); startEventClock(); }
   }
 
   return { onShow, onHide, onReturn, _state: S };

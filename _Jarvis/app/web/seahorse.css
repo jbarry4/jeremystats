@@ -91,16 +91,28 @@
 .sh-rail-what { flex: 1; font-size: var(--fs-11); color: var(--text-3); min-width: 120px; }
 .sh-rail-schem { min-height: 0; position: relative; overflow: hidden; }
 .sh-rail-schem svg { position: absolute; inset: 0; }
-/* the rail draws the same schematics at half size: bigger words, fewer of them */
-.sh-rail-schem .sh-svg .bt { font-size: 20px; }
-.sh-rail-schem .sh-svg .bt.sm { font-size: 18px; }
+/* Words keep about the same size on screen however small the drawing is
+   drawn (--u: drawing units per screen pixel, set by shSchem.fitText). */
+.sh-svg .bt { font-size: calc(var(--u, 1) * 13px); }
+.sh-svg .bt.sm { font-size: calc(var(--u, 1) * 12px); }
+.sh-svg .sub { font-size: calc(var(--u, 1) * 10.5px); }
+.sh-svg .elabel { font-size: calc(var(--u, 1) * 10.5px); stroke-width: calc(var(--u, 1) * 3.5px); }
+.sh-svg .blabel { font-size: calc(var(--u, 1) * 10px); }
+.sh-svg .ctag { font-size: calc(var(--u, 1) * 11px); stroke-width: calc(var(--u, 1) * 3px); }
+.sh-svg .ec-label { font-size: calc(var(--u, 1) * 10px); }
 .sh-rail-schem .sh-svg .box .sub { display: none; }
-.sh-rail-schem .sh-svg .elabel { font-size: 16px; stroke-width: 5px; }
-.sh-rail-schem .sh-svg .blabel { font-size: 16px; }
-.sh-rail-schem .sh-svg .ctag { font-size: 18px; stroke-width: 4px; }
-.sh-rail-schem .sh-svg .ec-label { font-size: 15px; }
-.sh-rail-schem .sh-cellwiring .box .sub { display: inline; font-size: 14px; }
-.sh-rail-schem .sh-cellwiring > .sub { font-size: 14px; }
+.sh-rail-schem .sh-cellwiring .box .sub { display: inline; }
+/* the plate */
+.sh-plate .band path { stroke: var(--bg); stroke-width: 1.2; opacity: 0.62; transition: opacity 0.18s; }
+.sh-plate .band.hover path, .sh-plate .band.sel path { opacity: 1; }
+.sh-plate .band .blabel { fill: var(--text); opacity: 0.75; }
+.sh-plate .dend { fill: none; stroke-width: 1.6; stroke-linecap: round; opacity: 0.9; }
+.sh-plate .ecbox { fill: var(--bg-2); stroke-width: 2; }
+.sh-plate .fieldname text { cursor: pointer; }
+.sh-plate .fieldname.hover text, .sh-plate .fieldname.sel text { fill: var(--accent); }
+.sh-svg .edge.pp path.ln { stroke-width: 3.2; }
+.sh-svg .elabel.strong { font-weight: 700; fill: var(--text); font-style: normal; }
+.sh-svg .bouton { stroke: var(--bg); stroke-width: 1.4; }
 .sh-hdiv { cursor: row-resize; background: var(--line-soft); }
 .sh-card {
   min-height: 0; overflow-y: auto; padding: var(--sp-12) var(--sp-16) var(--sp-20);
@@ -232,11 +244,11 @@
 .sh-fade-in { animation: sh-fade 0.35s ease-out; }
 @keyframes sh-fade { from { opacity: 0; } }
 .sh-svg text { fill: var(--text); font-family: var(--sans); stroke: none; }
-.sh-svg .bt { font-size: 15px; font-weight: 650; }
-.sh-svg .bt.sm { font-size: 12.5px; }
-.sh-svg .sub { fill: var(--text-2); font-style: italic; font-size: 11px; }
-.sh-svg .blabel { font-size: 11px; fill: var(--text-2); font-weight: 600; letter-spacing: 0.02em; }
-.sh-svg .ctag { font-size: 12px; font-weight: 650; fill: var(--text); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.sh-svg .bt { font-weight: 650; }
+
+.sh-svg .sub { fill: var(--text-2); font-style: italic; }
+.sh-svg .blabel { fill: var(--text-2); font-weight: 600; letter-spacing: 0.02em; }
+.sh-svg .ctag { font-weight: 650; fill: var(--text); paint-order: stroke; stroke: var(--bg); stroke-linejoin: round; }
 .sh-svg .box rect { fill: var(--bg-2); stroke: var(--line); stroke-width: 1.2; transition: opacity 0.25s, stroke 0.2s; }
 .sh-svg .box.hover rect, .sh-svg .box:hover rect { stroke: var(--accent); stroke-width: 2; }
 .sh-svg .box.sel rect { stroke: var(--accent); stroke-width: 2.6; }
@@ -247,7 +259,7 @@
 .sh-svg .edge.inh path.ln { stroke: var(--err); }
 .sh-svg .edge.dash path.ln { stroke-dasharray: 6 5; }
 .sh-svg .edge.hover path.ln, .sh-svg .edge:hover path.ln, .sh-svg .edge.sel path.ln { stroke: var(--accent); stroke-width: 2.8; }
-.sh-svg .elabel { font-size: 11px; fill: var(--text-2); font-style: italic; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+.sh-svg .elabel { fill: var(--text-2); font-style: italic; paint-order: stroke; stroke: var(--bg); stroke-linejoin: round; }
 .sh-svg .dim { opacity: 0.32; }
 .sh-svg .lit path.ln { stroke: var(--accent); stroke-width: 3; }
 .sh-svg .lit rect { stroke: var(--accent); stroke-width: 2.4; }
@@ -258,7 +270,7 @@
 .sh-svg .band.hover rect, .sh-svg .band.sel rect { opacity: 0.62 !important; }
 .sh-svg .glyph.hover, .sh-svg .glyph:hover, .sh-svg .glyph.sel { filter: drop-shadow(0 0 4px var(--accent)); }
 .sh-svg .ec-box { fill: var(--bg-2); stroke: var(--warn); stroke-dasharray: 5 4; stroke-width: 1.2; }
-.sh-svg .ec-label { fill: var(--warn); font-size: 12px; letter-spacing: 0.18em; }
+.sh-svg .ec-label { fill: var(--warn); letter-spacing: 0.18em; }
 .sh-svg .sinkrect { pointer-events: none; }
 .sh-svg .sinkrect.sink { fill: rgb(214, 54, 46); opacity: 0.5; animation: sh-sink 1.4s ease-in-out infinite; }
 .sh-svg .sinkrect.source { fill: rgb(46, 112, 214); opacity: 0.28; }
@@ -305,7 +317,8 @@
   .sh-load-head svg, .sh-svg .flow, .sh-svg .sinkrect.sink, .sh-load-steps li.now .mark, .sh-pop, .sh-fade-in, .sh-svg .here-ring { animation: none; }
   .sh-svg .flow { stroke-dasharray: none; }
 }
-@media (max-width: 1100px) {
+/* stacked only when the page is truly narrow: at 1100 px the stage and a 300 px rail still fit side by side (sweep 5, 11-21) */
+@media (max-width: 960px) {
   .sh-body { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bar" "stage" "rail" "steps"; grid-template-rows: auto minmax(360px, 1fr) minmax(420px, auto) auto; overflow-y: auto; }
   .sh-vdiv { display: none; }
   .sh-rail { border-top: 1px solid var(--line-soft); }
@@ -313,3 +326,51 @@
   .sh-caption { grid-template-columns: minmax(0, 1fr); }
   .sh-say, .sh-caption .sh-lab { grid-column: 1; }
 }
+
+/* ---- round 2 (11-21): history, folding cards, words on the stage, events ---- */
+.sh-hist { display: inline-flex; gap: 2px; }
+.sh-hist .mini { min-width: 26px; font-size: var(--fs-14); line-height: 1; }
+.sh-card-head {
+  position: sticky; top: calc(-1 * var(--sp-12)); z-index: 3; background: var(--bg);
+  margin: calc(-1 * var(--sp-12)) calc(-1 * var(--sp-16)) 0; padding: var(--sp-12) var(--sp-16) var(--sp-8);
+  border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 2px;
+}
+.sh-fold { display: flex; flex-direction: column; gap: var(--sp-8); }
+.sh-fold > summary {
+  cursor: pointer; list-style: none; font-size: var(--fs-11); text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-3); font-weight: 600; padding: var(--sp-4) 0; display: flex; align-items: center; gap: var(--sp-6);
+}
+.sh-fold > summary::-webkit-details-marker { display: none; }
+.sh-fold > summary::before { content: ''; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform 0.15s; }
+.sh-fold[open] > summary::before { transform: rotate(90deg); }
+.sh-fold > summary:hover { color: var(--text); }
+.sh-fold[open] { padding-bottom: var(--sp-4); }
+.sh-fold > *:not(summary) + *:not(summary) { margin-top: var(--sp-8); }
+.sh-fold .sh-notes > h3 { display: none; }
+.sh-labels { position: absolute; inset: 0; pointer-events: none; z-index: 3; transition: opacity 0.12s; }
+.sh-labels.moving { opacity: 0; }
+.sh-word {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font-size: 11px; font-weight: 600;
+  color: var(--text); padding: 0 5px; border-radius: 3px; line-height: 16px;
+  background: color-mix(in srgb, var(--bg) 62%, transparent); text-shadow: 0 0 3px var(--bg);
+}
+.sh-word.allen { color: var(--text-2); font-weight: 500; }
+.sh-word.probe { font-family: var(--mono); font-size: 10.5px; color: var(--text); border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.sh-seltag {
+  position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; white-space: nowrap; margin: -30px 0 0 10px;
+  padding: 2px 9px 2px 8px; border-radius: var(--r-pill); font-size: var(--fs-11); font-weight: 650;
+  color: var(--bg); background: var(--accent); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+}
+.sh-seltag::before { content: ''; position: absolute; left: -8px; bottom: -9px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+.sh-caption .sh-evctl { grid-column: 1 / -1; justify-content: flex-start; align-items: center; }
+.sh-scrub { display: inline-flex; align-items: center; gap: var(--sp-8); flex: 1; min-width: 220px; }
+.sh-scrub input { flex: 1; accent-color: var(--accent); }
+.sh-ev-time { font-family: var(--mono); font-size: var(--fs-115); color: var(--text-2); min-width: 92px; }
+.sh-compose { border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: var(--sp-8) var(--sp-10); display: flex; flex-direction: column; gap: var(--sp-4); }
+.sh-compose.off .sh-field { opacity: 0.45; }
+.sh-compose-head { display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap; }
+.sh-compose-head .sh-small { flex: 1; min-width: 140px; }
+.sh-plate.sh-tiny .ctag, .sh-plate.sh-tiny .blabel, .sh-plate.sh-tiny .sub, .sh-plate.sh-tiny .elabel:not(.strong) { display: none; }
+.sh-seltag.left::before { left: auto; right: -8px; }
+.sh-svg [tabindex]:focus { outline: none; }
+.sh-svg [tabindex]:focus-visible > rect, .sh-svg [tabindex]:focus-visible > path:first-child { stroke: var(--accent); stroke-width: 2.4; }

@@ -10378,7 +10378,8 @@ def _xm_folder(fid):
     if not isinstance(f, dict) or f.get("gone"):
         raise ValueError("There is no X-ray Many folder %s." % fid)
     wf, v, run = _xm_source(f.get("source"))
-    return f, wf, v, xraymanymod.members_of(wf["id"], v, run)
+    return f, wf, v, xraymanymod.members_of(
+        wf["id"], v, run, xraymanymod.labels_of(f.get("source")))
 
 
 def _xm_reads():
@@ -10464,7 +10465,9 @@ def api_dspca_many():
                 continue
             try:
                 wf, v, run = _xm_source(f.get("source"))
-                mem, err = xraymanymod.members_of(wf["id"], v, run), None
+                mem, err = xraymanymod.members_of(
+                    wf["id"], v, run,
+                    xraymanymod.labels_of(f.get("source"))), None
             except Exception as exc:                     # noqa: BLE001
                 mem, err = [], str(exc)
             rows.append((fid, f, mem, err))
@@ -10491,6 +10494,9 @@ def api_dspca_many():
             out.append({"id": fid, "name": f.get("name"),
                         "at": f.get("at"), "by": f.get("by"),
                         "source": f.get("source") or {},
+                        "warning": xraymanymod.warning(f.get("source")),
+                        "type_prefix": xraymanymod.type_prefix(
+                            f.get("source")),
                         "archived": bool(f.get("archived")),
                         "archived_at": f.get("archived_at"),
                         "params": xraymanymod.clean_params(params.get(fid)),
@@ -10502,30 +10508,137 @@ def api_dspca_many():
     return jsonify({"ok": True, "folders": out})
 
 
+def _xm_entry_source(eid):
+    """(workflow source, entry) for a folder made from a bank bundle
+    (PROJECT EVOLVE phase 3): the run the entry was banked from."""
+    rec = BANK.get(eid)
+    if not rec:
+        raise ValueError("There is no bank entry %s." % eid)
+    prm = ((rec.get("source") or {}).get("parameters") or {})
+    wf = prm.get("workflow") or {}
+    if prm.get("tool") != "rootcanal_workflow" or not wf.get("artifact_id"):
+        raise ValueError("‘%s’ was not banked by a Root Canal workflow, so "
+                         "there is no run to read it from."
+                         % (rec.get("name") or eid))
+    vers = rec.get("versions") or []
+    return ({"artifact_id": wf["artifact_id"], "version": wf.get("version")},
+            {"entry_id": rec["id"],
+             "version": (vers[-1].get("id") if vers else None)})
+
+
 @app.route("/api/dspca/many/folder", methods=["POST"])
 def api_dspca_many_folder():
     """A folder from a Root Canal workflow that has run: {name, source:
-    {artifact_id, version?}}. A server-side merge of one id."""
+    {artifact_id, version?}}. A server-side merge of one id.
+
+    PROJECT EVOLVE phase 3 (2026-11-21): `source.entry_id` makes it from a
+    banked Root Canal bundle instead (the run it was banked from), and
+    `labels` says which of its labels to read -- DS when left out. And
+    `carry_from`, another folder's id: its boxes and parameters, and every
+    call the Extraction Room keeps per folder (bands, splits, separable,
+    DS1/DS2 swaps), are copied onto the new folder's recordings that have
+    the same events -- a set made again, with nothing a person decided
+    lost."""
     body = request.get_json(force=True) or {}
     src = body.get("source") or {}
     try:
+        entry = None
+        if src.get("entry_id"):
+            src2, entry = _xm_entry_source(src["entry_id"])
+            src = dict(src, **src2)
         wf, v, run = _xm_source({"artifact_id": src.get("artifact_id"),
                                  "version": src.get("version")})
-        mem = xraymanymod.members_of(wf["id"], v, run)
+        labels = xraymanymod.clean_labels(run.get("kind"),
+                                          body.get("labels"))
+        if body.get("labels") and not labels:
+            raise ValueError("A %s run has none of the labels %s."
+                             % (run.get("kind"), body.get("labels")))
+        mem = xraymanymod.members_of(wf["id"], v, run, labels)
         if not any(m["n"] for m in mem):
-            raise ValueError("‘%s’ v%d kept no events inside its border, so "
-                             "there is nothing to read."
-                             % (wf.get("nickname") or wf["id"], v))
+            raise ValueError("‘%s’ v%d has no events in %s, so there is "
+                             "nothing to read."
+                             % (wf.get("nickname") or wf["id"], v,
+                                xraymanymod.label_words(run.get("kind"),
+                                                        labels)
+                                if labels else "its border"))
     except Exception as exc:                             # noqa: BLE001
         return fail("dspca/many/folder", exc, 400, {"source": src})
     fid = xraymanymod.new_folder_id()
     rec = xraymanymod.folder_record(body.get("name"), wf, v, run,
-                                    STORE.provenance())
+                                    STORE.provenance(), labels=labels,
+                                    entry=entry)
+    carried = None
+    if body.get("carry_from"):
+        try:
+            carried = _xm_carry(body["carry_from"], fid, mem)
+            rec["carried_from"] = body["carry_from"]
+        except Exception as exc:                         # noqa: BLE001
+            return fail("dspca/many/folder", exc, 400,
+                        {"carry_from": body.get("carry_from")})
     STORE.set_prefs({}, merge={xraymanymod.FOLDERS_KEY: {fid: rec}})
+    if carried and carried.get("merge"):
+        STORE.set_prefs({}, merge=carried.pop("merge"))
+    elif carried:
+        carried.pop("merge", None)
     STORE.record_activity([{"action": "dspca.many.folder",
                             "detail": {"id": fid, "workflow": wf["id"],
-                                       "version": v, "n": len(mem)}}])
-    return jsonify({"ok": True, "id": fid, "n": len(mem)})
+                                       "version": v, "n": len(mem),
+                                       "labels": labels,
+                                       "entry": (entry or {}).get("entry_id"),
+                                       "carried_from":
+                                           body.get("carry_from")}}])
+    return jsonify({"ok": True, "id": fid, "n": len(mem),
+                    "labels": labels, "carried": carried,
+                    "warning": xraymanymod.warning(rec["source"])})
+
+
+def _xm_carry(old_fid, new_fid, new_mem):
+    """What to copy from folder `old_fid` onto `new_fid`: a recording's box
+    and its room calls go across only when its events are the same in both
+    (the same stamps hash) -- a call made on other events is not a call on
+    these. Returns {copied, same, differ, merge}; `merge` is the prefs
+    merge to write."""
+    f_old, _wf, _v, old_mem = _xm_folder(old_fid)
+    prefs = STORE.get_prefs() or {}
+    same = {m["gid"] for m in new_mem if m.get("n")} & {
+        m["gid"] for m in old_mem if m.get("n")}
+    old_sh = {m["gid"]: m.get("stamps_hash") for m in old_mem}
+    new_sh = {m["gid"]: m.get("stamps_hash") for m in new_mem}
+    match = {g for g in same if old_sh.get(g) and old_sh[g] == new_sh.get(g)}
+    differ = sorted(same - match)
+    merge, copied = {}, {}
+    boxes = prefs.get(xraymanymod.BOXES_KEY) or {}
+    for g in match:
+        b = boxes.get(xraymanymod.box_key(old_fid, g))
+        if b:
+            merge.setdefault(xraymanymod.BOXES_KEY, {})[
+                xraymanymod.box_key(new_fid, g)] = b
+            copied["boxes"] = copied.get("boxes", 0) + 1
+    p = (prefs.get(xraymanymod.PARAMS_KEY) or {}).get(old_fid)
+    if p:
+        merge.setdefault(xraymanymod.PARAMS_KEY, {})[new_fid] = p
+        copied["params"] = 1
+    for key in (extractionmod.BAND_KEY, extractionmod.SEP_KEY,
+                extractionmod.FLIP_KEY, extractionmod.SPLIT_KEY):
+        got = prefs.get(key) or {}
+        for room, _n in extractionmod.ROOMS:
+            for g in match:
+                val = got.get(extractionmod.call_key(room, old_fid, g))
+                if val is None:
+                    continue
+                merge.setdefault(key, {})[
+                    extractionmod.call_key(room, new_fid, g)] = val
+                copied[key] = copied.get(key, 0) + 1
+    # The set's own mode in the room (one per room and folder).
+    modes = prefs.get(MODE_KEY) or {}
+    for room, _n in extractionmod.ROOMS:
+        val = modes.get("%s|%s" % (room, old_fid))
+        if val is not None:
+            merge.setdefault(MODE_KEY, {})["%s|%s" % (room, new_fid)] = val
+            copied[MODE_KEY] = copied.get(MODE_KEY, 0) + 1
+    return {"from": old_fid, "from_name": f_old.get("name"),
+            "copied": copied, "same": len(match),
+            "differ": differ, "merge": merge}
 
 
 @app.route("/api/dspca/many/read", methods=["POST"])
@@ -10726,7 +10839,10 @@ def api_dspca_many_run():
                        "group": groups.get(gid),
                        "source": {k: src.get(k) for k in
                                   ("artifact_id", "version", "nickname",
-                                   "grace")}}
+                                   "grace", "labels", "entry_id")
+                                  if src.get(k) is not None
+                                  or k in ("artifact_id", "version",
+                                           "nickname", "grace")}}
             have = ARTIFACTS.find(xraymanymod.KIND, subject)
             before = (have or {}).get("version")
             saved = ARTIFACTS.put(
@@ -10874,7 +10990,9 @@ def api_extraction():
                 continue
             try:
                 _wf, _v, _run = _xm_source(f.get("source"))
-                mem = xraymanymod.members_of(_wf["id"], _v, _run)
+                mem = xraymanymod.members_of(
+                    _wf["id"], _v, _run,
+                    xraymanymod.labels_of(f.get("source")))
             except Exception:                            # noqa: BLE001
                 mem = []
             n_read = sum(1 for m in mem if m.get("n") and _xm_read_of(
@@ -31600,6 +31718,14 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 # or on the VACC. Its routes live in er2routes.py.
 from . import er2routes as er2routesmod                       # noqa: E402
 er2routesmod.install(app, sys.modules[__name__])
+# PROJECT EVOLVE (2026-11-21): branching labels out of a bank entry and
+# every thing's family (evolveroutes.py, family.py); the Cells -- curated
+# Kilosort units, read, versioned, banked and viewed (cellroutes.py,
+# cells.py).
+from . import evolveroutes as evolveroutesmod                 # noqa: E402
+evolveroutesmod.install(app, sys.modules[__name__])
+from . import cellroutes as cellroutesmod                     # noqa: E402
+cellroutesmod.install(app, sys.modules[__name__])
 
 # VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
 # its Chrome and its routes live in vos.py.
@@ -34118,12 +34244,22 @@ def _cloud_sync_once(push=True, pull=True, files=False):
         # gets past (2026-10-21, two machines in the same minute, both
         # syncing again at once).
         first = _cloud_last.get("ok") is not False
-        transient = (" timed out after " in str(exc)
+        # Held back by ONE dropped request (cloud.CloudAway): nothing was
+        # asked, so it is not "the next attempt failing too". Isabella's Mac
+        # filed one at every start on 11-22: a request dropped seconds after
+        # start-up held the database for 15 s, and the sync behind it landed
+        # inside the hold. Two failures in a row behind a hold still count.
+        lone_hold = (isinstance(exc, cloudmod.CloudAway)
+                     and getattr(exc, "failures", 0) < 2)
+        transient = (lone_hold
+                     or " timed out after " in str(exc)
                      or str(exc).startswith("cannot reach ")
                      or _cloud_skew(str(exc)))
         if first and transient:
             _cloud_last["log_next"] = True
             first = False
+        elif lone_hold:
+            first = False     # log_next waits for a sync that is sent
         elif _cloud_last.pop("log_next", False):
             first = True
         _cloud_last.update({"at": cloudmod.now(), "ok": False,

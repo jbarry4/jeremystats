@@ -1050,6 +1050,13 @@ BARRY.ui = (function () {
   function versionPop(o) {
     const opt = o || {};
     const tree = versionTree(Object.assign({ notes: true }, opt));
+    /* Its family at the top (PROJECT EVOLVE phase 2, 2026-11-21): what this
+       was made from and what went on to use it, in every version picker
+       that says what it is a version of -- `family: {entry}` or
+       `{artifact}`, else the entry `manage` names. */
+    const famRef = opt.family
+      || (opt.manage && opt.manage.entry ? { entry: opt.manage.entry } : null);
+    const fam = famRef ? familyBlock(famRef, { extra: 'vpop-family' }) : null;
     showModal(el('div', { class: 'vpop' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: opt.heading || 'Versions' }),
@@ -1057,6 +1064,7 @@ BARRY.ui = (function () {
       ]),
       el('div', { class: 'mb' }, [
         opt.sub ? el('p', { class: 'hint', text: opt.sub }) : null,
+        fam,
         typeof opt.disabled === 'string'
           ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
         el('p', { class: 'hint vpop-how', text: opt.readonly
@@ -1144,6 +1152,155 @@ BARRY.ui = (function () {
       modalFoot([], [button({ kind: 'ghost', text: 'Done',
                                onclick: () => closeModal() })]),
     ]));
+  }
+
+  /* ---------- the family tree ---------- */
+
+  /* FAMILY (PROJECT EVOLVE phase 2, 2026-11-21: "family tree in the bank
+     and every version picker"). What a thing was made from and what was
+     made from it, read from /api/family -- worked out on the server from
+     what each thing records, never stored. Drawn the way the version tree
+     is: a column of rows, the lineage in a gutter on the left, newest
+     generation at the bottom; this thing highlighted in the middle; a
+     child's own children (a folder's room sets) hang one step in.
+
+       familyTree(data, {current})   the tree for a /api/family answer
+       familyBlock(ref)              { entry } or { artifact, version }:
+                                     fetches and draws it, saying so while
+                                     it loads and when there is none */
+  const FAM_PRODUCER = {
+    workflow: 'root-canal', pool: 'root-canal', border: 'root-canal',
+    sources: 'root-canal', folder: 'x-ray', xray: 'x-ray', room: 'x-ray',
+    cells: 'kilosort', sort: 'kilosort',
+  };
+  const FAM_WORDS = {
+    entry: 'Bank entry', workflow: 'Workflow', pool: 'Pool', border: 'Border',
+    sources: 'Sets', folder: 'X-ray folder', xray: 'X-ray bundle',
+    room: 'Room set', cells: 'Curation', sort: 'Sort', artifact: 'Artifact',
+  };
+
+  function famOpen(n) {
+    const ref = n && n.ref;
+    if (!ref) return null;
+    if (ref.entry && BARRY.views && BARRY.views.eventbank
+        && BARRY.views.eventbank.openEntry) {
+      return () => { closeModal(); BARRY.views.eventbank.openEntry(ref.entry); };
+    }
+    if (ref.folder) {
+      return () => {
+        try { localStorage.setItem('barry.dspcamany.folder', ref.folder); }
+        catch (e) { /* the folder bar still opens */ }
+        closeModal();
+        const tk = BARRY.views && BARRY.views.toolkit;
+        if (tk && tk.pick) tk.pick('dspca');
+        if (typeof setView === 'function') setView('toolkit');
+      };
+    }
+    if (ref.room) return () => window.open('/extraction.html', '_blank');
+    return null;
+  }
+
+  function famRow(n, cls) {
+    const go = famOpen(n);
+    const kindChip = el('span', {
+      class: 'flagchip producer fam-kind',
+      'data-producer': FAM_PRODUCER[n.kind]
+        || (n.kind === 'entry' && n.type === 'cell' ? 'kilosort'
+            : n.kind === 'entry' && n.type === 'rcbundle' ? 'root-canal' : null),
+      text: n.kind === 'entry' && n.type_name ? n.type_name
+            : (FAM_WORDS[n.kind] || n.kind),
+    });
+    const bits = [
+      kindChip,
+      el('strong', { class: 'fam-name', text: n.name || n.id || '—' }),
+      n.version != null && n.kind !== 'room'
+        ? el('span', { class: 'fam-v', text: 'v' + n.version }) : null,
+      n.n != null ? el('span', { class: 'fam-n',
+                                 text: Number(n.n).toLocaleString() }) : null,
+      n.archived ? el('span', { class: 'fam-state', text: 'archived' }) : null,
+      n.sub ? el('span', { class: 'fam-sub', text: n.sub }) : null,
+    ].filter(Boolean);
+    return el(go ? 'button' : 'div', {
+      type: go ? 'button' : null,
+      class: 'fam-row ' + cls + (go ? ' go' : '') + (n.archived ? ' archived' : ''),
+      'data-kind': n.kind, 'data-id': n.id || '',
+      title: go ? 'Open it' : null,
+      onclick: go,
+    }, bits);
+  }
+
+  function familyTree(data, o) {
+    const d = data || {};
+    const parents = d.parents || [];
+    const children = d.children || [];
+    const box = el('div', { class: 'fam' });
+    if (parents.length) {
+      box.appendChild(el('div', { class: 'fam-gen-head', text: 'Made from' }));
+      const g = el('div', { class: 'fam-gen fam-up' });
+      parents.forEach((n) => g.appendChild(famRow(n, 'fam-parent')));
+      box.appendChild(g);
+    }
+    if (d.self) {
+      box.appendChild(famRow(Object.assign({}, d.self, { ref: null }),
+                             'fam-self'));
+    }
+    if (children.length) {
+      box.appendChild(el('div', { class: 'fam-gen-head', text: 'Went into' }));
+      const g = el('div', { class: 'fam-gen fam-down' });
+      children.forEach((n) => {
+        g.appendChild(famRow(n, 'fam-child'));
+        const kids = n.children || [];
+        if (kids.length) {
+          const sub = el('div', { class: 'fam-gen fam-sub-gen' });
+          kids.forEach((k) => sub.appendChild(famRow(k, 'fam-grand')));
+          g.appendChild(sub);
+        }
+      });
+      box.appendChild(g);
+    }
+    if (!parents.length && !children.length) {
+      box.appendChild(el('p', { class: 'hint fam-none',
+        text: 'Nothing recorded made this, and nothing has been made from '
+            + 'it yet.' }));
+    }
+    return box;
+  }
+
+  const FAM_SEEN = new Map();
+  function familyBlock(ref, o) {
+    const opt = o || {};
+    const r = ref || {};
+    const q = r.entry ? 'entry=' + encodeURIComponent(r.entry)
+      : r.artifact ? 'artifact=' + encodeURIComponent(r.artifact)
+        + (r.version != null ? '&version=' + encodeURIComponent(r.version) : '')
+      : null;
+    const host = el('div', { class: 'fam-block' + (opt.extra ? ' ' + opt.extra : '') }, [
+      el('div', { class: 'section-label', text: opt.label || 'Family' }),
+      el('p', { class: 'hint fam-loading', text: 'Reading where it came from '
+                                                 + 'and where it went…' }),
+    ]);
+    if (!q) return null;
+    const draw = (got) => {
+      host.replaceChildren(
+        el('div', { class: 'section-label', text: opt.label || 'Family' }),
+        familyTree(got));
+      host.dataset.ready = '1';
+    };
+    /* A repaint of the panel it sits in asks again; the answer from a few
+       seconds ago is drawn at once rather than flashing "Reading…". */
+    const hit = FAM_SEEN.get(q);
+    if (hit && Date.now() - hit.at < 20000) { draw(hit.data); return host; }
+    api('/api/family?' + q).then((got) => {
+      FAM_SEEN.set(q, { at: Date.now(), data: got });
+      draw(got);
+    }).catch((e) => {
+      host.replaceChildren(
+        el('div', { class: 'section-label', text: opt.label || 'Family' }),
+        el('p', { class: 'hint', text: 'Its family could not be read: '
+                                       + (e.message || e) }));
+      host.dataset.ready = 'error';
+    });
+    return host;
   }
 
   /* ---------- the bank dialog ---------- */
@@ -1570,6 +1727,8 @@ BARRY.ui = (function () {
     [/curation \(ds/i, 'Checkup'], [/curation \(ied/i, 'Spotter'],
     [/curation \(pooled/i, 'Panning'],
     [/Confluence|Junction/i, 'Junction'], [/Root Canal/i, 'Root Canal'],
+    // PROJECT EVOLVE (2026-11-21): a hand branch, and the Cells.
+    [/^Event Bank branch/i, 'Branch'], [/^Kilosort/i, 'Kilosort'],
     [/Braces/i, 'Braces'], [/^Eye\b/i, 'Eye'], [/^Lock\b/i, 'Lock'],
     [/X-ray|DS1\/DS2/i, 'X-ray'], [/Tooth Fairy/i, 'Tooth Fairy'],
     [/Spark|The Arc/i, 'Spark'],
@@ -2044,6 +2203,9 @@ BARRY.ui = (function () {
     versionTree: versionTree,
     versionButton: versionButton,
     versionPop: versionPop,
+    familyTree: familyTree,
+    familyBlock: familyBlock,
+    familyForget: () => FAM_SEEN.clear(),
     manageVersions: manageVersions,
     versionProducer: versionProducer,
     versionChip: versionChip,

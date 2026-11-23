@@ -18329,3 +18329,120 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .vman-who { font-size: var(--fs-11); color: var(--text-3); }
 .vman-state { font-size: var(--fs-10); color: var(--warn); text-transform: uppercase; }
 .vtree-hidden-toggle { margin-top: var(--sp-6); font-size: var(--fs-11); }
+
+/* ==========================================================================
+   PROJECT EVOLVE phase 2 (2026-11-21): the family tree (ui.familyTree), in
+   the Event Bank's entry and at the top of every version picker. Rows as
+   the version tree's are; the lineage is a line down the left of each
+   generation, and this thing sits highlighted between them.
+   ========================================================================== */
+.fam { display: flex; flex-direction: column; gap: 1px; }
+.fam-gen-head { margin: var(--sp-6) 0 2px; font-size: var(--fs-11);
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+.fam-gen { display: flex; flex-direction: column; gap: 1px;
+  margin-left: 8px; padding-left: 12px; border-left: 2px solid var(--line); }
+.fam-gen.fam-sub-gen { margin-left: 18px; border-left-style: dashed; }
+.fam-row { position: relative; display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px var(--sp-10); width: 100%; min-height: 28px; padding: 5px 8px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit;
+  font-size: var(--fs-12); text-align: left; }
+.fam-gen > .fam-row::before { content: ''; position: absolute; left: -13px;
+  top: 15px; width: 10px; border-top: 2px solid var(--line); }
+.fam-row.go { cursor: pointer; }
+.fam-row.go:hover { background: var(--bg-hover); }
+.fam-row.fam-self { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--text); }
+.fam-row.archived { opacity: .65; }
+.fam-name { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.fam-v, .fam-n { font-family: var(--mono); font-size: var(--fs-11);
+  color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fam-state { font-size: var(--fs-11); color: var(--text-3); }
+.fam-sub { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3);
+  overflow-wrap: anywhere; }
+.fam-kind { font-size: var(--fs-11); }
+.fam-none { margin: 0; }
+.fam-block { display: flex; flex-direction: column; gap: 4px; }
+.bank-detail .fam-block { margin: var(--sp-8) 0 var(--sp-4); }
+.vpop-family { padding-bottom: var(--sp-8); border-bottom: 1px solid var(--line-soft); }
+
+/* PROJECT EVOLVE phase 3 (2026-11-21): X-ray Many folders by label. */
+.xm-folder-labels { font-size: var(--fs-11); color: var(--text-2); }
+.xm-folder-labels.warn { color: var(--call-amb); }
+.xm-new .xm-wfs-head { margin: var(--sp-6) 0 2px; }
+.xm-new-labels { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+.xm-new-labels .pill.wf-bank-l { display: inline-flex; align-items: center; gap: 6px; }
+.xm-new-labels .pill.wf-bank-l:not(.active) { opacity: .6; }
+.xm-new-labels .pill.wf-bank-l b { font-weight: 600; }
+.xm-new-say, .xm-new-warn { margin: 0; }
+.xm-lwarn { margin: var(--sp-4) 0 0; flex-basis: 100%; }
+
+/* ==========================================================================
+   PROJECT EVOLVE phase 7 (2026-11-21): the Cells. Kilosort's Cells pane
+   (the step strip, the recordings, the cell cards, a curation diff), the
+   Xplorefinder add-on's ticks and bar, and its cards window.
+   ========================================================================== */
+:root { --mode-cells: var(--tool-kilosort, #8fd3ff); }
+#app.mode-cells { --mode: var(--mode-cells); }
+.ks-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-6); margin: var(--sp-8) 0; }
+@media (max-width: 900px) { .ks-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.wf-stage.ks-step { cursor: default; opacity: .55; }
+.wf-stage.ks-step:hover { border-color: var(--line); }
+.wf-stage.ks-step.on { opacity: 1;
+  border-color: color-mix(in srgb, var(--tool-kilosort) 60%, transparent);
+  background: color-mix(in srgb, var(--tool-kilosort) 10%, var(--bg-2)); }
+.wf-stage.ks-step.next { opacity: 1; border-style: dashed; border-color: var(--accent-line); }
+.ks-step-state { font-size: var(--fs-11); color: var(--text-3); }
+.ks-step.on .ks-step-state { color: var(--tool-kilosort); }
+.ks-cells { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: var(--sp-12); align-items: start; }
+@media (max-width: 900px) { .ks-cells { grid-template-columns: 1fr; } }
+.ks-cells-list { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.ks-cells-sum, .ks-cells-batch { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.ks-cell-recs { display: flex; flex-direction: column; gap: 1px; max-height: 62vh;
+  overflow: auto; }
+.ks-cell-rec { display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 5px 8px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-12);
+  text-align: left; cursor: pointer; }
+.ks-cell-rec:hover { background: var(--bg-hover); }
+.ks-cell-rec.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); }
+.ks-cell-rec.uncurated { opacity: .6; }
+.ks-cell-rec .hint { font-size: var(--fs-11); }
+.ks-cells-main { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.ks-cells-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-6); }
+.ks-cells-head h3 { margin: 0; }
+.ks-cells-head .hint { margin: 2px 0 0; overflow-wrap: anywhere; }
+.ks-polarity, .ks-busy { margin: 0; }
+.ks-sources { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ks-source { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-8);
+  padding: 6px 8px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  background: var(--bg-2); }
+.ks-source .hint { overflow-wrap: anywhere; }
+.ks-vers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.ks-cellgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-8); }
+.ks-layer.none { opacity: .6; }
+.ks-diff { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ks-diff-rows { display: flex; flex-direction: column; gap: 1px; }
+.ks-diff-row { display: flex; flex-wrap: wrap; gap: var(--sp-10); align-items: baseline;
+  padding: 3px 8px; font-size: var(--fs-12); border-left: 3px solid var(--line); }
+.ks-diff-kind { min-width: 7ch; font-weight: 600; }
+.ks-diff-row.kept { border-left-color: var(--ok, #3fb950); }
+.ks-diff-row.changed, .ks-diff-row.merged, .ks-diff-row.split { border-left-color: var(--warn); }
+.ks-diff-row.removed { border-left-color: var(--err); }
+.ks-diff-row.added { border-left-color: var(--accent); }
+.cells-overlay { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 40; }
+.cells-bar .cells-which { font-family: var(--mono); }
+.cells-bar .cells-where { font-size: var(--fs-12); color: var(--text-2); }
+.cells-bar .cells-set { max-width: 100%; }
+#cellsBody .cells-head h2 { margin: 0; }
+#cellsBody .cells-head .hint { margin: 2px 0; }
+.cells-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-8); margin-top: var(--sp-8); }
+.cells-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cells-card .cells-sub { margin: 0; font-size: var(--fs-11); }
+.cells-cv { width: 100%; display: block; }
+/* The list scrolls so the labels, the name and Carry over stay in view. */
+.xm-new .xm-wfs { max-height: 38vh; overflow: auto; }

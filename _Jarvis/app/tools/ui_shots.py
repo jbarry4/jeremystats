@@ -253,6 +253,9 @@ def main():
     ap.add_argument("--query", default="", help="extra ?query for the page")
     ap.add_argument("--menu", action="store_true",
                     help="let the start menu show (and shoot it); off by default")
+    ap.add_argument("--gpu", action="store_true",
+                    help="draw on the graphics card (ANGLE/D3D11) instead of "
+                         "the software rasterizer: for timing WebGL frames")
     ap.add_argument("--steps", default="",
                     help='JSON [[js, wait, settle], ...] run in order, then '
                          'one shot named --name')
@@ -274,7 +277,8 @@ def main():
     dbg = free_port()
     profile = tempfile.mkdtemp(prefix="jarvis-shots-")
     edge = subprocess.Popen([
-        EDGE, "--headless=new", "--disable-gpu", "--no-first-run",
+        EDGE, "--headless=new"] + (["--use-angle=d3d11", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader"]
+                                    if a.gpu else ["--disable-gpu"]) + ["--no-first-run",
         "--no-default-browser-check", "--hide-scrollbars",
         "--remote-allow-origins=*",
         "--remote-debugging-port=%d" % dbg, "--user-data-dir=" + profile,

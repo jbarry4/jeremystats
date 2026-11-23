@@ -733,12 +733,37 @@ BARRY.panning = (function () {
     return stampOf(a) === 'doppler' || stampOf(b) === 'doppler';
   }
 
+  /* Which detectors found an event: Incisor, Doppler, both, or not known. */
+  const srcsOf = (e) => (!e || !e.origin ? null
+    : e.origin === 'both' ? ['incisor', 'doppler'] : [e.origin]);
+  /* Whether two events can be one: a merge makes one event of Incisor's and
+     Doppler's, so two of the same detector's never can (2026-11-23: "it
+     should not be looking to see if any other Incisor events are nearby").
+     An event of no known origin is allowed with anything, as it always was. */
+  function canPair(a, b) {
+    const x = srcsOf(a), y = srcsOf(b);
+    if (!x || !y) return true;
+    return !x.some((o) => y.indexOf(o) >= 0);
+  }
+
+  /* The nearest event FROM THE OTHER DETECTOR -- not the nearest event.
+     Two Incisor stamps 19 ms apart beside a Doppler one 37 ms away paired
+     the two Incisor ones, so Merge to Doppler said "neither carries
+     Doppler's time" about a spike Doppler had plainly found. */
   function nearestOther(a) {
     const evs = events();
     const i = evs.indexOf(a);
-    const cand = [evs[i - 1], evs[i + 1]].filter(Boolean);
-    cand.sort((x, y) => Math.abs(x.start - a.start) - Math.abs(y.start - a.start));
-    return cand[0] || null;
+    let best = null, bestD = Infinity;
+    // Outward from it in both directions, stopping a side once it is past
+    // the best so far: the events are in time order.
+    for (const dir of [-1, 1]) {
+      for (let j = i + dir; j >= 0 && j < evs.length; j += dir) {
+        const d = Math.abs(evs[j].start - a.start);
+        if (d >= bestD) break;
+        if (canPair(a, evs[j])) { best = evs[j]; bestD = d; break; }
+      }
+    }
+    return best;
   }
 
   function partner() {
@@ -746,7 +771,7 @@ BARRY.panning = (function () {
     if (!a) return null;
     if (mark) {
       const b = events().find((e) => e.id === mark);
-      if (b && b !== a) return b;
+      if (b && b !== a && canPair(a, b)) return b;
     }
     return nearestOther(a);
   }
@@ -767,7 +792,9 @@ BARRY.panning = (function () {
     const a = current();
     const b = partner();
     if (!a || !b) {
-      toast('There is nothing next to this one to merge it with.', null, 4000);
+      toast(a && a.origin === 'both'
+        ? 'This one is already Incisor’s and Doppler’s together, so there is nothing to merge it with.'
+        : 'The other detector found nothing in this pool to merge this one with.', null, 4000);
       return;
     }
     if (!canKeep(a, b, keepT)) {
@@ -1663,7 +1690,7 @@ BARRY.panning = (function () {
         class: 'cur-cat pan-merge ' + want + (mark ? ' armed' : ''),
         disabled: ok ? null : 'disabled',
         'data-merge': want,
-        title: !b ? 'Nothing next to this one'
+        title: !b ? 'Nothing from the other detector to merge it with'
           : !ok ? 'Neither this one nor the ' + (mark ? 'picked' : 'nearest')
                   + ' one carries Doppler’s time, so there is no Doppler stamp '
                   + 'to keep. Merge to Incisor instead.'
@@ -2098,6 +2125,12 @@ BARRY.panning = (function () {
     if (!ev) return;
     if (e.shiftKey) {
       if (ev === current()) return;
+      if (mark !== ev.id && !canPair(current(), ev)) {
+        toast('Those two were found by the same detector. A merge makes one '
+              + 'event of Incisor\u2019s and Doppler\u2019s, so pick one '
+              + 'the other detector found.', 'warn', 6000);
+        return;
+      }
       mark = mark === ev.id ? null : ev.id;
       render(); drawWin();
       return;

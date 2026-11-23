@@ -1924,7 +1924,7 @@ BARRY.errorBadgeCount = function errorBadgeCount(data) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit', 'comod', 'spectrum', 'seahorse'];
+               'toolkit', 'comod', 'spectrum', 'seahorse', 'cells'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -2142,6 +2142,14 @@ const MODES = {
         + '· nothing here is saved until you file the pairs',
     keys: '\u2190 \u2192 or n p step pairs · \u2191 \u2193 pick a channel · '
         + 'k keeps · x drops · t state / transition · Esc calls off a drag',
+  },
+  /* PROJECT EVOLVE phase 7 (2026-11-21): a recording's curated Kilosort
+     units. Looks only, like Braid; banking is the bar's Bank. */
+  cells: {
+    name: 'Cells',
+    what: 'Looking only · every curated cell’s spikes ticked on its own '
+        + 'contact, in its layer’s color · the cards are in the second window',
+    keys: '← → or n p step cells',
   },
   coupling: {
     name: 'Coupling',
@@ -4714,7 +4722,8 @@ BARRY.init = async function init() {
   /* A window opened for one thing should not offer to navigate away from
      it. Same idea as `aid-window` for the panel pop-outs: the app is the
      whole app, it just has no rail here. */
-  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum'
+      || params.get('role') === 'cells') {
     document.body.classList.add('solo-window');
   }
   /* Where to land.

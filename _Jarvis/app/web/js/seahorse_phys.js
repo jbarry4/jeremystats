@@ -25,27 +25,27 @@ BARRY.shPhys = (function () {
       label: 'DS1', kind: 'ds', ms: 70, tok: '--call-ds',
       comps: [{ layers: ML, amp: -1.0, t: 24, w: 6.5 }, { layers: MM.concat(GC), amp: 0.42, t: 24, w: 7.5 }, { layers: ['hil'], amp: 0.12, t: 25, w: 8 }],
       say: 'A lateral perforant-path volley: a current sink in the outer molecular layer of both blades, the return current (source) toward the granule cells. In the hilus the field goes strongly positive.',
-      refs: ['bragin1995', 'penttonen1997'],
+      refs: ['bragin1995', 'penttonen1997'], drives: [{ src: 'lec', t: 22 }, { src: 'burst', t: 27 }],
     },
     ds2: {
       label: 'DS2', kind: 'ds', ms: 70, tok: '--call-ds',
       comps: [{ layers: MM, amp: -1.25, t: 24, w: 6.5 }, { layers: ML.concat(GC), amp: 0.5, t: 24, w: 7.5 }, { layers: ['hil'], amp: 0.14, t: 25, w: 8 }],
       say: 'A medial perforant-path volley: the sink moves in to the middle third, flanked by sources in the outer third and the granule layer. Usually the larger dentate spike.',
-      refs: ['bragin1995', 'penttonen1997'],
+      refs: ['bragin1995', 'penttonen1997'], drives: [{ src: 'mec', t: 22 }, { src: 'burst', t: 27 }],
     },
     swr: {
       label: 'Sharp-wave ripple', kind: 'swr', ms: 160, tok: '--accent',
       comps: [{ layers: ['ca1sr'], amp: -1.0, t: 72, w: 20 }, { layers: ['ca1sp', 'ca1so'], amp: 0.45, t: 72, w: 22 },
               { layers: ['ca1sp'], amp: 0.32, t: 72, w: 13, osc: 180 }],
       say: 'A CA3 population burst drives a sink in CA1 stratum radiatum (the sharp wave) while a 140-200 Hz ripple rides on stratum pyramidale.',
-      refs: ['buzsaki2015', 'ylinen1995'], cells: ['ca3', 'ca1'],
+      refs: ['buzsaki2015', 'ylinen1995'], cells: ['ca3', 'ca1'], drives: [{ src: 'ca3', t: 62 }],
     },
     theta: {
       label: 'Theta', kind: 'theta', ms: 500, tok: '--accent',
       comps: [{ layers: ['ca1slm'].concat(ML), amp: -0.8, osc: 8, phase: 0 }, { layers: ['ca1sp', 'ca1so'], amp: 0.45, osc: 8, phase: 0 },
               { layers: ['hil', 'iml1', 'iml2'].concat(GC), amp: 0.18, osc: 70, phase: 0, thetaLocked: true }],
       say: 'Theta (6-10 Hz): alternating sinks at the distal dendrites (entorhinal input, near the fissure) and the cell bodies; the rhythm reverses across stratum radiatum and is largest near the fissure. Gamma rides on it in the dentate.',
-      refs: ['buzsaki2002'],
+      refs: ['buzsaki2002'], drives: [{ src: 'theta', t: 0 }, { src: 'theta', t: 125 }, { src: 'theta', t: 250 }, { src: 'theta', t: 375 }],
     },
     pspike: {
       label: 'P-spike', kind: 'pspike', ms: 220, tok: '--call-p',
@@ -70,10 +70,63 @@ BARRY.shPhys = (function () {
     return v;
   }
 
+  /* Your own event: sources switched on, each with a strength and an onset
+     (ms). Each puts its sink where the presets put it. */
+  function compose(sp) {
+    const comps = [], drives = [], said = [], refs = new Set();
+    let ms = 70;
+    const on = (k) => sp[k] && sp[k].on && +sp[k].amp > 0;
+    if (on('lec')) {
+      const a = +sp.lec.amp, t = +sp.lec.t;
+      comps.push({ layers: ML, amp: -1.0 * a, t, w: 6.5 }, { layers: MM.concat(GC), amp: 0.42 * a, t, w: 7.5 }, { layers: ['hil'], amp: 0.12 * a, t: t + 1, w: 8 });
+      drives.push({ src: 'lec', t: Math.max(0, t - 2) }, { src: 'burst', t: t + 3 });
+      said.push('LEC II at ' + t + ' ms'); refs.add('bragin1995'); ms = Math.max(ms, t + 46);
+    }
+    if (on('mec')) {
+      const a = +sp.mec.amp, t = +sp.mec.t;
+      comps.push({ layers: MM, amp: -1.25 * a, t, w: 6.5 }, { layers: ML.concat(GC), amp: 0.5 * a, t, w: 7.5 }, { layers: ['hil'], amp: 0.14 * a, t: t + 1, w: 8 });
+      drives.push({ src: 'mec', t: Math.max(0, t - 2) }, { src: 'burst', t: t + 3 });
+      said.push('MEC II at ' + t + ' ms'); refs.add('bragin1995'); ms = Math.max(ms, t + 46);
+    }
+    if (on('ca3')) {
+      const a = +sp.ca3.amp, t = +sp.ca3.t;
+      comps.push({ layers: ['ca1sr'], amp: -1.0 * a, t, w: 20 }, { layers: ['ca1sp', 'ca1so'], amp: 0.45 * a, t, w: 22 });
+      drives.push({ src: 'ca3', t: Math.max(0, t - 10) });
+      said.push('a CA3 burst at ' + t + ' ms'); refs.add('buzsaki2015'); ms = Math.max(ms, t + 80);
+    }
+    if (sp.ripple) {
+      const t = on('ca3') ? +sp.ca3.t : 72;
+      comps.push({ layers: ['ca1sp'], amp: 0.32 * (on('ca3') ? +sp.ca3.amp : 1), t, w: 13, osc: 180 });
+      said.push('a ripple'); refs.add('ylinen1995'); ms = Math.max(ms, t + 60);
+    }
+    if (on('ec3')) {
+      const a = +sp.ec3.amp, t = +sp.ec3.t;
+      comps.push({ layers: ['ca1slm'], amp: -1.0 * a, t, w: 9 }, { layers: ['ca1sr'], amp: 0.35 * a, t, w: 10 });
+      drives.push({ src: 'ec3', t: Math.max(0, t - 4) });
+      said.push('EC III at ' + t + ' ms'); refs.add('buzsaki2002'); ms = Math.max(ms, t + 46);
+    }
+    if (sp.theta) {
+      EVENTS.theta.comps.forEach((c) => comps.push(Object.assign({}, c)));
+      ms = Math.max(ms, 500);
+      for (let t = 0; t < ms; t += 125) drives.push({ src: 'theta', t });
+      said.push('theta under it all'); refs.add('buzsaki2002');
+    }
+    if (!comps.length) return null;
+    ms = Math.ceil(ms / 10) * 10;
+    return { label: 'Your event', kind: 'custom', ms, comps, drives, custom: true, refs: [...refs],
+             say: 'Your event: ' + said.join(', ') + '. Each source puts its sink in the layers the literature names for it.' };
+  }
+  /* The current source density in each layer at time t (ms). */
+  function layerCsd(ev, t) {
+    const out = new Map();
+    for (const c of ev.comps) { const v = c.amp * envelope(c, t); for (const k of c.layers) out.set(k, (out.get(k) || 0) + v); }
+    return out;
+  }
+
   /* layers: the lamina key under each contact, contact 1 (nearest the tip)
      first; z: each contact's distance from the tip (um). */
   function compute(key, layers, z) {
-    const ev = EVENTS[key];
+    const ev = typeof key === 'string' ? EVENTS[key] : key;
     const n = layers.length;
     const dt = ev.ms > 300 ? 2 : 0.5;
     const T = Math.round(ev.ms / dt);
@@ -189,5 +242,5 @@ BARRY.shPhys = (function () {
     }
   }
 
-  return { EVENTS, compute, draw };
+  return { EVENTS, compute, compose, layerCsd, draw };
 })();

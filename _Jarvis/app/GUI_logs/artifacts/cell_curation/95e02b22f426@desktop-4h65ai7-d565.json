@@ -1,0 +1,71 @@
+{
+  "_at": {
+    "added": "2026-11-21T22:27:40.566608+00:00",
+    "deleted": "2026-11-21T22:27:40.566608+00:00",
+    "id": "2026-11-21T22:27:40.566608+00:00",
+    "kind": "2026-11-21T22:27:40.566608+00:00",
+    "name": "2026-11-21T22:27:40.566608+00:00",
+    "nickname": "2026-11-21T22:27:40.566608+00:00",
+    "schema": "2026-11-21T22:27:40.566608+00:00",
+    "subject": "2026-11-21T22:27:40.566608+00:00",
+    "subject_key": "2026-11-21T22:27:40.566608+00:00",
+    "version": "2026-11-21T22:27:40.566608+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "858ed50fe087": [
+        "set",
+        "2026-11-21T22:27:40.566608+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-21T22:27:40.566608+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-21T17:27:40-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "95e02b22f426",
+  "kind": "cell_curation",
+  "name": "Cells \u00b7 PTEN m2 s8 2024-01-26 \u00b7 kilosort_tl6_tu7_fs30000.0",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gid": "sddf3e5010ff2",
+    "run": "kilosort_tl6_tu7_fs30000.0",
+    "run_dir": "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00\\binary\\kilosort_tl6_tu7_fs30000.0",
+    "session_label": "PTEN m2 s8 2024-01-26"
+  },
+  "subject_key": "cell_curation|sddf3e5010ff2|kilosort_tl6_tu7_fs30000.0",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.21.2",
+      "at": "2026-11-21T17:27:40-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "cc9794befd09",
+      "id": "858ed50fe087",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "cells": 9,
+        "source": "export",
+        "source_name": "Isabella's export",
+        "spikes": 15547
+      },
+      "note": "Read from Isabella's export (2025-08-06T10:26:13).",
+      "params": {
+        "source": "export"
+      },
+      "params_hash": "181d5f801014",
+      "v": 1
+    }
+  ]
+}

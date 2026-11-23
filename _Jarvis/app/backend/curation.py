@@ -1425,6 +1425,19 @@ class Curation:
         if not a or not b or a is b:
             raise CurationError("Pick two different candidates in this set.")
         oa, ob = a.get("origin"), b.get("origin")
+
+        def srcs_of(o):
+            return ({"incisor", "doppler"} if o == "both"
+                    else ({o} if o in ("incisor", "doppler") else None))
+        # One event of Incisor's and Doppler's, never two of one detector's
+        # (2026-11-23). An origin nobody knows is allowed, as before.
+        sa, sb = srcs_of(oa), srcs_of(ob)
+        if sa and sb and sa & sb:
+            raise CurationError(
+                "Both of those were found by %s. A merge makes one event of "
+                "Incisor's and Doppler's, so it pairs an event with one the "
+                "other detector found." % (" and ".join(
+                    sorted(w.title() for w in (sa & sb)))))
         want = str(stamp or "incisor").strip().lower()
         if want not in ("incisor", "doppler"):
             raise CurationError("A merge keeps Incisor's time or Doppler's.")

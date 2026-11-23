@@ -253,8 +253,9 @@ BARRY.views.toolkit = (function () {
                    + 'and the power spectrum over the range you ask '
                    + 'for. Saves into Results.'),
         toolButton('kilosort', 'Kilosort',
-                   'Check this machine can sort, run a sort against a '
-                   + 'recording, then open it in Phy.'),
+                   'The Cells: every curated sort read back, compared, '
+                   + 'banked and viewed in Xplorefinder. And sorting: check '
+                   + 'this machine, run a sort, open it in Phy.'),
         toolButton('snapshots', 'Import sorted snapshots',
                    'Read a folder of dentate-spike images that were sorted '
                    + 'by dragging them into Dentate Spike / Garbage / Flag '
@@ -338,8 +339,9 @@ BARRY.views.toolkit = (function () {
   const FLAT_HEADS = {
     bad: ['Bad channels', 'Which channels were marked bad: by session, mouse, '
           + 'project or date range, as a table you can download.'],
-    kilosort: ['Kilosort', 'Check this machine can sort, sort a recording, '
-               + 'then open the sort in Phy.'],
+    kilosort: ['Kilosort', 'The Cells: the sorts already made, read back, '
+               + 'curated, banked and viewed. And sorting: check this machine, '
+               + 'sort a recording, open it in Phy.'],
     snapshots: ['Import sorted snapshots', 'A folder of dentate-spike '
                 + 'images sorted by dragging them into folders, read back '
                 + 'into curation.'],

@@ -126,7 +126,7 @@ const SLICE_FS = `
   uniform sampler2D lamLut; uniform sampler2D alLut;    // 256 x 1, 1024 x 1 (a = inside HPF)
   uniform sampler2D hiLut; uniform sampler2D alHi;      // highlights
   uniform sampler2D pulseLut;                           // pulsing highlights (DS sinks)
-  uniform float pulse;
+  uniform float pulse; uniform float dimRest;
   uniform int mode;                                     // 0 layers, 1 Allen, 2 Nissl
   uniform int mask;                                     // 0 everything, 1 hippocampal formation only
   uniform vec3 paper; uniform vec3 ink;
@@ -198,8 +198,10 @@ const SLICE_FS = `
       col = mix(col, ac.rgb, 0.7);
     }
     vec4 h = lam > 0u ? lut(hiLut, lam, 256.0) : lut(alHi, al, 1024.0);
-    col = mix(col, h.rgb, h.a);
     vec4 p = lut(pulseLut, lam, 256.0);
+    // when something is highlighted, the rest steps back so it reads at a glance
+    if (dimRest > 0.0 && h.a < 0.05 && p.a < 0.05) col = mix(col, paper, 0.55 * dimRest);
+    col = mix(col, h.rgb, h.a);
     col = mix(col, p.rgb, p.a * pulse);
     // outlines: where the two strongest labels are close to a tie
     float fadeL = smoothstep(0.9, 2.6, um / max(pxum, 1e-3));
@@ -577,6 +579,11 @@ export function create(host, opts) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.12;
+  // a wheel notch moves about 15% of the way in, toward the cursor: measured 11-21, ten
+  // notches at 1.8 only went from 3.7 to 1.5 mm, so a slab took thirty to reach the cells
+  controls.zoomSpeed = 3.2;
+  controls.zoomToCursor = true;
+  controls.minDistance = 0.02;
   controls.target.set(0, 0.3, 0.6);
   const lights = {
     hemi: new THREE.HemisphereLight(0xffffff, 0x445566, 1.15),
@@ -606,12 +613,21 @@ export function create(host, opts) {
   capMat.uniforms = U;
   let volumesReady = false;
 
-  /* ---------- sizing ---------- */
+  /* ---------- sizing, and auto quality ---------- */
+  // When frames run slower than ~40 fps while something moves, draw at a
+  // lower resolution without outlines; put them back once things stop.
+  const quality = { low: false, ema: 16, last: 0, still: 0 , maxDraw: 0, maxAt: 0 };
+  function setLow(v) {
+    if (quality.low === v) return;
+    quality.low = v;
+    outlines.forEach((o) => { o.visible = !v; });
+    size();
+  }
   let Wpx = 10, Hpx = 10;
   function size() {
     const r = host.getBoundingClientRect();
     Wpx = Math.max(10, r.width); Hpx = Math.max(10, r.height);
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(quality.low ? 1 : 2, window.devicePixelRatio || 1) * (quality.low ? 0.85 : 1));
     renderer.setSize(Wpx, Hpx, false);
     camera.aspect = Wpx / Hpx;
     camera.updateProjectionMatrix();
@@ -644,7 +660,7 @@ export function create(host, opts) {
       dimF: { value: new THREE.Vector3(1, 1, 1) }, dimH: { value: new THREE.Vector3(1, 1, 1) }, dimB: { value: new THREE.Vector3(1, 1, 1) },
       hasF: { value: 0 }, hasH: { value: 0 },
       lamLut: { value: lut(256) }, alLut: { value: lut(1024) }, hiLut: { value: lut(256) }, alHi: { value: lut(1024) }, pulseLut: { value: lut(256) },
-      pulse: { value: 0 }, mode: { value: 0 }, mask: { value: 0 },
+      pulse: { value: 0 }, dimRest: { value: 0 }, mode: { value: 0 }, mask: { value: 0 },
       paper: { value: new THREE.Color('#fbfaf6') }, ink: { value: new THREE.Color('#1d2421') },
       lineK: { value: 1.2 }, alpha: { value: 1 },
     };
@@ -668,29 +684,43 @@ export function create(host, opts) {
   }
   /* vols: {brain: {labels: Uint16Array, nissl: Uint8Array, dims},
             hip: {labels, nissl, dims, origin}, fine: {labels, nissl, dims, origin} | null} */
-  function setVolumes(vols) {
+  /* Each volume goes to the graphics card on its own turn (all six at once
+     froze the page for 1.1 s on the first frame: sweep 1, 11-21). */
+  async function setVolumes(vols) {
+    const T = {}, set = [];
     const b = vols.brain;
-    U.labB.value = tex3(b.labels, b.dims, true, 2);
-    U.nisB.value = tex3(b.nissl, b.dims, false);
-    U.dimB.value.set(b.dims[0], b.dims[1], b.dims[2]);
+    T.labB = tex3(b.labels, b.dims, true, 2); T.nisB = tex3(b.nissl, b.dims, false);
+    set.push(() => U.dimB.value.set(b.dims[0], b.dims[1], b.dims[2]));
     if (vols.hip) {
       const h = vols.hip;
-      U.labH.value = tex3(h.labels, h.dims, true, 1);
-      U.nisH.value = tex3(h.nissl, h.dims, false);
-      U.orgH.value.set(h.origin[0], h.origin[1], h.origin[2]);
-      U.dimH.value.set(h.dims[0], h.dims[1], h.dims[2]);
-      U.hasH.value = 1;
+      T.labH = tex3(h.labels, h.dims, true, 1); T.nisH = tex3(h.nissl, h.dims, false);
+      set.push(() => { U.orgH.value.set(h.origin[0], h.origin[1], h.origin[2]); U.dimH.value.set(h.dims[0], h.dims[1], h.dims[2]); U.hasH.value = 1; });
     }
     if (vols.fine) {
       const f = vols.fine;
-      U.labF.value = tex3(f.labels, f.dims, true, 1);
-      U.nisF.value = tex3(f.nissl, f.dims, false);
-      U.orgF.value.set(f.origin[0], f.origin[1], f.origin[2]);
-      U.dimF.value.set(f.dims[0], f.dims[1], f.dims[2]);
-      U.hasF.value = 1;
+      T.labF = tex3(f.labels, f.dims, true, 1); T.nisF = tex3(f.nissl, f.dims, false);
+      set.push(() => { U.orgF.value.set(f.origin[0], f.origin[1], f.origin[2]); U.dimF.value.set(f.dims[0], f.dims[1], f.dims[2]); U.hasF.value = 1; });
     }
+    for (const t of Object.values(T)) {
+      try { renderer.initTexture(t); } catch (e) { /* uploaded on first use instead */ }
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    for (const [k, t] of Object.entries(T)) U[k].value = t;
+    set.forEach((fn) => fn());
     volumesReady = true;
+    // the section shader is large: compile it off the frame (it cost a 0.7 s
+    // first frame), with the faces hidden until it is ready
+    const vis = G.caps.visible;
+    G.caps.visible = false;
     rebuildCaps();
+    if (!sliceQuad || !sliceQuad.parent) {
+      const probeQuad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), capMat);
+      G.caps.add(probeQuad);
+      if (renderer.compileAsync) { try { await renderer.compileAsync(sceneT, camera); } catch (e) { /* compiled on first draw */ } }
+      G.caps.remove(probeQuad);
+      probeQuad.geometry.dispose();
+    }
+    G.caps.visible = vis && S.explodeTarget === 0;
     dirty = true;
   }
   function setLuts(l) {
@@ -710,7 +740,65 @@ export function create(host, opts) {
     fill(U.hiLut.value, h && h.lam);
     fill(U.alHi.value, h && h.allen);
     fill(U.pulseLut.value, h && h.pulse);
-    if (h && h.pulse && h.pulse.size && !reduced()) startPulse(); else stopPulse();
+    easeDim(h && h.dimRest ? 1 : 0);
+    if (h && h.pulse && h.pulse.size && !reduced() && !manualPulse) startPulse(); else if (!manualPulse) stopPulse();
+    dirty = true;
+  }
+  /* the rest of the section steps back over 160 ms, and comes forward again a little slower */
+  let dimAnim = null, dimWant = 0;
+  function easeDim(v) {
+    if (v === dimWant && (dimAnim || U.dimRest.value === v)) return;
+    dimWant = v;
+    if (dimAnim) anims.delete(dimAnim);
+    if (reduced()) { U.dimRest.value = v; dimAnim = null; return; }
+    const v0 = U.dimRest.value, t0 = performance.now(), dur = v ? 160 : 260;
+    dimAnim = (now) => { const k = Math.min(1, (now - t0) / dur); U.dimRest.value = v0 + (v - v0) * k; if (k >= 1) dimAnim = null; return k < 1; };
+    anims.add(dimAnim);
+    start();
+  }
+  /* The event clock drives the pulse directly (null hands it back to the breathing animation). */
+  let manualPulse = false;
+  function setPulse(v) {
+    if (v == null) { manualPulse = false; return; }
+    manualPulse = true;
+    if (pulseAnim) { anims.delete(pulseAnim); pulseAnim = null; }
+    U.pulse.value = v;
+    dirty = true;
+  }
+  /* Hover and selection on the 3D structures: the hovered one glows and
+     the rest step back; the selected one keeps an accent outline. */
+  const HL = { hover: null, sel: null };
+  function highlight(kind, t) {
+    HL[kind] = t && ((t.regions && t.regions.size) || (t.layers && t.layers.size) || (t.cells && t.cells.size)) ? t : null;
+    const acc = new THREE.Color(S.colors.accent || '#e5a823');
+    const ink = new THREE.Color(S.colors.ink || '#222');
+    const hov = HL.hover, sel = HL.sel;
+    const meshes = [['hpf', (m) => m.userData.key, 'regions'], ['lamina', (m) => m.userData.key, 'layers']];
+    for (const [g, keyOf, field] of meshes) {
+      for (const m of Object.values(byKey[g])) {
+        const k = keyOf(m);
+        const isH = hov && hov[field] && hov[field].has(k);
+        const isS = sel && sel[field] && sel[field].has(k);
+        const base = m.material.userData.base;
+        if (base) {
+          const bg = new THREE.Color(S.colors.bg || '#888');
+          m.material.color.copy(base);
+          const f = S.focus, fset = f && (field === 'regions' ? f.regions : f.layers);
+          const fon = f && ((f.regions && f.regions.size) || (f.layers && f.layers.size) || (f.cells && f.cells.size));
+          if (fon && fset && fset.size && !fset.has(k)) m.material.color.lerp(bg, 0.58);
+          if (hov && !isH && !isS) m.material.color.lerp(bg, 0.6);
+        }
+        m.material.emissive.copy(isH ? acc : isS ? acc : new THREE.Color(0, 0, 0)).multiplyScalar(isH ? 0.42 : isS ? 0.18 : 0);
+        const o = m.children.find((c) => c.userData.outlineOf);
+        if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.75; }
+      }
+    }
+    for (const [k, c] of Object.entries(byKey.cells)) {
+      const u = c.mesh.material.uniforms;
+      const isH = hov && hov.cells && hov.cells.has(k);
+      u.hot.value = isH ? 1 : 0;
+      if (isH) u.axonAlpha.value = 1;
+    }
     dirty = true;
   }
   let pulseAnim = null;
@@ -752,10 +840,21 @@ export function create(host, opts) {
     }
     if (S.ride) { rideTick(now); dirty = true; }
     if (dirty || moving) {
+      const gap = quality.last ? now - quality.last : 16;
+      if (gap < 250) quality.ema = quality.ema * 0.88 + gap * 0.12;
+      quality.last = now;
+      quality.still = now;
+      if (!quality.low && quality.ema > 25 && (moving || S.ride || anims.size)) setLow(true);
+      const d0 = performance.now();
       draw();
+      const dd = performance.now() - d0;
+      if (dd > quality.maxDraw) { quality.maxDraw = Math.round(dd); quality.maxAt = Math.round(d0); }
       dirty = false;
       if (S.recording) S.recording.grab();
       if (cb.onFrame) cb.onFrame();
+    } else {
+      quality.last = 0;
+      if (quality.low && now - quality.still > 700) { setLow(false); quality.ema = 16; dirty = true; }
     }
     raf = requestAnimationFrame(frame);
   }
@@ -797,6 +896,13 @@ export function create(host, opts) {
       // the crowd steps back while a ride plays or a cell is in the spotlight
       const quiet = S.ride || (S.focus && S.focus.cells && S.focus.cells.size);
       crowd.material.uniforms.alpha.value = quiet ? 0.32 : 0.85;
+      if (glyphs) {
+        // a 10 um soma this many pixels across: the dendrites come in as you close in
+        const somaPx = isO ? 0.01 / pxOrtho : 0.01 / (pxPersp * Math.max(1e-3, camera.position.distanceTo(controls.target)));
+        const t = clamp((somaPx - 2.6) / 4, 0, 1);
+        glyphReveal = t * t * (3 - 2 * t) * (quiet ? 0.35 : 1);
+        glyphs.material.uniforms.reveal.value = glyphReveal;
+      }
     }
     // the sections go dark-field on the dark stage: dense Nissl glows
     if (S.colors.paper) {
@@ -901,9 +1007,10 @@ export function create(host, opts) {
       G.brain.visible = true;
       Object.values(B).forEach((m) => { if (m.material.uniforms) m.material.uniforms.dim.value = 0.32; });
       if (B.HPF) B.HPF.visible = false;
-      G.hpf.visible = lv === 'hpf'; G.lamina.visible = lv === 'slab' || S.exploded > 0;
+      // the slab is region clay cut on both faces (the faces show the layers):
+      // 28 lamina surfaces with outlines made scrolling crawl (11-21)
+      G.hpf.visible = S.exploded === 0; G.lamina.visible = S.exploded > 0;
       G.cells.visible = true; G.crowd.visible = S.crowdOn;
-      if (lv === 'slab') Object.values(byKey.lamina).forEach((m) => { m.visible = !['alv', 'fi'].includes(m.userData.key); });
     }
     if (!o.keepCam && !S.ride) {
       if (lv === 'brain') fly([13.5, 9.5, 17.5], [0, 0.3, 0.6], 1200);
@@ -966,6 +1073,8 @@ export function create(host, opts) {
       if (S.cut.kind === 'slab') crowdPlanes = cutPlanesFor({ kind: 'slab', pos: S.cut.pos, thick: S.cut.thick });
     }
     if (crowd) { crowd.material.clippingPlanes = crowdPlanes; crowd.material.needsUpdate = true; crowd.visible = S.crowdOn && S.level !== 'brain' && crowdPlanes.length > 0; }
+    scheduleGlyphs(crowd && crowd.visible ? crowdPlanes : null);
+    if (glyphs) glyphs.visible = !!(crowd && crowd.visible);
     dirty = true;
   }
   /* The section faces: a quad on each cut plane, painted by the slice shader. */
@@ -974,7 +1083,7 @@ export function create(host, opts) {
     if (!volumesReady || S.view !== '3d') return;
     const planes = cutPlanesFor(S.cut);
     if (!planes.length) return;
-    const list = S.cut.kind === 'slab' ? [planes[0]] : planes;
+    const list = planes;               // a slab gets a face on both sides
     for (const pl of list) {
       const geo = new THREE.PlaneGeometry(16, 16);
       const m = new THREE.Mesh(geo, capMat);
@@ -1122,14 +1231,7 @@ export function create(host, opts) {
       c.mesh.material.depthWrite = lit;
       c.mesh.renderOrder = lit ? 31 : 30;
     }
-    for (const [k, m] of Object.entries(byKey.hpf)) {
-      const lit = !on || !f.regions || !f.regions.size || f.regions.has(k);
-      tint(m, lit ? 1 : 0.42);
-    }
-    for (const [k, m] of Object.entries(byKey.lamina)) {
-      const lit = !on || !f.layers || !f.layers.size || f.layers.has(k);
-      tint(m, lit ? 1 : 0.42);
-    }
+    highlight('hover', HL.hover);     // recolours the clay with focus + hover + selection together
     dirty = true;
   }
   function tint(mesh, k) {
@@ -1141,21 +1243,16 @@ export function create(host, opts) {
   }
   /* hover glow: the hovered thing lights up (and nothing else changes) */
   function hoverGlow(ud) {
-    if (S.hover && S.hover !== ud) {
-      const prev = S.hover;
-      if (prev.kind === 'cell' && byKey.cells[prev.key]) byKey.cells[prev.key].mesh.material.uniforms.hot.value = 0;
-      else if (prev._mesh && prev._mesh.material.emissive) prev._mesh.material.emissive.setRGB(0, 0, 0);
-    }
     S.hover = ud || null;
     for (const c of Object.values(byKey.cells)) {
       const u = c.mesh.material.uniforms;
-      if (u.axonAlpha.value > 0.3 && !(S.focus && S.focus.cells && S.focus.cells.has(c.mesh.userData.key))) u.axonAlpha.value = 0.3;
+      if (u.axonAlpha.value > 0.3 && !(S.focus && S.focus.cells && S.focus.cells.has(c.mesh.userData.key))) u.axonAlpha.value = S.ride ? 0.22 : 0.3;
     }
-    if (ud) {
-      if (ud.kind === 'cell' && byKey.cells[ud.key]) { const u = byKey.cells[ud.key].mesh.material.uniforms; u.hot.value = 1; u.axonAlpha.value = 1; }
-      else if (ud._mesh && ud._mesh.material.emissive) ud._mesh.material.emissive.set(S.colors.accent || '#e5a823').multiplyScalar(0.28);
-    }
-    dirty = true;
+    const t = { cells: new Set(), regions: new Set(), layers: new Set() };
+    if (ud && ud.kind === 'cell') t.cells.add(ud.key);
+    else if (ud && ud.kind === 'region' && byKey.hpf[ud.key]) t.regions.add(ud.key);
+    else if (ud && ud.kind === 'lamina') t.layers.add(ud.key);
+    highlight('hover', t);
   }
   /* Light the part of one cell's arbor where test(ccf) holds (e.g. its axon
      in the layers its targets live in). test null clears it. */
@@ -1219,7 +1316,127 @@ export function create(host, opts) {
     crowd.renderOrder = 20;
     crowd.frustumCulled = false;
     G.crowd.add(crowd);
+    crowdData = data;
+    glyphSig = '';
     applyClipping();
+  }
+  /* Up close the crowd's dots are drawn out as cells: each soma in the
+     section's sheet gets its dendrites, laid in the plane of the section
+     and pointed the way that kind's dendrites run (granule cells into the
+     molecular layer, pyramids up through radiatum). All of them are one
+     LineSegments object, rebuilt only when the plane changes. */
+  let crowdData = null, glyphs = null, glyphSig = '', glyphT = 0, glyphReveal = 0;
+  const GLYPH_MAX = 30000;
+  function glyphShape(shape, rnd) {
+    // 2D segments in um: u along the dendrites' way, v across
+    const segs = [];
+    const line = (u0, v0, ang, len, w) => { const a = ang * Math.PI / 180; const u1 = u0 + Math.cos(a) * len, v1 = v0 + Math.sin(a) * len; segs.push([u0, v0, u1, v1, w == null ? 1 : w]); return [u1, v1]; };
+    const j = (d) => (rnd() - 0.5) * 2 * d;
+    const sc = 0.85 + rnd() * 0.3;
+    if (shape === 'gc') {
+      const n = rnd() < 0.5 ? 2 : 3;
+      for (let i = 0; i < n; i++) {
+        const a = (n === 2 ? (i ? 16 : -16) : (i - 1) * 24) + j(10);
+        const [u, v] = line(0, j(3), a, (60 + j(15)) * sc);
+        line(u, v, a - 13 + j(6), (150 + j(40)) * sc, 0.8);
+        line(u, v, a + 13 + j(6), (140 + j(40)) * sc, 0.8);
+      }
+    } else if (shape === 'pyr1' || shape === 'pyr3') {
+      const L = (shape === 'pyr1' ? 330 : 270) * sc;
+      let u = 0, v = 0;
+      const tilt = j(6);
+      [0.3, 0.52, 0.72].forEach((f, i) => {
+        const [u1, v1] = line(u, v, tilt, L * f - u);
+        u = u1; v = v1;
+        line(u, v, tilt + (i % 2 ? 34 : -34) + j(8), (38 + j(12)) * sc, 0.6);
+      });
+      const [ut, vt] = line(u, v, tilt, L - u);
+      [-30, -6, 20].forEach((a) => line(ut, vt, tilt + a + j(10), (55 + j(18)) * sc, 0.6));
+      [158, 180, 202].forEach((a) => line(0, 0, a + j(10), (shape === 'pyr1' ? 95 : 120) * sc * (0.8 + rnd() * 0.4), 0.7));
+    } else if (shape === 'hipp') {
+      [80, 110, 250, 285].forEach((a) => { const [u, v] = line(0, 0, a + j(18), (90 + j(25)) * sc); line(u, v, a + 25 + j(10), 50 * sc, 0.7); });
+    } else if (shape === 'basket') {
+      [j(15), 180 + j(15), 30 + j(10), 210 + j(10)].forEach((a) => line(0, 0, a, (85 + j(20)) * sc, 0.8));
+    } else {
+      const n = 5, a0 = rnd() * 360;
+      for (let i = 0; i < n; i++) {
+        const a = a0 + i * 360 / n + j(18);
+        const [u, v] = line(0, 0, a, (70 + j(20)) * sc);
+        line(u, v, a - 20, (70 + j(20)) * sc, 0.75); line(u, v, a + 22, (60 + j(20)) * sc, 0.75);
+      }
+    }
+    return segs;
+  }
+  function scheduleGlyphs(planes) {
+    const sig = planes && planes.length && crowdData && crowdData.kind ? planes.map((p) => p.normal.toArray().map((x) => x.toFixed(4)).join(',') + ':' + p.constant.toFixed(4)).join('|') : '';
+    if (sig === glyphSig) return;
+    glyphSig = sig;
+    clearTimeout(glyphT);
+    if (!sig) { dropGlyphs(); return; }
+    glyphT = setTimeout(() => buildGlyphs(planes), 140);
+  }
+  function dropGlyphs() { if (glyphs) { G.crowd.remove(glyphs); glyphs.geometry.dispose(); glyphs.material.dispose(); glyphs = null; dirty = true; } }
+  let glyphMs = 0, glyphN = 0;
+  function buildGlyphs(planes) {
+    const t0 = performance.now();
+    dropGlyphs();
+    const D = crowdData;
+    if (!D || !D.kind || !planes.length) return;
+    const P = D.pos, N = P.length / 3;
+    const inside = [];
+    const v = new THREE.Vector3();
+    for (let i = 0; i < N; i++) {
+      v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+      let ok = true;
+      for (const pl of planes) if (pl.distanceToPoint(v) < 0) { ok = false; break; }
+      if (ok) inside.push(i);
+    }
+    if (!inside.length) return;
+    const stride = Math.max(1, inside.length / GLYPH_MAX);
+    // the plane the dendrites lie in: the section's (a slab's faces are coronal)
+    const n = planes[0].normal.clone().normalize();
+    let seed = 777;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const pos = [], col = [];
+    const up = new THREE.Vector3(), side = new THREE.Vector3(), tmp = new THREE.Vector3();
+    for (let q = 0; q < inside.length; q += stride) {
+      const i = inside[Math.floor(q)];
+      const kd = D.kinds[D.kind[i]];
+      if (!kd || (kd.every > 1 && rnd() * kd.every >= 1)) continue;
+      const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
+      const o = kd.orient ? D.orient(D.kind[i], toCcf(px, py, pz)) : null;
+      if (o) up.copy(dirW(o)); else up.set(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5);
+      up.addScaledVector(n, -up.dot(n));
+      if (up.lengthSq() < 1e-8) { tmp.set(0, 1, 0); up.copy(tmp).addScaledVector(n, -tmp.dot(n)); }
+      up.normalize();
+      side.crossVectors(n, up).normalize();
+      const segs = glyphShape(kd.shape, rnd);
+      const c = kd.col, a = kd.alpha;
+      for (const s of segs) {
+        pos.push(px + (up.x * s[0] + side.x * s[1]) / 1000, py + (up.y * s[0] + side.y * s[1]) / 1000, pz + (up.z * s[0] + side.z * s[1]) / 1000,
+                 px + (up.x * s[2] + side.x * s[3]) / 1000, py + (up.y * s[2] + side.y * s[3]) / 1000, pz + (up.z * s[2] + side.z * s[3]) / 1000);
+        const w = a * s[4];
+        col.push(c[0], c[1], c[2], w, c[0], c[1], c[2], w * 0.55);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('col', new THREE.Float32BufferAttribute(col, 4));
+    const m = new THREE.ShaderMaterial({
+      uniforms: { reveal: { value: glyphReveal } },
+      vertexShader: `attribute vec4 col; varying vec4 vC;
+        void main() { vC = col; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform float reveal; varying vec4 vC;
+        void main() { if (reveal < 0.01) discard; gl_FragColor = vec4(vC.rgb, vC.a * reveal); }`,
+      transparent: true, depthWrite: false, depthTest: false,
+    });
+    glyphs = new THREE.LineSegments(g, m);
+    glyphs.renderOrder = 19;
+    glyphs.frustumCulled = false;
+    glyphs.visible = !!(crowd && crowd.visible);
+    G.crowd.add(glyphs);
+    glyphMs = Math.round(performance.now() - t0); glyphN = pos.length / 6;
+    dirty = true;
   }
   function showCrowd(on) { S.crowdOn = !!on; applyClipping(); }
 
@@ -1233,10 +1450,10 @@ export function create(host, opts) {
     if (on) { G.lamina.visible = true; Object.values(byKey.lamina).forEach((m) => { m.visible = !['alv', 'fi'].includes(m.userData.key); }); }
     // the section face and the region clay would not line up with displaced layers
     G.caps.visible = !on;
-    G.hpf.visible = !on && S.level === 'hpf';
+    G.hpf.visible = !on && S.level !== 'brain';
     const s0 = S.exploded, s1 = S.explodeTarget, t0 = performance.now();
     const done = () => {
-      if (s1 === 0 && S.level !== 'slab') G.lamina.visible = false;
+      if (s1 === 0) G.lamina.visible = false;
       if (on) {
         const pts = [];
         for (const m of Object.values(byKey.lamina)) {
@@ -1302,6 +1519,27 @@ export function create(host, opts) {
     inst.instanceMatrix.needsUpdate = true;
     inst.renderOrder = 46;              // the contacts read through the shank
     G.probe.add(inst);
+    // the layer ribbon: beside the shank, one tile per contact in its layer's colour
+    if (pr.ribbon && pr.ribbon.length) {
+      const nrm = S.view === 'slice' && S.slice ? dirW(S.slice.N) : new THREE.Vector3(0, 0, 1);
+      const sd = new THREE.Vector3().crossVectors(d, nrm);
+      if (sd.lengthSq() < 1e-6) sd.set(1, 0, 0);
+      sd.normalize();
+      const tile = new THREE.BoxGeometry(0.03, (pr.pitch * 0.96) / 1000, 0.003);
+      const rib = new THREE.InstancedMesh(tile, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true, opacity: 0.92 }), pr.contacts);
+      const col = new THREE.Color();
+      for (let i = 0; i < pr.contacts; i++) {
+        const p = tip.clone().addScaledVector(d, -((pr.first || 40) + i * pr.pitch) / 1000).addScaledVector(sd, 0.05);
+        mtx.compose(p, qq, new THREE.Vector3(1, 1, 1));
+        rib.setMatrixAt(i, mtx);
+        rib.setColorAt(i, col.set(pr.ribbon[i] || '#777777'));
+      }
+      rib.instanceMatrix.needsUpdate = true;
+      if (rib.instanceColor) rib.instanceColor.needsUpdate = true;
+      rib.renderOrder = 45;
+      G.probe.add(rib);
+      G.probe.userData.side = sd;
+    }
     G.probe.userData.tip = tip;
     dirty = true;
   }
@@ -1348,15 +1586,17 @@ export function create(host, opts) {
     line.renderOrder = 20;
     G.fx.add(line);
     const N = 14;
-    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: 0.09, transparent: true, opacity: 0.95, depthTest: false }));
+    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: Math.max(0.09, camera.position.distanceTo(controls.target) * 0.012), transparent: true, opacity: 0.95, depthTest: false }));
     sparks.geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
     G.fx.add(sparks);
     const s = performance.now(), dur = ms || 2200;
-    const done = () => { G.fx.remove(line); G.fx.remove(sparks); line.geometry.dispose(); sparks.geometry.dispose(); dirty = true; };
+    let landed = false;
+    const done = () => { G.fx.remove(line); G.fx.remove(sparks); line.geometry.dispose(); sparks.geometry.dispose(); line.material.dispose(); sparks.material.dispose(); dirty = true; };
     if (reduced()) { setTimeout(done, dur); return; }
     anims.add((now) => {
       const k = (now - s) / dur;
       if (k > 1.25) { done(); return false; }
+      if (k >= 0.83 && !landed) { landed = true; flare(b, color, 900); }
       const pos = sparks.geometry.attributes.position;
       for (let i = 0; i < N; i++) { const p = curve.getPoint(Math.min(1, Math.max(0, k * 1.2 - i * 0.035))); pos.setXYZ(i, p.x, p.y, p.z); }
       pos.needsUpdate = true;
@@ -1364,6 +1604,45 @@ export function create(host, opts) {
       return true;
     });
     start();
+  }
+  /* Persistent drawn bundles (the medial perforant path, the temporoammonic
+     path): ccf polylines drawn as tubes, shown or hidden, pulsed by events. */
+  const paths = {};
+  function setPath(key, ccfPts, color, visible) {
+    if (paths[key]) { G.fx.remove(paths[key].mesh); paths[key].mesh.geometry.dispose(); paths[key].mesh.material.dispose(); delete paths[key]; }
+    if (!ccfPts || !ccfPts.length) { dirty = true; return; }
+    const t = pathTube(ccfPts.map((c) => wv(c)), 0.006);
+    const m = cellMaterial(color || '#3d7dd8');
+    m.uniforms.uMinPx.value = 2.2;
+    m.uniforms.axonAlpha.value = 0.75;
+    const mesh = new THREE.Mesh(t.geometry, m);
+    mesh.renderOrder = 29;
+    mesh.frustumCulled = false;
+    mesh.userData = { kind: 'path', key, pickable: false, clipLikeCells: true };
+    m.clippingPlanes = S.cellPlanes || [];
+    m.clipping = true;
+    mesh.visible = visible !== false;
+    G.fx.add(mesh);
+    paths[key] = { mesh, length: t.length };
+    dirty = true;
+  }
+  function pulsePath(key, ms) {
+    const p = paths[key];
+    if (!p || !p.mesh.visible) return;
+    const u = p.mesh.material.uniforms, dur = ms || 1600, t0 = performance.now();
+    u.pulseW.value = Math.max(80, p.length / 18); u.tail.value = p.length / 4;
+    anims.add((now) => { const k = (now - t0) / dur; if (k > 1.2) { u.pulseT.value = -1; return false; } u.pulseT.value = k * p.length; return true; });
+    start();
+  }
+  /* Where the section (a cut face or the slice) is under a screen pixel, in CCF um. */
+  function screenToSection(px, py) {
+    if (S.view === 'slice' && S.slice) return sliceToCcf(px, py);
+    const cap = G.caps.children[0];
+    if (!cap || !G.caps.visible) return null;
+    const p = pointOnCap(px, py, cap);
+    if (!p) return null;
+    // the clipped tissue is gone on the camera side: the cap must face us
+    return toCcf(p.x, p.y, p.z);
   }
   /* A soma flash, and every axon of the cell lit by a pulse out (no ride). */
   function pulseCell(key, ms) {
@@ -1401,13 +1680,22 @@ export function create(host, opts) {
     });
     start();
   }
-  function frameOn(worldPts, ms) {
+  /* fill: how much of the view the points should take (0.4 = honed in, with context) */
+  function frameOn(worldPts, ms, fill, dir, o) {
     const box = new THREE.Box3().setFromPoints(worldPts);
     const c = box.getCenter(new THREE.Vector3());
-    const r = Math.max(0.15, box.getSize(new THREE.Vector3()).length() / 2);
-    const dirv = camera.position.clone().sub(controls.target).normalize();
-    const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.9;
+    const r = Math.max(0.12, box.getSize(new THREE.Vector3()).length() / 2);
+    const dirv = dir ? new THREE.Vector3(...dir).normalize() : camera.position.clone().sub(controls.target).normalize();
+    let dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) / (fill || 0.9);
+    // honing never backs the camera out: a big thing is centred, not shrunk
+    if (o && o.noFarther) dist = Math.min(dist, Math.max(0.3, camera.position.distanceTo(controls.target)));
     fly(c.clone().addScaledVector(dirv, dist).toArray(), c.toArray(), ms == null ? 1100 : ms);
+  }
+  /* A ride that has ended: hold, then fade back to the light stage, clear
+     the moving cut and glide out to frame what was ridden. */
+  function settle(pts, ms) {
+    stopRide(true);
+    if (pts && pts.length) frameOn(pts, ms || 1800, 0.75);
   }
   function getCam() {
     return { pos: camera.position.toArray().map((v) => +v.toFixed(4)), target: controls.target.toArray().map((v) => +v.toFixed(4)) };
@@ -1426,6 +1714,22 @@ export function create(host, opts) {
     for (let i = 0; i < c.world.length; i += 3 * 7) pts.push(new THREE.Vector3(c.world[i], c.world[i + 1], c.world[i + 2]).add(c.mesh.position));
     return pts;
   }
+  /* The corners of a mesh's box (world), optionally the right hemisphere only. */
+  function bounds(kind, key, rightOnly) {
+    const m = byKey[kind] && byKey[kind][key];
+    if (!m || !m.geometry) return null;
+    const p = m.geometry.attributes.position;
+    const b = new THREE.Box3();
+    const v = new THREE.Vector3();
+    for (let i = 0; i < p.count; i += 5) {
+      if (rightOnly && p.getX(i) < 0) continue;
+      b.expandByPoint(v.set(p.getX(i), p.getY(i), p.getZ(i)));
+    }
+    if (b.isEmpty()) return null;
+    b.translate(m.position || new THREE.Vector3());
+    return [b.min.clone(), b.max.clone()];
+  }
+  function camDir() { return camera.position.clone().sub(controls.target).normalize().toArray(); }
   function centroid(kind, key, rightOnly) {
     if (kind === 'cells') { const s = cellSomaW(key); return s ? s.toArray() : null; }
     const m = byKey[kind] && byKey[kind][key];
@@ -1625,6 +1929,21 @@ export function create(host, opts) {
       st.cum = cumLen(st.pts);
       st.len = st.cum[st.cum.length - 1];
     }
+    // the camera follows a smoothed copy of the path: resampled every 10 um,
+    // then averaged over ~160 um, so branch-to-branch wiggles never reach it
+    if (st.pts && st.pts.length > 1) {
+      const n = Math.max(2, Math.ceil(st.len / 0.01));
+      const rs = [];
+      for (let i = 0; i <= n; i++) rs.push(polyAt(st.pts, st.cum, st.len * i / n));
+      const half = 8;
+      st.spts = rs.map((_, i) => {
+        const a = Math.max(0, i - half), b = Math.min(rs.length - 1, i + half);
+        const p = new THREE.Vector3();
+        for (let j = a; j <= b; j++) p.add(rs[j]);
+        return p.multiplyScalar(1 / (b - a + 1));
+      });
+      st.scum = cumLen(st.spts);
+    }
     // other cells firing along with this one (a volley): their own path lengths
     if (s.also && s.also.paths) {
       st.extra = Object.entries(s.also.paths).map(([k, p]) => { const pts = p.map((c) => wv(c)); const cum = cumLen(pts); return { key: k, len: cum[cum.length - 1] }; });
@@ -1738,12 +2057,17 @@ export function create(host, opts) {
     const t = (now - R.t0) / 1000;
     const k = clamp(t / st.dur, 0, 1);
     let head = null;
+    R.smooth = null;
     if (st.pts) {
       const s = st.len * (st.kind === 'axon' ? ease(k) * 0.98 + 0.02 * k : k);
       head = polyAt(st.pts, st.cum, s);
-      const ahead = polyAt(st.pts, st.cum, Math.min(st.len, s + 0.08));
-      const behind = polyAt(st.pts, st.cum, Math.max(0, s - 0.08));
-      tan.subVectors(ahead, behind);
+      if (st.spts) {
+        const f = s / Math.max(1e-9, st.len), L = st.scum[st.scum.length - 1];
+        R.smooth = polyAt(st.spts, st.scum, f * L);
+        const ahead = polyAt(st.spts, st.scum, Math.min(L, f * L + 0.18));
+        const behind = polyAt(st.spts, st.scum, Math.max(0, f * L - 0.06));
+        tan.subVectors(ahead, behind);
+      } else tan.set(0, 0, 1);
       if (tan.lengthSq() < 1e-10) tan.set(0, 0, 1);
       tan.normalize();
       if (st.kind === 'axon') {
@@ -1781,31 +2105,47 @@ export function create(host, opts) {
       gotoStep(R.i + 1);
     }
   }
-  let lastHead = null;
-  function driveCamera(head, st, k) {
+  /* The chase camera: critically damped springs toward a point behind and
+     above the smoothed path, looking a little ahead. No orbiting: at a
+     synapse or a soma it eases in and holds still. */
+  const camVel = new THREE.Vector3(), tgtVel = new THREE.Vector3();
+  let camT = 0;
+  function spring(pos, vel, want, w, dt) {
+    const d = new THREE.Vector3().subVectors(want, pos);
+    vel.addScaledVector(d, w * w * dt).addScaledVector(vel, -2 * w * dt);
+    pos.addScaledVector(vel, dt);
+  }
+  function driveCamera(head, st) {
+    const now = performance.now();
+    const dt = camT ? Math.min(0.05, (now - camT) / 1000) : 0.016;
+    camT = now;
     // the cut: a plane through the signal, facing the camera, cutting away the tissue in front of it
     const toCam = camera.position.clone().sub(head).normalize();
     S.cut.kind = 'view';
     S.cut.normal = toCam.clone().negate();
     S.cut.point = head.clone().addScaledVector(toCam, 0.03);
     applyClippingFast();
-    if (S.manual) return;
-    const near = st.kind === 'synapse' || st.kind === 'fire' ? 0.16 : st.kind === 'dend' ? 0.22 : 0.42;
-    const up = new THREE.Vector3(0, 1, 0);
-    const side = new THREE.Vector3().crossVectors(tan, up);
-    if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
-    side.normalize();
-    camWant.copy(head).addScaledVector(tan, -near).addScaledVector(up, near * 0.55).addScaledVector(side, near * 0.35);
-    if (st.kind === 'synapse' || st.kind === 'fire') {
-      const a = (performance.now() / 1000) * 0.35;
-      camWant.copy(head).add(new THREE.Vector3(Math.cos(a) * near, near * 0.55, Math.sin(a) * near));
+    if (S.manual) { camVel.set(0, 0, 0); tgtVel.set(0, 0, 0); return; }
+    const still = st.kind === 'synapse' || st.kind === 'fire';
+    const near = still ? 0.2 : st.kind === 'dend' ? 0.26 : 0.44;
+    const focusPt = S.ride && S.ride.smooth ? S.ride.smooth : head;
+    if (still) {
+      // ease in toward the point along the current line of sight, then hold
+      camWant.copy(head).addScaledVector(toCam, near);
+    } else {
+      const up = new THREE.Vector3(0, 1, 0);
+      const side = new THREE.Vector3().crossVectors(tan, up);
+      if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+      side.normalize();
+      camWant.copy(focusPt).addScaledVector(tan, -near).addScaledVector(up, near * 0.5).addScaledVector(side, near * 0.3);
     }
-    tgtWant.copy(head);
-    const f = reduced() ? 1 : 0.075;
-    camera.position.lerp(camWant, f);
-    controls.target.lerp(tgtWant, f * 1.6);
+    tgtWant.copy(still ? head : focusPt).addScaledVector(tan, still ? 0 : near * 0.25);
+    if (reduced()) { camera.position.copy(camWant); controls.target.copy(tgtWant); }
+    else {
+      spring(camera.position, camVel, camWant, 2.4, dt);
+      spring(controls.target, tgtVel, tgtWant, 3.6, dt);
+    }
     camera.lookAt(controls.target);
-    lastHead = head;
   }
   function applyClippingFast() {
     const planes = cutPlanesFor(S.cut);
@@ -1821,7 +2161,7 @@ export function create(host, opts) {
     const p = S.cut.point.clone();
     cap.position.copy(p).addScaledVector(n, 0.0004);
     cap.lookAt(p.clone().sub(n));
-    cap.scale.setScalar(0.5);
+    cap.scale.setScalar(1.6);          // wider than the brain, so its edge never shows
     if (crowd) {
       const back = pl.clone(); back.normal.negate(); back.constant = -back.constant + 0.09;
       crowd.material.clippingPlanes = [pl.clone(), back];
@@ -1919,9 +2259,9 @@ export function create(host, opts) {
   return {
     addBrain, addHpf, addLamina, addCells, setVolumes, setLuts, setHighlights, setSliceMode,
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
-    focus, glowCells, markArbor, hoverGlow, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
-    flare, volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid,
-    ride, pauseRide, stepRide, stopRide, reframe, setDark,
+    focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
+    flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
+    ride, pauseRide, stepRide, stopRide, settle, reframe, setDark,
     snapshot, record, theme, dispose,
     pause: stop, resume: () => { dirty = true; start(); },
     has: (k) => Object.keys(byKey[k] || {}).length > 0,
@@ -1930,7 +2270,8 @@ export function create(host, opts) {
     poke: () => { dirty = true; },
     diag: () => ({ shaderErrors: shaderErrors.slice(), programs: renderer.info.programs.length, calls: renderer.info.render.calls,
                    tris: renderer.info.render.triangles, view: S.view, quad: !!(sliceQuad && sliceQuad.parent), caps: G.caps.children.length,
-                   volumes: volumesReady, cut: S.cut.kind, gl2: renderer.capabilities.isWebGL2 }),
+                   volumes: volumesReady, cut: S.cut.kind, gl2: renderer.capabilities.isWebGL2,
+                   frameMs: +quality.ema.toFixed(1), maxDraw: quality.maxDraw, maxAt: quality.maxAt, glyphMs, glyphSegs: glyphN, lowQuality: quality.low, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }),
     set mini(v) { S.mini = !!v; dirty = true; },
     toCcf, W,
   };

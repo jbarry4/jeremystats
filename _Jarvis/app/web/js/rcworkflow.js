@@ -728,7 +728,8 @@ BARRY.rcWorkflow = (function () {
               : '.')
           : n.toLocaleString() + ' events as ONE Root Canal bundle: each says its '
             + 'label, the class it came from and whether the Halo captured it. X-ray '
-            + 'and the Extraction Room do not read bundles yet; bank one label for them.';
+            + 'Many reads a bundle one label at a time, and the Event Bank can branch '
+            + 'labels out of it later.';
       if (onChange) onChange(ids);
     };
     const pills = order.map((id) => {
@@ -3964,6 +3965,7 @@ BARRY.rcWorkflow = (function () {
         ? ['what it is pinned to now'] : []),
       line: o.line ? (v) => o.line(v.raw) : null,
       heading: o.heading, sub: o.sub,
+      family: o.artifact ? { artifact: o.artifact } : null,
       onpick: (v) => { if (v) { o.onpick(v.v); refresh(); } },
     });
     btn.classList.add('wf-vbtn');
@@ -3985,6 +3987,7 @@ BARRY.rcWorkflow = (function () {
     const p = poolOf(aid);
     if (!p) return null;
     return pinButton({
+      artifact: aid,
       versions: poolVersions(p), value: value != null ? value : p.version,
       unit: 'events', count: (v) => v.events, pinned, onpick, extra,
       line: (v) => [v.members != null ? plural(v.members, 'recording', 'recordings') : null,
@@ -4599,6 +4602,9 @@ BARRY.rcWorkflow = (function () {
     _boxesOf: boxesOf,
     _shownRun: () => shownRun(),
     _haloClass: haloClass,
+    // PROJECT EVOLVE phase 3: X-ray Many's new folder reads the same labels.
+    BANK_LABELS,
+    labelCounts,
     _pcWords: pcWords,
   };
 })();

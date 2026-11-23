@@ -281,6 +281,26 @@ def main():
             shards.configure_safe(False)
 
         check("W is reserved for notes", "w" in C.RESERVED_KEYS)
+
+        # ---- a merge pairs one detector's event with the other's ----
+        evs = A.CURATE.get("g1", r2["kind"])["events"]
+        inc = [e for e in evs if e.get("origin") == "incisor"]
+        m = cli.post("/api/curation/g1/%s/merge" % r2["kind"],
+                     json={"keep": inc[0]["id"], "drop": inc[1]["id"]})
+        check("two of Incisor's are never merged",
+              m.status_code == 400 and "Incisor" in (m.get_json() or {}).get(
+                  "error", ""), m.get_json())
+        rec = A.CURATE.get("g1", r2["kind"])
+        for e in rec["events"]:
+            if e["id"] == inc[1]["id"]:
+                e["origin"] = "doppler"
+        A.CURATE._write(rec)
+        m2 = cli.post("/api/curation/g1/%s/merge" % r2["kind"],
+                      json={"keep": inc[0]["id"], "drop": inc[1]["id"],
+                            "stamp": "doppler"}).get_json()
+        check("Incisor's with Doppler's merges, at Doppler's time",
+              m2.get("ok") and abs((m2.get("event") or {}).get("start", 0)
+                                   - inc[1]["start"]) < 1e-9, m2)
     finally:
         (A.BANK, A.CURATE, A.BRACES, A.STORE.record_activity,
          A.mirror_bank_soon, A._session_by_gid, A.CLOUD.cloud,

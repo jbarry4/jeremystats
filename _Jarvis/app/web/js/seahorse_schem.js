@@ -49,6 +49,17 @@ BARRY.shSchem = (function () {
     g.addEventListener('click', (e) => { e.stopPropagation(); h.select(sel); });
     g.addEventListener('pointerenter', () => h.hover(sel));
     g.addEventListener('pointerleave', () => h.hover(null));
+    // the keyboard reaches every part too: Tab to it (it lights like a hover), Enter or Space to select
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+    let kb = false;
+    g.addEventListener('focus', () => {
+      if (!g.getAttribute('aria-label')) g.setAttribute('aria-label', (g.textContent || sel.key).replace(/\s+/g, ' ').trim());
+      kb = g.matches(':focus-visible');           // a click focuses too: only the keyboard lights it
+      if (kb) h.hover(sel);
+    });
+    g.addEventListener('blur', () => { if (kb) h.hover(null); kb = false; });
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); h.select(sel); } });
     return g;
   }
   const verdictColor = (s) => ({ supported: 'var(--ok)', consistent: 'var(--accent)', weak: 'var(--warn)', 'not seen': 'var(--err)', error: 'var(--err)' }[s] || 'var(--text-3)');
@@ -166,9 +177,12 @@ BARRY.shSchem = (function () {
         mid = polyPoint(pts, 0.5);
       }
       const v = h.verdictOf(c.key);
-      const g = part(h, { type: 'conn', key: c.key }, { class: 'edge ' + c.sign + (c.dash ? ' dash' : ''), 'data-conn': c.key }, [
+      // the two perforant paths are the lab's inputs: bold, in their cells' colours
+      const pp = c.key === 'lpp' || c.key === 'mpp';
+      const ppCol = pp ? (h.cellOf(c.key === 'lpp' ? 'fan' : 'stel') || {}).color : null;
+      const g = part(h, { type: 'conn', key: c.key }, { class: 'edge ' + c.sign + (c.dash ? ' dash' : '') + (pp ? ' pp' : ''), 'data-conn': c.key }, [
         svg('path', { class: 'hit', d }),
-        svg('path', { class: 'ln', d, 'marker-end': 'url(#shm-' + c.sign + ')' }),
+        svg('path', { class: 'ln', d, 'marker-end': 'url(#shm-' + c.sign + ')', style: pp ? 'stroke:' + ppCol : null }),
         svg('circle', { class: 'badge', cx: mid[0], cy: mid[1], r: 4.2, style: 'fill:' + verdictColor(v.status) }),
         svg('title', { text: c.label + ' (' + (v.status || 'cited') + ')' }),
       ]);
@@ -221,127 +235,196 @@ BARRY.shSchem = (function () {
   }
 
   /* ----------------------------------------------------------------------
-     The dentate, by layer
+     The hippocampus by layer: a textbook plate. The dentate's blades curve
+     around the hilus as in a coronal section; the CA strip leaves the
+     hilus (CA3c) and runs out through CA3, CA2 and CA1 to the subiculum,
+     each field with its strata. Every connection ends in the layer where
+     it synapses. Entorhinal inputs on the left.
      ---------------------------------------------------------------------- */
-  const DG_BANDS = [['oml1', 44], ['mml1', 44], ['iml1', 34], ['gcl1', 36], ['hil', 96], ['gcl2', 36], ['iml2', 34], ['mml2', 44], ['oml2', 44]];
-  const CA3_BANDS = [['ca3slm', 56], ['ca3sr', 92], ['ca3slu', 40], ['ca3sp', 40], ['ca3so', 70]];
+  const DG = { cx: 300, cy: 356, rings: [['hil', 0, 62], ['gcl', 62, 84], ['iml', 84, 106], ['mml', 106, 132], ['oml', 132, 158]], a0: 58, a1: 302 };
+  // CA strip bands (y ranges) and fields (x ranges)
+  const STRATA = { so: [298, 320], sp: [320, 340], slu: [340, 352], sr: [352, 390], slm: [390, 412] };
+  const FIELDS = [['ca3', 340, 660, 'CA3'], ['ca2', 660, 716, 'CA2'], ['ca1', 716, 990, 'CA1'], ['sub', 990, 1112, 'Subiculum']];
+  const rad = (d) => d * Math.PI / 180;
+  const P = (r, th) => [DG.cx + r * Math.cos(rad(th)), DG.cy - r * Math.sin(rad(th))];
+  function sector(r0, r1, t0, t1) {
+    const a = P(r1, t0), b = P(r1, t1), c = P(r0, t1), d = P(r0, t0);
+    const large = Math.abs(t1 - t0) > 180 ? 1 : 0;
+    if (r0 <= 0) return `M${DG.cx},${DG.cy} L${a} A${r1},${r1} 0 ${large} 0 ${b} Z`;
+    return `M${a} A${r1},${r1} 0 ${large} 0 ${b} L${c} A${r0},${r0} 0 ${large} 1 ${d} Z`;
+  }
   function dentate(h) {
     const kb = h.kb, LC = kb.lamina_colors;
-    const out = svg('svg', { class: 'sh-svg', viewBox: '0 0 1000 660', preserveAspectRatio: 'xMidYMid meet', role: 'img',
-      'aria-label': 'Dentate gyrus microcircuit by layer' }, [defs()]);
-    out._full = [0, 0, 1000, 660];
-    const X0 = 236, X1 = 700, CX0 = 772, CX1 = 986;
-    const Y = {};
-    let y = 92;
-    const bands = svg('g', {});
-    out.appendChild(bands);
-    for (const [k, hh] of DG_BANDS) {
-      Y[k] = [y, y + hh];
-      const lab = (h.lamOf(k) || { label: k.toUpperCase() }).label;
-      bands.appendChild(part(h, { type: 'lamina', key: k }, { class: 'band', 'data-layer': k }, [
-        svg('rect', { x: X0, y, width: X1 - X0, height: hh, style: 'fill:' + LC[k] + ';opacity:0.3' }),
-        svg('text', { class: 'blabel', x: X0 - 8, y: y + hh / 2 + 4, 'text-anchor': 'end', text: lab }),
-      ]));
-      y += hh;
-    }
-    let y3 = 150;
-    for (const [k, hh] of CA3_BANDS) {
-      Y[k] = [y3, y3 + hh];
-      const lab = (h.lamOf(k) || { label: k }).label.replace('CA3 ', '');
-      bands.appendChild(part(h, { type: 'lamina', key: k }, { class: 'band', 'data-layer': k }, [
-        svg('rect', { x: CX0, y: y3, width: CX1 - CX0, height: hh, style: 'fill:' + LC[k] + ';opacity:0.3' }),
-        svg('text', { class: 'blabel', x: CX1 - 6, y: y3 + 14, 'text-anchor': 'end', text: lab }),
-      ]));
-      y3 += hh;
-    }
-    out.appendChild(svg('text', { class: 'bt', x: (X0 + X1) / 2, y: 74, 'text-anchor': 'middle', text: 'Dentate gyrus' }));
-    out.appendChild(svg('text', { class: 'bt', x: (CX0 + CX1) / 2, y: 134, 'text-anchor': 'middle', text: 'CA3' }));
-    out.appendChild(svg('text', { class: 'sub', x: (X0 + X1) / 2, y: 616, 'text-anchor': 'middle', text: 'upper (suprapyramidal) blade above the hilus, lower (infrapyramidal) blade below' }));
-    const mid = (k) => (Y[k][0] + Y[k][1]) / 2;
+    const out = svg('svg', { class: 'sh-svg sh-plate', viewBox: '0 0 1200 680', preserveAspectRatio: 'xMidYMid meet', role: 'img',
+      'aria-label': 'The hippocampus by layer: dentate gyrus, CA3, CA2, CA1 and subiculum' }, [defs()]);
+    out._full = [0, 0, 1200, 680];
     const col = (k) => (h.cellOf(k) || {}).color || '#888';
-    const glyph = (key, kids) => part(h, { type: 'cell', key }, { class: 'glyph', 'data-cell': key }, kids);
-    const conn = (key, d, extra) => part(h, { type: 'conn', key }, { class: 'edge ' + ((h.connOf(key) || {}).sign || 'exc'), 'data-conn': key }, [
-      svg('path', { class: 'hit', d }), svg('path', { class: 'ln', d, style: extra || '' })]);
+    const L = {};      // anchor points per layer key, for _anchor and edges
+    const bands = svg('g', { class: 'plate-bands' });
+    out.appendChild(bands);
+    const band = (key, d, labelAt, label) => {
+      bands.appendChild(part(h, { type: 'lamina', key }, { class: 'band', 'data-layer': key }, [
+        svg('path', { d, style: 'fill:' + (LC[key] || '#999') }),
+        label ? svg('text', { class: 'blabel', x: labelAt[0], y: labelAt[1] + 4, 'text-anchor': 'middle', text: label }) : null,
+      ]));
+    };
+    // the dentate: hilus, then each ring as an upper (1) and lower (2) blade
+    band('hil', sector(0, 62, DG.a0, DG.a1), P(34, 180), 'HIL');
+    L.hil = P(34, 180);
+    for (const [k, r0, r1] of DG.rings.slice(1)) {
+      const rm = (r0 + r1) / 2;
+      band(k + '1', sector(r0, r1, DG.a0, 180), P(rm, 150), k.toUpperCase() + '1');
+      band(k + '2', sector(r0, r1, 180, DG.a1), P(rm, 210), k.toUpperCase() + '2');
+      L[k + '1'] = P(rm, 150); L[k + '2'] = P(rm, 210);
+    }
+    // the CA strip, field by field
+    for (const [f, x0, x1] of FIELDS) {
+      if (f === 'sub') {
+        band('sub', `M${x0},${STRATA.so[0]} L${x1 - 20},${STRATA.so[0]} Q${x1},${STRATA.so[0]} ${x1},${STRATA.so[0] + 20} L${x1},${STRATA.slm[1] - 20} Q${x1},${STRATA.slm[1]} ${x1 - 20},${STRATA.slm[1]} L${x0},${STRATA.slm[1]} Z`,
+          [(x0 + x1) / 2, (STRATA.so[0] + STRATA.slm[1]) / 2], 'SUB');
+        L.sub = [(x0 + x1) / 2, (STRATA.so[0] + STRATA.slm[1]) / 2];
+        continue;
+      }
+      for (const [s, [y0, y1]] of Object.entries(STRATA)) {
+        if (s === 'slu' && f !== 'ca3') continue;
+        const ys0 = s === 'sr' && f !== 'ca3' ? STRATA.slu[0] : y0;
+        const key = f + s;
+        // CA3c starts inside the hilus: round its end
+        const left = f === 'ca3' ? `M${x0 + 14},${ys0} L${x1},${ys0} L${x1},${y1} L${x0 + 14},${y1} Q${x0 - 4},${(ys0 + y1) / 2} ${x0 + 14},${ys0} Z` : `M${x0},${ys0} L${x1},${ys0} L${x1},${y1} L${x0},${y1} Z`;
+        band(key, left, null, null);
+        L[key] = [(x0 + x1) / 2, (ys0 + y1) / 2];
+      }
+    }
+    // strata names once, at the right end of CA1 (and lucidum in CA3)
+    const names = svg('g', { style: 'pointer-events:none' });
+    out.appendChild(names);
+    for (const [s, [y0, y1]] of Object.entries(STRATA)) {
+      if (s === 'slu') continue;
+      names.appendChild(svg('text', { class: 'blabel', x: 984, y: ((s === 'sr' ? STRATA.slu[0] : y0) + y1) / 2 + 4, 'text-anchor': 'end', text: s }));
+    }
+    names.appendChild(svg('text', { class: 'blabel', x: 654, y: (STRATA.slu[0] + STRATA.slu[1]) / 2 + 4, 'text-anchor': 'end', text: 'slu' }));
+    // field names above the strip, clickable as regions
+    for (const [f, x0, x1, label] of FIELDS) {
+      out.appendChild(part(h, { type: 'region', key: f === 'sub' ? 'sub' : f }, { class: 'box fieldname', 'data-region': f === 'sub' ? 'sub' : f }, [
+        svg('text', { class: 'bt', x: (x0 + x1) / 2, y: STRATA.so[0] - 14, 'text-anchor': 'middle', text: label })]));
+    }
+    out.appendChild(part(h, { type: 'region', key: 'dg' }, { class: 'box fieldname', 'data-region': 'dg' }, [
+      svg('text', { class: 'bt', x: DG.cx - 20, y: DG.cy - 172, 'text-anchor': 'middle', text: 'Dentate gyrus' })]));
+    out.appendChild(svg('text', { class: 'sub', x: 600, y: 664, 'text-anchor': 'middle', text: 'upper (suprapyramidal) blade = 1, lower (infrapyramidal) blade = 2' }));
+
     const conns = svg('g', {}), cells = svg('g', {}), tags = svg('g', { style: 'pointer-events:none' });
     out.append(conns, cells, tags);
-    const tag = (x, y2, text, anchor) => tags.appendChild(svg('text', { class: 'ctag', x, y: y2, 'text-anchor': anchor || 'start', text }));
+    const glyph = (key, kids) => part(h, { type: 'cell', key }, { class: 'glyph', 'data-cell': key }, kids);
+    const conn = (key, d, style, cls) => part(h, { type: 'conn', key }, { class: 'edge ' + ((h.connOf(key) || {}).sign || 'exc') + (cls ? ' ' + cls : ''), 'data-conn': key }, [
+      svg('path', { class: 'hit', d }), svg('path', { class: 'ln', d, style: style || '', 'marker-end': 'url(#shm-' + ((h.connOf(key) || {}).sign || 'exc') + ')' })]);
+    const tag = (x, y, text, anchor) => tags.appendChild(svg('text', { class: 'ctag', x, y, 'text-anchor': anchor || 'middle', text }));
+    const arcPath = (r, t0, t1) => { const a = P(r, t0), b = P(r, t1); return `M${a} A${r},${r} 0 0 ${t1 > t0 ? 0 : 1} ${b}`; };
+    const pyr = (x, y, c, s) => `M${x - 9 * s},${y - 7 * s} L${x + 9 * s},${y - 7 * s} L${x},${y + 11 * s} Z`;   // apex toward the apical dendrite (down)
+
     // entorhinal inputs
-    const ecL = [86, 36], ecM = [86, 640 - 22];
-    cells.appendChild(glyph('fan', [svg('rect', { x: 16, y: ecL[1] - 22, width: 140, height: 42, rx: 7, style: 'fill:var(--bg-2);stroke:' + col('fan') + ';stroke-width:2' }),
-      svg('text', { x: 86, y: ecL[1] - 3, 'text-anchor': 'middle', class: 'bt sm', text: 'LEC II' }),
-      svg('text', { class: 'sub', x: 86, y: ecL[1] + 13, 'text-anchor': 'middle', text: 'fan cells' })]));
-    cells.appendChild(glyph('stel', [svg('rect', { x: 16, y: ecM[1] - 22, width: 140, height: 42, rx: 7, style: 'fill:var(--bg-2);stroke:' + col('stel') + ';stroke-width:2' }),
-      svg('text', { x: 86, y: ecM[1] - 3, 'text-anchor': 'middle', class: 'bt sm', text: 'MEC II' }),
-      svg('text', { class: 'sub', x: 86, y: ecM[1] + 13, 'text-anchor': 'middle', text: 'stellate cells' })]));
-    const lppS = 'stroke:' + col('fan'), mppS = 'stroke:' + col('stel');
-    conns.appendChild(conn('lpp', `M156,${ecL[1]} C200,${ecL[1]} 200,${mid('oml1')} ${X0},${mid('oml1')} L${X1 - 10},${mid('oml1')}`, lppS));
-    conns.appendChild(conn('lpp', `M100,${ecL[1] + 20} C110,240 160,${mid('oml2')} ${X0},${mid('oml2')} L${X1 - 10},${mid('oml2')}`, lppS));
-    conns.appendChild(conn('mpp', `M156,${ecM[1]} C200,${ecM[1]} 200,${mid('mml2')} ${X0},${mid('mml2')} L${X1 - 10},${mid('mml2')}`, mppS));
-    conns.appendChild(conn('mpp', `M72,${ecM[1] - 20} C62,420 160,${mid('mml1')} ${X0},${mid('mml1')} L${X1 - 10},${mid('mml1')}`, mppS));
-    // granule cells, both blades
-    const gcU = [300, mid('gcl1')], gcL = [300, mid('gcl2')];
-    const fan = (x, y0, yTip) => [-36, -12, 12, 36].map((dx) => `M${x},${y0} L${x + dx},${yTip}`).join(' ');
-    cells.appendChild(glyph('gc', [
-      svg('path', { d: fan(gcU[0], gcU[1] - 8, Y.oml1[0] + 4), style: 'stroke:' + col('gc') + ';stroke-width:2;fill:none' }),
-      svg('path', { d: `M${gcU[0] - 9},${gcU[1] + 6} L${gcU[0] + 9},${gcU[1] + 6} L${gcU[0]},${gcU[1] - 10} z`, style: 'fill:' + col('gc') }),
-      svg('path', { d: fan(gcL[0], gcL[1] + 8, Y.oml2[1] - 4), style: 'stroke:' + col('gc') + ';stroke-width:2;fill:none' }),
-      svg('path', { d: `M${gcL[0] - 9},${gcL[1] - 6} L${gcL[0] + 9},${gcL[1] - 6} L${gcL[0]},${gcL[1] + 10} z`, style: 'fill:' + col('gc') }),
-    ]));
-    tag(gcU[0] + 14, gcU[1] + 4, 'GC');
-    // mossy fiber: GC -> hilar collaterals -> CA3 stratum lucidum
-    const mfY = mid('hil') - 22;
-    conns.appendChild(conn('mf_ca3', `M${gcU[0]},${gcU[1] + 8} C${gcU[0] + 10},${mfY} ${gcU[0] + 40},${mfY} 540,${mfY} C690,${mfY} 720,${mid('ca3slu')} ${CX0},${mid('ca3slu')} L${CX0 + 120},${mid('ca3slu')}`,
-      'stroke:' + col('gc') + ';stroke-width:2.6'));
-    for (let x = CX0 + 22; x <= CX0 + 120; x += 32) cells.appendChild(svg('circle', { class: 'bouton', cx: x, cy: mid('ca3slu'), r: 5.5, style: 'fill:' + col('gc') }));
-    conns.appendChild(conn('mf_mc', `M372,${mfY} C380,${mfY + 18} 392,${mid('hil') + 6} 404,${mid('hil') + 8}`, 'stroke:' + col('gc')));
-    conns.appendChild(conn('mf_int', `M486,${mfY} C492,${mfY + 12} 500,${mid('hil') + 10} 508,${mid('hil') + 14}`, 'stroke:' + col('gc')));
-    // mossy cell -> IML of both blades
-    const mc = [412, mid('hil') + 20];
-    conns.appendChild(conn('mc_gc', `M${mc[0]},${mc[1] - 8} C${mc[0] + 10},${mid('iml1')} ${mc[0] + 30},${mid('iml1')} 452,${mid('iml1')} L${X1 - 40},${mid('iml1')}`, 'stroke:' + col('mc')));
-    conns.appendChild(conn('mc_gc', `M${mc[0]},${mc[1] + 8} C${mc[0] + 10},${mid('iml2')} ${mc[0] + 30},${mid('iml2')} 452,${mid('iml2')} L${X1 - 40},${mid('iml2')}`, 'stroke:' + col('mc')));
-    cells.appendChild(glyph('mc', [
-      svg('path', { d: `M${mc[0]},${mc[1]} l-28,-14 M${mc[0]},${mc[1]} l-30,16 M${mc[0]},${mc[1]} l26,-18 M${mc[0]},${mc[1]} l28,14`, style: 'stroke:' + col('mc') + ';stroke-width:3;fill:none' }),
-      svg('circle', { cx: mc[0], cy: mc[1], r: 10, style: 'fill:' + col('mc') }),
-    ]));
-    tag(mc[0], mc[1] + 30, 'MC', 'middle');
-    // HIPP: hilus -> OML/MML of both blades
-    const hp = [516, mid('hil') + 24];
-    conns.appendChild(conn('hipp_gc', `M${hp[0]},${hp[1] - 9} C${hp[0] + 6},${Y.mml1[0]} ${hp[0] + 20},${mid('oml1') + 10} 548,${mid('oml1') + 9} L${X1 - 22},${mid('oml1') + 9}`));
-    conns.appendChild(conn('hipp_gc', `M${hp[0]},${hp[1] + 9} C${hp[0] + 6},${Y.mml2[1]} ${hp[0] + 20},${mid('oml2') - 10} 548,${mid('oml2') - 9} L${X1 - 22},${mid('oml2') - 9}`));
-    cells.appendChild(glyph('hipp', [svg('circle', { cx: hp[0], cy: hp[1], r: 9, style: 'fill:' + col('hipp') }),
-      svg('path', { d: `M${hp[0]},${hp[1]} l-24,8 M${hp[0]},${hp[1]} l22,10`, style: 'stroke:' + col('hipp') + ';stroke-width:2' })]));
-    tag(hp[0], hp[1] + 30, 'HIPP', 'middle');
-    // PV+ basket and axo-axonic at the granule layer / hilus border
-    const pv = [586, Y.gcl1[1] + 8];
-    conns.appendChild(conn('pv_gc', `M${pv[0]},${pv[1]} C${pv[0] - 30},${mid('gcl1') + 2} ${gcU[0] + 60},${mid('gcl1')} ${gcU[0] + 12},${mid('gcl1')}`));
-    conns.appendChild(conn('pp_pv', `M${X0},${mid('mml1') + 6} C430,${mid('mml1') + 6} ${pv[0] - 6},${mid('mml1') + 14} ${pv[0]},${Y.iml1[1]}`, 'stroke:' + col('stel') + ';stroke-dasharray:3 4'));
-    conns.appendChild(conn('gc_pv', `M${gcU[0] + 30},${mfY} C490,${mfY - 4} ${pv[0] - 10},${pv[1] + 20} ${pv[0]},${pv[1] + 8}`, 'stroke:' + col('gc') + ';stroke-dasharray:3 4'));
-    cells.appendChild(glyph('pvbc', [svg('path', { d: `M${pv[0]},${pv[1]} l-10,-36 M${pv[0]},${pv[1]} l12,-40 M${pv[0]},${pv[1]} l4,30`, style: 'stroke:' + col('pvbc') + ';stroke-width:2' }),
-      svg('circle', { cx: pv[0], cy: pv[1], r: 9, style: 'fill:' + col('pvbc') })]));
-    tag(pv[0] - 4, pv[1] + 46, 'PV+ BC', 'middle');
-    const aa = [662, Y.gcl1[1] + 10];
-    conns.appendChild(conn('aac_gc', `M${aa[0]},${aa[1]} C${aa[0] - 40},${Y.gcl1[1] + 16} ${gcU[0] + 40},${Y.gcl1[1] + 12} ${gcU[0] + 4},${Y.gcl1[1] + 2}`));
-    cells.appendChild(glyph('aac', [svg('path', { d: `M${aa[0]},${aa[1]} l-6,-44 M${aa[0]},${aa[1]} l10,-46`, style: 'stroke:' + col('aac') + ';stroke-width:2' }),
-      svg('circle', { cx: aa[0], cy: aa[1], r: 8, style: 'fill:' + col('aac') })]));
-    tag(aa[0] + 4, aa[1] + 28, 'AAC', 'middle');
+    const ecBox = (key, y, title, sub, color) => glyph(key, [
+      svg('rect', { x: 18, y: y - 22, width: 150, height: 44, rx: 8, class: 'ecbox', style: 'stroke:' + color }),
+      svg('text', { class: 'bt sm', x: 93, y: y - 3, 'text-anchor': 'middle', text: title }),
+      svg('text', { class: 'sub', x: 93, y: y + 13, 'text-anchor': 'middle', text: sub })]);
+    cells.appendChild(ecBox('fan', 70, 'LEC II', 'fan cells', col('fan')));
+    cells.appendChild(ecBox('stel', 136, 'MEC II', 'stellate cells', col('stel')));
+    out.appendChild(part(h, { type: 'region', key: 'ec3' }, { class: 'box', 'data-region': 'ec3' }, [
+      svg('rect', { x: 18, y: 560, width: 150, height: 44, rx: 8 }), svg('text', { class: 'bt sm', x: 93, y: 579, 'text-anchor': 'middle', text: 'EC III' }),
+      svg('text', { class: 'sub', x: 93, y: 595, 'text-anchor': 'middle', text: 'pyramidal cells' })]));
+    out.appendChild(part(h, { type: 'region', key: 'ec5' }, { class: 'box', 'data-region': 'ec5' }, [
+      svg('rect', { x: 18, y: 616, width: 150, height: 44, rx: 8 }), svg('text', { class: 'bt sm', x: 93, y: 635, 'text-anchor': 'middle', text: 'EC V-VI' }),
+      svg('text', { class: 'sub', x: 93, y: 651, 'text-anchor': 'middle', text: 'deep layers' })]));
+    // lateral perforant path -> OML, medial -> MML, both blades (the medial one bold and labelled)
+    const into = (k, th) => P(k, th);
+    const o1 = into(145, 150), o2 = into(145, 214), m1 = into(119, 160), m2 = into(119, 205);
+    conns.appendChild(conn('lpp', `M168,70 C230,70 ${o1[0] - 40},${o1[1] - 70} ${o1[0]},${o1[1]}`, 'stroke:' + col('fan'), 'pp'));
+    conns.appendChild(conn('lpp', `M160,92 C200,200 ${o2[0] - 120},${o2[1] - 10} ${o2[0]},${o2[1]}`, 'stroke:' + col('fan'), 'pp'));
+    conns.appendChild(conn('mpp', `M168,136 C215,136 ${m1[0] - 50},${m1[1] - 30} ${m1[0]},${m1[1]}`, 'stroke:' + col('stel'), 'pp'));
+    conns.appendChild(conn('mpp', `M150,158 C175,260 ${m2[0] - 80},${m2[1] - 20} ${m2[0]},${m2[1]}`, 'stroke:' + col('stel'), 'pp'));
+    tags.appendChild(svg('text', { class: 'elabel strong', x: 196, y: 120, text: 'medial perforant path → MML' }));
+    tags.appendChild(svg('text', { class: 'elabel', x: 186, y: 56, text: 'lateral perforant path → OML' }));
+    // EC II -> CA3 slm, EC III -> CA1 slm (temporoammonic)
+    conns.appendChild(conn('pp_ca3', `M168,148 C420,150 520,${STRATA.slm[0] - 20} 560,${(STRATA.slm[0] + STRATA.slm[1]) / 2}`, 'stroke:' + col('stel') + ';stroke-dasharray:2 5;opacity:.8'));
+    conns.appendChild(conn('ta', `M168,582 C520,590 740,470 800,${(STRATA.slm[0] + STRATA.slm[1]) / 2 + 2}`, 'stroke-dasharray:7 5'));
+    tags.appendChild(svg('text', { class: 'elabel', x: 470, y: 560, text: 'temporoammonic (EC III → CA1 slm)' }));
+
+    // granule cells, upper and lower blade, dendrites fanning out through the molecular layer
+    const gc = (th, up) => {
+      const s = P(73, th), out1 = [-16, -6, 6, 16].map((dt) => P(156, th + dt));
+      return [svg('path', { d: out1.map((p) => `M${s[0]},${s[1]} L${p[0]},${p[1]}`).join(' '), class: 'dend', style: 'stroke:' + col('gc') }),
+        svg('circle', { cx: s[0], cy: s[1], r: 6.5, style: 'fill:' + col('gc') })];
+    };
+    const g1 = P(73, 118), g2 = P(73, 242);
+    cells.appendChild(glyph('gc', gc(118).concat(gc(242))));
+    tag(g1[0] + 2, g1[1] + 22, 'GC');
+    // mossy fibre: from the granule cell through the hilus into CA3 lucidum, giant boutons
+    const slu = (STRATA.slu[0] + STRATA.slu[1]) / 2;
+    conns.appendChild(conn('mf_ca3', `M${g1[0]},${g1[1] + 6} C${g1[0] + 6},${DG.cy - 4} ${DG.cx + 30},${slu} ${DG.cx + 70},${slu} L${560},${slu}`, 'stroke:' + col('gc') + ';stroke-width:2.6', 'mf'));
+    for (let x = 400; x <= 560; x += 40) cells.appendChild(svg('circle', { class: 'bouton', cx: x, cy: slu, r: 5, style: 'fill:' + col('gc') }));
+    conns.appendChild(conn('mf_mc', `M${DG.cx + 10},${DG.cy - 2} C${DG.cx - 2},${DG.cy + 6} ${DG.cx - 16},${DG.cy + 8} ${DG.cx - 26},${DG.cy + 6}`, 'stroke:' + col('gc')));
+    // mossy cell (hilus) -> IML of both blades, far away
+    const mc = P(36, 190);
+    cells.appendChild(glyph('mc', [svg('path', { d: `M${mc[0]},${mc[1]} l-16,-10 M${mc[0]},${mc[1]} l-14,12 M${mc[0]},${mc[1]} l14,-12`, class: 'dend', style: 'stroke:' + col('mc') }),
+      svg('circle', { cx: mc[0], cy: mc[1], r: 9, style: 'fill:' + col('mc') })]));
+    tag(mc[0] - 4, mc[1] + 24, 'MC');
+    conns.appendChild(conn('mc_gc', `M${mc[0]},${mc[1] - 9} C${mc[0] - 4},${DG.cy - 60} ${P(95, 135)[0] + 10},${P(95, 135)[1] + 10} ${P(95, 135)[0]},${P(95, 135)[1]}`, 'stroke:' + col('mc')));
+    conns.appendChild(conn('mc_gc', `M${mc[0]},${mc[1] + 9} C${mc[0] - 4},${DG.cy + 60} ${P(95, 228)[0] + 10},${P(95, 228)[1] - 10} ${P(95, 228)[0]},${P(95, 228)[1]}`, 'stroke:' + col('mc')));
+    // HIPP (hilus) -> outer two-thirds
+    const hp = P(30, 232);
+    cells.appendChild(glyph('hipp', [svg('circle', { cx: hp[0], cy: hp[1], r: 8, style: 'fill:' + col('hipp') })]));
+    tag(hp[0] + 22, hp[1] + 14, 'HIPP');
+    conns.appendChild(conn('hipp_gc', `M${hp[0] - 6},${hp[1] + 4} C${hp[0] - 40},${DG.cy + 120} ${P(140, 250)[0]},${P(140, 250)[1] + 4} ${P(140, 262)[0]},${P(140, 262)[1]}`, ''));
+    conns.appendChild(conn('hipp_gc', `M${hp[0] - 8},${hp[1] - 4} C${hp[0] - 70},${DG.cy - 30} ${P(140, 165)[0] - 10},${P(140, 165)[1] + 30} ${P(140, 160)[0]},${P(140, 160)[1]}`, ''));
+    // PV+ basket and axo-axonic cells at the granule layer / hilus border
+    const pv = P(62, 92), aa = P(62, 70);
+    cells.appendChild(glyph('pvbc', [svg('circle', { cx: pv[0], cy: pv[1], r: 7.5, style: 'fill:' + col('pvbc') })]));
+    cells.appendChild(glyph('aac', [svg('circle', { cx: aa[0], cy: aa[1], r: 7, style: 'fill:' + col('aac') })]));
+    tag(pv[0] - 8, pv[1] - 14, 'PV+ BC', 'end');
+    tag(aa[0] + 14, aa[1] - 10, 'AAC', 'start');
+    conns.appendChild(conn('pv_gc', `M${pv[0] - 6},${pv[1] + 2} Q${(pv[0] + g1[0]) / 2},${pv[1] + 18} ${g1[0] + 8},${g1[1] + 2}`, ''));
+    conns.appendChild(conn('aac_gc', `M${aa[0] - 6},${aa[1] + 4} Q${(aa[0] + g1[0]) / 2 + 10},${aa[1] + 34} ${g1[0] + 4},${g1[1] + 8}`, ''));
     // semilunar granule cell in the IML
-    const sg = [452, mid('iml1')];
-    conns.appendChild(conn('sgc_hil', `M${sg[0]},${sg[1] + 6} C${sg[0] - 6},${mid('hil') - 34} ${sg[0] - 28},${mid('hil') + 6} ${mc[0] + 12},${mc[1] - 6}`, 'stroke:' + col('sgc')));
-    cells.appendChild(glyph('sgc', [svg('path', { d: [-52, -18, 20, 54].map((dx) => `M${sg[0]},${sg[1]} L${sg[0] + dx},${Y.oml1[0] + 5}`).join(' '), style: 'stroke:' + col('sgc') + ';stroke-width:2;fill:none' }),
-      svg('ellipse', { cx: sg[0], cy: sg[1], rx: 11, ry: 6, style: 'fill:' + col('sgc') })]));
-    tag(sg[0] + 16, sg[1] + 4, 'SGC');
-    // CA3 pyramidal cell
-    const c3 = [904, mid('ca3sp')];
-    cells.appendChild(glyph('ca3', [svg('path', { d: `M${c3[0]},${c3[1] - 8} L${c3[0]},${Y.ca3slm[0] + 6} M${c3[0]},${mid('ca3sr')} l-30,-30 M${c3[0]},${mid('ca3sr')} l26,-34 M${c3[0]},${c3[1] + 8} l-22,40 M${c3[0]},${c3[1] + 8} l20,44`, style: 'stroke:' + col('ca3') + ';stroke-width:2.2;fill:none' }),
-      svg('path', { d: `M${c3[0] - 11},${c3[1] + 8} L${c3[0] + 11},${c3[1] + 8} L${c3[0]},${c3[1] - 12} z`, style: 'fill:' + col('ca3') })]));
-    tag(c3[0] - 16, c3[1] + 4, 'CA3 PC', 'end');
-    conns.appendChild(conn('back', `M${c3[0] - 4},${c3[1] + 10} C${c3[0] - 60},${Y.ca3so[1] + 40} 610,${mid('hil') + 64} ${mc[0] + 14},${mc[1] + 8}`, 'stroke:' + col('ca3') + ';stroke-dasharray:6 5'));
-    conns.appendChild(conn('rc', `M${c3[0] + 6},${c3[1] + 10} C${c3[0] + 70},${Y.ca3so[1]} ${c3[0] + 76},${mid('ca3sr')} ${c3[0] + 26},${mid('ca3sr')}`, 'stroke:' + col('ca3')));
+    const sg = P(95, 140);
+    cells.appendChild(glyph('sgc', [svg('ellipse', { cx: sg[0], cy: sg[1], rx: 9, ry: 5, style: 'fill:' + col('sgc') })]));
+    tag(sg[0] - 14, sg[1] - 8, 'SGC', 'end');
+    conns.appendChild(conn('sgc_hil', `M${sg[0] + 4},${sg[1] + 4} Q${DG.cx - 20},${DG.cy - 20} ${mc[0] + 6},${mc[1] - 8}`, 'stroke:' + col('sgc')));
+
+    // CA3 pyramidal cell, its recurrents, its Schaffer collateral into CA1 radiatum, the back-projection
+    const spY = (STRATA.sp[0] + STRATA.sp[1]) / 2;
+    const c3 = [560, spY];
+    cells.appendChild(glyph('ca3', [svg('path', { d: `M${c3[0]},${c3[1] + 10} L${c3[0]},${STRATA.slm[1] - 4} M${c3[0]},${c3[1] - 6} l-14,-16 M${c3[0]},${c3[1] - 6} l14,-16`, class: 'dend', style: 'stroke:' + col('ca3') }),
+      svg('path', { d: pyr(c3[0], c3[1], col('ca3'), 1), style: 'fill:' + col('ca3') })]));
+    tag(c3[0] + 14, STRATA.so[0] - 30, 'CA3 PC', 'start');
+    conns.appendChild(conn('rc', `M${c3[0] + 6},${c3[1] - 6} C${c3[0] + 50},${STRATA.so[0] - 30} ${c3[0] + 70},${STRATA.so[0] - 6} ${c3[0] + 40},${(STRATA.sr[0] + STRATA.sr[1]) / 2}`, 'stroke:' + col('ca3')));
+    const srY = (STRATA.sr[0] + STRATA.sr[1]) / 2;
+    conns.appendChild(conn('sc', `M${c3[0] + 8},${c3[1] - 4} C${c3[0] + 120},${STRATA.so[0] - 40} 760,${srY - 8} 846,${srY}`, 'stroke:' + col('ca3') + ';stroke-width:2.4'));
+    tags.appendChild(svg('text', { class: 'elabel', x: 690, y: STRATA.so[0] - 44, text: 'Schaffer collaterals' }));
+    conns.appendChild(conn('back', `M${c3[0] - 6},${c3[1] + 4} C${c3[0] - 80},${DG.cy + 90} ${DG.cx + 40},${DG.cy + 70} ${mc[0] + 10},${mc[1] + 6}`, 'stroke:' + col('ca3') + ';stroke-dasharray:6 5'));
+    // CA1 pyramidal cell and the O-LM cell
+    const c1 = [870, spY];
+    cells.appendChild(glyph('ca1', [svg('path', { d: `M${c1[0]},${c1[1] + 10} L${c1[0]},${STRATA.slm[1] - 2} M${c1[0]},${STRATA.slm[0] + 6} l-12,10 M${c1[0]},${STRATA.slm[0] + 6} l12,10 M${c1[0]},${c1[1] - 6} l-14,-16 M${c1[0]},${c1[1] - 6} l14,-16`, class: 'dend', style: 'stroke:' + col('ca1') }),
+      svg('path', { d: pyr(c1[0], c1[1], col('ca1'), 1), style: 'fill:' + col('ca1') })]));
+    tag(c1[0] + 16, STRATA.so[0] - 30, 'CA1 PC', 'start');
+    const om = [944, (STRATA.so[0] + STRATA.so[1]) / 2];
+    cells.appendChild(glyph('olm', [svg('path', { d: `M${om[0] - 18},${om[1]} L${om[0] + 18},${om[1]}`, class: 'dend', style: 'stroke:' + col('olm') }),
+      svg('circle', { cx: om[0], cy: om[1], r: 7, style: 'fill:' + col('olm') })]));
+    tag(om[0] + 4, STRATA.slm[1] + 22, 'O-LM');
+    conns.appendChild(conn('ca1_olm', `M${c1[0] + 8},${c1[1] - 8} Q${(c1[0] + om[0]) / 2},${STRATA.so[0] - 4} ${om[0] - 8},${om[1]}`, 'stroke:' + col('ca1')));
+    conns.appendChild(conn('olm_ca1', `M${om[0]},${om[1] + 7} C${om[0] + 8},${STRATA.sr[1]} ${c1[0] + 30},${STRATA.slm[0] + 4} ${c1[0] + 8},${(STRATA.slm[0] + STRATA.slm[1]) / 2}`, ''));
+    // CA1 -> subiculum -> deep EC
+    conns.appendChild(conn('ca1_sub', `M${c1[0] + 10},${c1[1] - 2} C${c1[0] + 60},${STRATA.so[0] - 22} 1000,${STRATA.so[0] - 22} 1040,${STRATA.so[0] + 18}`, 'stroke:' + col('ca1')));
+    conns.appendChild(conn('sub_ec5', `M1050,${STRATA.slm[1]} C1050,600 400,640 168,638`, ''));
+    tags.appendChild(svg('text', { class: 'elabel', x: 720, y: 628, text: 'the loop closes in deep EC' }));
+
     out.addEventListener('click', () => h.select(null));
-    out._bandY = Y;
     out._anchor = (sel) => {
       if (!sel) return null;
-      if (sel.type === 'lamina' && Y[sel.key]) { const yy = Y[sel.key]; return [sel.key.startsWith('ca3') ? (CX0 + CX1) / 2 : (X0 + X1) / 2, (yy[0] + yy[1]) / 2, 300, yy[1] - yy[0]]; }
+      if (sel.type === 'lamina' && L[sel.key]) return [L[sel.key][0], L[sel.key][1], 40, 24];
+      if (sel.type === 'region') {
+        const f = FIELDS.find((x) => x[0] === sel.key);
+        if (f) return [(f[1] + f[2]) / 2, (STRATA.so[0] + STRATA.slm[1]) / 2, f[2] - f[1], STRATA.slm[1] - STRATA.so[0]];
+        if (sel.key === 'dg') return [DG.cx, DG.cy, 320, 320];
+      }
       if (sel.type === 'cell') { const g = out.querySelector('[data-cell="' + sel.key + '"]'); if (g) { try { const b = g.getBBox(); return [b.x + b.width / 2, b.y + b.height / 2, b.width, b.height]; } catch (e) { return null; } } }
       return null;
     };
@@ -494,11 +577,15 @@ BARRY.shSchem = (function () {
     let want = full;
     const a = on && sel && s._anchor ? s._anchor(sel) : null;
     if (a) {
-      const k = 0.86;
-      const w = full[2] * k, hh = full[3] * k;
+      // a slight lean toward where you are: never so far that a word is cut
+      // (the view always holds everything drawn, with a small margin)
+      if (!s._content) { try { const b = s.getBBox(); s._content = [b.x - 6, b.y - 6, b.width + 12, b.height + 12]; } catch (e) { s._content = full; } }
+      const c = s._content;
+      const k = 0.92;
+      const w = Math.max(full[2] * k, c[2]), hh = Math.max(full[3] * k, c[3]);
       let x = a[0] - w / 2, y = a[1] - hh / 2;
-      x = Math.max(full[0], Math.min(full[0] + full[2] - w, x));
-      y = Math.max(full[1], Math.min(full[1] + full[3] - hh, y));
+      x = Math.max(c[0] + c[2] - w, Math.min(c[0], x));
+      y = Math.max(c[1] + c[3] - hh, Math.min(c[1], y));
       want = [x, y, w, hh];
     }
     const cur = (s.getAttribute('viewBox') || full.join(' ')).split(/\s+/).map(Number);
@@ -514,5 +601,18 @@ BARRY.shSchem = (function () {
     s._vbAnim = requestAnimationFrame(step);
   }
 
-  return { circuit, dentate, cell, apply, follow, svg };
+  /* Keep words about the same size on screen however big the drawing is
+     drawn: --u is user units per screen pixel (clamped). */
+  function fitText(s) {
+    if (!s || !s.isConnected) return;
+    const vb = (s.getAttribute('viewBox') || '0 0 1000 660').split(/\s+/).map(Number);
+    const r = s.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const scale = Math.min(r.width / vb[2], r.height / vb[3]);
+    s.style.setProperty('--u', Math.max(0.85, Math.min(2.4, 1 / scale)).toFixed(3));
+    // drawn small (the rail), the plate keeps its names and drops the fine print
+    s.classList.toggle('sh-tiny', scale < 0.62);
+  }
+
+  return { circuit, dentate, cell, apply, follow, fitText, svg };
 })();

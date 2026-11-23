@@ -45,6 +45,11 @@ EVENT_TYPES = [
     # saying which. No DS or P-spike reader takes one whole.
     {"id": "rcbundle", "name": "Root Canal bundle",
      "note": "several Root Canal labels in one entry"},
+    # PROJECT EVOLVE phase 7 (2026-11-21): a recording's sorted cells, one
+    # event per cell (its first to its last spike), from a curation version
+    # of its Kilosort sort. The spikes stay in the sort folder.
+    {"id": "cell", "name": "Cell",
+     "note": "curated Kilosort units, one row per cell"},
     {"id": "other", "name": "Other", "note": ""},
 ]
 
@@ -592,6 +597,12 @@ class EventBank:
                 item["rc_class"] = str(ev["rc_class"])[:24]
             if ev.get("halo") is True:
                 item["halo"] = True
+            # A Cell's row (2026-11-21): how many spikes the cell fired.
+            if ev.get("n_spikes") is not None:
+                try:
+                    item["n_spikes"] = int(ev["n_spikes"])
+                except (TypeError, ValueError):
+                    pass
             # A pooled spike's origin (The Confluence, 2026-10-14): which
             # detector found it -- Incisor, Doppler, or both within the
             # merge window -- and `pair_t`, where the other one put it.
@@ -730,6 +741,11 @@ class EventBank:
             "specified": bool(entry.get("curated")),
             "curation_label": entry.get("curation_label"),
             "gid": entry.get("gid"),
+            # Branched out of another entry by hand (PROJECT EVOLVE phase
+            # 2, 2026-11-21): {entry_id, version, version_label, labels,
+            # name}. Said once and kept; the parent is never changed.
+            "parent": (entry.get("parent")
+                       or (prior.get("parent") if prior else None)),
         }
         # Whether Braces has put these stamps on their peaks.
         #

@@ -1,0 +1,113 @@
+{
+ "cells": [
+  {
+   "binary_down": false,
+   "ch_index": 1,
+   "csc": 2,
+   "depth_um": 20.0,
+   "digest": "2d26985df88e6b96",
+   "first_s": 8.915363,
+   "id": 0,
+   "last_s": 1869.986849,
+   "layer": "ca1_sp",
+   "layer_color": "#FF5733",
+   "layer_name": "CA1 SP",
+   "n": 646,
+   "rate_hz": 0.345
+  },
+  {
+   "binary_down": false,
+   "ch_index": 9,
+   "csc": 11,
+   "depth_um": 200.0,
+   "digest": "3f1fd8d5fd8c53a0",
+   "first_s": 0.3092,
+   "id": 13,
+   "last_s": 1871.857482,
+   "layer": "ca1_sr",
+   "layer_color": "#33FF57",
+   "layer_name": "CA1",
+   "n": 11217,
+   "rate_hz": 5.992
+  },
+  {
+   "binary_down": false,
+   "ch_index": 34,
+   "csc": 36,
+   "depth_um": 700.0,
+   "digest": "05292d2646024d39",
+   "first_s": 14.426761,
+   "id": 52,
+   "last_s": 1863.891685,
+   "layer": "hil",
+   "layer_color": "#FF8C00",
+   "layer_name": "HIL",
+   "n": 263,
+   "rate_hz": 0.14
+  },
+  {
+   "binary_down": false,
+   "ch_index": 34,
+   "csc": 36,
+   "depth_um": 700.0,
+   "digest": "ee954d3668993eec",
+   "first_s": 23.341491,
+   "id": 56,
+   "last_s": 1847.391692,
+   "layer": "hil",
+   "layer_color": "#FF8C00",
+   "layer_name": "HIL",
+   "n": 10328,
+   "rate_hz": 5.517
+  },
+  {
+   "binary_down": false,
+   "ch_index": 35,
+   "csc": 37,
+   "depth_um": 720.0,
+   "digest": "e583fb6241d1a4ca",
+   "first_s": 0.041467,
+   "id": 62,
+   "last_s": 1810.879407,
+   "layer": "hil",
+   "layer_color": "#FF8C00",
+   "layer_name": "HIL",
+   "n": 5082,
+   "rate_hz": 2.715
+  },
+  {
+   "binary_down": false,
+   "ch_index": 53,
+   "csc": 56,
+   "depth_um": 1100.0,
+   "digest": "7590bc8315e14777",
+   "first_s": 0.0158,
+   "id": 104,
+   "last_s": 1868.683517,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 3557,
+   "rate_hz": 1.9
+  }
+ ],
+ "exact_clusters": 6,
+ "layers_from": "the layer sheet (feeder sheet import)",
+ "polarity": {
+  "binary_down": 0,
+  "input_inverted": true,
+  "of": 6,
+  "ok": true,
+  "true_down": 6,
+  "words": "6 of 6 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage, as a spike should. The sort read is the non-inverted run, made on the binary as written."
+ },
+ "run": "kilosort_tl6_tu7_fs30000.0",
+ "run_dir": "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26\\binary\\kilosort_tl6_tu7_fs30000.0",
+ "session_label": "PTEN m13 s2 2023-08-01",
+ "source": {
+  "kind": "export",
+  "name": "Isabella's export",
+  "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26\\timestamps"
+ },
+ "source_digest": "04f4b8634f80d33f"
+}
