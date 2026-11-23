@@ -344,6 +344,9 @@ BARRY.dspcaMany = (function () {
             onclick: () => switchTo(f.id),
           }, [
             el('strong', { class: 'xm-folder-name', text: f.name || f.id }),
+            labelsOf(f).length && !dsOnly(f) ? el('span', {
+              class: 'xm-folder-labels' + (f.warning ? ' warn' : ''),
+              text: (f.source || {}).label_words || labelsOf(f).join(' + ') }) : null,
             el('span', { class: 'xm-folder-n', text:
               s.n + ' recording' + (s.n === 1 ? '' : 's') + ' · ' + s.read
               + ' read · ' + s.run + ' run · ' + s.sep + ' separable' }),
@@ -360,7 +363,7 @@ BARRY.dspcaMany = (function () {
       })),
       el('div', { class: 'xm-bar-acts' }, [
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
-                          text: 'New folder from a workflow…',
+                          text: 'New folder…',
                           onclick: newFolder }),
         nArch ? BARRY.ui.button({
           kind: 'mini', extra: 'xm-show-arch',
@@ -406,57 +409,177 @@ BARRY.dspcaMany = (function () {
     put('bar', folderBar());
   }
 
-  /* A folder from a Root Canal workflow that has run: a verified DS or a
-     verified P-spike one. The server reads the run's kept events and makes
-     the members; this only says which workflow and what to call it. */
+  /* PROJECT EVOLVE phase 3 (2026-11-21): which labels a folder reads, by
+     id, and whether that is the DS side every folder before them read. */
+  const labelsOf = (f) => ((f && f.source && f.source.labels) || []);
+  const dsOnly = (f) => {
+    const l = labelsOf(f);
+    return !l.length || (l.length === 1 && l[0] === 'ds');
+  };
+
+  /* A NEW FOLDER: from a Root Canal workflow that has run, or (PROJECT
+     EVOLVE phase 3, 2026-11-21) from a Root Canal bundle banked from one.
+     Which of its labels to read -- DS by default; P-spike, the Twilight
+     Zone or outside with a warning, because X-ray was built for dentate
+     spikes -- and, optionally, an older folder whose boxes, parameters
+     and room calls carry over onto every recording whose events are the
+     same. The server reads the run's events and makes the members; this
+     only says which, and what to call it. */
   async function newFolder() {
-    let rows;
+    let rows, bank;
     try {
-      rows = (await api('/api/rootcanal/workflows')).workflows || [];
+      [rows, bank] = await Promise.all([
+        api('/api/rootcanal/workflows').then((x) => x.workflows || []),
+        api('/api/bank').then((x) => x.entries || []).catch(() => []),
+      ]);
     } catch (e) {
       toast('Could not list the workflows: ' + e.message, 'err', 8000);
       return;
     }
-    const fit = rows.filter((r) => (r.kind === 'ds' || r.kind === 'pspike')
-                                   && r.ran);
-    let pick = null;
+    const LABELS = (BARRY.rcWorkflow && BARRY.rcWorkflow.BANK_LABELS) || {};
+    const runs = rows.filter((r) => LABELS[r.kind] && r.ran);
+    const bundles = bank.filter((e) => {
+      const prm = (e.source || {}).parameters || {};
+      return !e.archived && prm.tool === 'rootcanal_workflow'
+        && (prm.workflow || {}).artifact_id && e.type === 'rcbundle';
+    });
+    const kindOf = (src) => (src.entry
+      ? (((src.entry.source || {}).parameters || {}).workflow || {}).kind
+      : src.run.kind);
+    let pick = null;           // { run } or { entry }
+    let labels = ['ds'];
+    let carry = '';
     const name = el('input', { type: 'text', class: 'xm-new-name',
                                placeholder: 'What to call the folder' });
     const go = BARRY.ui.button({ kind: 'primary', text: 'Make the folder',
                                  disabled: true });
-    const list = el('div', { class: 'xm-wfs' }, fit.map((r) => el('button', {
+    const labBox = el('div', { class: 'xm-new-labels' });
+    const warn = el('p', { class: 'hint warn-line xm-new-warn hidden' });
+    const say = el('p', { class: 'hint xm-new-say' });
+
+    /* How many of the source's events each label holds: a bundle says so
+       itself; a run's from its class counts. */
+    const countsOf = (src) => {
+      const kind = kindOf(src);
+      const out = {};
+      if (src.entry) {
+        const prm = (src.entry.source || {}).parameters || {};
+        (prm.labels || []).forEach((l) => { out[l.id] = { label: l.label, n: l.n || 0 }; });
+        return out;
+      }
+      const c = src.run.counts || {};
+      for (const [id, label, classes] of LABELS[kind] || []) {
+        out[id] = { label, n: classes.reduce((s2, k) => s2 + (c[k] || 0), 0) };
+      }
+      return out;
+    };
+    function paintLabels() {
+      labBox.replaceChildren();
+      if (!pick) return;
+      const kind = kindOf(pick);
+      const counts = countsOf(pick);
+      const ids = (LABELS[kind] || []).map(([id]) => id).filter((id) => counts[id]);
+      labels = labels.filter((id) => ids.indexOf(id) >= 0);
+      if (!labels.length && ids.length) labels = [ids[0]];
+      ids.forEach((id) => {
+        const on = labels.indexOf(id) >= 0;
+        labBox.appendChild(el('button', {
+          type: 'button', class: 'pill wf-bank-l' + (on ? ' active' : ''),
+          'aria-pressed': on ? 'true' : 'false', 'data-label': id,
+          disabled: counts[id].n ? null : 'disabled',
+          title: 'Shift-click to read more than one label in the folder.',
+          onclick: (ev) => {
+            // One label at a time is the common case; shift adds or drops.
+            if (ev && ev.shiftKey) {
+              labels = labels.indexOf(id) >= 0 ? labels.filter((x) => x !== id)
+                                                : labels.concat([id]);
+            } else {
+              labels = [id];
+            }
+            paintLabels();
+          },
+        }, [
+          el('span', { text: counts[id].label }),
+          el('b', { text: Number(counts[id].n || 0).toLocaleString() }),
+        ]));
+      });
+      const nonDs = !(labels.length === 1 && labels[0] === 'ds');
+      warn.classList.toggle('hidden', !nonDs);
+      warn.textContent = nonDs
+        ? 'X-ray was built for dentate spikes: its box, its sink rule and its '
+          + 'DS1/DS2 naming assume a dentate spike’s current sinks. A folder of '
+          + labels.map((x) => counts[x].label).join(' + ') + ' is read all the '
+          + 'same, and says so every time it is open'
+          + (labels[0] === 'pspike' ? '; its two types are called P-spike 1 and '
+             + 'P-spike 2.' : '.')
+        : '';
+      const n = labels.reduce((s2, x) => s2 + ((counts[x] || {}).n || 0), 0);
+      say.textContent = n.toLocaleString() + ' events, each read on its own '
+        + 'recording.';
+      if (!name.value.trim() || name.dataset.auto === '1') {
+        const base = pick.entry ? pick.entry.name
+          : (pick.run.nickname || pick.run.name || pick.run.artifact_id);
+        name.value = (labels.length && nonDs
+          ? labels.map((x) => counts[x].label).join(' + ') + ' · ' : '') + base;
+        name.dataset.auto = '1';
+      }
+      go.disabled = !labels.length;
+    }
+    const choose = (src, node) => {
+      pick = src;
+      list.querySelectorAll('.xm-wf').forEach((b) =>
+        b.classList.toggle('on', b === node));
+      paintLabels();
+    };
+    const kindWords = { ds: 'verified dentate spikes', pspike: 'verified P-spikes',
+                        ambiguous: 'both borders' };
+    const list = el('div', { class: 'xm-wfs' }, [
+      bundles.length ? el('div', { class: 'section-label xm-wfs-head',
+                                   text: 'Root Canal bundles' }) : null,
+    ].concat(bundles.map((e) => el('button', {
+      type: 'button', class: 'xm-wf', 'data-entry': e.id,
+      onclick: (ev) => choose({ entry: e }, ev.currentTarget),
+    }, [
+      el('strong', { text: e.name || e.id }),
+      el('span', { class: 'hint', text: 'bundle · '
+        + (((e.source || {}).parameters || {}).labels || [])
+          .map((l) => l.label + ' ' + Number(l.n || 0).toLocaleString()).join(' · ')
+        + (e.added && e.added.at ? ' · ' + fmtWhen(e.added.at) : '') }),
+    ]))).concat([
+      el('div', { class: 'section-label xm-wfs-head', text: 'Workflow runs' }),
+    ]).concat(runs.map((r) => el('button', {
       type: 'button', class: 'xm-wf', 'data-wf': r.artifact_id,
-      onclick: (e) => {
-        pick = r;
-        list.querySelectorAll('.xm-wf').forEach((b) =>
-          b.classList.toggle('on', b === e.currentTarget));
-        if (!name.value.trim() || name.dataset.auto === '1') {
-          name.value = r.nickname || r.name || r.artifact_id;
-          name.dataset.auto = '1';
-        }
-        go.disabled = false;
-      },
+      onclick: (ev) => choose({ run: r }, ev.currentTarget),
     }, [
       el('strong', { text: r.nickname || r.name || r.artifact_id }),
       el('span', { class: 'hint', text:
-        (r.kind === 'ds' ? 'verified dentate spikes' : 'verified P-spikes')
-        + ' · run in v' + (r.run_version || r.version)
+        (kindWords[r.kind] || r.kind) + ' · run in v' + (r.run_version || r.version)
         + (r.kept != null ? ' · ' + Number(r.kept).toLocaleString()
            + ' kept' + (r.n != null ? ' of ' + Number(r.n).toLocaleString() : '')
            : '')
         + (r.updated ? ' · ' + fmtWhen(r.updated) : '') }),
-    ])));
+    ]))).filter(Boolean));
     name.addEventListener('input', () => { name.dataset.auto = '0'; });
+    /* Carry a folder's calls over: the boxes drawn, its parameters, and the
+       Extraction Room's bands, splits, separable calls and DS1/DS2 swaps --
+       onto each recording whose events are the same in both. */
+    const carrySel = el('select', { class: 'xm-new-carry',
+                                    onchange: () => { carry = carrySel.value; } },
+      [el('option', { value: '', text: 'Nothing; start fresh' })].concat(
+        (S.folders || []).map((f) => el('option', { value: f.id,
+          text: (f.name || f.id) + (archivedOf(f) ? ' (archived)' : '') }))));
     go.onclick = async () => {
-      if (!pick) return;
-      const nm = name.value.trim() || pick.nickname || pick.name;
+      if (!pick || !labels.length) return;
+      const nm = name.value.trim();
       go.disabled = true;
       let got;
       try {
         got = await apiPost('/api/dspca/many/folder', {
-          name: nm,
-          source: { artifact_id: pick.artifact_id,
-                    version: pick.run_version || pick.version },
+          name: nm, labels,
+          source: pick.entry ? { entry_id: pick.entry.id }
+            : { artifact_id: pick.run.artifact_id,
+                version: pick.run.run_version || pick.run.version },
+          carry_from: carry || null,
         });
       } catch (e) {
         go.disabled = false;
@@ -466,7 +589,13 @@ BARRY.dspcaMany = (function () {
       closeModal();
       try { BARRY.activity.log('dspcamany.folder', { id: got.id }); }
       catch (e) { /* the log is not the work */ }
-      toast('Folder made: ' + nm + '.', 'ok', 5000);
+      const c = got.carried;
+      toast('Folder made: ' + nm + '.'
+            + (c ? ' From ‘' + (c.from_name || c.from) + '’: '
+               + c.same + ' recordings had the same events and took its '
+               + 'boxes and calls' + (c.differ && c.differ.length
+                 ? '; ' + c.differ.length + ' differ and start fresh.' : '.') : ''),
+            'ok', 8000);
       S.cur = got.id || S.cur;
       try { localStorage.setItem(PICK_KEY, S.cur); } catch (e) { /* fine */ }
       S.folders = null;
@@ -475,17 +604,23 @@ BARRY.dspcaMany = (function () {
     };
     showModal(el('div', { class: 'vpop xm-new' }, [
       el('div', { class: 'mh' }, [
-        el('h3', { text: 'New folder from a workflow' }),
+        el('h3', { text: 'New folder' }),
         el('div', { class: 'spacer' }),
       ]),
       el('div', { class: 'mb' }, [
         el('p', { class: 'hint', text:
-          'A folder holds the recordings a Root Canal workflow kept. Pick '
-          + 'one that has run; each recording’s events are the ones its '
-          + 'run put inside the border.' }),
-        fit.length ? list : el('p', { class: 'hint warn-line', text:
-          'No verified DS or verified P-spike workflow has run yet.' }),
-        el('label', { class: 'xm-new-lab' }, ['Name', name]),
+          'A folder holds the recordings of one Root Canal run, or of a bundle '
+          + 'banked from one. Pick it, then which of its labels to read: each '
+          + 'recording is read at those events.' }),
+        (runs.length || bundles.length) ? list : el('p', { class: 'hint warn-line',
+          text: 'No Root Canal workflow has run yet.' }),
+        BARRY.ui.field({ label: 'Labels', extra: 'xm-new-lab-field',
+          control: el('div', {}, [labBox, say, warn]) }),
+        BARRY.ui.field({ label: 'Name', control: name }),
+        BARRY.ui.field({ label: 'Carry over from', control: carrySel,
+          hint: 'Boxes, parameters and the Extraction Room’s calls, onto '
+              + 'each recording whose events are the same in both. A recording '
+              + 'whose events differ starts fresh.' }),
       ]),
       BARRY.ui.modalFoot([], [
         BARRY.ui.button({ kind: 'ghost', text: 'Cancel',
@@ -693,6 +828,11 @@ BARRY.dspcaMany = (function () {
           + 'drawn use the automatic box' : '; every one has a box')
           + (notRead ? '; ' + notRead + ' not read yet, left out' : '')
         : 'Nothing is read yet.' }),
+      /* PROJECT EVOLVE phase 3 (2026-11-21): a folder of P-spikes or the
+         Twilight Zone says, every time it is open, what X-ray was built
+         for. */
+      f.warning ? el('p', { class: 'hint warn-line xm-lwarn', text: f.warning })
+                : null,
       // The workflow behind it could not be listed (the server's words).
       f.error ? el('p', { class: 'hint warn-line xm-ferr', text:
         'Could not list this folder’s recordings: ' + f.error }) : null,
@@ -940,7 +1080,8 @@ BARRY.dspcaMany = (function () {
 
   function clsName(c) {
     const s = String(c == null ? '?' : c);
-    return /^\d+$/.test(s) ? 'DS' + s : s.toUpperCase();
+    const pre = (cur() && cur().type_prefix) || 'DS';
+    return /^\d+$/.test(s) ? pre + s : s.toUpperCase();
   }
   function inkOf(c) {
     const n = parseInt(String(c).replace(/\D/g, ''), 10) || 1;
@@ -1046,6 +1187,7 @@ BARRY.dspcaMany = (function () {
     t.vbtn = BARRY.ui.versionButton({
       versions: vs, idOf: (v) => v.v, value: shown,
       producer: false, unit: 'events',
+      family: b.artifact_id ? { artifact: b.artifact_id } : null,
       heading: 'Which version of the X-ray bundle for '
                + (t.m.session_label || t.m.gid),
       sub: 'Every run that changed the answer is a version. Picking an older '

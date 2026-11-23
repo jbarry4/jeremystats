@@ -955,11 +955,73 @@ class Sync:
     def rows_curation(self):
         sets, events, reviews = [], [], []
         for rec in (self.curate.all() if self.curate else []):
+            got = self._curation_rows(rec)
+            if got:
+                sets.extend(got["curation_sets"])
+                events.extend(got["curation_events"])
+                reviews.extend(got["curation_reviews"])
+        return {"curation_sets": sets, "curation_events": events,
+                "curation_reviews": reviews}
+
+    def save_curation_set(self, gid, kind):
+        """Send ONE set up now and read it back (2026-11-20, the Save button).
+
+        "Does it save? Do I just leave it?" Every decision is written on
+        this computer the moment it is made and goes up with the next sync,
+        so the honest answer was "yes, eventually" -- which is not an answer
+        anybody can check. This sends the set's rows straight away, then asks
+        the shared database what it now holds for that set, and says both.
+
+        Small on purpose: one set's rows and two counts, never a whole push.
+        """
+        rec = self.curate.get(gid, kind) if self.curate else None
+        if not rec:
+            raise ValueError("No curation set for that recording.")
+        rows = self._curation_rows(rec)
+        if not rows:
+            raise ValueError("That set is not one that syncs (a demo).")
+        set_id = rows["curation_sets"][0]["id"]
+        local_total = len(rows["curation_events"])
+        local_decided = sum(1 for e in rows["curation_events"]
+                            if e.get("label") not in (None, "unspecified"))
+        local_notes = sum(1 for e in rows["curation_events"] if e.get("note"))
+        out = {"set_id": set_id, "total": local_total,
+               "decided": local_decided, "notes": local_notes,
+               "at": cloud.now()}
+        if shards.safe_on():
+            # The practice layer (pisafe.py): looks done, sends nothing.
+            return dict(out, sent=0, confirmed=True,
+                        cloud_total=local_total, cloud_decided=local_decided)
+        if not self.cloud.configured:
+            raise ValueError("This computer is not connected to the shared "
+                             "database (Setup, then Cloud), so there is "
+                             "nowhere to upload to. Every decision is still "
+                             "saved here.")
+        sent = 0
+        for table in ("curation_sets", "curation_events", "curation_reviews"):
+            batch = rows.get(table) or []
+            if batch:
+                sent += self.cloud.upsert(
+                    table, batch, on_conflict=self.ON_CONFLICT.get(table))
+        q = "set_id=eq.%s" % set_id     # Cloud._safe_query encodes it
+        cloud_total = self.cloud.count("curation_events", q)
+        cloud_decided = self.cloud.count("curation_events",
+                                         q + "&label=neq.unspecified")
+        return dict(out, sent=sent, cloud_total=cloud_total,
+                    cloud_decided=cloud_decided,
+                    confirmed=(cloud_total is not None
+                               and cloud_total >= local_total
+                               and cloud_decided == local_decided))
+
+    def _curation_rows(self, rec):
+        """One set's rows for the three curation tables, or None."""
+        sets, events, reviews = [], [], []
+        if True:
             gid, kind = rec.get("gid"), rec.get("kind")
             if not gid or not kind:
-                continue
+                return None
             if self._is_demo(rec):
-                continue
+                return None
             set_id = "%s__%s" % (gid, kind)
             up, cr = _prov(rec, "updated"), _prov(rec, "created")
             sets.append({
@@ -1019,6 +1081,20 @@ class Sync:
                     "decided_at": at or cloud.ts(ev.get("cleared_at")),
                     "updated_at": (at or cloud.ts(ev.get("cleared_at"))
                                    or cloud.ts(cr.get("at")) or cloud.now()),
+                    # The note (2026-11-20, migration 25), with its own time.
+                    # Not folded into `updated_at`: that decides whether the
+                    # LABEL in this row beats the one up there, and a note
+                    # written on a stale copy must not carry its stale label
+                    # over a colleague's newer call. Migration 25's trigger
+                    # merges the two halves of the row each by its own time.
+                    # On every row, empty or not: a batch whose rows carry
+                    # different keys is refused whole. Before migration 25
+                    # the database has no such columns and `Cloud.upsert`
+                    # drops them (PENDING_COLUMNS) and the Sync panel says
+                    # which file to run.
+                    "note": ev.get("note") or None,
+                    "note_by": ev.get("note_by") if ev.get("note_at") else None,
+                    "note_at": cloud.ts(ev.get("note_at")),
                 })
                 for r in (ev.get("reviews") or []):
                     who = (r.get("by") or "").strip()
@@ -1709,6 +1785,47 @@ class Sync:
                                 os.path.join(book.dir, name)))
         return out
 
+    def save_shard_file(self, store, base):
+        """Send one record's shard now and read its hash back (2026-11-20,
+        the Save button in Braces, Lock and Eye). The same row the next push
+        would send, sent early; remembered as sent only for that file."""
+        me = shards.real_machine_id()
+        name = base + shards.SIGIL + me + ".json"
+        hit = self.shard_books.get(store)
+        if not hit:
+            raise ValueError("%s does not travel as shard files." % store)
+        path = os.path.join(hit[0].dir, name)
+        try:
+            with open(path, "rb") as fh:
+                raw = fh.read()
+        except OSError:
+            # Nothing written here: every change on this set came from
+            # somewhere else, and is theirs to send.
+            return {"sent": 0, "confirmed": True, "nothing_here": True,
+                    "at": cloud.now()}
+        sha = hashlib.sha1(raw).hexdigest()
+        key = store + "/" + name
+        if shards.safe_on():
+            return {"sent": 0, "confirmed": True, "sha": sha,
+                    "at": cloud.now()}
+        if not self.cloud.configured:
+            raise ValueError("This computer is not connected to the shared "
+                             "database, so there is nowhere to upload to. "
+                             "The review is still saved here.")
+        gz = base64.b64encode(gzip.compress(raw, 6)).decode("ascii")
+        self.cloud.upsert("shard_files", [{
+            "path": key, "store": store, "machine": me, "sha": sha,
+            "bytes": len(raw), "gz": gz, "updated_at": cloud.now(),
+            "updated_by": self.machine}], on_conflict="path")
+        back = self.cloud.select("shard_files", "path=eq.%s" % key,
+                                 limit=1, columns="sha")
+        ok = bool(back) and back[0].get("sha") == sha
+        if ok:
+            sent = self._shard_sent()
+            sent[key] = sha
+            self.cloud.save_state({"shard_sha": sent})
+        return {"sent": 1, "confirmed": ok, "sha": sha, "at": cloud.now()}
+
     def rows_shard_files(self):
         """This machine's own changed shard files, gzipped, paced."""
         if not self.shard_books or time.time() < self._shard_absent_until:
@@ -1999,7 +2116,13 @@ class Sync:
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
             if since and table not in self.NO_INCREMENTAL:
-                batch = [r for r in batch if _after(r.get("updated_at"), since)]
+                # A note has its own time (migration 25) and does not move
+                # `updated_at`, so a row whose only change is its note goes
+                # up by that.
+                batch = [r for r in batch
+                         if _after(r.get("updated_at"), since)
+                         or (r.get("note_at")
+                             and _after(r.get("note_at"), since))]
             report[table] = len(batch)
             if on_progress:
                 on_progress(table, len(batch))
@@ -3198,6 +3321,21 @@ class Sync:
                 cur = mine.get(e.get("event_id"))
                 if not cur:
                     continue
+                # The note first, on its own clock (migration 25): newer
+                # wins, cleared included, and it never touches the label.
+                if e.get("note_at") and (
+                        not cur.get("note_at")
+                        or _newer_in(e["note_at"], cur["note_at"])):
+                    theirs_note = (e.get("note") or "").strip()
+                    if theirs_note != (cur.get("note") or ""):
+                        if theirs_note:
+                            cur["note"] = theirs_note
+                        else:
+                            cur.pop("note", None)
+                        cur["note_by"] = e.get("note_by")
+                        cur["note_at"] = e["note_at"]
+                        touched = True
+                        n += 1
                 # Normalised both ways: the string "unspecified" and an
                 # empty label mean the same thing -- nobody has decided --
                 # and the difference between them is not news.

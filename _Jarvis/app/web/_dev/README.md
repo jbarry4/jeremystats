@@ -196,3 +196,9 @@ These reach into the app through `iframe.contentWindow.eval(...)`, because
 `core.js` declares `BARRY` with `const` — a lexical global, which is not a
 property of `window`. `eval` runs in the page's own global scope and can see
 it.
+
+## PROJECT EVOLVE (2026-11-21)
+
+- `familytree.html` -- phase 2: `/api/family` on a real Root Canal bundle (read only), `ui.familyTree`, the family at the top of a version picker, the Event Bank's family block and its Branch out labels… dialog (the branch request is answered in the page).
+- `cells.html` -- phase 7: Kilosort's Cells pane (steps, cards, a curation diff, Read and Bank), the Cells add-on in Xplorefinder (bar, ← →, ticks over the traces) and its cards window, all against a fixture sort on the demo recording. Nothing is read or banked.
+- `dspcamany.html` -- now also checks the new folder dialog's Root Canal bundles, labels, warning and Carry over from.

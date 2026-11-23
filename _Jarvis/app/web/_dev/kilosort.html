@@ -204,6 +204,15 @@ async function until(fn, ms = 15000) {
           .map((n) => n.textContent).join(' | '));
   if (btn) {
     btn.click();
+    /* It opens on Cells (PROJECT EVOLVE phase 7, 2026-11-21): the sorts
+       already made, read back. Set up is the second pane. */
+    await until(() => D.querySelector('#tkResult .seg button.active'), 8000);
+    const first = D.querySelector('#tkResult .seg button.active');
+    check('it opens on Cells', !!first && first.textContent === 'Cells',
+          first ? first.textContent : 'no pane');
+    const setupBtn = Array.from(D.querySelectorAll('#tkResult .seg button'))
+      .find((b) => b.textContent === 'Set up');
+    if (setupBtn) setupBtn.click();
     const verdict = await until(() => D.querySelector('#tkResult .ks-verdict'));
     check('the set-up pane renders', !!verdict);
     check('it says whether the machine is ready',
@@ -248,7 +257,8 @@ async function until(fn, ms = 15000) {
 
     // Run pane
     const segs = Array.from(D.querySelectorAll('#tkResult .seg button'));
-    check('there are three panes', segs.length === 3,
+    check('there are four panes, Cells first',
+          segs.map((b) => b.textContent).join(', ') === 'Cells, Set up, Run, Phy',
           segs.map((b) => b.textContent).join(', '));
     const runBtn = segs.find((b) => b.textContent === 'Run');
     if (runBtn) {

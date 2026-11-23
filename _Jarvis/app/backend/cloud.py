@@ -315,7 +315,12 @@ class CloudAway(CloudError):
 
     Raised without a request, by `_call`, while `away()` says so. A
     CloudError like any other to every caller, which already treat a failed
-    call as "try later"."""
+    call as "try later". `failures` is how many requests in a row had failed
+    when this one was held: one is a dropped request, not yet an outage."""
+
+    def __init__(self, message, failures=0):
+        super().__init__(message)
+        self.failures = failures
 
 
 # ==========================================================================
@@ -645,7 +650,8 @@ class Cloud:
                 "The shared database is not answering (%s), so it is not "
                 "being asked again until %s. Nothing is lost; it is all "
                 "kept here." % (held["why"], time.strftime(
-                    "%H:%M:%S", time.localtime(held["until"]))))
+                    "%H:%M:%S", time.localtime(held["until"]))),
+                failures=held["failures"])
         who = _who()
         try:
             with urllib.request.urlopen(req, timeout=timeout) as res:

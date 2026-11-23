@@ -1,0 +1,270 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>curkit: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* curkit.js (2026-11-20): notes, Save and View only, in Spotter, Panning
+   and Checkup, end to end on a real recording -- plus the version picker's
+   hidden versions.
+
+   IT MAKES ITS OWN ENTRIES AND SETS AND DELETES THEM AGAIN, the way
+   spotter.html does, and touches nobody else's. Save is answered here
+   (W.fetch stubbed for /save only), so a throwaway set never reaches the
+   shared database. Auto-bank is off for the run. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const post = (u, b) => fetch(u, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b) }).then((r) => r.json());
+const getSet = (gid, k) => fetch('/api/curation/' + encodeURIComponent(gid) + '/'
+  + encodeURIComponent(k)).then((r) => r.json()).then((j) => j.set || {});
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const key = (k, mods) => {
+    const e = new W.KeyboardEvent('keydown', Object.assign({ key: k,
+      bubbles: true, cancelable: true }, mods || {}));
+    (mods && mods.target ? mods.target : D()).dispatchEvent(e);
+  };
+  const modalUp = () => { const m = D().getElementById('bigModal');
+                          return !!m && !m.classList.contains('hidden'); };
+  const btnText = (t) => $$('#bigModal button').find((b) => b.textContent.trim() === t);
+
+  const made = [];          // [{gid, entry}]
+  let gid = null;
+  const realFetch = W.fetch;
+  let saves = 0;
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('the pieces, on their own');
+
+  check('curKit is loaded', ev('!!(BARRY.curKit && BARRY.curKit.editNote)'));
+  // leaveAsk with nothing unconfirmed: no question at all.
+  const quick = await ev('BARRY.curKit.leaveAsk({ dirty: false })');
+  check('leaving with nothing unsaved asks nothing', quick === true && !modalUp());
+  // With work unconfirmed: three answers, and Stay stays.
+  ev('window.__la = BARRY.curKit.leaveAsk({ dirty: true, tool: "Spotter",'
+     + ' save: function () { return Promise.resolve({ confirmed: true }); } }); 1');
+  await until(modalUp, 3000);
+  check('leaving with unsaved work offers Save & leave, Leave and Stay',
+        !!btnText('Save & leave') && !!btnText('Leave') && !!btnText('Stay'));
+  btnText('Stay').click();
+  check('Stay stays', (await ev('window.__la')) === false && !modalUp());
+
+  // The note dialog: Ctrl+Enter saves what was typed.
+  ev('window.__said = null; window.__nd = BARRY.curKit.editNote({ title: "t",'
+     + ' text: "", onSave: function (t) { window.__said = t;'
+     + ' return Promise.resolve(); } }); 1');
+  await until(() => $('.ck-note-ta'), 3000);
+  $('.ck-note-ta').value = '  why it is flagged  ';
+  key('Enter', { ctrlKey: true, target: $('.ck-note-ta') });
+  const nd = await ev('window.__nd');
+  check('Ctrl+Enter saves the note, trimmed',
+        nd === 'why it is flagged' && ev('window.__said') === 'why it is flagged',
+        String(nd));
+
+  // A hidden version is left out of a choice, and one press shows it.
+  ev('window.__vt = BARRY.ui.versionTree({ versions: ['
+     + '{ v: 0, id: "a", n: 3 }, { v: 1, id: "b", n: 3, archived: true },'
+     + '{ v: 2, id: "c", n: 3 }], value: "c" });'
+     + 'document.body.appendChild(window.__vt); 1');
+  const vt = W.__vt;
+  const nRows = () => vt.querySelectorAll('.vtree-row').length;
+  check('a hidden version is left out of the choice', nRows() === 2, String(nRows()));
+  const tog = vt.querySelector('.vtree-hidden-toggle');
+  check('and counted under it', !!tog && /1 hidden/.test(tog.textContent),
+        tog && tog.textContent);
+  tog.click();
+  check('one press shows it', nRows() === 3, String(nRows()));
+  vt.remove();
+
+  /* ---------------------------------------------------------------- */
+  head('a recording, and entries of our own');
+
+  const reg = await (await fetch('/api/registry?backfill=1')).json();
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  const target = rows.find((s) => s.reachable && (s.here || []).length
+                                  && Number(s.duration_s) > 30);
+  if (!target) throw new Error('no reachable recording');
+  gid = target.gid;
+  say('  note  ' + (target.label || gid), 'note');
+  ev('BARRY.testNoAutobank = true; 1');
+  const me = ev('(BARRY.profile && BARRY.profile.who && BARRY.profile.who()) || ""');
+
+  // Answered here: a throwaway set never reaches the shared database.
+  W.fetch = function (u, o) {
+    if (/\/save$/.test(String(u))) {
+      saves += 1;
+      return Promise.resolve(new W.Response(JSON.stringify({
+        ok: true, confirmed: true, total: 6, decided: 1, notes: 1,
+        cloud_total: 6, cloud_decided: 1, at: new Date().toISOString() }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    }
+    return realFetch.apply(this, arguments);
+  };
+
+  const dur = Number(target.duration_s);
+  const stamps = (off) => Array.from({ length: 6 }, (_, i) => ({
+    start: Math.round((dur * (i + 1) / 8) * 1000) / 1000 + off,
+    channel: 2, amplitude: 300 + i, origin: 'incisor' }));
+  const TOOLS = [
+    { name: 'Spotter', mod: 'spotter', type: 'ied', bar: '#spotBar',
+      pipeline: 'Doppler (line length)', off: 0.0013,
+      enter: (k, o) => 'BARRY.spotter.enter(' + JSON.stringify(gid)
+                       + ', null, ' + JSON.stringify(Object.assign({ kind: k }, o)) + ')' },
+    { name: 'Panning', mod: 'panning', type: 'pooled', bar: '#panBar',
+      pipeline: 'The Confluence: curkit harness', off: 0.0017,
+      enter: (k, o) => 'BARRY.panning.enter(' + JSON.stringify(gid)
+                       + ', null, ' + JSON.stringify(Object.assign({ kind: k }, o)) + ')' },
+    { name: 'Checkup', mod: 'curate', type: 'ds', bar: '#curBar',
+      pipeline: 'Incisor (dentate spike)', off: 0.0019,
+      enter: (k, o) => 'BARRY.curate.enter(' + JSON.stringify(gid) + ', '
+                       + JSON.stringify(k) + ', ' + JSON.stringify(o || {}) + ')' },
+  ];
+
+  for (const T of TOOLS) {
+    head(T.name);
+    const added = await post('/api/bank/add', {
+      gid, project: target.project, mouse: target.mouse,
+      session: target.session, session_label: target.label,
+      session_path: target.here[0], type: T.type,
+      name: 'curkit harness — delete me',
+      note: 'Made by web/_dev/curkit.html. Deleted on the way out.',
+      events: stamps(T.off), pipeline: T.pipeline, time_basis: 'recording',
+      added_by: 'curkit harness', parameters: { region: 'hip' },
+    });
+    const entry = (added.entry || {}).id || added.id;
+    if (!entry) { check('a throwaway entry was banked', false,
+                        JSON.stringify(added).slice(0, 200)); continue; }
+    made.push({ gid, entry, type: T.type });
+    const fb = await post('/api/curation/from-bank',
+                          { gid, kind: T.type, entry, version: 0 });
+    const sk = fb.kind;
+    made[made.length - 1].kind = sk;
+    check('a set of our own', !!sk, JSON.stringify(fb).slice(0, 160));
+    const M = 'BARRY.' + T.mod;
+
+    // ---- view only ----
+    await ev(T.enter(sk, { viewOnly: true }));
+    await until(() => ev(M + '.active') && $(T.bar), 30000);
+    check('View only opens', ev(M + '.active') && ev(M + '.viewOnly()') === true);
+    check('and the bar says so', !!$(T.bar + ' .ck-view'),
+          ($(T.bar) || {}).className);
+    check('with no Save and no Bank in it',
+          !$('.ck-save') && !$$('.mode-own-end button')
+            .some((b) => /Bank the results/.test(b.textContent)));
+    key('1'); await sleep(700);
+    key('w'); await sleep(300);
+    check('W opens no note', !modalUp());
+    const s0 = await getSet(gid, sk);
+    check('a key that would decide decides nothing',
+          !(s0.events || []).some((e) => e.label), JSON.stringify(
+            (s0.events || []).map((e) => e.label)));
+    check('and nobody’s name went on it', !s0.assignee && !s0.opened_by,
+          s0.assignee + ' / ' + s0.opened_by);
+    ev(M + '.exit()');
+    await until(() => !ev(M + '.active'), 5000);
+
+    // ---- working on it ----
+    await ev(T.enter(sk, {}));
+    await until(() => ev(M + '.active') && $(T.bar), 30000);
+    await sleep(900);
+    const s1 = await getSet(gid, sk);
+    check('opening to work puts nobody’s name on it yet', !s1.assignee,
+          s1.assignee);
+    check('Save says Saved before anything is done',
+          !!$('.ck-save') && /Saved/.test($('.ck-save').textContent));
+    key('1');
+    await until(() => ev(M + '.dirty()') > 0, 6000);
+    await sleep(400);
+    const s2 = await getSet(gid, sk);
+    check('the first decision claims it', s2.assignee === me,
+          s2.assignee + ' vs ' + me);
+    check('and Save now says Save', /^Save$/.test(($('.ck-save') || {}).textContent || ''),
+          ($('.ck-save') || {}).textContent);
+    key('w');
+    await until(() => $('.ck-note-ta'), 4000);
+    check('W opens the note', !!$('.ck-note-ta'));
+    $('.ck-note-ta').value = 'curkit harness note';
+    key('Enter', { ctrlKey: true, target: $('.ck-note-ta') });
+    await until(() => !modalUp(), 4000);
+    await sleep(300);
+    const s3 = await getSet(gid, sk);
+    const noted = (s3.events || []).filter((e) => e.note === 'curkit harness note');
+    check('the note is on the event, on the server',
+          noted.length === 1 && noted[0].note_by === me,
+          JSON.stringify(noted).slice(0, 160));
+    check('and in the bar', !!$(T.bar + ' .ck-note-line'));
+    const before = saves;
+    $('.ck-save').click();
+    await until(() => ev(M + '.dirty()') === 0, 6000);
+    check('Save uploads and says so', saves === before + 1
+          && ev(M + '.dirty()') === 0
+          && /Saved/.test(($('.ck-save') || {}).textContent || ''));
+    key('2');
+    await until(() => ev(M + '.dirty()') > 0, 6000);
+    ev(M + '.leave(); 1');
+    await until(modalUp, 4000);
+    check('leaving with an unsaved call asks', !!btnText('Save & leave'));
+    btnText('Leave').click();
+    await until(() => !ev(M + '.active'), 6000);
+    check('Leave leaves', !ev(M + '.active'));
+  }
+
+  } catch (e) {
+    say('CRASH ' + e.message, 'bad'); fails++;
+  } finally {
+    W.fetch = realFetch;
+    for (const T of ['spotter', 'panning', 'curate']) {
+      try { ev('BARRY.' + T + '.active && BARRY.' + T + '.exit()'); } catch (e) {}
+    }
+    try { ev('BARRY.testNoAutobank = false; 1'); } catch (e) {}
+    for (const m of made) {
+      try {
+        if (m.kind) await post('/api/curation/' + encodeURIComponent(m.gid) + '/'
+                               + encodeURIComponent(m.kind) + '/delete', {});
+      } catch (e) { say('  note  could not remove a set', 'note'); }
+      try { await post('/api/bank/' + m.entry + '/delete', {}); }
+      catch (e) { say('  note  could not remove an entry', 'note'); }
+    }
+    say('  note  ' + made.length + ' harness entries and their sets removed', 'note');
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'curkit: ' + fails + ' FAILED' : 'curkit: passed';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'curkit CRASH';
+});
+</script></body></html>

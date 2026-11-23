@@ -5,19 +5,22 @@
    "bytes": 2632388
   },
   "cells.shb.gz": {
-   "bytes": 330290
+   "bytes": 474667
   },
   "checks.json": {
-   "bytes": 21728
+   "bytes": 29568
+  },
+  "fine10.shb.gz": {
+   "bytes": 4412506
   },
   "hip10d.shb.gz": {
    "bytes": 427223
   },
   "hip20.shb.gz": {
-   "bytes": 4430156
+   "bytes": 4231746
   },
   "kb.json": {
-   "bytes": 35782
+   "bytes": 52965
   },
   "mesh_brain.shb.gz": {
    "bytes": 1434629
@@ -27,6 +30,9 @@
   },
   "mesh_lamina.shb.gz": {
    "bytes": 1231915
+  },
+  "rides.json": {
+   "bytes": 50645
   }
  }
 }

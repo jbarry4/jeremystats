@@ -4736,6 +4736,7 @@ BARRY.rootcanal = (function () {
     const tip = vs[vs.length - 1];
     return BARRY.ui.versionButton({
       versions: vs, idOf: (v) => v.ref,
+      family: r.entry_id ? { entry: r.entry_id } : null,
       value: r.from_version != null ? r.from_version : (tip && tip.ref),
       unit: 'events',
       producer: r.pipeline, producerType: r.type,

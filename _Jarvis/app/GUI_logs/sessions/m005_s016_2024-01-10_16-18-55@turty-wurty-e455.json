@@ -1,0 +1,101 @@
+{
+  "_at": {
+    "created": "2026-10-11T06:01:29.576421+00:00",
+    "duration_s": "2026-10-11T06:01:29.576421+00:00",
+    "first_seen_by": "2026-10-11T06:01:29.576421+00:00",
+    "found_on": "2026-10-11T06:01:29.576421+00:00",
+    "fs": "2026-10-11T06:01:29.576421+00:00",
+    "gid": "2026-10-11T06:01:29.576421+00:00",
+    "group": "2026-10-11T06:01:29.576421+00:00",
+    "key": "2026-10-11T06:01:29.576421+00:00",
+    "label": "2026-10-11T06:01:29.576421+00:00",
+    "loose_key": "2026-10-11T06:01:29.576421+00:00",
+    "mouse": "2026-10-11T06:01:29.576421+00:00",
+    "n_channels": "2026-10-11T06:01:29.576421+00:00",
+    "project": "2026-10-11T06:01:29.576421+00:00",
+    "project_source": "2026-10-11T06:01:29.576421+00:00",
+    "retired": "2026-10-12T00:59:37.191062+00:00",
+    "schema": "2026-10-11T06:01:29.576421+00:00",
+    "session": "2026-10-11T06:01:29.576421+00:00",
+    "start": "2026-10-11T06:01:29.576421+00:00",
+    "updated": "2026-10-12T00:59:37.191062+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-11T06:01:29.576421+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-11T06:01:29.576421+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s16jan10-flowerpot2\\2024-01-10_16-18-55": [
+        "set",
+        "2026-10-11T06:01:29.576421+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T00:59:37.191062+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T02:01:29-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 1333.385,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s67f94b63e474",
+  "group": "PTEN",
+  "key": "m005_s016_2024-01-10_16-18-55",
+  "label": "PTEN m5 s16 2024-01-10",
+  "loose_key": "m005_s016",
+  "mouse": 5,
+  "n_channels": 128,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s16jan10-flowerpot2\\2024-01-10_16-18-55"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 16,
+  "start": "2024-01-10T16:18:55",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T20:59:37-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}
