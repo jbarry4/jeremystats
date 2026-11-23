@@ -1,19 +1,19 @@
 {
   "_at": {
-    "device": "2026-11-20T18:30:47.383740+00:00",
-    "email": "2026-11-20T18:30:47.383740+00:00",
-    "initials": "2026-11-20T18:30:47.383740+00:00",
-    "name": "2026-11-20T18:30:47.383740+00:00",
-    "role": "2026-11-20T18:30:47.383740+00:00"
+    "device": "2026-11-23T16:40:14.865571+00:00",
+    "email": "2026-11-23T16:40:14.865571+00:00",
+    "initials": "2026-11-23T16:40:14.865571+00:00",
+    "name": "2026-11-23T16:40:14.865571+00:00",
+    "role": "2026-11-23T16:40:14.865571+00:00"
   },
   "_shard": {
-    "at": "2026-11-20T18:30:47.383740+00:00",
+    "at": "2026-11-23T16:40:14.865571+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
   "device": "Bluebarry",
-  "email": "Isabella.Piatek@uvm.edu",
-  "initials": "IP",
-  "name": "Isabella Piatek",
-  "role": "Graduate Student"
+  "email": "awoychos@uvm.edu",
+  "initials": "AW",
+  "name": "Angelina Woychosky",
+  "role": "Undergraduate Student"
 }

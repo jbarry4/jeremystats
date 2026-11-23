@@ -1,15 +1,15 @@
 {
   "_at": {
     "added": "2026-11-10T21:07:05.977306+00:00",
-    "deleted": "2026-11-20T18:28:33.414725+00:00",
+    "deleted": "2026-11-23T16:25:23.365658+00:00",
     "id": "2026-11-10T21:07:05.977306+00:00",
     "kind": "2026-11-10T21:07:05.977306+00:00",
     "name": "2026-11-10T21:07:05.977306+00:00",
-    "nickname": "2026-11-20T18:28:33.414725+00:00",
+    "nickname": "2026-11-23T16:25:23.365658+00:00",
     "schema": "2026-11-10T21:07:05.977306+00:00",
     "subject": "2026-11-10T21:07:05.977306+00:00",
     "subject_key": "2026-11-10T21:07:05.977306+00:00",
-    "version": "2026-11-20T18:28:33.414725+00:00"
+    "version": "2026-11-23T16:25:23.365658+00:00"
   },
   "_keys": {
     "cited": {
@@ -39,6 +39,10 @@
         "set",
         "2026-11-13T20:38:29.369356+00:00"
       ],
+      "6445df9762e7": [
+        "set",
+        "2026-11-23T16:25:23.365658+00:00"
+      ],
       "97d9d9003432": [
         "set",
         "2026-11-13T20:38:29.369356+00:00"
@@ -62,11 +66,15 @@
       "fa966fec0f82": [
         "set",
         "2026-11-13T20:38:29.369356+00:00"
+      ],
+      "fd61c222e41e": [
+        "set",
+        "2026-11-23T16:25:23.365658+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-20T18:28:33.414725+00:00",
+    "at": "2026-11-23T16:25:23.365658+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -126,7 +134,7 @@
     "room_name": "Dentate Spike"
   },
   "subject_key": "extraction|dentate_spike",
-  "version": 10,
+  "version": 12,
   "versions": [
     {
       "app_version": "2026.11.09.4",
@@ -552,6 +560,62 @@
       },
       "params_hash": "83e215953ba2",
       "v": 10
+    },
+    {
+      "app_version": "2026.11.21.1",
+      "at": "2026-11-21T16:59:34-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "6c4e481eb712",
+      "id": "fd61c222e41e",
+      "inputs": [
+        {
+          "artifact_id": "6fa7fef7b7a3",
+          "version": 5
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4733,
+        "folder": "Halo (DS, from its Root Canal bundle)",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-b2d963ef1c",
+        "round": "direct"
+      },
+      "params_hash": "a077a715f4b3",
+      "v": 11
+    },
+    {
+      "app_version": "2026.11.21.1",
+      "at": "2026-11-21T17:01:18-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "632fc8a10e2b",
+      "id": "6445df9762e7",
+      "inputs": [
+        {
+          "artifact_id": "a7eee6a6ca9f",
+          "version": 4
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4098,
+        "folder": "Strict (DS, from its Root Canal bundle)",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-7d6c8cfb0b",
+        "round": "direct"
+      },
+      "params_hash": "375b34ccc547",
+      "v": 12
     }
   ]
 }

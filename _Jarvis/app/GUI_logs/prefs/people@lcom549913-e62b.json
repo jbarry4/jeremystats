@@ -8,7 +8,7 @@
       ],
       "Angelina Woychosky": [
         "set",
-        "2026-11-09T21:15:42.331339+00:00"
+        "2026-11-23T16:40:14.905621+00:00"
       ],
       "Avery (AI)": [
         "set",
@@ -137,7 +137,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-20T18:30:47.420410+00:00",
+    "at": "2026-11-23T16:40:14.905621+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -172,6 +172,16 @@
       "edited_at": "2026-09-09T13:38:41.369697+00:00",
       "id": "unknown",
       "name": "unknown"
+    },
+    {
+      "at": "2026-09-08T21:23:16.555182+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-20T18:30:47.419421+00:00",
+      "email": "Isabella.Piatek@uvm.edu",
+      "id": "Isabella Piatek",
+      "initials": "IP",
+      "name": "Isabella Piatek",
+      "role": "Graduate Student"
     },
     {
       "at": "2026-09-09T15:29:28.090683+00:00",
@@ -253,16 +263,6 @@
       "initials": "RY",
       "name": "Rain Younger",
       "role": "Graduate Student"
-    },
-    {
-      "at": "2026-11-09T21:15:42.330771+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-11-09T21:15:42.330794+00:00",
-      "email": "awoychos@uvm.edu",
-      "id": "Angelina Woychosky",
-      "initials": "AW",
-      "name": "Angelina Woychosky",
-      "role": "Undergraduate Student"
     },
     {
       "at": "2026-11-12T19:01:37.168694+00:00",
@@ -353,14 +353,14 @@
       "name": "Daphne Lyons"
     },
     {
-      "at": "2026-09-08T21:23:16.555182+00:00",
-      "by": "Isabella Piatek",
-      "edited_at": "2026-11-20T18:30:47.419421+00:00",
-      "email": "Isabella.Piatek@uvm.edu",
-      "id": "Isabella Piatek",
-      "initials": "IP",
-      "name": "Isabella Piatek",
-      "role": "Graduate Student"
+      "at": "2026-11-09T21:15:42.330771+00:00",
+      "by": "Angelina Woychosky",
+      "edited_at": "2026-11-23T16:40:14.905620+00:00",
+      "email": "awoychos@uvm.edu",
+      "id": "Angelina Woychosky",
+      "initials": "AW",
+      "name": "Angelina Woychosky",
+      "role": "Undergraduate Student"
     }
   ]
 }
