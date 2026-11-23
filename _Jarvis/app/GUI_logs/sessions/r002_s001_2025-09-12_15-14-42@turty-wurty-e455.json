@@ -1,0 +1,82 @@
+{
+  "_at": {
+    "created": "2026-10-09T16:00:53.213318+00:00",
+    "duration_s": "2026-10-09T16:00:53.213318+00:00",
+    "first_seen_by": "2026-10-09T16:00:53.213318+00:00",
+    "found_on": "2026-10-09T16:00:53.213318+00:00",
+    "fs": "2026-10-09T16:00:53.213318+00:00",
+    "gid": "2026-10-09T16:00:53.213318+00:00",
+    "group": "2026-10-09T16:00:53.213318+00:00",
+    "key": "2026-10-09T16:00:53.213318+00:00",
+    "label": "2026-10-09T16:00:53.213318+00:00",
+    "loose_key": "2026-10-09T16:00:53.213318+00:00",
+    "mouse": "2026-10-09T16:00:53.213318+00:00",
+    "n_channels": "2026-10-09T16:00:53.213318+00:00",
+    "phase": "2026-10-09T16:00:53.213318+00:00",
+    "phase_n": "2026-10-09T16:00:53.213318+00:00",
+    "project": "2026-10-09T16:00:53.213318+00:00",
+    "project_source": "2026-10-09T16:00:53.213318+00:00",
+    "run": "2026-10-09T16:00:53.213318+00:00",
+    "schema": "2026-10-09T16:00:53.213318+00:00",
+    "session": "2026-10-09T16:00:53.213318+00:00",
+    "start": "2026-10-09T16:00:53.213318+00:00",
+    "updated": "2026-10-09T16:00:53.213318+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP\\2025-09-12_15-14-42": [
+        "set",
+        "2026-10-09T16:00:53.213318+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-09T16:00:53.213318+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": null,
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T12:00:52-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 5777.424,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 32000.0,
+  "gid": "s3db9db9d5351",
+  "group": "DEWEY",
+  "key": "r002_s001_2025-09-12_15-14-42",
+  "label": "DEWEY r2 s1 Precon1 FP 2025-09-12",
+  "loose_key": "r002_s001",
+  "mouse": 2,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP\\2025-09-12_15-14-42"
+  ],
+  "phase": "Precon",
+  "phase_n": 1,
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "run": "FP",
+  "schema": 2,
+  "session": 1,
+  "start": "2025-09-12T15:14:42",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T12:00:53-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}
