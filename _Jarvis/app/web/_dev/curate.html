@@ -418,6 +418,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('=== leaving ===', 'hd');
   await press('Escape');
   await sleep(800);
+  /* Decisions the shared database has not confirmed: leaving asks Save &
+     leave, Leave or Stay (curkit.js, 2026-11-20). Leave -- the sync takes
+     it from there, and this throwaway set is deleted at the end anyway. */
+  {
+    const m = D().getElementById('bigModal');
+    const asked = !!m && !m.classList.contains('hidden');
+    check('leaving with unsaved calls asks first', asked);
+    const leaveB = asked && [...m.querySelectorAll('button')]
+      .find((b) => b.textContent.trim() === 'Leave');
+    if (leaveB) { leaveB.click(); await sleep(800); }
+  }
   check('escape leaves the mode', ev('BARRY.curate.state') === null);
   check('and takes the bar with it', !$('#curBar'));
   check('the overlay is detached from the session',

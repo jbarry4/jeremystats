@@ -1,0 +1,140 @@
+%%BEGIN_HEADER
+	%%BEGIN DATABASE_INFORMATION
+		%Date.0 ( 16.7.2024 )
+		%Time.0 ( 3:47 PM )
+	%%END DATABASE_INFORMATION
+	%%BEGIN SETUP_INFORMATION
+		%TrackerVersion.0 ( Tracker version 2.36 release 4.6.2013 )
+		%ElapsedTime_ms.0 ( 3633 )
+		%Paradigm.0 ( PlaceAvoidance )
+		%ShockParameters.0 ( 1 500 2000 1500 )
+			// %ShockParameters.0 ( EntranceLatency ShockDuration InterShockLatency OutsideRefractory )
+		%ElapsedPath_m.0 ( 0.00 )
+		%ArenaDiameter_m.0 ( 0.82 )
+		%TrackerResolution_PixPerCM.0 ( 3.1220 )
+		%ArenaCenterXY.0 ( 127.5 127.5 )
+		%Frame.0 ( RoomFrame )
+		%ReinforcedSector.0 ( 45 60 0.0000 132.6000  )
+			//%ReinforcedSector.0 ( CenterAngle Width InnerRadius OuterRadius )
+		%RoomTrackReinforcedSector.0 ( 45 60 0.0000 132.6000  )
+			//%ReinforcedSector.0 ( CenterAngle Width InnerRadius OuterRadius )
+	%%END SETUP_INFORMATION
+	%%BEGIN RECORD_FORMAT
+		%Sample.0 ( FrameCount 1msTimeStamp RoomX RoomY Sectors State CurrentLevel MotorState Flags FrameInfo )
+			//Sectors indicate if the object is in a sector. Number is binary coded. Sectors = 0: no sector, Sectors = 1: room sector, Sectors: = 2 arena sector, Sectors: = 3 room and arena sector
+			//State indicates the Avoidance state: OutsideSector = 0, EntranceLatency = 1, Shock = 2, InterShockLatency = 3, OutsideRefractory = 4, BadSpot = 5
+			//MotorState indicates: NoMove = 0, MoveCW = positive, MoveCCW = negative
+			//ShockLevel indicates the level of shock current: NoShock = 0, CurrentLevel = other_values
+			//FrameInfo indicates succesfuly tracked spots: ReferencePoint * 2^0 + Spot0 * 2^(1+0) + Spot1 * 2^(1+1) + Spot2 * 2^(1+2) .... 
+	%%END RECORD_FORMAT
+%%END_HEADER
+1	0	0	0	0	5	0	4	*	2
+2	33	0	0	0	5	0	4	*	2
+3	66	0	0	0	5	0	4	*	2
+4	100	0	0	0	5	0	4	*	2
+5	133	0	0	0	5	0	4	*	2
+6	166	0	0	0	5	0	4	*	2
+7	200	0	0	0	5	0	4	*	2
+8	233	0	0	0	5	0	4	*	2
+9	266	0	0	0	5	0	4	*	2
+10	300	0	0	0	5	0	4	*	2
+11	333	0	0	0	5	0	4	*	2
+12	366	0	0	0	5	0	4	*	2
+13	400	0	0	0	5	0	4	*	2
+14	433	0	0	0	5	0	4	*	2
+15	466	0	0	0	5	0	4	*	2
+16	499	0	0	0	5	0	4	*	2
+17	533	0	0	0	5	0	4	*	2
+18	566	0	0	0	5	0	4	*	2
+19	600	0	0	0	5	0	4	*	2
+20	633	0	0	0	5	0	4	*	2
+21	666	0	0	0	5	0	4	*	2
+22	700	0	0	0	5	0	4	*	2
+23	733	0	0	0	5	0	4	*	2
+24	766	0	0	0	5	0	4	*	2
+25	800	0	0	0	5	0	4	*	2
+26	833	0	0	0	5	0	4	*	2
+27	866	0	0	0	5	0	4	*	2
+28	900	0	0	0	5	0	4	*	2
+29	933	0	0	0	5	0	4	*	2
+30	966	0	0	0	5	0	4	*	2
+31	1000	0	0	0	5	0	4	*	2
+32	1033	0	0	0	5	0	4	*	2
+33	1066	0	0	0	5	0	4	*	2
+34	1100	0	0	0	5	0	4	*	2
+35	1133	0	0	0	5	0	4	*	2
+36	1166	0	0	0	5	0	4	*	2
+37	1200	0	0	0	5	0	4	*	2
+38	1233	0	0	0	5	0	4	*	2
+39	1266	0	0	0	5	0	4	*	2
+40	1300	0	0	0	5	0	4	*	2
+41	1333	0	0	0	5	0	4	*	2
+42	1366	0	0	0	5	0	4	*	2
+43	1400	0	0	0	5	0	4	*	2
+44	1433	0	0	0	5	0	4	*	2
+45	1466	0	0	0	5	0	4	*	2
+46	1500	0	0	0	5	0	4	*	2
+47	1533	0	0	0	5	0	4	*	2
+48	1566	0	0	0	5	0	4	*	2
+49	1600	0	0	0	5	0	4	*	2
+50	1633	0	0	0	5	0	4	*	2
+51	1666	0	0	0	5	0	4	*	2
+52	1700	0	0	0	5	0	4	*	2
+53	1733	0	0	0	5	0	4	*	2
+54	1766	0	0	0	5	0	4	*	2
+55	1800	0	0	0	5	0	4	*	2
+56	1833	0	0	0	5	0	4	*	2
+57	1866	0	0	0	5	0	4	*	2
+58	1900	0	0	0	5	0	4	*	2
+59	1933	0	0	0	5	0	4	*	2
+60	1966	0	0	0	5	0	4	*	2
+61	2000	0	0	0	5	0	4	*	2
+62	2033	0	0	0	5	0	4	*	2
+63	2066	0	0	0	5	0	4	*	2
+64	2099	0	0	0	5	0	4	*	2
+65	2133	0	0	0	5	0	4	*	2
+66	2166	0	0	0	5	0	4	*	2
+67	2200	0	0	0	5	0	4	*	2
+68	2233	0	0	0	5	0	4	*	2
+69	2266	0	0	0	5	0	4	*	2
+70	2300	0	0	0	5	0	4	*	2
+71	2333	0	0	0	5	0	4	*	2
+72	2366	0	0	0	5	0	4	*	2
+73	2400	0	0	0	5	0	4	*	2
+74	2433	0	0	0	5	0	4	*	2
+75	2466	0	0	0	5	0	4	*	2
+76	2500	0	0	0	5	0	4	*	2
+77	2533	0	0	0	5	0	4	*	2
+78	2566	0	0	0	5	0	4	*	2
+79	2599	0	0	0	5	0	4	*	2
+80	2633	0	0	0	5	0	4	*	2
+81	2666	0	0	0	5	0	4	*	2
+82	2700	0	0	0	5	0	4	*	2
+83	2733	0	0	0	5	0	4	*	2
+84	2766	0	0	0	5	0	4	*	2
+85	2800	0	0	0	5	0	4	*	2
+86	2833	0	0	0	5	0	4	*	2
+87	2866	0	0	0	5	0	4	*	2
+88	2900	0	0	0	5	0	4	*	2
+89	2933	0	0	0	5	0	4	*	2
+90	2966	0	0	0	5	0	4	*	2
+91	3000	0	0	0	5	0	4	*	2
+92	3033	0	0	0	5	0	4	*	2
+93	3066	0	0	0	5	0	4	*	2
+94	3099	0	0	0	5	0	4	*	2
+95	3133	0	0	0	5	0	4	*	2
+96	3166	0	0	0	5	0	4	*	2
+97	3200	0	0	0	5	0	4	*	2
+98	3233	0	0	0	5	0	4	*	2
+99	3266	0	0	0	5	0	4	*	2
+100	3300	0	0	0	5	0	4	*	2
+101	3333	0	0	0	5	0	4	*	2
+102	3366	0	0	0	5	0	4	*	2
+103	3400	0	0	0	5	0	4	*	2
+104	3433	0	0	0	5	0	4	*	2
+105	3466	0	0	0	5	0	4	*	2
+106	3500	0	0	0	5	0	4	*	2
+107	3533	0	0	0	5	0	4	*	2
+108	3566	0	0	0	5	0	4	*	2
+109	3600	0	0	0	5	0	4	*	2
+110	3633	0	0	0	5	0	4	*	2

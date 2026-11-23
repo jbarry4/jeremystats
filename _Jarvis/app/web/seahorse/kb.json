@@ -37,7 +37,28 @@
   "winnubst2019": "Winnubst J, Bas E, Ferreira TA, et al. (2019) Reconstruction of 1,000 projection neurons reveals new cell types and organization of long-range connectivity in the mouse brain. Cell 179:268-281.",
   "peng2021": "Peng H, Xie P, Liu L, et al. (2021) Morphological diversity of single neurons in molecularly defined cell types. Nature 598:174-181.",
   "ascoli2007": "Ascoli GA, Donohue DE, Halavi M (2007) NeuroMorpho.Org: a central resource for neuronal morphologies. J Neurosci 27:9247-9251.",
-  "wheeler2015": "Wheeler DW, White CM, Rees CL, Komendantov AO, Hamilton DJ, Ascoli GA (2015) Hippocampome.org: a knowledge base of neuron types in the rodent hippocampus. eLife 4:e09960."
+  "wheeler2015": "Wheeler DW, White CM, Rees CL, Komendantov AO, Hamilton DJ, Ascoli GA (2015) Hippocampome.org: a knowledge base of neuron types in the rodent hippocampus. eLife 4:e09960.",
+  "buzsaki2002": "Buzsaki G (2002) Theta oscillations in the hippocampus. Neuron 33:325-340.",
+  "buzsaki2015": "Buzsaki G (2015) Hippocampal sharp wave-ripple: a cognitive biomarker for episodic memory and planning. Hippocampus 25:1073-1188.",
+  "ylinen1995": "Ylinen A, Bragin A, Nadasdy Z, Jando G, Szabo I, Sik A, Buzsaki G (1995) Sharp wave-associated high-frequency oscillation (200 Hz) in the intact hippocampus: network and intracellular mechanisms. J Neurosci 15:30-46.",
+  "wongtraub1983": "Wong RKS, Traub RD (1983) Synchronized burst discharge in disinhibited hippocampal slice. I. Initiation in CA2-CA3 region. J Neurophysiol 49:442-458.",
+  "nicholson1975": "Nicholson C, Freeman JA (1975) Theory of current source-density analysis and determination of conductivity tensor for anuran cerebellum. J Neurophysiol 38:356-368.",
+  "kempermann1997": "Kempermann G, Kuhn HG, Gage FH (1997) Genetic influence on neurogenesis in the dentate gyrus of adult mice. Proc Natl Acad Sci USA 94:10409-10414.",
+  "goodsmith2017": "GoodSmith D, Chen X, Wang C, et al. (2017) Spatial representations of granule cells and mossy cells of the dentate gyrus. Neuron 93:677-690.",
+  "danielson2017": "Danielson NB, Turi GF, Ladow M, et al. (2017) In vivo imaging of dentate gyrus mossy cells in behaving mice. Neuron 93:552-559.",
+  "larimer2010": "Larimer P, Strowbridge BW (2010) Representing information in cell assemblies: persistent activity mediated by semilunar granule cells. Nat Neurosci 13:213-222.",
+  "alonsollinas1989": "Alonso A, Llinas RR (1989) Subthreshold Na+-dependent theta-like rhythmicity in stellate cells of entorhinal cortex layer II. Nature 342:175-177.",
+  "hafting2005": "Hafting T, Fyhn M, Molden S, Moser MB, Moser EI (2005) Microstructure of a spatial map in the entorhinal cortex. Nature 436:801-806.",
+  "tsao2018": "Tsao A, Sugar J, Lu L, et al. (2018) Integrating time from experience in the lateral entorhinal cortex. Nature 561:57-62.",
+  "okeefe1993": "O'Keefe J, Recce ML (1993) Phase relationship between hippocampal place units and the EEG theta rhythm. Hippocampus 3:317-330.",
+  "klausberger2003": "Klausberger T, Magill PJ, Marton LF, et al. (2003) Brain-state- and cell-type-specific firing of hippocampal interneurons in vivo. Nature 421:844-848.",
+  "bartos2007": "Bartos M, Vida I, Jonas P (2007) Synaptic mechanisms of synchronized gamma oscillations in inhibitory interneuron networks. Nat Rev Neurosci 8:45-56.",
+  "pun2012": "Pun RYK, Rolle IJ, LaSarge CL, et al. (2012) Excessive activation of mTOR in postnatally generated granule cells is sufficient to cause epilepsy. Neuron 75:1022-1034.",
+  "shore2020": "Shore AN, Colombo S, Tobin WF, et al. (2020) Reduced GABAergic neuron excitability, altered synaptic connectivity, and seizures in a KCNT1 gain-of-function mouse model of childhood epilepsy. Cell Rep 33:108303.",
+  "lomo1971": "Lomo T (1971) Patterns of activation in a monosynaptic cortical pathway: the perforant path input to the dentate area of the hippocampal formation. Exp Brain Res 12:18-45.",
+  "schmidthieber2008": "Schmidt-Hieber C, Jonas P, Bischofberger J (2008) Action potential initiation and propagation in hippocampal mossy fibre axons. J Physiol 586:1849-1857.",
+  "meeks2007": "Meeks JP, Mennerick S (2007) Action potential initiation and propagation in CA3 pyramidal axons. J Neurophysiol 97:3460-3472.",
+  "rollenhagen2007": "Rollenhagen A, Satzler K, Rodriguez EP, Jonas P, Frotscher M, Lubke JHR (2007) Structural determinants of transmission at large hippocampal mossy fiber synapses. J Neurosci 27:10434-10444."
  },
  "regions": [
   {
@@ -254,7 +275,29 @@
     "amaral2007",
     "henze2000",
     "acsady1998"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Sparse: in a given place most granule cells are silent; active ones fire at low rates.",
+     "refs": [
+      "senzai2017",
+      "goodsmith2017"
+     ]
+    },
+    {
+     "text": "The spike starts in the axon 20-30 um from the soma and runs down the mossy fibre at about 0.24 m/s.",
+     "refs": [
+      "schmidthieber2008"
+     ]
+    }
+   ],
+   "lab": {
+    "text": "PTEN loss in granule cells makes them hypertrophic, with ectopic somata, hilar basal dendrites and mossy fibres sprouting into the inner molecular layer, and is enough to cause epilepsy.",
+    "refs": [
+     "pun2012"
+    ]
+   },
+   "line": "The dentate's principal cell: sparse firing, giant mossy-fibre synapses onto CA3."
   },
   {
    "key": "sgc",
@@ -270,7 +313,16 @@
    "about": "A granule-cell relative with its soma out in the inner molecular layer and a broad dendritic fan. Persistent firing after perforant-path input; drives hilar cells.",
    "refs": [
     "williams2007"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Fire persistently for seconds after a perforant-path input, unlike granule cells.",
+     "refs": [
+      "larimer2010"
+     ]
+    }
+   ],
+   "line": "A granule-cell relative with its soma out in the inner molecular layer."
   },
   {
    "key": "mc",
@@ -290,7 +342,18 @@
     "buckmaster1996",
     "amaral1978",
     "senzai2017"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Much more active than granule cells, with several place fields each.",
+     "refs": [
+      "senzai2017",
+      "goodsmith2017",
+      "danielson2017"
+     ]
+    }
+   ],
+   "line": "The hilus's excitatory cell: takes mossy fibres, feeds granule cells far away."
   },
   {
    "key": "hipp",
@@ -308,7 +371,22 @@
     "han1993",
     "freund1996",
     "hosp2014"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "A regular-spiking (non-fast-spiking) SST+ cell that inhibits the distal dendrites.",
+     "refs": [
+      "hosp2014"
+     ]
+    }
+   ],
+   "lab": {
+    "text": "A Kcnt1 gain-of-function variant makes non-fast-spiking GABAergic neurons less excitable (cortex).",
+    "refs": [
+     "shore2020"
+    ]
+   },
+   "line": "SST+ interneuron of the hilus; inhibits where the perforant path lands."
   },
   {
    "key": "pvbc",
@@ -326,7 +404,17 @@
     "freund1996",
     "hosp2014",
     "acsady1998"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Fast-spiking: hundreds of spikes a second without slowing; paces gamma and times granule-cell output.",
+     "refs": [
+      "bartos2007",
+      "hosp2014"
+     ]
+    }
+   ],
+   "line": "PV+ basket cell: perisomatic inhibition of granule cells."
   },
   {
    "key": "aac",
@@ -343,7 +431,16 @@
    "refs": [
     "soriano1989",
     "freund1996"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Fast-spiking PV+ cell whose synapses sit on the axon initial segment.",
+     "refs": [
+      "freund1996"
+     ]
+    }
+   ],
+   "line": "Chandelier cell: inhibition on the axon initial segment."
   },
   {
    "key": "stel",
@@ -361,7 +458,23 @@
     "klink1997",
     "tamamaki1993",
     "witter2007"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Many are grid cells; theta-frequency membrane oscillations in vitro.",
+     "refs": [
+      "hafting2005",
+      "alonsollinas1989"
+     ]
+    }
+   ],
+   "lab": {
+    "text": "A synchronous MEC layer II volley onto the middle molecular layer is DS2.",
+    "refs": [
+     "bragin1995"
+    ]
+   },
+   "line": "MEC layer II stellate cell: the medial perforant path (DS2)."
   },
   {
    "key": "fan",
@@ -379,7 +492,23 @@
     "leitner2016",
     "witter2007",
     "tamamaki1993"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Lateral entorhinal cells signal objects, odors and elapsed time.",
+     "refs": [
+      "leitner2016",
+      "tsao2018"
+     ]
+    }
+   ],
+   "lab": {
+    "text": "A synchronous LEC layer II volley onto the outer molecular layer is DS1.",
+    "refs": [
+     "bragin1995"
+    ]
+   },
+   "line": "LEC layer II cell: the lateral perforant path (DS1)."
   },
   {
    "key": "ca3",
@@ -396,7 +525,16 @@
    "refs": [
     "ishizuka1990",
     "amaralwitter1989"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Burst-firing place cells; CA3 population bursts start sharp-wave ripples.",
+     "refs": [
+      "buzsaki2015"
+     ]
+    }
+   ],
+   "line": "CA3 pyramidal cell: mossy-fibre input, recurrent network, Schaffer output."
   },
   {
    "key": "ca1",
@@ -414,7 +552,22 @@
     "amaral1991",
     "naber2001",
     "klausberger2008"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Place cells that shift their spikes earlier in each theta cycle as an animal crosses the field (phase precession).",
+     "refs": [
+      "okeefe1993"
+     ]
+    },
+    {
+     "text": "Fire together during sharp-wave ripples, replaying recent paths.",
+     "refs": [
+      "buzsaki2015"
+     ]
+    }
+   ],
+   "line": "CA1 pyramidal cell: the main output of the hippocampus proper."
   },
   {
    "key": "olm",
@@ -431,7 +584,22 @@
    "refs": [
     "klausberger2008",
     "freund1996"
-   ]
+   ],
+   "phys": [
+    {
+     "text": "Fire at the trough of CA1 theta and fall silent during ripples.",
+     "refs": [
+      "klausberger2003"
+     ]
+    }
+   ],
+   "lab": {
+    "text": "SST+ cells are among the non-fast-spiking interneurons a Kcnt1 gain-of-function variant makes less excitable.",
+    "refs": [
+     "shore2020"
+    ]
+   },
+   "line": "SST+ O-LM interneuron: inhibits CA1 tufts in lacunosum-moleculare."
   }
  ],
  "connections": [
@@ -1548,11 +1716,14 @@
   "contacts": 64,
   "pitch_um": 20,
   "width_um": 70,
-  "default_tip_um": [
-   7300,
-   2600,
-   7300
-  ],
+  "first_um": 40,
+  "default": {
+   "ap": -1.9,
+   "ml": 1.4,
+   "depth": 2.3,
+   "ang_ml": 0,
+   "ang_ap": 0
+  },
   "note": "Placement only; no recording is attached."
  },
  "dg_layers": [
@@ -1566,6 +1737,97 @@
   "mml2",
   "oml2"
  ],
+ "region_lines": {
+  "DG": "Dentate gyrus: the input stage, where the perforant path lands and dentate spikes happen.",
+  "CA3": "CA3: the recurrent network; mossy fibres in, Schaffer collaterals out.",
+  "CA2": "CA2: a small field with strong entorhinal input; social memory.",
+  "CA1": "CA1: compares CA3 and entorhinal input; the main output of the hippocampus proper.",
+  "SUB": "Subiculum: the output of the hippocampal formation.",
+  "ProS": "Prosubiculum.",
+  "ENTl": "Lateral entorhinal cortex: objects, odors, time; the lateral perforant path (DS1).",
+  "ENTm": "Medial entorhinal cortex: grid cells; the medial perforant path (DS2).",
+  "PRE": "Presubiculum: head-direction cells.",
+  "POST": "Postsubiculum: head-direction cells.",
+  "PAR": "Parasubiculum.",
+  "PERI": "Perirhinal cortex: objects; drives the lateral entorhinal cortex.",
+  "ECT": "Ectorhinal cortex.",
+  "VISpor": "Postrhinal cortex (VISpor): scenes and space; drives the medial entorhinal cortex.",
+  "HPF": "Hippocampal formation."
+ },
+ "crowd": {
+  "note": "One dot per cell. Granule cells: the stereological count for C57BL/6 (Kempermann et al. 1997) spread through this atlas's granule layer. Other densities are assumed from soma size and packing.",
+  "kinds": [
+   {
+    "key": "gc",
+    "layers": [
+     "gcl1",
+     "gcl2"
+    ],
+    "total": 239000,
+    "soma_um": 10,
+    "refs": [
+     "kempermann1997"
+    ]
+   },
+   {
+    "key": "ca1",
+    "layers": [
+     "ca1sp"
+    ],
+    "per_um3": 0.0003333333333333333,
+    "soma_um": 14,
+    "assumed": true
+   },
+   {
+    "key": "ca3",
+    "layers": [
+     "ca3sp",
+     "ca2sp"
+    ],
+    "per_um3": 0.0002,
+    "soma_um": 18,
+    "assumed": true
+   },
+   {
+    "key": "mc",
+    "layers": [
+     "hil"
+    ],
+    "per_um3": 2.5e-05,
+    "soma_um": 20,
+    "assumed": true
+   },
+   {
+    "key": "hipp",
+    "layers": [
+     "hil"
+    ],
+    "per_um3": 2.5e-05,
+    "soma_um": 13,
+    "assumed": true
+   },
+   {
+    "key": "pvbc",
+    "layers": [
+     "iml1",
+     "iml2",
+     "mml1",
+     "mml2",
+     "oml1",
+     "oml2",
+     "ca1so",
+     "ca1sr",
+     "ca1slm",
+     "ca3so",
+     "ca3sr",
+     "ca3slm"
+    ],
+    "per_um3": 6.666666666666667e-06,
+    "soma_um": 12,
+    "assumed": true
+   }
+  ]
+ },
  "lamina": [
   {
    "code": 1,
@@ -1573,6 +1835,7 @@
    "label": "OML1",
    "group": "DG",
    "name": "outer molecular layer, upper (suprapyramidal) blade",
+   "line": "Lateral perforant path (LEC II) ends here; the DS1 sink.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1581,6 +1844,7 @@
    "label": "MML1",
    "group": "DG",
    "name": "middle molecular layer, upper blade",
+   "line": "Medial perforant path (MEC II) ends here; the DS2 sink.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1589,6 +1853,7 @@
    "label": "IML1",
    "group": "DG",
    "name": "inner molecular layer, upper blade",
+   "line": "Mossy-cell (associational/commissural) input on proximal dendrites.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1597,6 +1862,7 @@
    "label": "GCL1",
    "group": "DG",
    "name": "granule cell layer, upper blade",
+   "line": "Granule-cell bodies, packed; basket and chandelier cells at its edge.",
    "how": "derived: blade from which side of the hilus faces CA1/CA2"
   },
   {
@@ -1605,6 +1871,7 @@
    "label": "HIL",
    "group": "DG",
    "name": "hilus (polymorph layer)",
+   "line": "Mossy cells and hilar interneurons; mossy-fibre collaterals.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1613,6 +1880,7 @@
    "label": "GCL2",
    "group": "DG",
    "name": "granule cell layer, lower (infrapyramidal) blade",
+   "line": "Granule-cell bodies, packed; basket and chandelier cells at its edge.",
    "how": "derived: blade from which side of the hilus faces CA1/CA2"
   },
   {
@@ -1621,6 +1889,7 @@
    "label": "IML2",
    "group": "DG",
    "name": "inner molecular layer, lower blade",
+   "line": "Mossy-cell (associational/commissural) input on proximal dendrites.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1629,6 +1898,7 @@
    "label": "MML2",
    "group": "DG",
    "name": "middle molecular layer, lower blade",
+   "line": "Medial perforant path (MEC II) ends here; the DS2 sink.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1637,6 +1907,7 @@
    "label": "OML2",
    "group": "DG",
    "name": "outer molecular layer, lower blade",
+   "line": "Lateral perforant path (LEC II) ends here; the DS1 sink.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1645,6 +1916,7 @@
    "label": "CA1 so",
    "group": "CA1",
    "name": "stratum oriens",
+   "line": "Basal dendrites; O-LM somata; Schaffer and CA2 inputs.",
    "how": "derived: side of stratum pyramidale (alveus side = oriens)"
   },
   {
@@ -1653,6 +1925,7 @@
    "label": "CA1 sp",
    "group": "CA1",
    "name": "stratum pyramidale",
+   "line": "Pyramidal cell bodies; perisomatic inhibition; ripples.",
    "how": "derived: Nissl-dense sheet inside the Allen CA field"
   },
   {
@@ -1661,6 +1934,7 @@
    "label": "CA1 sr",
    "group": "CA1",
    "name": "stratum radiatum",
+   "line": "Apical dendrites: Schaffer (CA1) or recurrent (CA3) input; the sharp-wave sink in CA1.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1669,6 +1943,7 @@
    "label": "CA1 slm",
    "group": "CA1",
    "name": "stratum lacunosum-moleculare",
+   "line": "Distal tufts: entorhinal input; theta is largest near here.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1677,6 +1952,7 @@
    "label": "CA2 so",
    "group": "CA2",
    "name": "stratum oriens",
+   "line": "Basal dendrites; O-LM somata; Schaffer and CA2 inputs.",
    "how": "derived: side of stratum pyramidale (alveus side = oriens)"
   },
   {
@@ -1685,6 +1961,7 @@
    "label": "CA2 sp",
    "group": "CA2",
    "name": "stratum pyramidale",
+   "line": "Pyramidal cell bodies; perisomatic inhibition; ripples.",
    "how": "derived: Nissl-dense sheet inside the Allen CA field"
   },
   {
@@ -1693,6 +1970,7 @@
    "label": "CA2 sr",
    "group": "CA2",
    "name": "stratum radiatum",
+   "line": "Apical dendrites: Schaffer (CA1) or recurrent (CA3) input; the sharp-wave sink in CA1.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1701,6 +1979,7 @@
    "label": "CA2 slm",
    "group": "CA2",
    "name": "stratum lacunosum-moleculare",
+   "line": "Distal tufts: entorhinal input; theta is largest near here.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1709,6 +1988,7 @@
    "label": "CA3 so",
    "group": "CA3",
    "name": "stratum oriens",
+   "line": "Basal dendrites; O-LM somata; Schaffer and CA2 inputs.",
    "how": "derived: side of stratum pyramidale (alveus side = oriens)"
   },
   {
@@ -1717,6 +1997,7 @@
    "label": "CA3 sp",
    "group": "CA3",
    "name": "stratum pyramidale",
+   "line": "Pyramidal cell bodies; perisomatic inhibition; ripples.",
    "how": "derived: Nissl-dense sheet inside the Allen CA field"
   },
   {
@@ -1725,6 +2006,7 @@
    "label": "CA3 slu",
    "group": "CA3",
    "name": "stratum lucidum",
+   "line": "Mossy fibres and their giant boutons on CA3 thorny excrescences.",
    "how": "derived: side of stratum pyramidale (alveus side = oriens)"
   },
   {
@@ -1733,6 +2015,7 @@
    "label": "CA3 sr",
    "group": "CA3",
    "name": "stratum radiatum",
+   "line": "Apical dendrites: Schaffer (CA1) or recurrent (CA3) input; the sharp-wave sink in CA1.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1741,6 +2024,7 @@
    "label": "CA3 slm",
    "group": "CA3",
    "name": "stratum lacunosum-moleculare",
+   "line": "Distal tufts: entorhinal input; theta is largest near here.",
    "how": "derived: proportional depth (thirds) inside an Allen structure"
   },
   {
@@ -1749,6 +2033,7 @@
    "label": "SUB",
    "group": "SUB",
    "name": "subiculum",
+   "line": "The subiculum: the hippocampus's main output.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1757,6 +2042,7 @@
    "label": "ProS",
    "group": "SUB",
    "name": "prosubiculum",
+   "line": "The prosubiculum, between CA1 and the subiculum.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1765,6 +2051,7 @@
    "label": "FC",
    "group": "HIP",
    "name": "fasciola cinerea",
+   "line": "Fasciola cinerea.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1773,6 +2060,7 @@
    "label": "IG",
    "group": "HIP",
    "name": "induseum griseum",
+   "line": "Induseum griseum.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1781,6 +2069,7 @@
    "label": "alv",
    "group": "tract",
    "name": "alveus",
+   "line": "The alveus: pyramidal-cell axons leaving.",
    "how": "Allen CCFv3 2017 annotation, as is"
   },
   {
@@ -1789,6 +2078,7 @@
    "label": "fi",
    "group": "tract",
    "name": "fimbria",
+   "line": "The fimbria: output to the fornix.",
    "how": "Allen CCFv3 2017 annotation, as is"
   }
  ]

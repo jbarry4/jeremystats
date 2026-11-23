@@ -1,0 +1,101 @@
+{
+  "_at": {
+    "created": "2026-10-11T06:06:46.110010+00:00",
+    "duration_s": "2026-10-11T06:06:46.110010+00:00",
+    "first_seen_by": "2026-10-11T06:06:46.110010+00:00",
+    "found_on": "2026-10-11T06:06:46.110010+00:00",
+    "fs": "2026-10-11T06:06:46.110010+00:00",
+    "gid": "2026-10-11T06:06:46.110010+00:00",
+    "group": "2026-10-11T06:06:46.110010+00:00",
+    "key": "2026-10-11T06:06:46.110010+00:00",
+    "label": "2026-10-11T06:06:46.110010+00:00",
+    "loose_key": "2026-10-11T06:06:46.110010+00:00",
+    "mouse": "2026-10-11T06:06:46.110010+00:00",
+    "n_channels": "2026-10-11T06:06:46.110010+00:00",
+    "project": "2026-10-11T06:06:46.110010+00:00",
+    "project_source": "2026-10-11T06:06:46.110010+00:00",
+    "retired": "2026-10-12T01:02:40.152784+00:00",
+    "schema": "2026-10-11T06:06:46.110010+00:00",
+    "session": "2026-10-11T06:06:46.110010+00:00",
+    "start": "2026-10-11T06:06:46.110010+00:00",
+    "updated": "2026-10-12T01:02:40.152784+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-11T06:06:46.110010+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-11T06:06:46.110010+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02": [
+        "set",
+        "2026-10-11T06:06:46.110010+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T01:02:40.152784+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T02:06:45-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 1867.537,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "se80dad58a958",
+  "group": "PTEN",
+  "key": "m005_s051_2024-02-05_15-58-02",
+  "label": "PTEN m5 s51 2024-02-05",
+  "loose_key": "m005_s051",
+  "mouse": 5,
+  "n_channels": 128,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 51,
+  "start": "2024-02-05T15:58:02",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T21:02:40-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}

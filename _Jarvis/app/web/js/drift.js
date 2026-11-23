@@ -511,6 +511,7 @@ BARRY.drift = (function () {
                v.note || null].filter(Boolean).join(' ') || null,
       })),
       idOf: (v) => v.id, value: vid, unit: 'pairs', producer: false,
+      family: r.artifact_id ? { artifact: r.artifact_id } : null,
       disabled: null,
       heading: 'Which version of ' + (r.nickname || r.name),
       sub: 'A drift pins the exact version it reads.',

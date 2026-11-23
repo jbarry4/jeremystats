@@ -1,0 +1,263 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Cells</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:40vw;white-space:pre-wrap}
+ iframe{position:fixed;right:0;border:0;border-left:1px solid #243}
+ iframe#app{top:0;width:60vw;height:62vh}
+ iframe#aid{top:62vh;width:60vw;height:38vh;border-top:1px solid #243}
+ .ok{color:#7fe3b0}.bad{color:#ff8a7a}.dim{color:#7a8794}
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<iframe id="aid" src="about:blank"></iframe>
+<script>
+/* PROJECT EVOLVE phase 7 (2026-11-21): the Cells -- Kilosort's Cells pane,
+   the Xplorefinder add-on and its cards window.
+
+   Every /api/cells route is answered here from a fixture sort of three
+   cells on the demo recording, so the checks do not depend on which sorts
+   this machine has, and nothing is read into a curation or banked. The
+   real backend is checked against real sorts by the route test
+   (evolve_routes_test.py) and tools/test_cells.py. */
+const out = document.getElementById('out');
+const say = (m, c) => { const s = document.createElement('div'); s.textContent = m; if (c) s.className = c; out.appendChild(s); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const J = (x) => JSON.stringify(x);
+let pass = 0, fail = 0;
+const ok = (what, cond, more) => {
+  if (cond) { pass++; say('  ok   ' + what, 'ok'); }
+  else { fail++; say('  FAIL ' + what + (more !== undefined ? '   [' + more + ']' : ''), 'bad'); }
+};
+const head = (t) => say('\n== ' + t + ' ==');
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  for (;;) {
+    try { if (fn()) return true; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > (ms || 8000)) throw new Error('timed out waiting for ' + (what || 'it'));
+    await sleep(80);
+  }
+}
+
+const GID = 'demo-long-session';
+const CELLS = [
+  { id: 4, n: 1200, digest: 'a', csc: 1, ch_index: 0, depth_um: 0, layer: 'ca1_so', layer_name: 'CA1 SO',
+    layer_color: '#8ec5ff', first_s: 0.5, last_s: 299, rate_hz: 4.0 },
+  { id: 7, n: 3000, digest: 'b', csc: 3, ch_index: 2, depth_um: 40, layer: null, layer_name: null,
+    layer_color: null, first_s: 0.2, last_s: 299.5, rate_hz: 10.0 },
+  { id: 12, n: 600, digest: 'c', csc: 5, ch_index: 4, depth_um: 80, layer: 'ca1_sp', layer_name: 'CA1 SP',
+    layer_color: '#ff5733', first_s: 2, last_s: 290, rate_hz: 2.0 },
+];
+const DETAIL = (v) => ({
+  ok: true, gid: GID, label: 'Demo · long session', path: 'demo:long-session',
+  run: { name: 'kilosort_tl6_tu7_fs30000.0', path: 'X:\\harness\\binary\\kilosort_tl6_tu7_fs30000.0' },
+  twin: { name: 'kilosort_tl6_tu7_fs30000.0invert_True' }, binary: true,
+  sources: [{ kind: 'export', name: 'Isabella\u2019s export', n: 3, at: '2025-08-06T10:28:53', path: 'X:\\harness\\timestamps' }],
+  curation: { artifact_id: 'harness-cur', version: 2, versions: [
+    { v: 1, at: '2026-11-21T10:00:00Z', by: 'Debug_Bot', n: 3, source: 'Isabella\u2019s export', here: true },
+    { v: 2, at: '2026-11-21T11:00:00Z', by: 'Debug_Bot', n: 3, source: 'Phy\u2019s labels', here: true }] },
+  version: v || 2, cells: CELLS, source: { kind: 'export', name: 'Isabella\u2019s export' },
+  polarity: { ok: true, words: '3 of 3 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage.' },
+  entry: null,
+});
+const SORTS = { ok: true, n: 2, curated: 1, sorts: [
+  { gid: GID, label: 'Demo · long session', project: 'demo', binary: true, run: 'kilosort_tl6_tu7_fs30000.0',
+    twin: 'kilosort_tl6_tu7_fs30000.0invert_True', export_n: 3, phy_edited: false,
+    curation: { artifact_id: 'harness-cur', version: 2, cells: 3 }, entry: null, path: 'demo:long-session' },
+  { gid: 'harness-uncurated', label: 'harness uncurated', project: 'demo', binary: true,
+    run: 'kilosort_tl6_tu7_fs30000.0', twin: null, export_n: 0, phy_edited: false, curation: null, entry: null },
+] };
+const DIFF = { ok: true, a: 1, b: 2, a_source: 'Isabella\u2019s export', b_source: 'Phy\u2019s labels',
+  counts: { kept: 1, merged: 1, added: 1 }, rows: [
+    { kind: 'kept', a: [4], b: [4], shared: 1200, n_a: 1200, n_b: 1200 },
+    { kind: 'merged', a: [7, 8], b: [7], shared: 3000, n_a: 3000, n_b: 3000 },
+    { kind: 'added', a: [], b: [12], shared: 0, n_a: 0, n_b: 600 }] };
+const range = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+const CELL = { ok: true, gid: GID, version: 2, cell: CELLS[1], duration_s: 300, invert: true,
+  isi: { edges_ms: range(101, (i) => i * 0.5), counts: range(100, (i) => (i < 4 ? 0 : 40 - Math.abs(20 - i))), refractory: 0.001, refractory_ms: 2 },
+  acg: { lags_ms: range(100, (i) => i - 50), counts: range(100, (i) => (Math.abs(i - 50) < 2 ? 0 : 30)), of: 3000, n: 3000 },
+  rate: { bin_s: 10, t: range(30, (i) => i * 10), hz: range(30, (i) => 8 + (i % 5)) },
+  amplitude: { t: range(200, (i) => i * 1.5), a: range(200, (i) => 20 + (i % 7)) },
+  waveform: { ms: range(91, (i) => (i - 45) / 30), n: 500, trough_uv: -60, peak_uv: 20, down: true,
+              channels: range(7, (k) => ({ csc: k + 1, depth_um: k * 20, best: k === 3,
+                                             uv: range(91, (i) => (k === 3 ? -60 : -15) * Math.exp(-((i - 45) ** 2) / 20)) })) } };
+const SETS = { ok: true, sets: [{ id: 'harness-bundle', name: 'Halo · harness bundle', type: 'rcbundle', bundle: true,
+  labels: [{ id: 'ds', label: 'DS' }, { id: 'twilight', label: 'Twilight Zone' }] }] };
+const PETH = { ok: true, version: 2, entry: { id: 'harness-bundle', name: 'Halo · harness bundle' },
+  labels: [{ id: 'ds', label: 'DS', n: 40 }, { id: 'twilight', label: 'Twilight Zone', n: 5 }], half_s: 0.5, bin_s: 0.01,
+  cells: { 7: { ds: { edges_s: range(101, (i) => -0.5 + i * 0.01), hz: range(100, (i) => (Math.abs(i - 50) < 3 ? 40 : 10)), n_events: 40, raster: range(40, () => [-0.2, 0.001, 0.3]), baseline_hz: 10 },
+                twilight: { edges_s: range(101, (i) => -0.5 + i * 0.01), hz: range(100, () => 10), n_events: 5, raster: range(5, () => [0.1]), baseline_hz: 10 } } } };
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const ev = (c) => W.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!(BARRY.kilosort && BARRY.cells && BARRY.views.xplore)'),
+              25000, 'the app to boot');
+  const B = ev('BARRY');
+  const was = { fetch: W.fetch, open: W.open };
+  const sent = [];
+  const json = (x, st) => Promise.resolve(new W.Response(J(x), { status: st || 200,
+                                                               headers: { 'Content-Type': 'application/json' } }));
+  W.fetch = function (url, opts) {
+    const u = new W.URL(String(url), W.location.origin);
+    const p = u.pathname;
+    const method = (opts && opts.method) || 'GET';
+    const body = opts && opts.body ? JSON.parse(opts.body) : null;
+    if (p === '/api/cells/sorts') { sent.push(['sorts', null, u.search]); return json(SORTS); }
+    if (p === '/api/cells/' + GID) { sent.push(['one', null, u.search]); return json(DETAIL(+u.searchParams.get('version') || 2)); }
+    if (p === '/api/cells/' + GID + '/diff') { sent.push(['diff', null, u.search]); return json(DIFF); }
+    if (p === '/api/cells/' + GID + '/read') { sent.push(['read', body]); return json({ ok: true, artifact_id: 'harness-cur', version: 2, cells: 3, exact: 3 }); }
+    if (p === '/api/cells/' + GID + '/bank') { sent.push(['bank', body]); return json({ ok: true, entry_id: 'harness-cells', name: body.name, n: 3, new: true }); }
+    if (p === '/api/cells/' + GID + '/bundles') { sent.push(['bundles']); return json(SETS); }
+    if (p === '/api/cells/' + GID + '/peth') { sent.push(['peth', body]); return json(PETH); }
+    if (p === '/api/cells/' + GID + '/window') {
+      sent.push(['window', null, u.search]);
+      const t0 = +u.searchParams.get('t0'), t1 = +u.searchParams.get('t1');
+      return json({ ok: true, version: 2, t0, t1, cells: CELLS.map((c, k) => ({ id: c.id, csc: c.csc,
+        layer_color: c.layer_color, t: range(40, (i) => t0 + (t1 - t0) * (i + 0.5 + k * 0.1) / 40), n: 40 })) });
+    }
+    m = p.match(/^\/api\/cells\/[^/]+\/cell\/(\d+)$/);
+    if (m) { sent.push(['cell', null, p]); return json(CELL); }
+    if (/^\/api\/cells\//.test(p)) { sent.push(['refused', null, p]); return json({ ok: false, error: 'harness: not stubbed' }, 400); }
+    if (method !== 'GET' && /^\/api\/(bank|artifacts|cells)/.test(p)) { sent.push(['refused', null, p]); return json({ ok: false, error: 'harness: no writes' }, 400); }
+    return was.fetch.apply(this, arguments);
+  };
+  let m;
+  const of = (k) => sent.filter((x) => x[0] === k);
+  const btn = (re, scope) => Array.from((scope || D()).querySelectorAll('button')).find((b) => re.test(b.textContent.trim()));
+  let host = null;
+  let viewedWas = null;
+  try { viewedWas = W.localStorage.getItem('barry.cells.viewed'); } catch (e) { /* none */ }
+  try {
+    head('KILOSORT › CELLS');
+    host = D().createElement('div');
+    host.id = 'harnessKs';
+    D().body.appendChild(host);
+    B.kilosort.load(host);
+    await until(() => host.querySelector('.ks-cell-rec'), 90000, 'the sorted recordings');
+    ok('Cells is the first pane and opens first', /active/.test((btn(/^Cells$/, host) || {}).className || ''));
+    ok('one row per sorted recording', host.querySelectorAll('.ks-cell-rec').length === 2);
+    ok('an uncurated one is said so', /sorted, not curated/.test(host.querySelector('.ks-cell-rec.uncurated').textContent));
+    ok('the count line', /2 sorted · 1 curated/.test(host.querySelector('.ks-cells-sum').textContent));
+    host.querySelector('.ks-cell-rec[data-gid="' + GID + '"]').click();
+    await until(() => host.querySelectorAll('.ks-cellcard').length === 3, 8000, 'its cells');
+    const steps = Array.from(host.querySelectorAll('.ks-step'));
+    ok('six steps', steps.length === 6);
+    ok('binary, sorted, curated and exported are lit; banked is next; viewed is not yet',
+       J(steps.map((s) => s.classList.contains('on') ? 'on' : s.classList.contains('next') ? 'next' : 'off'))
+       === J(['on', 'on', 'on', 'on', 'next', 'off']),
+       J(steps.map((s) => s.className)));
+    ok('the polarity is said', /swing down in true voltage/.test(host.querySelector('.ks-polarity').textContent));
+    ok('each cell card says its CSC and layer, or that none is said',
+       J(Array.from(host.querySelectorAll('.ks-cellcard')).map((c) => c.querySelector('.ks-layer').textContent))
+       === J(['CA1 SO', 'no layer said', 'CA1 SP']));
+    ok('and its spikes', /3,000 spikes/.test(host.querySelectorAll('.ks-cellcard')[1].textContent));
+    btn(/^Read again$/, host).click();
+    await until(() => of('read').length === 1, 5000, 'the read');
+    ok('Read again reads the export', J(of('read')[0][1]) === J({ source: 'export' }));
+    await until(() => host.querySelectorAll('.ks-cellcard').length === 3, 8000, 'the cells again');
+
+    head('COMPARING TWO CURATIONS');
+    const cmp = Array.from(host.querySelectorAll('.ks-vers .vbtn'))[1];
+    ok('a Compare… picker beside the version on show', cmp && /Compare/.test(cmp.textContent));
+    cmp.click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .vtree-row'), 5000, 'the compare picker');
+    ok('the picker carries the curation’s family', !!D().querySelector('#bigModal .vpop-family'));
+    D().querySelector('#bigModal .vtree-row[data-ref="1"]').click();
+    await until(() => host.querySelector('.ks-diff-row'), 8000, 'the diff');
+    ok('it asks for v1 against v2', of('diff').length === 1 && /a=1&b=2/.test(of('diff')[0][2]), J(of('diff')));
+    ok('a row per decision, said in words', J(Array.from(host.querySelectorAll('.ks-diff-kind')).map((n) => n.textContent))
+       === J(['kept', 'merged', 'added']));
+    ok('a merge names both cells', /Cell 7 \+ Cell 8\s+→\s+Cell 7/.test(host.querySelectorAll('.ks-diff-row')[1].textContent),
+       host.querySelectorAll('.ks-diff-row')[1].textContent);
+
+    head('BANKING');
+    btn(/^Bank…$/, host).click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'), 5000, 'the bank dialog');
+    ok('the name is Cells · the recording', D().querySelector('#bigModal .bank-dlg-name').value === 'Cells · Demo · long session');
+    btn(/^Bank it$/, D().querySelector('#bigModal')).click();
+    await until(() => of('bank').length === 1, 5000, 'the bank');
+    ok('it banks the version on show', of('bank')[0][1].version === 2 && of('bank')[0][1].name === 'Cells · Demo · long session',
+       J(of('bank')[0][1]));
+
+    head('THE XPLOREFINDER ADD-ON');
+    W.open = function () { return null; };   // the cards window is opened below, by hand
+    const entered = await B.cells.enter(GID, { cell: 7, version: 2 });
+    ok('it enters', entered === true);
+    await until(() => D().getElementById('cellsBar'), 8000, 'its bar');
+    ok('the mode is Cells', D().getElementById('app').classList.contains('mode-cells'));
+    ok('the bar says which cell', /Cell 7\s+·\s+2 of 3/.test(D().querySelector('.cells-which').textContent),
+       D().querySelector('.cells-which').textContent);
+    ok('and where it is', /CSC 3 · no layer said · 10\.00 Hz/.test(D().querySelector('.cells-where').textContent));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    ok('→ steps to the next cell', /Cell 12\s+·\s+3 of 3/.test(D().querySelector('.cells-which').textContent));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    ok('and round to the first', /Cell 4\s+·\s+1 of 3/.test(D().querySelector('.cells-which').textContent));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    ok('← steps back', /Cell 12/.test(D().querySelector('.cells-which').textContent));
+    B.views.xplore.refreshAll();
+    ev('BARRY.cells.refresh()');
+    await until(() => of('window').length >= 1, 8000, 'the window’s spikes');
+    ok('the spikes in the window are asked for, for the version on show', /version=2/.test(of('window')[0][2]));
+    await until(() => ev('BARRY.cells._state().win') !== null, 5000, 'drawn');
+    const cv = D().querySelector('.cells-overlay');
+    let inked = 0;
+    try {
+      const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 3; i < px.length; i += 4) if (px[i] > 0) inked++;
+    } catch (e) { inked = -1; }
+    ok('ticks are drawn over the traces', inked > 50, inked);
+    ok('the sets to line up on are listed, the bundle first',
+       D().querySelector('.cells-set').value === 'harness-bundle');
+
+    head('THE CARDS WINDOW');
+    const aid = document.getElementById('aid');
+    aid.src = '/?role=cells&linkhold=0#cells';
+    await new Promise((r) => aid.addEventListener('load', r, { once: true }));
+    const A2 = aid.contentWindow;
+    await until(() => A2.eval('typeof BARRY') === 'object' && A2.eval('!!BARRY.views.cells'), 25000, 'the cards window');
+    A2.fetch = W.fetch;
+    try { A2.opener = W; } catch (e) { /* read-only here */ }
+    ev('BARRY.cells.goTo(1)');
+    A2.barryCellsAid.openerMoved();
+    await until(() => aid.contentDocument.querySelectorAll('.cells-card').length >= 7, 10000, 'the cards');
+    const titles = Array.from(aid.contentDocument.querySelectorAll('.cells-card > .section-label')).map((n) => n.textContent);
+    ok('waveform, intervals, autocorrelogram, rate, amplitude and one firing card per label',
+       J(titles) === J(['Waveform', 'Intervals between spikes', 'Autocorrelogram', 'Rate through the recording',
+                         'Amplitude through the recording', 'Firing around DS', 'Firing around Twilight Zone']), J(titles));
+    ok('the cell asked for is the one on show', of('cell').length >= 1 && /\/cell\/7$/.test(of('cell').slice(-1)[0][2]));
+    ok('firing is lined up on the bundle, for this cell', of('peth').length >= 1
+       && J(of('peth').slice(-1)[0][1]) === J({ version: 2, entry_id: 'harness-bundle', cells: [7] }),
+       J(of('peth').slice(-1)[0] && of('peth').slice(-1)[0][1]));
+    ok('the refractory share is said', /0\.10% under 2 ms/.test(aid.contentDocument.body.textContent));
+
+    head('LEAVING');
+    B.cells.exit();
+    ok('the mode is gone', !D().getElementById('app').classList.contains('mode-cells') && !D().getElementById('cellsBar'));
+    ok('and its ticks', !D().querySelector('.cells-overlay'));
+    ok('nothing was written', !of('refused').length, J(of('refused')));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here: ' + (err && err.message ? err.message : String(err)), 'bad');
+    say('       ' + String((err && err.stack) || '').split('\n').slice(0, 4).join(' | '), 'dim');
+  } finally {
+    try {
+      if (B.cells.active) B.cells.exit();
+      W.fetch = was.fetch; W.open = was.open;
+      ev('closeModal()');
+      if (host) host.remove();
+      if (viewedWas == null) W.localStorage.removeItem('barry.cells.viewed');
+      else W.localStorage.setItem('barry.cells.viewed', viewedWas);
+    } catch (e) { /* gone */ }
+    await sleep(200);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'cells: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; document.getElementById('aid').src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script>

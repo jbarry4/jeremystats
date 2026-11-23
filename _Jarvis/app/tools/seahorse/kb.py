@@ -61,6 +61,27 @@ REFS = {
     'peng2021': 'Peng H, Xie P, Liu L, et al. (2021) Morphological diversity of single neurons in molecularly defined cell types. Nature 598:174-181.',
     'ascoli2007': 'Ascoli GA, Donohue DE, Halavi M (2007) NeuroMorpho.Org: a central resource for neuronal morphologies. J Neurosci 27:9247-9251.',
     'wheeler2015': 'Wheeler DW, White CM, Rees CL, Komendantov AO, Hamilton DJ, Ascoli GA (2015) Hippocampome.org: a knowledge base of neuron types in the rodent hippocampus. eLife 4:e09960.',
+    'buzsaki2002': 'Buzsaki G (2002) Theta oscillations in the hippocampus. Neuron 33:325-340.',
+    'buzsaki2015': 'Buzsaki G (2015) Hippocampal sharp wave-ripple: a cognitive biomarker for episodic memory and planning. Hippocampus 25:1073-1188.',
+    'ylinen1995': 'Ylinen A, Bragin A, Nadasdy Z, Jando G, Szabo I, Sik A, Buzsaki G (1995) Sharp wave-associated high-frequency oscillation (200 Hz) in the intact hippocampus: network and intracellular mechanisms. J Neurosci 15:30-46.',
+    'wongtraub1983': 'Wong RKS, Traub RD (1983) Synchronized burst discharge in disinhibited hippocampal slice. I. Initiation in CA2-CA3 region. J Neurophysiol 49:442-458.',
+    'nicholson1975': 'Nicholson C, Freeman JA (1975) Theory of current source-density analysis and determination of conductivity tensor for anuran cerebellum. J Neurophysiol 38:356-368.',
+    'kempermann1997': 'Kempermann G, Kuhn HG, Gage FH (1997) Genetic influence on neurogenesis in the dentate gyrus of adult mice. Proc Natl Acad Sci USA 94:10409-10414.',
+    'goodsmith2017': 'GoodSmith D, Chen X, Wang C, et al. (2017) Spatial representations of granule cells and mossy cells of the dentate gyrus. Neuron 93:677-690.',
+    'danielson2017': 'Danielson NB, Turi GF, Ladow M, et al. (2017) In vivo imaging of dentate gyrus mossy cells in behaving mice. Neuron 93:552-559.',
+    'larimer2010': 'Larimer P, Strowbridge BW (2010) Representing information in cell assemblies: persistent activity mediated by semilunar granule cells. Nat Neurosci 13:213-222.',
+    'alonsollinas1989': 'Alonso A, Llinas RR (1989) Subthreshold Na+-dependent theta-like rhythmicity in stellate cells of entorhinal cortex layer II. Nature 342:175-177.',
+    'hafting2005': 'Hafting T, Fyhn M, Molden S, Moser MB, Moser EI (2005) Microstructure of a spatial map in the entorhinal cortex. Nature 436:801-806.',
+    'tsao2018': 'Tsao A, Sugar J, Lu L, et al. (2018) Integrating time from experience in the lateral entorhinal cortex. Nature 561:57-62.',
+    'okeefe1993': 'O\'Keefe J, Recce ML (1993) Phase relationship between hippocampal place units and the EEG theta rhythm. Hippocampus 3:317-330.',
+    'klausberger2003': 'Klausberger T, Magill PJ, Marton LF, et al. (2003) Brain-state- and cell-type-specific firing of hippocampal interneurons in vivo. Nature 421:844-848.',
+    'bartos2007': 'Bartos M, Vida I, Jonas P (2007) Synaptic mechanisms of synchronized gamma oscillations in inhibitory interneuron networks. Nat Rev Neurosci 8:45-56.',
+    'pun2012': 'Pun RYK, Rolle IJ, LaSarge CL, et al. (2012) Excessive activation of mTOR in postnatally generated granule cells is sufficient to cause epilepsy. Neuron 75:1022-1034.',
+    'shore2020': 'Shore AN, Colombo S, Tobin WF, et al. (2020) Reduced GABAergic neuron excitability, altered synaptic connectivity, and seizures in a KCNT1 gain-of-function mouse model of childhood epilepsy. Cell Rep 33:108303.',
+    'lomo1971': 'Lomo T (1971) Patterns of activation in a monosynaptic cortical pathway: the perforant path input to the dentate area of the hippocampal formation. Exp Brain Res 12:18-45.',
+    'schmidthieber2008': 'Schmidt-Hieber C, Jonas P, Bischofberger J (2008) Action potential initiation and propagation in hippocampal mossy fibre axons. J Physiol 586:1849-1857.',
+    'meeks2007': 'Meeks JP, Mennerick S (2007) Action potential initiation and propagation in CA3 pyramidal axons. J Neurophysiol 97:3460-3472.',
+    'rollenhagen2007': 'Rollenhagen A, Satzler K, Rodriguez EP, Jonas P, Frotscher M, Lubke JHR (2007) Structural determinants of transmission at large hippocampal mossy fiber synapses. J Neurosci 27:10434-10444.',
 }
 
 # ----- regions (the boxes of the circuit schematic) -----
@@ -142,6 +163,15 @@ CELLS = [
      'about': 'Oriens-lacunosum moleculare cell. Driven by CA1 pyramidal cells, inhibits their distal tufts where the entorhinal input lands: the CA1 counterpart of the HIPP cell.',
      'refs': ['klausberger2008', 'freund1996']},
 ]
+
+PHYS = {'gc': [('Sparse: in a given place most granule cells are silent; active ones fire at low rates.', ['senzai2017', 'goodsmith2017']), ('The spike starts in the axon 20-30 um from the soma and runs down the mossy fibre at about 0.24 m/s.', ['schmidthieber2008'])], 'sgc': [('Fire persistently for seconds after a perforant-path input, unlike granule cells.', ['larimer2010'])], 'mc': [('Much more active than granule cells, with several place fields each.', ['senzai2017', 'goodsmith2017', 'danielson2017'])], 'hipp': [('A regular-spiking (non-fast-spiking) SST+ cell that inhibits the distal dendrites.', ['hosp2014'])], 'pvbc': [('Fast-spiking: hundreds of spikes a second without slowing; paces gamma and times granule-cell output.', ['bartos2007', 'hosp2014'])], 'aac': [('Fast-spiking PV+ cell whose synapses sit on the axon initial segment.', ['freund1996'])], 'stel': [('Many are grid cells; theta-frequency membrane oscillations in vitro.', ['hafting2005', 'alonsollinas1989'])], 'fan': [('Lateral entorhinal cells signal objects, odors and elapsed time.', ['leitner2016', 'tsao2018'])], 'ca3': [('Burst-firing place cells; CA3 population bursts start sharp-wave ripples.', ['buzsaki2015'])], 'ca1': [('Place cells that shift their spikes earlier in each theta cycle as an animal crosses the field (phase precession).', ['okeefe1993']), ('Fire together during sharp-wave ripples, replaying recent paths.', ['buzsaki2015'])], 'olm': [('Fire at the trough of CA1 theta and fall silent during ripples.', ['klausberger2003'])]}
+LAB = {'gc': ('PTEN loss in granule cells makes them hypertrophic, with ectopic somata, hilar basal dendrites and mossy fibres sprouting into the inner molecular layer, and is enough to cause epilepsy.', ['pun2012']), 'hipp': ('A Kcnt1 gain-of-function variant makes non-fast-spiking GABAergic neurons less excitable (cortex).', ['shore2020']), 'olm': ('SST+ cells are among the non-fast-spiking interneurons a Kcnt1 gain-of-function variant makes less excitable.', ['shore2020']), 'fan': ('A synchronous LEC layer II volley onto the outer molecular layer is DS1.', ['bragin1995']), 'stel': ('A synchronous MEC layer II volley onto the middle molecular layer is DS2.', ['bragin1995'])}
+LINE = {'gc': "The dentate's principal cell: sparse firing, giant mossy-fibre synapses onto CA3.", 'sgc': 'A granule-cell relative with its soma out in the inner molecular layer.', 'mc': "The hilus's excitatory cell: takes mossy fibres, feeds granule cells far away.", 'hipp': 'SST+ interneuron of the hilus; inhibits where the perforant path lands.', 'pvbc': 'PV+ basket cell: perisomatic inhibition of granule cells.', 'aac': 'Chandelier cell: inhibition on the axon initial segment.', 'stel': 'MEC layer II stellate cell: the medial perforant path (DS2).', 'fan': 'LEC layer II cell: the lateral perforant path (DS1).', 'ca3': 'CA3 pyramidal cell: mossy-fibre input, recurrent network, Schaffer output.', 'ca1': 'CA1 pyramidal cell: the main output of the hippocampus proper.', 'olm': 'SST+ O-LM interneuron: inhibits CA1 tufts in lacunosum-moleculare.'}
+for _c in CELLS:
+    _c['phys'] = [{'text': t, 'refs': r} for t, r in PHYS.get(_c['key'], [])]
+    if _c['key'] in LAB:
+        _c['lab'] = {'text': LAB[_c['key']][0], 'refs': LAB[_c['key']][1]}
+    _c['line'] = LINE.get(_c['key'], '')
 
 LAYERS_DG = ['oml1', 'mml1', 'iml1', 'gcl1', 'hil', 'gcl2', 'iml2', 'mml2', 'oml2']
 
@@ -346,16 +376,32 @@ LAMINA_COLORS = {
 
 # The probe (the slice view can show it; no recordings attached yet):
 # H3-style linear probe, 64 contacts 20 um apart (memory: PTEN probe is H3).
-PROBE = {'label': 'Linear probe', 'contacts': 64, 'pitch_um': 20, 'width_um': 70,
-         'default_tip_um': [7300, 2600, 7300], 'note': 'Placement only; no recording is attached.'}
+PROBE = {'label': 'Linear probe', 'contacts': 64, 'pitch_um': 20, 'width_um': 70, 'first_um': 40,
+         'default': {'ap': -1.9, 'ml': 1.4, 'depth': 2.3, 'ang_ml': 0, 'ang_ap': 0},
+         'note': 'Placement only; no recording is attached.'}
+
+
+LAM_LINE = {'oml': 'Lateral perforant path (LEC II) ends here; the DS1 sink.', 'mml': 'Medial perforant path (MEC II) ends here; the DS2 sink.', 'iml': 'Mossy-cell (associational/commissural) input on proximal dendrites.', 'gcl': 'Granule-cell bodies, packed; basket and chandelier cells at its edge.', 'hil': 'Mossy cells and hilar interneurons; mossy-fibre collaterals.', 'so': 'Basal dendrites; O-LM somata; Schaffer and CA2 inputs.', 'sp': 'Pyramidal cell bodies; perisomatic inhibition; ripples.', 'sr': 'Apical dendrites: Schaffer (CA1) or recurrent (CA3) input; the sharp-wave sink in CA1.', 'slm': 'Distal tufts: entorhinal input; theta is largest near here.', 'slu': 'Mossy fibres and their giant boutons on CA3 thorny excrescences.', 'sub': "The subiculum: the hippocampus's main output.", 'pros': 'The prosubiculum, between CA1 and the subiculum.', 'alv': 'The alveus: pyramidal-cell axons leaving.', 'fi': 'The fimbria: output to the fornix.', 'fc': 'Fasciola cinerea.', 'ig': 'Induseum griseum.'}
+REG_LINE = {'DG': 'Dentate gyrus: the input stage, where the perforant path lands and dentate spikes happen.', 'CA3': 'CA3: the recurrent network; mossy fibres in, Schaffer collaterals out.', 'CA2': 'CA2: a small field with strong entorhinal input; social memory.', 'CA1': 'CA1: compares CA3 and entorhinal input; the main output of the hippocampus proper.', 'SUB': 'Subiculum: the output of the hippocampal formation.', 'ProS': 'Prosubiculum.', 'ENTl': 'Lateral entorhinal cortex: objects, odors, time; the lateral perforant path (DS1).', 'ENTm': 'Medial entorhinal cortex: grid cells; the medial perforant path (DS2).', 'PRE': 'Presubiculum: head-direction cells.', 'POST': 'Postsubiculum: head-direction cells.', 'PAR': 'Parasubiculum.', 'PERI': 'Perirhinal cortex: objects; drives the lateral entorhinal cortex.', 'ECT': 'Ectorhinal cortex.', 'VISpor': 'Postrhinal cortex (VISpor): scenes and space; drives the medial entorhinal cortex.', 'HPF': 'Hippocampal formation.'}
+CROWD = {'note': "One dot per cell. Granule cells: the stereological count for C57BL/6 (Kempermann et al. 1997) spread through this atlas's granule layer. Other densities are assumed from soma size and packing.", 'kinds': [{'key': 'gc', 'layers': ['gcl1', 'gcl2'], 'total': 239000, 'soma_um': 10, 'refs': ['kempermann1997']}, {'key': 'ca1', 'layers': ['ca1sp'], 'per_um3': 0.0003333333333333333, 'soma_um': 14, 'assumed': True}, {'key': 'ca3', 'layers': ['ca3sp', 'ca2sp'], 'per_um3': 0.0002, 'soma_um': 18, 'assumed': True}, {'key': 'mc', 'layers': ['hil'], 'per_um3': 2.5e-05, 'soma_um': 20, 'assumed': True}, {'key': 'hipp', 'layers': ['hil'], 'per_um3': 2.5e-05, 'soma_um': 13, 'assumed': True}, {'key': 'pvbc', 'layers': ['iml1', 'iml2', 'mml1', 'mml2', 'oml1', 'oml2', 'ca1so', 'ca1sr', 'ca1slm', 'ca3so', 'ca3sr', 'ca3slm'], 'per_um3': 6.666666666666667e-06, 'soma_um': 12, 'assumed': True}]}
+
+
+def lam_line(key):
+    for suf in ('slu', 'slm', 'so', 'sp', 'sr'):
+        if key.startswith('ca') and key.endswith(suf):
+            return LAM_LINE[suf]
+    for pre in ('oml', 'mml', 'iml', 'gcl'):
+        if key.startswith(pre):
+            return LAM_LINE[pre]
+    return LAM_LINE.get(key, '')
 
 
 def main():
     write_json(os.path.join(OUT, 'kb.json'), {
         'refs': REFS, 'regions': REGIONS, 'cells': CELLS, 'connections': CONNECTIONS,
         'pathways': PATHWAYS, 'ds': DS, 'lamina_colors': LAMINA_COLORS, 'probe': PROBE,
-        'dg_layers': LAYERS_DG,
-        'lamina': [{'code': r[0], 'key': r[1], 'label': r[2], 'group': r[3], 'name': r[4],
+        'dg_layers': LAYERS_DG, 'region_lines': REG_LINE, 'crowd': CROWD,
+        'lamina': [{'code': r[0], 'key': r[1], 'label': r[2], 'group': r[3], 'name': r[4], 'line': lam_line(r[1]),
                     'how': DERIVED[HOW[r[1]]] if r[1] in HOW else ''} for r in LAMINA[1:]],
     }, compact=False)
     print('kb.json:', len(REGIONS), 'regions', len(CELLS), 'cells', len(CONNECTIONS),

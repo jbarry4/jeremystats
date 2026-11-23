@@ -198,9 +198,13 @@ async function until(fn, ms) {
     check('two merge buttons, one for each detector’s time',
           !!mI() && !!mD() && /Incisor/.test(txt(mI())) && /Doppler/.test(txt(mD())),
           txt($('#panBar .cur-cats')));
-    check('with two of Incisor’s, Merge to Doppler is off, and says why',
-          mD() && mD().disabled && /Doppler’s time/.test(mD().title),
-          mD() ? mD().title.slice(0, 120) : 'none');
+    /* Two of Incisor's 1.2 ms apart: never each other's partner (2026-11-23,
+       "the Merge function is not meant to Merge two events of the same
+       Type"). The partner is Doppler's nearest -- 22.22 -- so Merge to
+       Doppler is on and names it. */
+    check('with two of Incisor’s side by side, the partner is Doppler’s nearest',
+          mD() && !mD().disabled && /\(Doppler’s, /.test(mD().title),
+          mD() ? mD().title.slice(0, 160) : 'none');
     check('and Merge to Incisor is on', mI() && !mI().disabled);
 
     ev('BARRY.panning.goTo(' + at(15.11) + ')');

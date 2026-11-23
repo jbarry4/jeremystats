@@ -1,0 +1,99 @@
+{
+  "_at": {
+    "created": "2026-10-09T17:21:48.779596+00:00",
+    "duration_s": "2026-10-09T17:21:48.779596+00:00",
+    "first_seen_by": "2026-10-09T17:21:48.779596+00:00",
+    "found_on": "2026-10-09T17:21:48.779596+00:00",
+    "fs": "2026-10-09T17:21:48.779596+00:00",
+    "gid": "2026-10-09T17:21:48.779596+00:00",
+    "group": "2026-10-09T17:21:48.779596+00:00",
+    "key": "2026-10-09T17:21:48.779596+00:00",
+    "label": "2026-10-09T17:21:48.779596+00:00",
+    "loose_key": "2026-10-09T17:21:48.779596+00:00",
+    "mouse": "2026-10-09T17:21:48.779596+00:00",
+    "n_channels": "2026-10-09T17:21:48.779596+00:00",
+    "project": "2026-10-09T17:21:48.779596+00:00",
+    "project_source": "2026-10-09T17:21:48.779596+00:00",
+    "schema": "2026-10-09T17:21:48.779596+00:00",
+    "session": "2026-10-09T17:21:48.779596+00:00",
+    "start": "2026-10-09T17:21:48.779596+00:00",
+    "updated": "2026-10-09T17:21:48.779596+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-09T17:21:48.779596+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-09T17:21:48.779596+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M6_wt\\kcnt1m6s3jul21\\2022-07-21_16-44-20": [
+        "set",
+        "2026-10-09T17:21:48.779596+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-09T17:21:48.779596+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T13:21:47-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 793.19,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s7340799642b4",
+  "group": "KCNT1",
+  "key": "m006_s003_2022-07-21_16-44-20",
+  "label": "KCNT1 m6 s3 2022-07-21",
+  "loose_key": "m006_s003",
+  "mouse": 6,
+  "n_channels": 128,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M6_wt\\kcnt1m6s3jul21\\2022-07-21_16-44-20"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "schema": 2,
+  "session": 3,
+  "start": "2022-07-21T16:44:20",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T13:21:48-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}
