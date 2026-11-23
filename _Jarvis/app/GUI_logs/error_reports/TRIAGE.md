@@ -41,6 +41,265 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 28: 2026-11-23 (morning, scheduled), 11-22 08:50 to 11-23 08:50
+
+Covered: Bluebarry's 11-22 report (0 faults, 0 actions; there is no 11-22
+shard). HEAD is still `d1ab8e63`. `git fetch` moved `origin/master` to
+`84c622be` (14 commits since `e235e270`). Git brought Rain's 11-21 and 11-22
+reports and the first reports from Isabella Piatek's MacBook Air, under two
+shards: `isabellas-macbook-air.lo-56af` (11-18, 11-19) and `-c6a7` (11-21,
+11-22). No error shard came by git. The cloud, read only, from
+`2026-11-22T13:50Z`: 5 `errors` rows (all Isabella's Mac, the fault below),
+1,777 `activity` rows (Rainberry 1,197, Isabella's Mac 580) and 6
+`client.error` rows, all "stuck". Floss: Rain's `20261109-102332-eca9` is
+still the only open ticket.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-18 | Isabella's Mac (`-56af`) | 0 | 0 actions. Build `2026.11.19.2 2d84737b` |
+| 11-19 | Isabella's Mac (`-56af`) | 1 | `cloud.sync` "not answering (no connection)" 17:06:51, 8 s after start. **Fixed** (1) |
+| 11-21 | Isabella's Mac (`-c6a7`), Rainberry | 0 | 0 and 1,165 actions |
+| 11-22 | Isabella's Mac (`-c6a7`) | 5, 1 distinct | The same `cloud.sync` line, 12:52:56 to 19:05:35 (local, UTC-6), each 9 to 10 s after a start. Build `2026.11.20.1 ab879f2d`. **Fixed** (1) |
+| 11-22 | Rainberry (Rain), Bluebarry | 0 | 950 and 0 actions. Rain on `2026.11.20.1 e235e270` |
+| 11-22 | Rainberry | 0 | 6 "stuck" rows. Slow, not faults (2) |
+
+1. **A sync that was never sent was filed as a fault.** Each of the six
+   lines on Isabella's Mac came 8 to 10 s after a start (`link.scope` or
+   `welcome.open` from boot; the welcome's sync step then said "skipped"),
+   and each one's hold had 9 to 11 s left. The hold was 15 s, so a request
+   had failed about 5 s earlier and `cloud._went_away` was holding every
+   call (`backend/cloud.py`, `_AWAY`). The sync that followed was not sent:
+   `_call` raised `CloudAway` without a request. `_cloud_sync_once`
+   (`backend/app.py` ~34240) logs a dropped connection only "if the next
+   attempt fails too". It read the held sync as that next attempt (after a
+   lone "cannot reach", `log_next` was set), or, when another call (the
+   presence beat or the welcome) had made the request that failed, logged
+   the held sync at once, because a `CloudAway` message is not in its
+   "transient" list. The Mac reached the database the rest of the time:
+   580 of its actions and these five rows are in the cloud. The exception is
+   13:13:36, whose hold had 58 s left, which means three failures in a row:
+   a real gap, and it would still be logged. Fix (`2026.11.23.1`, needs a
+   restart): `CloudAway` carries `failures`, the run of failed requests
+   behind the hold. A held sync with fewer than two is treated as transient
+   and does not use up `log_next`, which waits for a sync that is sent. Two
+   failures in a row behind a hold are still logged. `tools/check_syncitems.py`
+   part 3 has four new checks. Two FAIL on the old sync logic (with the
+   `cloud.py` half in) and all pass with the fix. **Still open:** why the
+   Mac's first request after a start fails. The `cannot reach ...: <reason>`
+   text is kept only in `_cloud_last["error"]` and is never written down, so
+   nothing here says whether it is DNS, TLS or the network not being up yet.
+   It does no harm (the next sync goes through), but if it should be
+   understood, the reason has to be logged once. That is the user's call.
+2. **"Stuck" rows**, all Rainberry Xplorefinder: 16:12Z
+   (`GET /api/curation/<set>/pooled...` 34 s) and five at 23:22Z
+   (`POST /api/session/state` 30.5 s, and loading 30 to 35 s). Both times,
+   "Checking which records have reached the shared database" ran beside
+   them for 12.4 s and 20.1 s, next to a sync ("sent 14 changes"). Pass
+   24's lead again; still not measured.
+
+Builds: Bluebarry has HEAD `d1ab8e63` plus, uncommitted, the other
+session's `2026.11.21.2` and this pass's `2026.11.23.1` (`backend/cloud.py`
+CloudAway; `backend/app.py`, one hunk in `_cloud_sync_once`, separate from
+the other session's hunks; `tools/check_syncitems.py`). Rain runs
+`e235e270` (`2026.11.20.1`). Isabella's Mac runs `ab879f2d`
+(`2026.11.20.1`).
+
+Next pass: Bluebarry's 11-23 report and shard; Rain's and Isabella's 11-23;
+Strawbarry's 11-20 and later and Blackbarry's 11-13/11-14/11-18 and later
+when git brings them; then `git fetch`, then the cloud from
+`2026-11-23T13:50Z`. A start-up `cloud.sync` "not answering" line on a build
+at or after `2026.11.23.1` means two real failures in a row, not this
+fault. Watch for `er2/run/refresh` on a build at or after `2026.11.21.1`.
+Open, unchanged: pass 22's item 1, pass 18's two watches, the
+`session/state` and Xplorefinder stalls beside a sync check (pass 24's
+lead), Rain's Floss ticket, pass 23's NS_ERROR_ABORT watch, pass 25's
+question on handled refusals in the Errors view. New: item 1's question on
+logging why the first request after a start fails.
+
+## Pass 27: 2026-11-22 (morning, scheduled), 11-21 08:50 to 11-22 08:50
+
+Covered: Bluebarry's 11-21 report and shard (4 rows, all `test: true`),
+Rain's 11-20 and 11-21 reports. HEAD is now `d1ab8e63` (maliajaff, 11-21
+15:43), which committed pass 26's `2026.11.21.1` fix and
+`tools/check_er2_fetch_race.py`. `git fetch` moved `origin/master` to
+`e235e270` (SkylerDY, 11-21 20:49: curation files and Rain's 11-21 report,
+no code). No other machine's shard came by git. The cloud, read only, from
+`2026-11-21T13:50Z`: 0 `errors` rows, 1,629 `activity` rows (Rainberry
+1,619, Bluebarry 10), 14 `client.error` rows, all "stuck". Floss: Rain's
+`20261109-102332-eca9` is still the only open ticket. No code changed.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-20 | Rainberry (Rain) | 0 | 0 actions, build `2026.11.20.1 38ec1337` |
+| 11-21 | Rainberry (Rain) | 0 | 1,165 actions, build `2026.11.20.1 5a48a7d0` (before `2026.11.21.1`) |
+| 11-21 | Bluebarry (Shahriar) | 0 (4 test) | `panel:bandpower` 0.05 Hz refusal, `ui/mode.bounce` cfc, `dspca/fit` ×2 (class count, CSD box): the other session's harness probes |
+| 11-21 to 11-22 | Rainberry, Bluebarry | 0 | 14 "stuck" rows. Slow, not faults (1) |
+
+1. **"Stuck" rows.** Rainberry 17:09Z (Seahorse, `registry` and `prefs`
+   34 s, start-up), 19:57Z (Xplorefinder: `session/state` 30.5 s,
+   `csc/window` and `panel` 31.8 s), 11-22 00:57Z (ToolKit step loader
+   35 s); Bluebarry 20:43Z to 21:26Z (Seahorse `registry` 34 s three
+   times, `csc/open` 32 s, longtasks of 1 to 2 s). Rainberry's 19:57Z
+   stall is pass 24's lead again: its lines show "Checking which records
+   have reached the shared database" started twice (`req:0498-3060`,
+   `req:4fca-4476`) and unfinished, beside "Working on this recording",
+   after two syncs (17 changes, then 1) while Rain was stepping through
+   one-second windows. Same shape as Avery's and Strawbarry's 11-20 rows.
+   Still not measured: it needs a timing run on a machine with a cloud
+   backlog, which an unattended pass on Bluebarry cannot reproduce.
+
+Builds: Bluebarry has HEAD `d1ab8e63` (`2026.11.21.1` committed;
+`2026.11.21.2`, the other session's Project Evolve work, uncommitted on
+disk). Rain runs `5a48a7d0` (`2026.11.20.1`), before the er2 fix.
+
+Next pass: Bluebarry's 11-22 report and shard; Rain's 11-22; Strawbarry's
+11-20 and later and Blackbarry's 11-13/11-14/11-18 and later when git
+brings them; then `git fetch`, then the cloud from `2026-11-22T13:50Z`.
+Watch for `er2/run/refresh` on a build at or after `2026.11.21.1`. Open,
+unchanged: pass 22's item 1, pass 18's two watches, the `session/state` and
+Xplorefinder stalls beside a sync check (pass 24's lead, seen again above),
+Rain's Floss ticket, pass 23's NS_ERROR_ABORT watch, pass 25's question on
+handled refusals in the Errors view.
+
+## Pass 26: 2026-11-21 (morning, scheduled), 11-20 08:50 to 11-21 08:50
+
+Covered: Bluebarry's 11-19 report (written 11-20 09:21; its 3 pool
+refusals are the ones pass 25 read from the shard) and 11-20 report and
+shard (1 real fault, 22 `test: true`). HEAD is now `38ec1337` (the 11-20
+merges, 05e38e79..38ec1337: `2026.11.20.1`, Seahorse and the rest, no
+error-path change). `git fetch` moved `origin/master` to `5a48a7d0`
+(SkylerDY, 11-21 01:55), which brought only Rain's 11-20 report. The 11-20
+merges brought 27 more reports, every one 0 faults: Jeremy's MacBook
+(`jeremy-barrys-macbook-pr-caa1`) 11-01 to 11-19, all on
+`2026.10.30.3 9cb1c3f7`, 13 actions on 11-02 and none since; Strawbarry
+(`barrylab-d8e8`) 11-18 (447 actions) and 11-19 (0), build
+`2026.11.16.1 c2c85848`; `ip0af58640` 11-18 (0, `2026.11.18.2 c32ca305`);
+Avery's DESKTOP-NR2H5O7 11-19 (0, `2026.11.19.3 d81597fc`); Aggie's Mac
+11-19 on both addresses (`ip0af5d200` 133 actions, `mac.lan` 0). One new
+shard: DESKTOP-NR2H5O7's 11-20 (2 `cloud.sync` rows). The cloud, read only,
+from `2026-11-19T13:50Z`: 24 `errors` rows (all in the shards below or
+already read by pass 25), 1,405 `activity` rows, 60 `client.error` rows, all
+"stuck". Floss: Rain's `20261109-102332-eca9` is still the only open ticket.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-01 to 11-19 | Jeremy's MacBook | 0 | Old build `2026.10.30.3`, barely used |
+| 11-18, 11-19 | Strawbarry, `ip0af58640`, DESKTOP-NR2H5O7, Aggie's Mac | 0 | |
+| 11-19 | Bluebarry (Shahriar) | 0 (3 refusals) | Pass 25 item 1, the designed read-first path |
+| 11-20 | Bluebarry (Shahriar) | 1 | `er2/run/refresh` WinError 32 on `r005\results\146.json.part`, 09:21:58. **Fixed** (1) |
+| 11-20 | Bluebarry | 22 test | `ui/mode.bounce` ×20 (12:09 to 17:56) and `doppler/estimate` CSC9000 ×2: the other session's harness runs |
+| 11-20 | DESKTOP-NR2H5O7 (Avery Sullenberger) | 0 | `cloud.sync` "Remote end closed connection" 16:02Z and HTTP 520 16:11Z: Supabase not answering, Jarvis backed off as designed (as 11-05). Not a fault (2) |
+| 11-20 | Rainberry (Rain, `desktop-ah45fae-e173`) | 0 | 0 actions. Build `2026.11.20.1 38ec1337`. The machine now calls itself Rainberry |
+| 11-19 to 11-21 | all | 0 | 27 new "stuck" rows. Slow, not faults (2) |
+
+1. **Extraction Room 2.0 refresh collided with itself.** The run folder
+   shows it: `r005\results\2.json` to `259.json` were written one every
+   ~0.5 s from 09:20:29 to 09:23:34, with a 14 s gap after `137.json`, and
+   `146.json` landed at 09:21:58.48, just after the fault. So two
+   `POST /api/er2/run/r005/refresh` requests were running: "Ask the VACC and
+   bring answers home" (`web/js/extraction_er2.js` ~171) has no busy state,
+   a fetch takes three minutes (one ssh `cat` per task), and a second press
+   started a fetch from the same unanswered list. Both wrote each answer
+   through the same `<i>.json.part` (`er2run._write_json`), and one renamed
+   the other's open `.part`. The second fetch finished the job, so nothing
+   was lost. Same class as the 10-30 `joeexport` race. Fix
+   (`2026.11.21.1`, needs a restart): `er2run.fetch_vacc` takes a per-run
+   lock, so a second press waits and then brings home only what is
+   missing, and `_write_json` writes through a per-thread `.part`.
+   `tools/check_er2_fetch_race.py` (four fetches of a throwaway run in a
+   temp folder, fake VACC runner): 3 FAIL with WinError 32 on the code as
+   it was, 12 ok with the fix. `backend/er2run.py` also holds the other
+   session's uncommitted 11-20 work (`TASK_MEM`, `tasks=`, `partition`,
+   the typed leaderboard groups); my two hunks are separate from theirs
+   (`_write_json` and `fetch_vacc`/`_FETCHING` only). A busy state on the
+   button would be nicer still; I left the page alone.
+2. **"Stuck" rows, the new ones.** Avery on DESKTOP-NR2H5O7, 11-20 15:52Z
+   to 16:28Z: a start-up cluster (`registry`, `prefs`), then Xplorefinder
+   waits of 31 to 35 s ("working out which recording it is", "a curation
+   set", and four where the server said nothing) in the same minutes as
+   the Supabase 520 above. Strawbarry 17:49Z and 18:58Z (Xplorefinder, 31
+   to 45 s, the second beside "Checking which records have reached the
+   shared database"), Blackbarry 18:24Z (start-up), Bluebarry 21:39Z
+   (ToolKit reading a stretch, 32 s), Rainberry 11-21 06:48Z (start-up).
+   Slow, not faults. Avery's and Strawbarry's 18:58Z rows fit pass 24's
+   lead (a sync check running beside the request); still not measured.
+
+Builds: Bluebarry has HEAD `38ec1337` (`2026.11.20.2` uncommitted on disk,
+the other session's), plus this pass's `2026.11.21.1`, uncommitted. Rain
+runs `38ec1337`. Strawbarry's last report is on `c2c85848`
+(`2026.11.16.1`); Jeremy's MacBook is on `2026.10.30.3` and has not pulled
+since.
+
+Next pass: Bluebarry's 11-21 report and shard; Strawbarry's 11-20 and
+later and Blackbarry's 11-13/11-14/11-18 and later when git brings them;
+then `git fetch`, then the cloud from `2026-11-20T13:50Z`. Watch for
+`er2/run/refresh` on a build at or after `2026.11.21.1`. Open, unchanged:
+pass 22's item 1, pass 18's two watches, the `session/state` and
+Xplorefinder stalls beside a sync check (pass 24's lead), Rain's Floss
+ticket, pass 23's NS_ERROR_ABORT watch, pass 25's question on handled
+refusals in the Errors view.
+
+## Pass 25: 2026-11-20 (morning, scheduled), 11-19 08:50 to 11-20 08:50
+
+Covered: Bluebarry's 11-19 shard (17 rows, 14 of them `test: true`) and
+activity. Its 11-19 report has not been written yet (no tick since 18:00).
+HEAD is now `05e38e79` (the 11-19 afternoon merges took in `2026.11.18.2`
+to `2026.11.19.3`). `git fetch` moved `origin/master` to `a441677a` (Aggie,
+11-19 21:24). Git brought six reports, all 0 faults: Daphne Lyons's 11-05
+(`ip0af51b5c`), Rain's 11-11 and 11-18 (`desktop-ah45fae`, 0 actions),
+Blackbarry's 11-17 (Isabella, 140 actions, build `2026.11.16.1 7b2196df`),
+and Aggie's Mac 11-18 and 11-19 (`ip0af5d200`, 133 actions on 11-19, build
+`2026.11.19.3 a0fbe323`). No new error shard came by git. The cloud, read
+only, from `2026-11-18T13:50Z`: 17 `errors` rows, all Bluebarry's (the shard
+below), 954 `activity` rows, 46 `client.error` rows, all "stuck". Floss:
+Rain's `20261109-102332-eca9` is still open.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-05 | `ip0af51b5c` (Daphne Lyons) | 0 | 0 actions. Build `2026.11.06.4 83b3c701` |
+| 11-11, 11-18 | DESKTOP-AH45FAE (Rain Younger) | 0 | 0 actions. Build `2026.11.18.2 06bd0fde` |
+| 11-17 | Blackbarry (Isabella Piatek) | 0 | 140 actions |
+| 11-18, 11-19 | `ip0af5d200` (Aggie Krempasky) | 0 | 0 and 133 actions |
+| 11-19 | Bluebarry (Shahriar) | 0 (3 refusals, 14 test) | `rootcanal/pool-fit` "N versions of sets have not been read yet" ×3, 12:57:33 to :35. The designed read-first path (1). The 14 test rows are the other session's StrataScope (`ui/mode.bounce`, 12:33 to 15:04) and `dspca/fit` (16:51) probes |
+| 11-19 | Bluebarry, DESKTOP-AH45FAE | 0 | 33 new "stuck" rows. Slow, not faults (2) |
+
+1. **Pool refusals on Bluebarry** (12:57:33 to :35, three fits as members
+   were changed, 9/18/9 members). `_rootcanal_pool_members`
+   (`backend/app.py` ~15296) refuses with `away` naming unread versions, and
+   `rootcanal.js` (~8771) reads them by itself and fits again. That is what
+   happened: `rootcanal.read` at 12:57:53, 14:33, 14:36 and 15:00, a VACC
+   batch of 13 at 14:43, and the pools saved again at 15:04. Not a fault.
+   It still lands in the report because `fail()` records every refusal. If
+   the user wants handled refusals (ones with `away` that the page resolves
+   by itself) kept out of the Errors view, that is their call; I left it.
+2. **"Stuck" rows.** Rain on DESKTOP-AH45FAE, 11-19 20:41Z: the usual
+   start-up cluster (`registry` 35 s, `prefs`). Bluebarry 16:32 to 16:54
+   local: `GET /api/rootcanal/workflows` 31 to 35 s and
+   `/api/rootcanal/workflow/<id>` 30 to 35 s, every ~2 min, with a
+   `link.scope` each time and "Taking stock of what is saved on this
+   computer -- done in 27.7 s" in the lines. That is a fresh page start each
+   time, in the minutes the other session was running harnesses (its
+   `dspca/fit` test faults and `guides.*` at 16:51). Start-up slowness, as
+   in passes 19 to 24, not a fault. Also 11:45 and 12:26 (ToolKit 1.1 s
+   freeze; `rootcanal/done` and `candidates` 34 s at a start). The 11-18
+   Strawbarry/Blackbarry rows pass 24 already read.
+
+No code changed and there is no CHANGELOG entry.
+
+Builds: Bluebarry has `2026.11.19.3` on disk (HEAD `05e38e79`). Aggie's Mac
+ran `2026.11.19.3 a0fbe323` on 11-19, so it has pass 23's `2026.11.18.1`.
+Blackbarry ran `7b2196df` (`2026.11.16.1`) on 11-17. A new machine name,
+`ip0af58640.int.uvm.edu`, sent 6 actions to the cloud (the `f987` Mac on
+another address, by the look of it); it has no report.
+
+Next pass: Bluebarry's 11-19 and 11-20 reports and the 11-20 shard. Then
+Strawbarry's 11-18 and later, Blackbarry's 11-13/11-14/11-18 and later when
+git brings them. Then `git fetch`, then the cloud from `2026-11-19T13:50Z`.
+Open, unchanged: pass 22's item 1 (a DS-PCA bundle opened on a machine
+without its read), pass 18's two watches, the Blackbarry `session/state`
+stalls (pass 24's lead), Rain's Floss ticket, pass 23's NS_ERROR_ABORT
+watch.
+
 ## Pass 24: 2026-11-19 (morning, scheduled), 11-18 08:50 to 11-19 08:50
 
 Covered: Bluebarry's 11-18 report (0 faults, 22 actions). There is no

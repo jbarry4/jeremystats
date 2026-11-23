@@ -1,0 +1,71 @@
+{
+  "_at": {
+    "added": "2026-11-21T22:28:46.250234+00:00",
+    "deleted": "2026-11-21T22:28:46.250234+00:00",
+    "id": "2026-11-21T22:28:46.250234+00:00",
+    "kind": "2026-11-21T22:28:46.250234+00:00",
+    "name": "2026-11-21T22:28:46.250234+00:00",
+    "nickname": "2026-11-21T22:28:46.250234+00:00",
+    "schema": "2026-11-21T22:28:46.250234+00:00",
+    "subject": "2026-11-21T22:28:46.250234+00:00",
+    "subject_key": "2026-11-21T22:28:46.250234+00:00",
+    "version": "2026-11-21T22:28:46.250234+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "07c9127b3bb5": [
+        "set",
+        "2026-11-21T22:28:46.250234+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-21T22:28:46.250234+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-21T17:28:46-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "b37ff23af4d0",
+  "kind": "cell_curation",
+  "name": "Cells \u00b7 PTEN m34 s8 2024-06-10 \u00b7 kilosort_tl6_tu7_fs30000.0",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gid": "s8d50a361b096",
+    "run": "kilosort_tl6_tu7_fs30000.0",
+    "run_dir": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07\\binary\\kilosort_tl6_tu7_fs30000.0",
+    "session_label": "PTEN m34 s8 2024-06-10"
+  },
+  "subject_key": "cell_curation|s8d50a361b096|kilosort_tl6_tu7_fs30000.0",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.21.2",
+      "at": "2026-11-21T17:28:46-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "6b7b2a911f2c",
+      "id": "07c9127b3bb5",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "cells": 17,
+        "source": "export",
+        "source_name": "Isabella's export",
+        "spikes": 49990
+      },
+      "note": "Read from Isabella's export (2025-08-06T10:37:00).",
+      "params": {
+        "source": "export"
+      },
+      "params_hash": "181d5f801014",
+      "v": 1
+    }
+  ]
+}

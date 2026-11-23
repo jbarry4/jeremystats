@@ -194,6 +194,10 @@ const getj = (u) => fetch(u).then((r) => r.json());
                    garbage: 'Garbage', flag: 'Flag' },
     pipeline: 'Doppler (line length)', detector: 'LLspikedetector',
     time_basis: 'recording', added_by: WHO,
+    /* One array (stormregion.js): on a KCNT1 dual recording a set that
+       covers both is asked which array to go on with, a modal nobody
+       headless answers. Channel 2 is the hippocampal array's. */
+    parameters: { region: 'hip' },
   });
   entryId = (added.entry || {}).id || null;
   check('a throwaway curated P-spike entry was banked', !!entryId,

@@ -30,7 +30,10 @@ iframe{flex:1;height:100vh;border:0}
      - the builder previews and saves what it says; the P-spike one lists
        the hand-sorted sets and checks them;
      - Ambiguous shows the conflicts and banks only what is ticked, and its
-       two kinds of ambiguous are purple (2026-11-06), not the warning amber;
+       Twilight Zone and outside both are purple (2026-11-06), not the warning amber;
+     - BANK BY LABEL (2026-11-19): the bank dialog's label pills -- DS,
+       P-spike, Twilight Zone, outside -- one a plain entry, two or more a
+       Root Canal bundle; a Verified run's inside and outside;
      - Pooled PCA (2026-11-06): two pools made one, the 2D PCA with the 3D
        beside it, the calls in their colours, every dot clickable, and
        Xplorefinder following each dot clicked;
@@ -359,8 +362,15 @@ function haloExpect(cls, G, R, M) {
      + '   return W.__wfPrefGet.apply(BARRY.prefs, arguments); };'
      + ' W.__wfLog = BARRY.activity.log; BARRY.activity.log = function(){};'
      + ' W.__wfBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
-     + '   W.__wfDlg = { title: o.title, what: o.what, facts: o.facts, ok: o.okText };'
-     + '   await o.onBank({ name: "harness picks", note: "a note" }); return true; };'
+     + '   var x = o.extra || null; W.__wfDlgErr = null;'
+     + '   (W.__wfPress || []).forEach(function(id){ var b = x && x.querySelector(\'[data-label="\' + id + \'"]\');'
+     + '     if (b) b.click(); }); W.__wfPress = null;'
+     + '   W.__wfDlg = { title: o.title, what: o.what, facts: o.facts, ok: o.okText, name: o.name,'
+     + '     labels: x ? Array.prototype.map.call(x.querySelectorAll(".wf-bank-l"), function(b){'
+     + '       return [b.dataset.label, b.classList.contains("active"), b.textContent]; }) : null,'
+     + '     say: x && x.querySelector(".wf-bank-say") ? x.querySelector(".wf-bank-say").textContent : null };'
+     + '   try { await o.onBank({ name: "harness picks", note: "a note" }); }'
+     + '   catch (e) { W.__wfDlgErr = e.message; return false; } return true; };'
      + ' W.__wfOpen = W.open; W.__wfMoved = 0; W.open = function(u){ W.__wfOpened = u;'
      + '   var w = { focus: function(){}, closed: false, location: {} };'
      + '   Object.defineProperty(w.location, "href", { get: function(){ return W.__wfOpened; },'
@@ -386,7 +396,8 @@ function haloExpect(cls, G, R, M) {
      + '    if (post) return json({ ok: true, artifact_id: mh[1], version: 3 });'
      + '    return json(Object.assign({ ok: true, version: 2 }, F.haloA)); }'
      + '  var m = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)\\/(run|bank)$/);'
-     + '  if (m) { hit(m[2] + ":" + m[1]); if (m[2] === "bank") return json({ ok: true, entry_id: "bk-picked", n: (body.picks || []).length });'
+     + '  if (m) { hit(m[2] + ":" + m[1]); if (m[2] === "bank") return json({ ok: true, entry_id: "bk-picked", name: body.name,'
+     + '    n: body.labels ? 7 : (body.picks || []).length, bundle: !!(body.labels && body.labels.length > 1) });'
      + '    return json({ ok: true, artifact_id: m[1], version: 3, run: F.one[m[1]].payload.run, definition: F.one[m[1]].payload.definition }); }'
      + '  m = p.match(/^\\/api\\/rootcanal\\/workflow\\/([^\\/]+)$/);'
      + '  if (m && F.one[m[1]]) { hit("one:" + m[1]); var o1 = F.one[m[1]];'
@@ -759,14 +770,21 @@ function haloExpect(cls, G, R, M) {
        sent().filter((x) => x[0] === 'preview').length === nPv + 1);
     const dlg = JSON.parse(ev('JSON.stringify(window.__wfDlg)'));
     ok('the dialog says how many, from where, into what: the next version of its entry',
-       new RegExp('and bank ' + RUN_DS.kept + ' verified dentate spikes').test(dlg.title)
-       && /banks the \d+ of 240 events inside it as ONE Event Bank entry/.test(dlg.what)
-       && /NEXT VERSION of ‘Verified ds · harness’/.test(dlg.facts[0])
-       && dlg.ok === 'Run and bank ' + RUN_DS.kept + ' events', JSON.stringify(dlg));
+       dlg.title === 'Run ‘Harness DS’ and bank'
+       && new RegExp('\\(' + RUN_DS.kept + ' of 240 events inside\\), and banks the labels '
+         + 'pressed below as ONE Event Bank entry').test(dlg.what)
+       && /^DS alone continues ‘Verified ds · harness’ \(entry bank-ds\) as its next version/.test(dlg.facts[0])
+       && dlg.ok === 'Run and bank', JSON.stringify(dlg));
+    ok('its labels: DS (inside) pressed, Outside the DS border not, each with its count',
+       JSON.stringify(dlg.labels.map((l) => [l[0], l[1]])) === '[["ds",true],["outside",false]]'
+       && new RegExp('^DS' + RUN_DS.counts.inside + '$').test(dlg.labels[0][2])
+       && new RegExp('^Outside the DS border' + RUN_DS.counts.outside + '$').test(dlg.labels[1][2])
+       && /as one plain entry of type Dentate spike, which every DS tool reads/.test(dlg.say),
+       JSON.stringify(dlg.labels) + ' ' + dlg.say);
     const rb = sent().filter((x) => x[0] === 'run:wDS').pop()[1];
     ok('its button banks, under the name and note given, with the newest inputs (it was out of date)',
        rb.bank === true && rb.bank_name === 'harness picks' && rb.bank_note === 'a note'
-       && rb.refresh === true, JSON.stringify(rb));
+       && rb.refresh === true && JSON.stringify(rb.bank_labels) === '["ds"]', JSON.stringify(rb));
     await until(() => toasts().some((t) => /‘Harness DS’ v3:/.test(t)), 4000, 'the toast');
     ok('and says what it banked, and where', toasts().some((t) => new RegExp(RUN_DS.kept
        + ' of 240 events inside the border\\. Banked as v3 of ‘Verified ds · harness’\\. 3 changed class').test(t)),
@@ -822,8 +840,8 @@ function haloExpect(cls, G, R, M) {
       return i ? frame.contentWindow.getComputedStyle(i).backgroundColor : null;
     };
     const amb = rgbOf('var(--call-amb)'), amb2 = rgbOf('var(--call-amb-2)'), warn = rgbOf('var(--warn)');
-    ok('ambiguous is purple: inside both the full purple, outside both its paler shade',
-       lgDot(/inside both: ambiguous/) === amb && lgDot(/outside both: ambiguous/) === amb2
+    ok('purple: the Twilight Zone (inside both) the full purple, outside both its paler shade',
+       lgDot(/inside both: Twilight Zone/) === amb && lgDot(/^outside both/) === amb2
        && amb !== warn && /^rgb\((\d+), (\d+), (\d+)\)$/.test(amb)
        && (([, r, g, b]) => +b > +g + 60 && +r > +g + 20)(amb.match(/(\d+), (\d+), (\d+)/)),
        [lgDot(/inside both/), amb, lgDot(/outside both/), amb2, warn].join(' '));
@@ -844,6 +862,45 @@ function haloExpect(cls, G, R, M) {
     const bk = sent().filter((x) => x[0] === 'bank:wA').pop()[1];
     ok('exactly the two ticked are banked, as P-spikes, under the name typed',
        bk.picks.length === 2 && bk.type === 'ied' && bk.name === 'harness picks', JSON.stringify(bk));
+
+    head('AMBIGUOUS: BANK BY LABEL (2026-11-19) -- ONE A PLAIN ENTRY, TWO OR MORE A BUNDLE');
+    const stageB = (re) => btn(re, D().querySelector('.wf-stage-seg'));
+    if (S().stage !== 'extract') stageB(/^Extract$/).click();
+    await until(() => D().querySelector('.wf-bankcard'), 4000, 'the label card');
+    const lc = D().querySelector('.wf-bankcard').textContent;
+    ok('the Extract stage says what each label holds',
+       new RegExp('DS' + (cc.ds || 0) + 'P-spike' + (cc.pspike || 0) + 'Twilight Zone'
+         + (cc.both || 0) + 'Outside both borders' + (cc.neither || 0)).test(lc)
+       && !!btn(/^Bank by label…$/, D().querySelector('.wf-bankcard')), lc);
+    ev('window.__wfPress = ["pspike", "twilight"]');
+    const nBk = sent().filter((x) => x[0] === 'bank:wA').length;
+    btn(/^Bank by label…$/).click();
+    await until(() => sent().filter((x) => x[0] === 'bank:wA').length > nBk, 4000, 'the bundle');
+    const bl = sent().filter((x) => x[0] === 'bank:wA').pop()[1];
+    const dl = JSON.parse(ev('JSON.stringify(window.__wfDlg)'));
+    ok('DS starts pressed; P-spike and Twilight Zone pressed too make three labels, in their order',
+       JSON.stringify(bl.labels) === '["ds","pspike","twilight"]' && bl.version != null
+       && bl.name === 'harness picks' && bl.note === 'a note' && !bl.picks && !bl.side,
+       JSON.stringify(bl));
+    ok('the dialog said it makes ONE Root Canal bundle, and named it after the labels',
+       /^\d+ events as ONE Root Canal bundle: each says its label, the class it came from and whether the Halo captured it/
+         .test(dl.say) && /^DS · .+ v\d+$/.test(dl.name) && dl.ok === 'Bank'
+       && dl.facts.some((f) => f === 'No Halo on this version.'),
+       dl.say + ' | ' + dl.name);
+    await until(() => toasts().some((t) => /a Root Canal bundle\./.test(t)), 4000, 'the toast');
+    ok('and says so when it lands', toasts().some((t) => /^Banked 7 events as ‘harness picks’, a Root Canal bundle\./.test(t)),
+       toasts().slice(-1)[0]);
+    ev('window.__wfPress = ["ds"]');
+    const nBk2 = sent().filter((x) => x[0] === 'bank:wA').length;
+    btn(/^Bank by label…$/).click();
+    await until(() => ev('window.__wfDlgErr') !== null, 4000, 'the refusal');
+    ok('no label pressed is refused in the dialog, and nothing is sent',
+       ev('window.__wfDlgErr') === 'Pick at least one label.'
+       && sent().filter((x) => x[0] === 'bank:wA').length === nBk2
+       && /^Pick at least one label\.$/.test(JSON.parse(ev('JSON.stringify(window.__wfDlg)')).say));
+    ok('nowhere on this run is the class called ambiguous',
+       !/mbiguous (events|zone)|: ambiguous|as ambiguous/.test(D().querySelector('.wf-detail').textContent),
+       (D().querySelector('.wf-detail').textContent.match(/.{30}mbiguous.{30}/g) || []).join(' | '));
 
     head('AMBIGUOUS: THE HALO, ON THE APPLY STAGE');
     const stageBtn = (re) => btn(re, D().querySelector('.wf-stage-seg'));
@@ -902,7 +959,7 @@ function haloExpect(cls, G, R, M) {
     const lgT = D().querySelector('.wf-detail .wf-legend').textContent;
     ok('the legend names the captured, the extended zone and the far out, and the dotted halos',
        /captured by the DS halo/.test(lgT) && /captured by the P-spike halo/.test(lgT)
-       && /extended ambiguous/.test(lgT) && /far out/.test(lgT)
+       && /extended Twilight Zone/.test(lgT) && /far out/.test(lgT) && !/mbiguous/.test(lgT)
        && D().querySelectorAll('.wf-detail .wf-legend .wf-lg-box.dotted').length === 2, lgT);
     const dsC = rgbOf('var(--call-ds)'), capC = lgDot(/captured by the DS halo/);
     ok('captured DS is the DS blue paled toward the ground, not the blue itself',
@@ -1271,16 +1328,16 @@ function haloExpect(cls, G, R, M) {
 
     head('POOLED PCA: COLOUR BY, AND ONE POOL AT A TIME');
     btn(/^the verified borders$/, D().querySelector('.wf-pca-colour')).click();
-    await until(() => /ambiguous: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent)
+    await until(() => /Twilight Zone: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent)
                 && inked(D().querySelector('.wf-pca')) > 3000, 4000, 'verified colours');
-    ok('by the verified borders: DS only, P-spike only, and the two ambiguous in purple',
-       lgDot(/ambiguous: inside both/) === amb && lgDot(/ambiguous: outside both/) === amb2
+    ok('by the verified borders: DS only, P-spike only, the Twilight Zone and outside both in purple',
+       lgDot(/Twilight Zone: inside both/) === amb && lgDot(/^outside both/) === amb2
        && purpleInk(D().querySelector('.wf-pca')) > 60,
-       lgDot(/ambiguous: inside both/) + ' ' + purpleInk(D().querySelector('.wf-pca')));
+       lgDot(/Twilight Zone: inside both/) + ' ' + purpleInk(D().querySelector('.wf-pca')));
     ok('and the borders’ boxes go on the 3D', ev(WF + '._boxesOf(' + WF
        + '._state().data.wPCA.payload.run, "pca").length') === 4);
     btn(/^each pool’s own call$/, D().querySelector('.wf-pca-colour')).click();
-    await until(() => !/ambiguous: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent), 4000, 'own');
+    await until(() => !/Twilight Zone: inside both/.test(D().querySelector('.wf-detail .wf-legend').textContent), 4000, 'own');
     const own = RUN_PCA.own_counts;
     ok('by each pool’s own call: its counts', new RegExp('DS' + own.ds + ' · ').test(
        D().querySelector('.wf-detail .wf-legend').textContent), D().querySelector('.wf-detail .wf-legend').textContent);

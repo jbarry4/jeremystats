@@ -1,0 +1,70 @@
+{
+  "_at": {
+    "created": "2026-10-09T15:59:30.143798+00:00",
+    "duration_s": "2026-10-09T15:59:30.143798+00:00",
+    "first_seen_by": "2026-10-09T15:59:30.143798+00:00",
+    "found_on": "2026-10-09T15:59:30.143798+00:00",
+    "fs": "2026-10-09T15:59:30.143798+00:00",
+    "gid": "2026-10-09T15:59:30.143798+00:00",
+    "group": "2026-10-09T15:59:30.143798+00:00",
+    "key": "2026-10-09T15:59:30.143798+00:00",
+    "label": "2026-10-09T15:59:30.143798+00:00",
+    "loose_key": "2026-10-09T15:59:30.143798+00:00",
+    "mouse": "2026-10-09T15:59:30.143798+00:00",
+    "n_channels": "2026-10-09T15:59:30.143798+00:00",
+    "phase": "2026-10-09T15:59:30.143798+00:00",
+    "phase_n": "2026-10-09T15:59:30.143798+00:00",
+    "project": "2026-10-09T15:59:30.143798+00:00",
+    "project_source": "2026-10-09T15:59:30.143798+00:00",
+    "schema": "2026-10-09T15:59:30.143798+00:00",
+    "session": "2026-10-09T15:59:30.143798+00:00",
+    "start": "2026-10-09T15:59:30.143798+00:00",
+    "updated": "2026-10-09T15:59:30.143798+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-09T15:59:30.143798+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": null,
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T11:59:29-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 453.616,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "scratch"
+  },
+  "fs": 32000.0,
+  "gid": "s24dd1e9d5144",
+  "group": "DEWEY",
+  "key": "r001_s001_2025-09-13_10-20-40",
+  "label": "DEWEY r1 s1 Precon1 2025-09-13",
+  "loose_key": "r001_s001",
+  "mouse": 1,
+  "n_channels": 64,
+  "paths": [],
+  "phase": "Precon",
+  "phase_n": 1,
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "schema": 2,
+  "session": 1,
+  "start": "2025-09-13T10:20:40",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T11:59:30-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}

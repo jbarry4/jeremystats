@@ -1,0 +1,38 @@
+{
+ "built": "2026-11-20",
+ "files": {
+  "brain50.shb.gz": {
+   "bytes": 2632388
+  },
+  "cells.shb.gz": {
+   "bytes": 474667
+  },
+  "checks.json": {
+   "bytes": 29568
+  },
+  "fine10.shb.gz": {
+   "bytes": 4412506
+  },
+  "hip10d.shb.gz": {
+   "bytes": 427223
+  },
+  "hip20.shb.gz": {
+   "bytes": 4231746
+  },
+  "kb.json": {
+   "bytes": 52965
+  },
+  "mesh_brain.shb.gz": {
+   "bytes": 1434629
+  },
+  "mesh_hpf.shb.gz": {
+   "bytes": 832820
+  },
+  "mesh_lamina.shb.gz": {
+   "bytes": 1231915
+  },
+  "rides.json": {
+   "bytes": 50645
+  }
+ }
+}

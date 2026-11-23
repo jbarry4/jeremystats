@@ -282,6 +282,23 @@ def main():
               and [e.get("origin") for e in pev] == ["both", "incisor", "both"],
               pev)
         a_, b_ = pev[1], pev[0]          # the Incisor-only one, and a merged one
+        # A merged one already holds Incisor's stamp, and a merge never pairs
+        # two of one detector's (2026-11-23) -- refused, in a sentence.
+        no = cli.post("/api/curation/g1/" + sk + "/merge",
+                      json={"keep": a_["id"], "drop": b_["id"]})
+        check("an Incisor-only one is not merged into one Incisor has already",
+              no.status_code == 400, no.get_json())
+        # The pair this exists to merge: Incisor's and Doppler's.
+        recx = A.CURATE.get("g1", sk)
+        for e in recx["events"]:
+            if e["id"] == b_["id"]:
+                e["origin"] = "doppler"
+                e.pop("pair_t", None)
+                e.pop("stamp", None)
+        A.CURATE._write(recx)
+        pev = (cli.get("/api/curation/g1/" + sk).get_json().get("set")
+               or {}).get("events") or []
+        a_, b_ = pev[1], pev[0]
         mg = cli.post("/api/curation/g1/" + sk + "/merge",
                       json={"keep": a_["id"], "drop": b_["id"]}).get_json()
         check("merging through the route keeps Incisor's earlier-time one",

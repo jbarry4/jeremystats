@@ -142,7 +142,16 @@ BARRY.prefs = (function () {
     return (get(key, []) || []).indexOf(value) >= 0;
   }
 
-  return { load, get, set, mergeKey, flush, toggleIn, has,
+  /* What another window of this app has already written (2026-11-19): into
+     this page's copy only, never sent again. A support window is a copy of
+     the app with its own prefs, and a choice made there never reached the
+     main window, which kept the copy it loaded at boot. */
+  function take(key, value) {
+    if (value === undefined) return;
+    cache[key] = value;
+  }
+
+  return { load, get, set, mergeKey, flush, toggleIn, has, take,
            all: () => cache };
 })();
 

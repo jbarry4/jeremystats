@@ -30,7 +30,9 @@ BARRY.kilosort = (function () {
   let probe = null;
   let settings = null;
   let invert = true;
-  let pane = 'setup';        // setup | run | phy
+  /* Cells first (PROJECT EVOLVE phase 7, 2026-11-21): reading the sorts
+     already made is what this tool is for now; making new ones comes later. */
+  let pane = 'cells';        // cells | setup | run | phy
   /* Which interpreter to use. Jarvis itself may be running on a Python torch
      does not build for -- 3.14, as it happens -- and every route here takes
      a `python` argument, so the fix is choosing one rather than installing
@@ -84,9 +86,14 @@ BARRY.kilosort = (function () {
   /* ==================================================================
      The page
      ================================================================== */
+  /* The host it was last drawn into: a repaint after a fetch (the Cells'
+     lists) lands where the pane is, not wherever #tkResult happens to be. */
+  let lastHost = null;
   function render(host) {
-    const node = host || document.getElementById('tkResult');
+    const node = host || (lastHost && lastHost.isConnected ? lastHost : null)
+      || document.getElementById('tkResult');
     if (!node) return;
+    lastHost = node;
     node.innerHTML = '';
 
     node.appendChild(el('div', { class: 'ks-head' }, [
@@ -96,6 +103,7 @@ BARRY.kilosort = (function () {
           + 'usually stands between you and it.' }),
       ]),
       el('div', { class: 'seg' }, [
+        segBtn('cells', 'Cells'),
         segBtn('setup', 'Set up'),
         segBtn('run', 'Run'),
         segBtn('phy', 'Phy'),
@@ -112,7 +120,8 @@ BARRY.kilosort = (function () {
       node.appendChild(el('div', { class: 'ks-bad',
         text: 'Could not check this machine: ' + env.error }));
     }
-    if (pane === 'setup') setupPane(node);
+    if (pane === 'cells') cellsPane(node);
+    else if (pane === 'setup') setupPane(node);
     else if (pane === 'run') runPane(node);
     else phyPane(node);
 
@@ -124,6 +133,407 @@ BARRY.kilosort = (function () {
       class: pane === id ? 'active' : '', text: label,
       onclick: () => { pane = id; render(); if (id === 'phy') loadGuide(); },
     });
+  }
+
+  /* ==================================================================
+     Cells (PROJECT EVOLVE phase 7, 2026-11-21)
+
+     The sorts the lab has made, read back -- a soft launch: read first,
+     run later. Each recording sorted here is a row; a recording's cells
+     are the curated ones (Isabella's export, or Phy's labels once
+     somebody curates there), kept as CURATION VERSIONS that can be
+     compared cell by cell, and banked as one Cell entry.
+
+     The strip at the top is the whole pipeline for the recording chosen,
+     each step lit by what exists on disk or in Jarvis.
+     ================================================================== */
+  const CS = { sorts: null, curated: 0, gid: null, d: null, version: null,
+               cmp: null, busy: null, err: null, filter: '' };
+  const VIEWED_KEY = 'barry.cells.viewed';
+  const viewed = () => {
+    try { return JSON.parse(localStorage.getItem(VIEWED_KEY) || '[]'); }
+    catch (e) { return []; }
+  };
+
+  async function loadSorts(force) {
+    CS.err = null;
+    try {
+      const got = await api('/api/cells/sorts' + (force ? '?force=1' : ''));
+      CS.sorts = got.sorts || [];
+      CS.curated = got.curated || 0;
+    } catch (e) {
+      CS.sorts = [];
+      CS.err = e.message;
+    }
+    render();
+  }
+
+  async function openRec(gid, version) {
+    CS.gid = gid;
+    CS.cmp = null;
+    CS.busy = 'Reading what this recording has…';
+    render();
+    try {
+      CS.d = await api('/api/cells/' + encodeURIComponent(gid)
+                       + (version ? '?version=' + version : ''));
+      CS.version = CS.d.version;
+    } catch (e) {
+      CS.d = { ok: false, error: e.message, gid };
+    }
+    CS.busy = null;
+    render();
+  }
+
+  async function readSource(kind) {
+    const gid = CS.gid;
+    CS.busy = kind === 'export' ? 'Reading Isabella’s export…'
+                                : 'Reading Phy’s labels…';
+    render();
+    try {
+      const got = await apiPost('/api/cells/' + encodeURIComponent(gid) + '/read',
+                                { source: kind });
+      toast('Read ' + got.cells + ' cells into curation v' + got.version
+            + (got.exact === got.cells ? ', every one exactly a cluster of the sort.'
+               : '.'), 'ok', 7000);
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+    }
+    CS.busy = null;
+    await openRec(gid);
+    loadSorts(true);
+  }
+
+  /* Every curated recording not read yet, one after another. Reading makes
+     a curation version; nothing is banked. */
+  async function readAll() {
+    const todo = (CS.sorts || []).filter((r) => r.export_n && !r.curation);
+    if (!todo.length) { toast('Every export here has been read.', 'ok'); return; }
+    for (let i = 0; i < todo.length; i++) {
+      CS.busy = 'Reading ' + (i + 1) + ' of ' + todo.length + ': '
+        + (todo[i].label || todo[i].gid);
+      render();
+      try {
+        await apiPost('/api/cells/' + encodeURIComponent(todo[i].gid) + '/read',
+                      { source: 'export' });
+      } catch (e) {
+        toast((todo[i].label || todo[i].gid) + ': ' + e.message, 'err', 9000);
+      }
+    }
+    CS.busy = null;
+    await loadSorts(true);
+    toast('Read ' + todo.length + ' exports into curation versions. Nothing '
+          + 'was banked.', 'ok', 7000);
+  }
+
+  function bankOne() {
+    const d = CS.d || {};
+    const cur = d.curation || {};
+    const v = CS.version;
+    const vrow = (cur.versions || []).find((x) => x.v === v) || {};
+    return BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: 'Bank the cells of ' + (d.label || d.gid),
+      name: 'Cells · ' + (d.label || d.gid),
+      what: 'One Cell entry for this recording’s sort.',
+      facts: [
+        (d.cells || []).length + ' cells from curation v' + v
+          + (vrow.source ? ' (' + vrow.source + ')' : '') + ', of the sort '
+          + ((d.run || {}).name || '') + '.',
+        'One row per cell, its first to its last spike, with its CSC, layer '
+          + 'and spike count. The spikes stay in the sort folder.',
+        d.entry ? 'Continues ‘' + d.entry.name + '’, banked before.'
+                : 'A new entry.',
+      ],
+      onBank: async ({ name, note }) => {
+        const got = await apiPost('/api/cells/' + encodeURIComponent(d.gid)
+                                  + '/bank', { version: v, name, note });
+        toast((got.new ? 'Banked: ' : 'Banked again: ') + '‘' + got.name
+              + '’, ' + got.n + ' cells.', 'ok', 7000);
+      },
+    }).then((done) => { if (done) { openRec(d.gid, v); loadSorts(true); } });
+  }
+
+  /* Every recording read and not banked, each as its own Cell entry, after
+     one confirmation that says how many. */
+  async function bankAll() {
+    const todo = (CS.sorts || []).filter((r) => r.curation && !r.entry);
+    if (!todo.length) {
+      toast('Every recording read here has been banked.', 'ok');
+      return;
+    }
+    const yes = await BARRY.confirm('Bank ' + todo.length + ' recordings’ cells',
+      el('div', {}, [
+        el('p', { text: 'Each recording read and not yet banked becomes one '
+          + 'Cell entry, from its newest curation version: '
+          + todo.map((r) => r.label || r.gid).join(', ') + '.' }),
+        el('p', { class: 'hint', text: 'Banked under your name, as a Cell '
+          + 'entry each. Nothing else changes.' }),
+      ]), 'Bank ' + todo.length);
+    if (!yes) return;
+    let ok = 0;
+    for (let i = 0; i < todo.length; i++) {
+      CS.busy = 'Banking ' + (i + 1) + ' of ' + todo.length;
+      render();
+      try {
+        await apiPost('/api/cells/' + encodeURIComponent(todo[i].gid) + '/bank', {});
+        ok += 1;
+      } catch (e) {
+        toast((todo[i].label || todo[i].gid) + ': ' + e.message, 'err', 9000);
+      }
+    }
+    CS.busy = null;
+    await loadSorts(true);
+    toast('Banked ' + ok + ' Cell entries.', 'ok', 7000);
+  }
+
+  async function compare(a, b) {
+    CS.busy = 'Comparing v' + a + ' with v' + b + '…';
+    render();
+    try {
+      CS.cmp = await api('/api/cells/' + encodeURIComponent(CS.gid)
+                         + '/diff?a=' + a + '&b=' + b);
+    } catch (e) {
+      CS.cmp = { error: e.message };
+    }
+    CS.busy = null;
+    render();
+  }
+
+  /* The pipeline for one recording, each step lit by what exists. */
+  function stepsStrip(row, d) {
+    const r = row || {};
+    const dd = d || {};
+    const seen = viewed().indexOf(r.gid) >= 0;
+    const steps = [
+      ['Binary', 'CSC_Raw.dat · perpl_NLX2Binary.m', !!r.binary],
+      ['Sorted', 'Kilosort 4 · kilosort_automation.py', !!r.run],
+      ['Curated', r.phy_edited ? 'Phy · cluster_group.tsv' : 'Phy, or by hand',
+       !!(r.export_n || r.phy_edited)],
+      ['Exported', 'timestamps\\<cell>.mat', !!r.export_n],
+      ['Banked', r.entry ? r.entry.name : 'a Cell entry', !!r.entry],
+      ['Viewed', 'Cells in Xplorefinder', seen],
+    ];
+    const firstOff = steps.findIndex((s) => !s[2]);
+    return el('div', { class: 'ks-steps' }, steps.map((s, i) => el('div', {
+      class: 'wf-stage ks-step' + (s[2] ? ' on' : '') + (i === firstOff ? ' next' : ''),
+      title: s[2] ? 'Done' : (i === firstOff ? 'The next step' : 'Not yet'),
+    }, [
+      el('span', { class: 'wf-stage-n', text: (i + 1) + '  ' + s[0] }),
+      el('span', { class: 'wf-stage-l', text: s[1] }),
+      el('span', { class: 'ks-step-state', text: s[2] ? 'done'
+                   : i === firstOff ? 'next' : 'not yet' }),
+    ])).concat(dd.ok === false ? [] : []));
+  }
+
+  function sortRow(r) {
+    const on = r.gid === CS.gid;
+    const said = r.export_n
+      ? r.export_n + ' curated' + (r.curation ? ' · read v' + r.curation.version : ' · not read')
+        + (r.entry ? ' · banked' : '')
+      : 'sorted, not curated';
+    return el('button', {
+      type: 'button', class: 'ks-cell-rec' + (on ? ' on' : '')
+        + (r.export_n ? '' : ' uncurated'),
+      'data-gid': r.gid,
+      onclick: () => openRec(r.gid),
+    }, [
+      el('strong', { text: r.label || r.gid }),
+      el('span', { class: 'hint', text: said }),
+    ]);
+  }
+
+  function cellCard(c, d) {
+    return BARRY.ui.workbenchCard({
+      title: 'Cell ' + c.id,
+      gid: d.gid, kind: 'cell-' + c.id,
+      chips: [
+        el('span', { class: 'flagchip', text: 'CSC ' + c.csc }),
+        c.layer_name ? el('span', { class: 'flagchip ks-layer', text: c.layer_name })
+                     : el('span', { class: 'flagchip ks-layer none', text: 'no layer said' }),
+      ],
+      count: Number(c.n).toLocaleString() + ' spikes',
+      owner: { name: null },
+      when: c.rate_hz != null ? c.rate_hz.toFixed(2) + ' Hz' : null,
+      tally: [el('span', { class: 'hint', text: c.depth_um + ' µm on the probe · '
+        + (c.first_s != null ? c.first_s.toFixed(1) + '–' + c.last_s.toFixed(1)
+           + ' s' : '') })],
+      actions: [
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open in Xplorefinder',
+          onclick: () => BARRY.cells.enter(d.gid, { cell: c.id, version: CS.version }) }),
+      ],
+      extra: 'ks-cellcard',
+    });
+  }
+
+  function diffBlock(cmp, names) {
+    if (cmp.error) {
+      return el('p', { class: 'hint warn-line', text: 'Could not compare: ' + cmp.error });
+    }
+    const words = { kept: 'kept', changed: 'changed', merged: 'merged', split: 'split',
+                    removed: 'removed', added: 'added' };
+    const cs = cmp.counts || {};
+    const ids = (xs) => xs.map((x) => 'Cell ' + x).join(' + ') || '—';
+    return el('div', { class: 'ks-diff' }, [
+      el('p', { class: 'hint', text: 'v' + cmp.a + ' (' + (cmp.a_source || '?') + ') against v'
+        + cmp.b + ' (' + (cmp.b_source || '?') + '), cell by cell through the spikes '
+        + 'they share: ' + Object.keys(words).filter((k) => cs[k])
+          .map((k) => cs[k] + ' ' + words[k]).join(' · ') + '.' }),
+      el('div', { class: 'ks-diff-rows' }, (cmp.rows || []).map((r) => el('div', {
+        class: 'ks-diff-row ' + r.kind }, [
+        el('span', { class: 'ks-diff-kind', text: words[r.kind] }),
+        el('span', { text: ids(r.a) + '  →  ' + ids(r.b) }),
+        el('span', { class: 'hint', text: r.shared.toLocaleString() + ' spikes shared'
+          + (r.n_a ? ' of ' + r.n_a.toLocaleString() : '')
+          + (r.n_b ? ' / ' + r.n_b.toLocaleString() : '') }),
+      ]))),
+    ]);
+  }
+
+  function cellsMain(node) {
+    const row = (CS.sorts || []).find((r) => r.gid === CS.gid);
+    const d = CS.d;
+    if (!row || !d) {
+      node.appendChild(stepsStrip({}, null));
+      node.appendChild(el('p', { class: 'hint', text: 'Pick a recording on the left. '
+        + 'Its steps light up for what it has.' }));
+      return;
+    }
+    node.appendChild(el('div', { class: 'ks-cells-head' }, [
+      el('div', {}, [
+        el('h3', { text: row.label || row.gid }),
+        el('p', { class: 'hint', text: (d.path || row.path) + ' · '
+          + ((d.run || {}).name || row.run)
+          + (d.twin ? ' · its inverted twin ' + d.twin.name + ' is not read' : '') }),
+      ]),
+      el('div', { class: 'spacer' }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open in Phy',
+        disabled: !(d.run && d.run.path),
+        onclick: () => openPhy(d.run.path) }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open in Xplorefinder',
+        disabled: !(d.cells || []).length,
+        onclick: () => BARRY.cells.enter(d.gid, { version: CS.version }) }),
+      BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Bank…',
+        disabled: !(d.cells || []).length,
+        title: (d.cells || []).length ? null : 'Read a curation first.',
+        onclick: bankOne }),
+    ]));
+    node.appendChild(stepsStrip(row, d));
+    if (d.ok === false) {
+      node.appendChild(el('p', { class: 'hint warn-line', text: d.error }));
+      return;
+    }
+    if (d.polarity) {
+      node.appendChild(el('p', { class: 'hint' + (d.polarity.ok ? '' : ' warn-line')
+        + ' ks-polarity', text: 'Polarity: ' + d.polarity.words }));
+    }
+
+    // Where a curation can be read from.
+    node.appendChild(el('div', { class: 'section-label', text: 'Curations on disk' }));
+    if (!(d.sources || []).length) {
+      node.appendChild(el('p', { class: 'hint', text: 'Sorted, never curated: no '
+        + 'export beside it and Phy has not written its labels. Nothing to bank.' }));
+    }
+    node.appendChild(el('div', { class: 'ks-sources' }, (d.sources || []).map((s) =>
+      el('div', { class: 'ks-source' }, [
+        el('strong', { text: s.name }),
+        el('span', { class: 'hint', text: (s.n != null ? s.n + ' cells · ' : '')
+          + (s.at || '') + ' · ' + s.path }),
+        el('div', { class: 'spacer' }),
+        BARRY.ui.button({ kind: (d.curation ? 'ghost' : 'primary'), size: 'sm',
+          text: d.curation ? 'Read again' : 'Read it',
+          title: 'Read it into a curation version. The same cells read again '
+               + 'confirm the version rather than make another.',
+          onclick: () => readSource(s.kind) }),
+      ]))));
+
+    // The versions, and comparing two.
+    const cur = d.curation;
+    if (cur) {
+      const vs = (cur.versions || []).map((v) => Object.assign({}, v, {
+        note: [v.source, v.note].filter(Boolean).join(' · ') }));
+      node.appendChild(el('div', { class: 'section-label', text: 'Curation versions' }));
+      node.appendChild(el('div', { class: 'ks-vers' }, [
+        el('span', { class: 'hint', text: 'Showing' }),
+        BARRY.ui.versionButton({
+          versions: vs, idOf: (v) => v.v, value: CS.version, unit: 'cells',
+          producer: false, family: { artifact: cur.artifact_id },
+          heading: 'Which curation of ' + (row.label || row.gid),
+          sub: 'Every source read that changed which cells exist is a version.',
+          onpick: (v) => { if (v) openRec(CS.gid, v.v); },
+        }),
+        vs.length > 1 ? el('span', { class: 'hint', text: 'compared with' }) : null,
+        vs.length > 1 ? BARRY.ui.versionButton({
+          versions: vs.filter((v) => v.v !== CS.version), idOf: (v) => v.v,
+          value: null, unit: 'cells', producer: false,
+          lead: { name: 'Compare…' },
+          family: { artifact: cur.artifact_id },
+          heading: 'Compare v' + CS.version + ' with which curation',
+          onpick: (v) => { if (v) compare(v.v, CS.version); },
+        }) : null,
+      ].filter(Boolean)));
+      if (CS.cmp) node.appendChild(diffBlock(CS.cmp));
+    }
+
+    const cells = d.cells || [];
+    if (cells.length) {
+      node.appendChild(el('div', { class: 'section-label', text: cells.length
+        + ' cells in v' + CS.version + (d.source ? ' · ' + d.source.name : '') }));
+      node.appendChild(el('div', { class: 'ks-cellgrid' },
+        cells.map((c) => cellCard(c, d))));
+    }
+  }
+
+  function cellsPane(node) {
+    if (CS.sorts === null) {
+      node.appendChild(el('p', { class: 'hint', text: 'Looking for sorts beside every '
+        + 'recording on this computer…' }));
+      loadSorts(false);
+      return;
+    }
+    node.appendChild(el('p', { class: 'hint', text: 'The sorts already made, read '
+      + 'back. Cells are the curated units (Isabella’s export, or Phy’s labels), '
+      + 'kept as curation versions and banked as one Cell entry a recording. '
+      + 'Jarvis reads the non-inverted run.' }));
+    if (CS.err) node.appendChild(el('p', { class: 'hint warn-line', text: CS.err }));
+    if (CS.busy) node.appendChild(el('p', { class: 'hint ks-busy', text: CS.busy }));
+    const sorts = CS.sorts || [];
+    const toRead = sorts.filter((r) => r.export_n && !r.curation).length;
+    const toBank = sorts.filter((r) => r.curation && !r.entry).length;
+    const q = CS.filter.trim().toLowerCase();
+    const shown = q ? sorts.filter((r) => String(r.label || r.gid).toLowerCase()
+      .indexOf(q) >= 0) : sorts;
+    const find = el('input', { type: 'search', class: 'ks-cells-find',
+      placeholder: 'Find a recording…', value: CS.filter,
+      oninput: (e) => {
+        CS.filter = e.target.value;
+        const list = document.querySelector('.ks-cells-list .ks-cell-recs');
+        if (!list) return;
+        const qq = CS.filter.trim().toLowerCase();
+        list.querySelectorAll('.ks-cell-rec').forEach((b) => {
+          b.classList.toggle('hidden', !!qq && b.textContent.toLowerCase().indexOf(qq) < 0);
+        });
+      } });
+    node.appendChild(el('div', { class: 'ks-cells' }, [
+      el('div', { class: 'ks-cells-list' }, [
+        el('div', { class: 'ks-cells-sum' }, [
+          el('strong', { text: sorts.length + ' sorted · ' + CS.curated + ' curated' }),
+          el('div', { class: 'spacer' }),
+          BARRY.ui.button({ kind: 'mini', text: 'Look again',
+                            onclick: () => loadSorts(true) }),
+        ]),
+        el('div', { class: 'ks-cells-batch' }, [
+          BARRY.ui.button({ kind: 'ghost', size: 'sm',
+            text: 'Read every export' + (toRead ? ' (' + toRead + ')' : ''),
+            disabled: !toRead || !!CS.busy, onclick: readAll }),
+          BARRY.ui.button({ kind: 'ghost', size: 'sm',
+            text: 'Bank every read…' + (toBank ? ' (' + toBank + ')' : ''),
+            disabled: !toBank || !!CS.busy, onclick: bankAll }),
+        ]),
+        find,
+        el('div', { class: 'ks-cell-recs' }, shown.map(sortRow)),
+      ]),
+      (() => { const m = el('div', { class: 'ks-cells-main' }); cellsMain(m); return m; })(),
+    ]));
   }
 
   /* ==================================================================
@@ -702,5 +1112,8 @@ BARRY.kilosort = (function () {
       () => toast('The browser would not let me use the clipboard.', 'err'));
   }
 
-  return { load, render };
+  return { load, render,
+    /* For _dev/cells.html and BARRY.cells: open the Cells pane on one. */
+    openCells: (gid) => { pane = 'cells'; render(); if (gid) openRec(gid); },
+    _cells: () => CS };
 }());

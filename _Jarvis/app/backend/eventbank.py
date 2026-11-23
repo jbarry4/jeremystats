@@ -40,6 +40,16 @@ EVENT_TYPES = [
     {"id": "artifact", "name": "Artifact", "note": "to be excluded"},
     {"id": "ttl", "name": "TTL", "note": "hardware event marker"},
     {"id": "behavior", "name": "Behavior", "note": "scored from video"},
+    # PROJECT EVOLVE (2026-11-19): a Root Canal run banked with two or more
+    # labels at once -- DS, P-spike, Twilight Zone, outside -- each event
+    # saying which. No DS or P-spike reader takes one whole.
+    {"id": "rcbundle", "name": "Root Canal bundle",
+     "note": "several Root Canal labels in one entry"},
+    # PROJECT EVOLVE phase 7 (2026-11-21): a recording's sorted cells, one
+    # event per cell (its first to its last spike), from a curation version
+    # of its Kilosort sort. The spikes stay in the sort folder.
+    {"id": "cell", "name": "Cell",
+     "note": "curated Kilosort units, one row per cell"},
     {"id": "other", "name": "Other", "note": ""},
 ]
 
@@ -566,12 +576,33 @@ class EventBank:
                     pass
             if ev.get("align_flag"):
                 item["align_flag"] = ev["align_flag"]
+            # A person's note on it (2026-11-20): written beside a flag in
+            # Panning, Checkup, Spotter, Lock, Braces or Eye, and carried so
+            # whoever reads the next step sees why. Its author beside it.
+            if ev.get("note"):
+                item["note"] = str(ev["note"]).strip()[:2000]
+                if ev.get("note_by"):
+                    item["note_by"] = str(ev["note_by"])[:80]
             # Root Canal's name for the cluster this event was in
             # (2026-10-06): "DS slow", "IED big". Its own field, never the
             # label -- the label is what says an event is a dentate spike at
             # all, and every reader of a DS set picks events by it.
             if ev.get("rc_name"):
                 item["rc_name"] = str(ev["rc_name"])[:60]
+            # A Root Canal bundle's event (2026-11-19): the class its
+            # workflow put it in ("both", "halo_ds", ...), and whether the
+            # Halo captured it. Where it came from, beside the label that
+            # says what it is.
+            if ev.get("rc_class"):
+                item["rc_class"] = str(ev["rc_class"])[:24]
+            if ev.get("halo") is True:
+                item["halo"] = True
+            # A Cell's row (2026-11-21): how many spikes the cell fired.
+            if ev.get("n_spikes") is not None:
+                try:
+                    item["n_spikes"] = int(ev["n_spikes"])
+                except (TypeError, ValueError):
+                    pass
             # A pooled spike's origin (The Confluence, 2026-10-14): which
             # detector found it -- Incisor, Doppler, or both within the
             # merge window -- and `pair_t`, where the other one put it.
@@ -710,6 +741,11 @@ class EventBank:
             "specified": bool(entry.get("curated")),
             "curation_label": entry.get("curation_label"),
             "gid": entry.get("gid"),
+            # Branched out of another entry by hand (PROJECT EVOLVE phase
+            # 2, 2026-11-21): {entry_id, version, version_label, labels,
+            # name}. Said once and kept; the parent is never changed.
+            "parent": (entry.get("parent")
+                       or (prior.get("parent") if prior else None)),
         }
         # Whether Braces has put these stamps on their peaks.
         #
@@ -1788,7 +1824,7 @@ class EventBank:
     @shards.atomic
     def align(self, entry_id, moves, params, note=None, by=None,
               dry_run=True, from_version=None, flags=None, keep_ids=None,
-              reject=None):
+              reject=None, notes=None):
         """Mint a version of `entry_id` with every stamp on its own peak.
 
         `moves` is `{index_into_the_source_events: new_start}`. Indices
@@ -1887,6 +1923,19 @@ class EventBank:
                 item["align_flag"] = why
             else:
                 item.pop("align_flag", None)
+            # A note written in the review (2026-11-20), `{index: {text,
+            # by}}`. Written over the note the event arrived with, since it
+            # is the newer word on it; an empty one takes the old one off.
+            said = (notes or {}).get(i, (notes or {}).get(str(i)))
+            if said is not None:
+                txt = str((said or {}).get("text") or "").strip()[:2000]
+                if txt:
+                    item["note"] = txt
+                    if (said or {}).get("by"):
+                        item["note_by"] = str(said["by"])[:80]
+                else:
+                    item.pop("note", None)
+                    item.pop("note_by", None)
             out.append(item)
 
         # WRITTEN IN TIME ORDER, whatever order they arrived in.
@@ -2131,6 +2180,10 @@ class EventBank:
 
         rec["events"] = out
         rec["versions"] = versions
+        # The entry's own "newest" counter, as add/dedupe/retime keep it
+        # (2026-11-19: an alignment left it one behind until a cloud absorb
+        # happened to catch it up).
+        rec["version"] = fresh["v"]
         rec["n"] = len(out)
         rec["by_label"] = counts
         # What the CURRENT events are aligned to, the way `time_basis` says

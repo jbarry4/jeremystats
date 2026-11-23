@@ -1,0 +1,161 @@
+{
+  "_at": {
+    "added": "2026-11-21T22:05:54.373808+00:00",
+    "deleted": "2026-11-21T22:05:54.373808+00:00",
+    "id": "2026-11-21T22:05:54.373808+00:00",
+    "kind": "2026-11-21T22:05:54.373808+00:00",
+    "name": "2026-11-21T22:05:54.373808+00:00",
+    "nickname": "2026-11-21T22:05:54.373808+00:00",
+    "schema": "2026-11-21T22:05:54.373808+00:00",
+    "subject": "2026-11-21T22:05:54.373808+00:00",
+    "subject_key": "2026-11-21T22:05:54.373808+00:00",
+    "version": "2026-11-21T22:05:54.373808+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "de37563b4032": [
+        "set",
+        "2026-11-21T22:05:54.373808+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-21T22:05:54.373808+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-21T17:05:54-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "5d709cda3458",
+  "kind": "xray_single",
+  "name": "X-ray \u00b7 PTEN m3 s2 2023-09-20 \u00b7 Twilight Zone \u00b7 Halo bundle",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "entry_id": "db66d3c694fd",
+    "folder": "xm-4a4025594c",
+    "folder_name": "Twilight Zone \u00b7 Halo bundle",
+    "gid": "sd0d0bded958b",
+    "group": "PTEN",
+    "mouse_key": "PTEN|m3",
+    "session_label": "PTEN m3 s2 2023-09-20",
+    "source": {
+      "artifact_id": "6fa7fef7b7a3",
+      "entry_id": "a9cf6f2c30c2",
+      "grace": null,
+      "labels": [
+        "twilight"
+      ],
+      "nickname": "Ambiguous Dataset (Optimized Parameters/Snap)",
+      "version": 5
+    }
+  },
+  "subject_key": "xray_single|xm-4a4025594c|sd0d0bded958b",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.21.1",
+      "at": "2026-11-21T17:05:54-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "902066c98d8b",
+      "id": "de37563b4032",
+      "inputs": [
+        {
+          "read": "6537f9e4a75e",
+          "stamps_hash": "b3708662b9d2",
+          "version": 5,
+          "workflow": "6fa7fef7b7a3"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "box": {
+          "asked": null,
+          "auto": true,
+          "n_contacts": 16,
+          "n_samples": 1,
+          "sel_hi": 51,
+          "sel_lo": 36,
+          "t_hi_ms": 0.0,
+          "t_lo_ms": 0.0
+        },
+        "counts": {
+          "1": 10,
+          "2": 12
+        },
+        "events": 22,
+        "method": "delta",
+        "separation": {
+          "dbic": 43.33,
+          "min_share": 0.4545,
+          "n": 22,
+          "verdict": "yes",
+          "words": "DS2 sink 1.0\u00d7 DS1"
+        },
+        "sinks": [
+          {
+            "cls": 1,
+            "csc": 45,
+            "sem": 0.02689,
+            "unit": "\u00b5A/mm\u00b2 (CSD, 5\u2013100 Hz)",
+            "value": -0.1696
+          },
+          {
+            "cls": 2,
+            "csc": 45,
+            "sem": 0.02423,
+            "unit": "\u00b5A/mm\u00b2 (CSD, 5\u2013100 Hz)",
+            "value": -0.1722
+          }
+        ]
+      },
+      "note": "PROJECT EVOLVE phase 3: the automatic box.",
+      "params": {
+        "box": {
+          "asked": null,
+          "auto": true,
+          "n_contacts": 16,
+          "n_samples": 1,
+          "sel_hi": 51,
+          "sel_lo": 36,
+          "t_hi_ms": 0.0,
+          "t_lo_ms": 0.0
+        },
+        "cond": 0.3,
+        "csd_bad_x": 4.0,
+        "csd_span": 16,
+        "dead": 0.15,
+        "delta_cut": null,
+        "f_order": 3,
+        "f_sigma": 1.0,
+        "features": "minmax",
+        "flip": false,
+        "gap_weight": 1.0,
+        "h_power": 1,
+        "manual_bad": {},
+        "method": "delta",
+        "min_sep": 5,
+        "nclasses": 2,
+        "no_vaknin": false,
+        "notch": true,
+        "read": "6537f9e4a75e",
+        "rule": "tort",
+        "screen": false,
+        "seed": 0,
+        "sel_hi": null,
+        "sel_lo": null,
+        "stamps_hash": "b3708662b9d2",
+        "t_hi_ms": null,
+        "t_lo_ms": null
+      },
+      "params_hash": "c27e30ad35a1",
+      "v": 1
+    }
+  ]
+}

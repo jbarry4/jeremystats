@@ -1,10 +1,12 @@
 {
   "_at": {
     "bad_channels": "2026-11-05T18:11:28.717281+00:00",
-    "created": "2026-11-02T15:24:28.397594+00:00",
+    "created": "2026-11-02T15:13:01.184199+00:00",
     "duration_s": "2026-11-03T18:40:07.527651+00:00",
+    "first_seen_by": "2026-11-02T15:13:01.184199+00:00",
+    "found_on": "2026-11-02T15:13:01.184199+00:00",
     "fs": "2026-11-03T18:40:07.527651+00:00",
-    "gid": "2026-11-02T15:24:28.397594+00:00",
+    "gid": "2026-11-02T15:13:01.184199+00:00",
     "group": "2026-11-02T19:21:25.448256+00:00",
     "has_video": "2026-11-03T18:40:07.527651+00:00",
     "key": "2026-11-02T19:21:25.448256+00:00",
@@ -18,8 +20,8 @@
     "schema": "2026-11-02T19:21:25.448256+00:00",
     "session": "2026-11-02T19:21:25.448256+00:00",
     "start": "2026-11-02T19:21:25.448256+00:00",
-    "updated": "2026-11-12T19:08:53.797514+00:00",
-    "view_state": "2026-11-09T17:01:19.073621+00:00"
+    "updated": "2026-11-20T19:00:54.835970+00:00",
+    "view_state": "2026-11-20T19:00:54.835970+00:00"
   },
   "_keys": {
     "paths": {
@@ -37,35 +39,42 @@
       ],
       "vacc:sdcedca6715fb": [
         "set",
-        "2026-11-12T19:08:53.797514+00:00"
+        "2026-11-12T20:06:16.076284+00:00"
       ]
     },
     "seen": {
       "barrylab-d8e8": [
         "set",
-        "2026-11-09T15:38:44.592591+00:00"
+        "2026-11-20T17:36:17.275451+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-12T19:08:53.797514+00:00",
+    "at": "2026-11-20T19:00:54.835970+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "bad_channels": [
     59
   ],
+  "channel_banks": [],
   "created": {
-    "app_version": "2026.10.27.1",
-    "at": "2026-11-02T10:24:28-05:00",
-    "commit": "d752a3b1",
-    "email": "Isabella.Piatek@uvm.edu",
-    "host": "LCOM549913",
-    "machine": "Blackbarry",
-    "os": "Windows",
-    "user": "Isabella Piatek"
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-02T10:13:00-05:00",
+    "commit": "d972b0bd",
+    "email": "akrempas@uvm.edu",
+    "machine": "ip0af550d3.int.uvm.edu",
+    "os": "Darwin",
+    "user": "Aggie Krempasky"
   },
   "duration_s": 1832.2432,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-11-02T10:11:00-05:00",
+    "by": "Aggie Krempasky",
+    "via": "vacc",
+    "where": "netfiles"
+  },
   "fs": 30000.0,
   "gid": "sdcedca6715fb",
   "group": null,
@@ -86,8 +95,8 @@
   "schema": 1,
   "seen": {
     "barrylab-d8e8": {
-      "at": "2026-11-09T10:38:44-05:00",
-      "by": "Rain Younger",
+      "at": "2026-11-20T12:36:16-05:00",
+      "by": "Isabella Piatek",
       "copies": {
         "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1619\\KCNT1_m1619_s01_081826\\2026-08-18_13-11-23": {
           "at": "2026-11-03T13:40:07-05:00",
@@ -105,14 +114,14 @@
   "session": 1,
   "start": "2026-08-18T17:08:00+00:00",
   "updated": {
-    "app_version": "2026.11.11.4",
-    "at": "2026-11-12T14:08:53-05:00",
-    "commit": "f9792b6e",
-    "email": "eanwer@uvm.edu",
+    "app_version": "2026.11.19.3",
+    "at": "2026-11-20T14:00:54-05:00",
+    "commit": "75399c6e",
+    "email": "Isabella.Piatek@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Eshal Anwer"
+    "user": "Isabella Piatek"
   },
   "view_state": {
     "channels": [
@@ -130,7 +139,6 @@
       23,
       25,
       27,
-      29,
       31,
       33,
       35,
@@ -162,9 +170,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.5507068873606161,
     "stft_mode": null,
-    "t0": 185.426039,
+    "t0": 1831.6924931126393,
     "ylim": null
   }
 }

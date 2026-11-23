@@ -49,7 +49,7 @@ artifactsmod.register_kind("er2_leaderboard", lambda s: "er2|%s" % (s or {}).get
                            lambda s: [], "leaderboard")
 PARTITION = "short"
 TASK_TIME = "03:00:00"
-TASK_MEM = "4G"
+TASK_MEM = "8G"
 CONCURRENCY = 60
 _LOCK = threading.Lock()
 _LOCAL = {}            # rid -> {"thread", "stop", "done", "of"}
@@ -67,7 +67,9 @@ def _dir(rid):
 
 
 def _write_json(path, obj):
-    tmp = path + ".part"
+    # a .part of this thread's own: two writers of one answer never share
+    # (2026-11-20, WinError 32 on r005's 146.json.part)
+    tmp = "%s.%d.part" % (path, threading.get_ident())
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(obj, fh)
     os.replace(tmp, path)
@@ -95,9 +97,11 @@ def runs():
 
 
 def new_run(targets=E.TARGETS, views=E.VIEWS, models=E.MODELS, amber_version=None, where="local", n_shuffle=0,
-            explain=True, drop=True, note="", by=None):
+            explain=True, drop=True, note="", by=None, tasks=None):
+    """tasks: an explicit list of {target, view, model} (the DS-type grids of
+    er2/typed.py, 2026-11-20); otherwise the full grid of targets x views x models."""
     man, _ = AMB.load(amber_version)
-    tasks = E.grid(targets, views, models)
+    tasks = list(tasks) if tasks else E.grid(targets, views, models)
     os.makedirs(ROOT, exist_ok=True)
     with _LOCK:
         have = [int(d[1:]) for d in os.listdir(ROOT) if d.startswith("r") and d[1:].isdigit()]
@@ -182,7 +186,9 @@ def remote_dir(cfg, rid):
     return vacc._remote_path(root, "er2", rid)
 
 
-def submit_script(cfg, rdir, rid, n, indices=None):
+def submit_script(cfg, rdir, rid, n, indices=None, partition=None, time_limit=None):
+    """partition / time_limit: a run's own (2026-11-20: the raw-event runs ask
+    for the general partition and a longer limit); otherwise the defaults."""
     arr = ",".join(str(i) for i in indices) if indices else "0-%d" % max(0, n - 1)
     return ("#!/bin/bash\n"
             "#SBATCH --job-name=er2_%(rid)s\n"
@@ -200,7 +206,7 @@ def submit_script(cfg, rdir, rid, n, indices=None):
             "export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1\n"
             "cd %(rd)s/code\n"
             "exec python vacc_run.py %(rd)s/spec_${SLURM_ARRAY_TASK_ID}.json\n") % {
-        "rid": rid, "arr": arr, "cap": CONCURRENCY, "acct": vacc.sbatch_account(cfg), "part": PARTITION, "time": TASK_TIME,
+        "rid": rid, "arr": arr, "cap": CONCURRENCY, "acct": vacc.sbatch_account(cfg), "part": partition or PARTITION, "time": time_limit or TASK_TIME,
         "mem": TASK_MEM, "rd": rdir, "pre": vacc.activate(cfg)}
 
 
@@ -217,7 +223,7 @@ def submit_vacc(cfg, rid, app_dir):
     for t in run["tasks"]:
         files.append(("spec_%d.json" % t["i"], json.dumps({"rid": "%s_%d" % (rid, t["i"]), "tool": "er2",
                                                            "spec": spec_of(run, t, amber_root=rdir + "/amber")})))
-    files.append(("submit.sh", submit_script(cfg, rdir, rid, run["n"])))
+    files.append(("submit.sh", submit_script(cfg, rdir, rid, run["n"], partition=run.get("partition"), time_limit=run.get("time_limit"))))
     code = vacc._remote_path(cfg.get("workspace") or ".", "code")
     script = ("set -e; mkdir -p %(rd)s; cd %(rd)s; tar -xf -; mkdir -p logs; rm -rf code; cp -r %(code)s code; "
               "sbatch --parsable submit.sh" % {"rd": vacc.q(rdir), "code": vacc.q(code)})
@@ -241,7 +247,8 @@ def resubmit_vacc(cfg, rid, app_dir, indices):
     # the run's own code folder is refreshed in place, never removed: other
     # tasks of the same run may be starting from it at this moment
     refresh_code(cfg, rid, app_dir)
-    sh = submit_script(cfg, run["rdir"], rid, run["n"], indices=sorted(indices))
+    sh = submit_script(cfg, run["rdir"], rid, run["n"], indices=sorted(indices), partition=run.get("partition"),
+                       time_limit=run.get("time_limit"))
     script = ("set -e; cd %(rd)s; cat > submit_again.sh; sbatch --parsable submit_again.sh" % {"rd": vacc.q(run["rdir"])})
     out = r("bash -c %s" % vacc.q(script), stdin=sh, timeout=300)
     aid = next((ln.strip().split(";")[0] for ln in reversed((out or "").strip().splitlines())
@@ -272,8 +279,23 @@ def poll_vacc(cfg, rid):
     return monolith.poll(cfg, dict(run, tasks=[{"i": t["i"], "key": t["key"]} for t in run["tasks"]]))
 
 
+_FETCHING = {}          # rid -> Lock: one "bring answers home" per run at a time
+
+
 def fetch_vacc(cfg, rid):
-    """Bring home every answer not here yet (each is a few hundred KB of JSON)."""
+    """Bring home every answer not here yet (each is a few hundred KB of JSON).
+
+    One fetch per run at a time (2026-11-20: the button pressed again during a
+    three-minute fetch ran a second one in step with the first, and the two
+    collided on the same answer). A second ask waits for the first, then finds
+    the answers already here and brings home only what is still missing."""
+    with _LOCK:
+        lock = _FETCHING.setdefault(rid, threading.Lock())
+    with lock:
+        return _fetch_vacc(cfg, rid)
+
+
+def _fetch_vacc(cfg, rid):
     run = read_run(rid)
     r = vacc._runner(cfg)
     have = set(answered(rid))
@@ -358,8 +380,16 @@ def leaderboard(rid):
                      "top_feature": ((ex.get("perm_feature") or [{}])[0]).get("item"), "seconds": r.get("seconds")})
     rows.sort(key=lambda x: (x["target"], -(x["main"] if x["main"] == x["main"] else -9)))
     most = {}
-    for tg in E.TARGETS:
-        mine = [r for r in R if r["target"] == tg and r["view"] != "nuisance"]
+    from .er2 import typed as TY
+
+    def group_of(r):
+        # a DS-type run is read per target AND per subset (2026-11-20); an
+        # ordinary run's groups are just its targets, as before
+        b, sub, con = TY.parse_view(r["view"])
+        return r["target"] + ("@" + sub if sub else "") + (" contrast" if con else "")
+    groups = [t for t in E.TARGETS if any(group_of(r) == t for r in R)] + sorted({group_of(r) for r in R} - set(E.TARGETS))
+    for tg in groups:
+        mine = [r for r in R if group_of(r) == tg and r["view"] != "nuisance"]
         good = [r for r in mine if r.get("passes")]
         why = "models that reached the bar"
         if not good:

@@ -92,6 +92,13 @@ feedmod.install_narration(app)
 from . import gzipjson as _gzipjson  # noqa: E402
 _gzipjson.install(app)
 
+# The PI's practice layer (backend/pisafe.py, 2026-11-20): decided before the
+# first record is opened, so nothing is ever written under the wrong name.
+from . import pisafe as pisafemod  # noqa: E402
+pisafemod.decide(LOGS_DIR)
+pisafemod.install(app, LOGS_DIR)
+from . import stormregion as stormregionmod  # noqa: E402
+
 STORE = store.Store(LOGS_DIR, auto_stage=False)
 
 # Last boot's answers to the three slow roll-ups, so this boot can show
@@ -449,6 +456,11 @@ def index():
 @app.route("/<path:filename>")
 def static_files(filename):
     resp = send_from_directory(WEB_DIR, filename)
+    # Module scripts (Seahorse's three.js, web/vendor/three) are refused by
+    # the browser unless served as JavaScript, and mimetypes takes .js's type
+    # from the Windows registry, which some machines have as text/plain.
+    if filename.endswith((".js", ".mjs")):
+        resp.mimetype = "text/javascript"
     # Asked for by its versioned address: that address will never mean
     # anything else, so it is kept without asking again.
     if request.args.get("v") and resp.status_code == 200:
@@ -5562,6 +5574,14 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
         ident = (sess or {}).get("identity") or {}
         lab = reg.get("label") or ident.get("label") or label or gid
         p = dict((out or {}).get("params") or {}, run_key=key)
+        # One array of a KCNT1 dual recording (stormregion.py): a run given
+        # exactly one array's channels is that array's, and says so in its
+        # name and its parameters -- its own entry, its own version tree.
+        region = stormregionmod.for_range(_storm_regions(gid),
+                                          p.get("channel_range"))
+        if region:
+            p["region"] = region["id"]
+            lab = stormregionmod.name_with(lab, region)
         here = reg.get("here") or []
         entry = BANK.add({
             "project": reg.get("project") or reg.get("group"),
@@ -5598,6 +5618,150 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
         STORE.record_error("doppler.autobank", str(exc), None,
                            {"gid": gid, "key": key})
         return None
+
+
+# ==========================================================================
+# A KCNT1 dual recording, one array at a time (stormregion.py, 2026-11-20)
+# ==========================================================================
+def _storm_regions(gid):
+    """[hip, m2] for a recording with both arrays named, else None."""
+    if not gid:
+        return None
+    try:
+        return stormregionmod.regions_for(REG.by_gid(gid))
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _storm_splits_of(entry_id):
+    """{region: entry} already split off `entry_id`."""
+    out = {}
+    for rec in BANK.all():
+        p = ((rec.get("source") or {}).get("parameters") or {})
+        sf = p.get("split_from") or {}
+        if sf.get("entry") == entry_id and p.get("region") in \
+                stormregionmod.NAMES:
+            out[p["region"]] = rec
+    return out
+
+
+def _storm_brief(rec, region=None, existed=False):
+    return {"id": rec["id"], "name": rec.get("name"), "n": rec.get("n"),
+            "region": region, "existed": existed,
+            "version": rec.get("version")}
+
+
+@app.route("/api/storm/regions/<gid>")
+def api_storm_regions(gid):
+    """Whether this recording has a hippocampal and an M2 array, which
+    CSC numbers each is, and -- with `?entry=` -- which one that bank entry
+    is about and what has been split off it already."""
+    regions = _storm_regions(gid)
+    out = {"ok": True, "gid": gid, "regions": regions}
+    eid = request.args.get("entry")
+    if eid and regions:
+        rec = BANK.get(eid)
+        if rec:
+            out["entry_region"] = stormregionmod.region_of(rec, regions)
+            out["splits"] = {rid: _storm_brief(r, rid, True)
+                             for rid, r in _storm_splits_of(eid).items()}
+    return jsonify(out)
+
+
+@app.route("/api/storm/split", methods=["POST"])
+def api_storm_split():
+    """File one bank entry per array from an entry that covers both.
+
+    Each new entry holds the events whose peak channel is on that array,
+    with every decision already made kept, and starts its own history; the
+    one it came from is untouched. Asking again returns the entry already
+    made rather than a second one."""
+    body = request.get_json(force=True) or {}
+    eid = body.get("entry_id")
+    want = [r for r in (body.get("regions") or [])
+            if r in stormregionmod.NAMES]
+    if not want:
+        return jsonify({"ok": False, "error": "Say which array: hip, m2 "
+                        "or both."}), 400
+    rec = BANK.get(eid) if eid else None
+    if not rec:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    regions = _storm_regions(rec.get("gid"))
+    if not regions:
+        return jsonify({"ok": False, "error": (
+            "This recording does not have a hippocampal and an M2 array "
+            "named, so there is nothing to split it by. Name its channel "
+            "banks, or pick the dual template, first.")}), 400
+    if stormregionmod.region_of(rec, regions):
+        return jsonify({"ok": False, "error": (
+            "That entry is about one array already.")}), 400
+    have = _storm_splits_of(eid)
+    src = rec.get("source") or {}
+    who = (body.get("added_by")
+           or (STORE.provenance() or {}).get("user") or "unknown")
+    made = []
+    try:
+        for rid in want:
+            region = stormregionmod.by_id(regions, rid)
+            if rid in have:
+                made.append(_storm_brief(have[rid], rid, True))
+                continue
+            evs, blind = stormregionmod.split_events(rec.get("events"), region)
+            if not evs:
+                made.append({"id": None, "region": rid, "n": 0,
+                             "why": "none of its %d events peaked on the %s "
+                                    "array" % (rec.get("n") or 0,
+                                               region["label"])})
+                continue
+            params = dict(src.get("parameters") or {}, region=rid,
+                          split_from={"entry": rec["id"],
+                                      "name": rec.get("name"),
+                                      "version": rec.get("version"),
+                                      "n_from": rec.get("n")})
+            note = ("Split from “%s” v%s: the %d of its %d events "
+                    "whose peak channel is on the %s array (CSC %d–%d)%s."
+                    % (rec.get("name"), rec.get("version"), len(evs),
+                       rec.get("n") or 0, region["label"], region["first"],
+                       region["last"],
+                       ("; %d had no channel and are in neither" % blind)
+                       if blind else ""))
+            entry = BANK.add({
+                "project": rec.get("project"), "mouse": rec.get("mouse"),
+                "session": rec.get("session"),
+                "session_key": rec.get("session_key"),
+                "session_loose_key": rec.get("session_loose_key"),
+                "session_label": rec.get("session_label"),
+                "session_path": rec.get("session_path"),
+                "recording_start": rec.get("recording_start"),
+                "duration_s": rec.get("duration_s"),
+                "gid": rec.get("gid"), "type": rec.get("type"),
+                "type_name": rec.get("type_name"),
+                "name": stormregionmod.name_with(rec.get("name"), region),
+                "note": rec.get("note"),
+                "events": evs,
+                "pipeline": src.get("pipeline") or "Event Bank split",
+                "detector": src.get("detector"),
+                "run_id": src.get("run_id"),
+                "source_file": src.get("file"),
+                "time_basis": rec.get("time_basis"),
+                "parameters": params,
+                "curated": bool(rec.get("specified")),
+                "curation_label": rec.get("curation_label"),
+                "label_names": rec.get("label_names"),
+                "aligned": rec.get("aligned"),
+                "added_by": who,
+                "version_note": note,
+            })
+            made.append(_storm_brief(entry, rid, False))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("storm/split", exc, 500, {"entry_id": eid})
+    STORE.record_activity([{"action": "storm.split",
+                            "detail": {"entry": eid, "regions": want,
+                                       "made": [m.get("id") for m in made]}}])
+    mirror_bank_soon()
+    return jsonify({"ok": True, "from": eid, "entries": made})
 
 
 def _doppler_recall(sess, key):
@@ -6836,6 +7000,9 @@ def api_braces_plan():
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
     _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
+    _br_regions = _storm_regions(rec.get("gid"))
+    _br_region = stormregionmod.by_id(
+        _br_regions, stormregionmod.region_of(rec, _br_regions))
     # Lock: how many of the spikes in the version asked about Braces placed.
     braced = None
     if (rec.get("type") or "") == "pooled":
@@ -6885,8 +7052,16 @@ def api_braces_plan():
         # unticked instead, which says the same thing and can be undone.
         "channels": [{"number": int(c["number"]),
                       "label": c.get("label"),
-                      "bad": bool(c.get("bad"))}
+                      "bad": bool(c.get("bad")),
+                      # The other array of a dual recording: listed, and
+                      # unticked, because a CSD down the channel order
+                      # steps from one implant to the other.
+                      "off_region": bool(_br_region and not
+                                         stormregionmod.inside(
+                                             _br_region, c["number"]))}
                      for c in _braces_channels(sess)],
+        "region": _br_region,
+        "regions": _br_regions,
         "versions": versions,
         # The NAME of the newest and of the one a commit would write. The
         # number is not unique -- see `versions.tip_next` -- so anything
@@ -7098,6 +7273,13 @@ def _braces_prepare(body):
         want = {int(x) for x in want_ch}
     else:
         want = {int(c["number"]) for c in all_ch if not c.get("bad")}
+        # One array of a dual recording: its own contacts only, never a
+        # profile down both implants (stormregion.py).
+        _regs = _storm_regions(rec.get("gid"))
+        _reg = stormregionmod.by_id(_regs,
+                                    stormregionmod.region_of(rec, _regs))
+        if _reg:
+            want = {n for n in want if stormregionmod.inside(_reg, n)}
     if not want:
         raise _BracesRefusal("No channels are ticked, so there is nothing to "
                              "build a profile from.")
@@ -7646,7 +7828,7 @@ def api_braces_set(set_id):
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
                  "params", "summary", "created", "committed", "rows",
-                 "calls")},
+                 "calls", "notes")},
         "counts": counts,
         # Which rows currently sit on a time another row also claims, by
         # row number so the panel can jump to them. Worked out from the
@@ -7703,6 +7885,45 @@ def api_braces_decide(set_id):
                     "calls": rec.get("calls") or {}})
 
 
+@app.route("/api/braces/set/<set_id>/note", methods=["POST"])
+def api_braces_note(set_id):
+    """A note on one row of an alignment (2026-11-20). `{row, note}`."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = BRACES.note(set_id, body.get("row"), body.get("note"),
+                          by=_braces_who(body))
+    except brsetmod.BracesSetError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "notes": rec.get("notes") or {}})
+
+
+@app.route("/api/braces/set/<set_id>/save", methods=["POST"])
+def api_braces_save(set_id):
+    """Send this alignment's review up now and confirm it arrived
+    (2026-11-20, the Save button)."""
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    try:
+        got = CLOUD.save_shard_file("braces", BRACES._base(rec))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    calls = rec.get("calls") or {}
+    STORE.record_activity([{"action": "braces.save",
+                            "detail": {"set": set_id, "calls": len(calls),
+                                       "confirmed": got.get("confirmed")}}])
+    return jsonify(dict(got, ok=True, calls=len(calls),
+                        rows=len(rec.get("rows") or []),
+                        notes=sum(1 for v in (rec.get("notes") or {}).values()
+                                  if (v or {}).get("text"))))
+
+
 @app.route("/api/braces/set/<set_id>/commit", methods=["POST"])
 def api_braces_commit(set_id):
     """Write the alignment as the next version of the bank entry.
@@ -7741,12 +7962,21 @@ def api_braces_commit(set_id):
         for lid, name in (entry.get("label_names") or {}).items():
             if lid in keep_ids:
                 keep_ids.add(name)
+        # The review's notes (2026-11-20), from row number to event index,
+        # so they ride into the version with their events.
+        rows = rec.get("rows") or []
+        notes = {}
+        for k, said in (rec.get("notes") or {}).items():
+            try:
+                notes[rows[int(k)]["i"]] = said
+            except (TypeError, ValueError, IndexError, KeyError):
+                continue
         report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
                             flags=flags, keep_ids=keep_ids,
-                            reject=rejects)
+                            reject=rejects, notes=notes)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -10148,7 +10378,8 @@ def _xm_folder(fid):
     if not isinstance(f, dict) or f.get("gone"):
         raise ValueError("There is no X-ray Many folder %s." % fid)
     wf, v, run = _xm_source(f.get("source"))
-    return f, wf, v, xraymanymod.members_of(wf["id"], v, run)
+    return f, wf, v, xraymanymod.members_of(
+        wf["id"], v, run, xraymanymod.labels_of(f.get("source")))
 
 
 def _xm_reads():
@@ -10234,7 +10465,9 @@ def api_dspca_many():
                 continue
             try:
                 wf, v, run = _xm_source(f.get("source"))
-                mem, err = xraymanymod.members_of(wf["id"], v, run), None
+                mem, err = xraymanymod.members_of(
+                    wf["id"], v, run,
+                    xraymanymod.labels_of(f.get("source"))), None
             except Exception as exc:                     # noqa: BLE001
                 mem, err = [], str(exc)
             rows.append((fid, f, mem, err))
@@ -10261,6 +10494,9 @@ def api_dspca_many():
             out.append({"id": fid, "name": f.get("name"),
                         "at": f.get("at"), "by": f.get("by"),
                         "source": f.get("source") or {},
+                        "warning": xraymanymod.warning(f.get("source")),
+                        "type_prefix": xraymanymod.type_prefix(
+                            f.get("source")),
                         "archived": bool(f.get("archived")),
                         "archived_at": f.get("archived_at"),
                         "params": xraymanymod.clean_params(params.get(fid)),
@@ -10272,30 +10508,137 @@ def api_dspca_many():
     return jsonify({"ok": True, "folders": out})
 
 
+def _xm_entry_source(eid):
+    """(workflow source, entry) for a folder made from a bank bundle
+    (PROJECT EVOLVE phase 3): the run the entry was banked from."""
+    rec = BANK.get(eid)
+    if not rec:
+        raise ValueError("There is no bank entry %s." % eid)
+    prm = ((rec.get("source") or {}).get("parameters") or {})
+    wf = prm.get("workflow") or {}
+    if prm.get("tool") != "rootcanal_workflow" or not wf.get("artifact_id"):
+        raise ValueError("‘%s’ was not banked by a Root Canal workflow, so "
+                         "there is no run to read it from."
+                         % (rec.get("name") or eid))
+    vers = rec.get("versions") or []
+    return ({"artifact_id": wf["artifact_id"], "version": wf.get("version")},
+            {"entry_id": rec["id"],
+             "version": (vers[-1].get("id") if vers else None)})
+
+
 @app.route("/api/dspca/many/folder", methods=["POST"])
 def api_dspca_many_folder():
     """A folder from a Root Canal workflow that has run: {name, source:
-    {artifact_id, version?}}. A server-side merge of one id."""
+    {artifact_id, version?}}. A server-side merge of one id.
+
+    PROJECT EVOLVE phase 3 (2026-11-21): `source.entry_id` makes it from a
+    banked Root Canal bundle instead (the run it was banked from), and
+    `labels` says which of its labels to read -- DS when left out. And
+    `carry_from`, another folder's id: its boxes and parameters, and every
+    call the Extraction Room keeps per folder (bands, splits, separable,
+    DS1/DS2 swaps), are copied onto the new folder's recordings that have
+    the same events -- a set made again, with nothing a person decided
+    lost."""
     body = request.get_json(force=True) or {}
     src = body.get("source") or {}
     try:
+        entry = None
+        if src.get("entry_id"):
+            src2, entry = _xm_entry_source(src["entry_id"])
+            src = dict(src, **src2)
         wf, v, run = _xm_source({"artifact_id": src.get("artifact_id"),
                                  "version": src.get("version")})
-        mem = xraymanymod.members_of(wf["id"], v, run)
+        labels = xraymanymod.clean_labels(run.get("kind"),
+                                          body.get("labels"))
+        if body.get("labels") and not labels:
+            raise ValueError("A %s run has none of the labels %s."
+                             % (run.get("kind"), body.get("labels")))
+        mem = xraymanymod.members_of(wf["id"], v, run, labels)
         if not any(m["n"] for m in mem):
-            raise ValueError("‘%s’ v%d kept no events inside its border, so "
-                             "there is nothing to read."
-                             % (wf.get("nickname") or wf["id"], v))
+            raise ValueError("‘%s’ v%d has no events in %s, so there is "
+                             "nothing to read."
+                             % (wf.get("nickname") or wf["id"], v,
+                                xraymanymod.label_words(run.get("kind"),
+                                                        labels)
+                                if labels else "its border"))
     except Exception as exc:                             # noqa: BLE001
         return fail("dspca/many/folder", exc, 400, {"source": src})
     fid = xraymanymod.new_folder_id()
     rec = xraymanymod.folder_record(body.get("name"), wf, v, run,
-                                    STORE.provenance())
+                                    STORE.provenance(), labels=labels,
+                                    entry=entry)
+    carried = None
+    if body.get("carry_from"):
+        try:
+            carried = _xm_carry(body["carry_from"], fid, mem)
+            rec["carried_from"] = body["carry_from"]
+        except Exception as exc:                         # noqa: BLE001
+            return fail("dspca/many/folder", exc, 400,
+                        {"carry_from": body.get("carry_from")})
     STORE.set_prefs({}, merge={xraymanymod.FOLDERS_KEY: {fid: rec}})
+    if carried and carried.get("merge"):
+        STORE.set_prefs({}, merge=carried.pop("merge"))
+    elif carried:
+        carried.pop("merge", None)
     STORE.record_activity([{"action": "dspca.many.folder",
                             "detail": {"id": fid, "workflow": wf["id"],
-                                       "version": v, "n": len(mem)}}])
-    return jsonify({"ok": True, "id": fid, "n": len(mem)})
+                                       "version": v, "n": len(mem),
+                                       "labels": labels,
+                                       "entry": (entry or {}).get("entry_id"),
+                                       "carried_from":
+                                           body.get("carry_from")}}])
+    return jsonify({"ok": True, "id": fid, "n": len(mem),
+                    "labels": labels, "carried": carried,
+                    "warning": xraymanymod.warning(rec["source"])})
+
+
+def _xm_carry(old_fid, new_fid, new_mem):
+    """What to copy from folder `old_fid` onto `new_fid`: a recording's box
+    and its room calls go across only when its events are the same in both
+    (the same stamps hash) -- a call made on other events is not a call on
+    these. Returns {copied, same, differ, merge}; `merge` is the prefs
+    merge to write."""
+    f_old, _wf, _v, old_mem = _xm_folder(old_fid)
+    prefs = STORE.get_prefs() or {}
+    same = {m["gid"] for m in new_mem if m.get("n")} & {
+        m["gid"] for m in old_mem if m.get("n")}
+    old_sh = {m["gid"]: m.get("stamps_hash") for m in old_mem}
+    new_sh = {m["gid"]: m.get("stamps_hash") for m in new_mem}
+    match = {g for g in same if old_sh.get(g) and old_sh[g] == new_sh.get(g)}
+    differ = sorted(same - match)
+    merge, copied = {}, {}
+    boxes = prefs.get(xraymanymod.BOXES_KEY) or {}
+    for g in match:
+        b = boxes.get(xraymanymod.box_key(old_fid, g))
+        if b:
+            merge.setdefault(xraymanymod.BOXES_KEY, {})[
+                xraymanymod.box_key(new_fid, g)] = b
+            copied["boxes"] = copied.get("boxes", 0) + 1
+    p = (prefs.get(xraymanymod.PARAMS_KEY) or {}).get(old_fid)
+    if p:
+        merge.setdefault(xraymanymod.PARAMS_KEY, {})[new_fid] = p
+        copied["params"] = 1
+    for key in (extractionmod.BAND_KEY, extractionmod.SEP_KEY,
+                extractionmod.FLIP_KEY, extractionmod.SPLIT_KEY):
+        got = prefs.get(key) or {}
+        for room, _n in extractionmod.ROOMS:
+            for g in match:
+                val = got.get(extractionmod.call_key(room, old_fid, g))
+                if val is None:
+                    continue
+                merge.setdefault(key, {})[
+                    extractionmod.call_key(room, new_fid, g)] = val
+                copied[key] = copied.get(key, 0) + 1
+    # The set's own mode in the room (one per room and folder).
+    modes = prefs.get(MODE_KEY) or {}
+    for room, _n in extractionmod.ROOMS:
+        val = modes.get("%s|%s" % (room, old_fid))
+        if val is not None:
+            merge.setdefault(MODE_KEY, {})["%s|%s" % (room, new_fid)] = val
+            copied[MODE_KEY] = copied.get(MODE_KEY, 0) + 1
+    return {"from": old_fid, "from_name": f_old.get("name"),
+            "copied": copied, "same": len(match),
+            "differ": differ, "merge": merge}
 
 
 @app.route("/api/dspca/many/read", methods=["POST"])
@@ -10496,7 +10839,10 @@ def api_dspca_many_run():
                        "group": groups.get(gid),
                        "source": {k: src.get(k) for k in
                                   ("artifact_id", "version", "nickname",
-                                   "grace")}}
+                                   "grace", "labels", "entry_id")
+                                  if src.get(k) is not None
+                                  or k in ("artifact_id", "version",
+                                           "nickname", "grace")}}
             have = ARTIFACTS.find(xraymanymod.KIND, subject)
             before = (have or {}).get("version")
             saved = ARTIFACTS.put(
@@ -10644,7 +10990,9 @@ def api_extraction():
                 continue
             try:
                 _wf, _v, _run = _xm_source(f.get("source"))
-                mem = xraymanymod.members_of(_wf["id"], _v, _run)
+                mem = xraymanymod.members_of(
+                    _wf["id"], _v, _run,
+                    xraymanymod.labels_of(f.get("source")))
             except Exception:                            # noqa: BLE001
                 mem = []
             n_read = sum(1 for m in mem if m.get("n") and _xm_read_of(
@@ -18145,24 +18493,24 @@ def _wf_halo_apply(run, h, from_version=None):
     return run
 
 
-def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
-                     name=None, user_note=None):
-    """Bank what a run extracted: ONE entry for the whole target pool
-    (decided 2026-11-05), each event carrying the recording and the set it
-    came from. A classifier's call, not a person's."""
-    kind = defn["kind"]
-    col = run["cols"]
-    gids = col["gids"]
-    by_gid = {m["gid"]: m for m in run["members"]}
-    lab = ({"label_id": "spike", "label": "Dentate Spike"} if kind == "ds"
-           else {"label_id": "solid", "label": "Solid"})
+def _wf_label_events(run, kind, labels):
+    """A run's events in the labels picked (rcworkflow.BANK_LABELS), as the
+    bank takes them: each with its time, recording and set, and its label
+    -- in a bundle its class and the Halo too. Returns (events, sources,
+    shape); `shape` says the entry's type, whether it is a bundle, and how
+    many each label holds."""
+    col = run.get("cols") or {}
+    gids = col.get("gids") or []
+    ts = col.get("t") or []
+    by_gid = {m["gid"]: m for m in run.get("members") or []}
+    picks, shape = rcworkflow.bank_pick(kind, col.get("cls") or [], labels)
+    picks = [p for p in picks if ts[p[0]] is not None]
     events, srcs = [], {}
-    for n, c in enumerate(col["cls"]):
-        if c != "inside" or col["t"][n] is None:
-            continue
+    for n, lid, word, c in picks:
         g = gids[col["g"][n]] if 0 <= col["g"][n] < len(gids) else None
         m = by_gid.get(g) or {}
-        events.append(dict(lab, start=col["t"][n], gid=g,
+        events.append(dict(rcworkflow.bank_event(lid, word, c, shape),
+                           start=ts[n], gid=g,
                            src_entry=m.get("entry_id"),
                            src_version=m.get("from_version")))
         s = srcs.setdefault(m.get("entry_id"), {
@@ -18170,8 +18518,37 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
             "version": m.get("from_version"),
             "session_label": m.get("session_label"), "n": 0})
         s["n"] += 1
+    # The counts again, of the events that have a time: what is written.
+    for lab in shape["labels"]:
+        mine = [p for p in picks if p[1] == lab["id"]]
+        lab["n"] = len(mine)
+        lab["halo"] = sum(1 for p in mine if str(p[3]).startswith("halo_"))
+    return events, srcs, shape
+
+
+def _wf_bank_label_names(shape):
+    """{label id: label} of a bundle, so it reads on its own in the bank."""
+    return ({lab["id"]: lab["label"] for lab in shape["labels"]}
+            if shape.get("bundle") else None)
+
+
+def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
+                     name=None, user_note=None, labels=None):
+    """Bank what a run extracted: ONE entry for the whole target pool
+    (decided 2026-11-05), each event carrying the recording and the set it
+    came from. A classifier's call, not a person's. `labels` (2026-11-19):
+    inside the border, as always, and/or what it left outside; two make a
+    Root Canal bundle."""
+    kind = defn["kind"]
+    want = list(labels or []) or [kind]
+    events, srcs, shape = _wf_label_events(run, kind, want)
     if not events:
         return None
+    # A different kind of entry is a new entry: a DS set never turns into a
+    # bundle under the readers pinned to it.
+    if prior_entry and (BANK.get(prior_entry) or {}).get("type") \
+            != shape["type"]:
+        prior_entry = None
     nick = rec.get("nickname") or rec.get("name")
     projects = sorted({str(e.get("project")) for e in
                        (BANK.get(s["entry_id"]) or {} for s in srcs.values()
@@ -18181,16 +18558,20 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
         "id": prior_entry,
         "project": projects[0] if len(projects) == 1 else (
             ", ".join(projects) or "Unfiled"),
-        "type": "ds" if kind == "ds" else "ied",
-        "type_name": "Dentate spike" if kind == "ds" else "P-spike",
+        "type": shape["type"],
+        "type_name": shape["type_name"],
+        "label_names": _wf_bank_label_names(shape),
         "name": (name or "").strip() or "%s · %s" % (rcworkflow.WORDS[kind],
                                                       nick),
         "note": ("Extracted by the Root Canal workflow ‘%s’ v%s: every event "
-                 "of ‘%s’ v%s inside the border at grace %s. %s A border's "
-                 "call, not a person's. %d recordings in one entry; each "
-                 "event says which."
+                 "of ‘%s’ v%s %s at grace %s. %s A border's call, not a "
+                 "person's. %d recordings in one entry; each event says "
+                 "which."
                  % (nick, version_next, run["target"].get("nickname"),
                     run["target"].get("version"),
+                    "inside the border" if want == [kind] else
+                    "by the labels picked (%s)" % rcworkflow.labels_words(
+                        shape),
                     rcborder.grace_words(run["grace"]), run["rule"],
                     len(srcs))
                  + ((" " + user_note.strip()) if (user_note or "").strip()
@@ -18203,6 +18584,8 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
                        "workflow": {"artifact_id": rec["id"],
                                     "version": version_next,
                                     "nickname": nick, "kind": kind},
+                       "labels": shape["labels"],
+                       "bundle": shape["bundle"],
                        "grace": run["grace"],
                        "border": run.get("border_ref"),
                        "target": run["target"],
@@ -18214,7 +18597,10 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
             "name": made.get("name") if isinstance(made, dict) else None,
             "version": versionsmod.tip_next(vers)[0] if vers else None,
             "new": not prior_entry,
-            "recordings": len(srcs)}
+            "recordings": len(srcs),
+            "type": shape["type"], "bundle": shape["bundle"],
+            "labels": [{k: lab[k] for k in ("id", "label", "n", "halo")}
+                       for lab in shape["labels"]]}
 
 
 def _wf_border_save(rec, run, prior):
@@ -18591,19 +18977,28 @@ def api_rootcanal_workflow_run(artifact_id):
             # BANKED ONLY WHEN ASKED (2026-11-05: "not sure what to hit to
             # bank"): Run and bank says so on its button and in a dialog
             # that names the entry; a run without it banks nothing.
-            prior_bank = None
+            # The entry banked last, and (2026-11-19) the last one of each
+            # type: a DS set and a bundle of the same workflow are two
+            # entries, each continued by a bank of its own kind.
+            prior_bank, prior_of = None, {}
             for v in range(int(rec.get("version") or 1), 0, -1):
                 pb = ((ARTIFACTS.payload(artifact_id, v) or {}).get("run")
                       or {}).get("bank")
-                if pb and pb.get("entry_id") and BANK.get(pb["entry_id"]):
-                    prior_bank = pb
-                    break
+                got = BANK.get(pb["entry_id"]) if pb and pb.get(
+                    "entry_id") else None
+                if got:
+                    prior_bank = prior_bank or pb
+                    prior_of.setdefault(got.get("type"), pb["entry_id"])
             if body.get("bank", True):
+                want = list(body.get("bank_labels") or []) or [defn["kind"]]
+                _p, shape0 = rcworkflow.bank_pick(
+                    defn["kind"], run["cols"]["cls"], want)
                 run["bank"] = _wf_extract_bank(
                     rec, defn, run, nxt,
-                    (prior_bank or {}).get("entry_id"),
+                    prior_of.get(shape0["type"]),
                     name=body.get("bank_name"),
-                    user_note=body.get("bank_note"))
+                    user_note=body.get("bank_note"),
+                    labels=body.get("bank_labels"))
             else:
                 run["bank"] = None
                 run["banked_before"] = prior_bank
@@ -18698,6 +19093,82 @@ def api_rootcanal_workflow_one(artifact_id):
                     "artifact": ARTIFACTS.summary(artifact_id)})
 
 
+def _wf_bank_by_labels(rec, ver, run, kind, body):
+    """A saved run banked by the labels ticked (PROJECT EVOLVE phase 1,
+    2026-11-19): ONE entry for the whole pool, as every workflow bank is.
+    One label is a plain entry of its type; two or more one Root Canal
+    bundle, every event saying its label, its class and whether the Halo
+    captured it. Body: {labels, name, note, entry_id}. A border's and a
+    halo's call, not a person's: never marked curated."""
+    if kind not in rcworkflow.BANK_LABELS or not run.get("cols"):
+        raise rcworkflow.WorkflowError(
+            "v%s of this workflow has no run to bank by label." % ver)
+    events, srcs, shape = _wf_label_events(run, kind, body.get("labels"))
+    if not events:
+        raise rcworkflow.WorkflowError(
+            "None of the labels picked has an event with a time.")
+    nick = rec.get("nickname") or rec.get("name")
+    # Banking over an entry continues it only when it is the same kind.
+    eid = str(body.get("entry_id") or "").strip() or None
+    if eid and (BANK.get(eid) or {}).get("type") != shape["type"]:
+        eid = None
+    halo = run.get("halo")
+    gw = lambda g: "?" if g is None else rcborder.grace_words(g)  # noqa: E731
+    if kind == "ambiguous":
+        rule = ("both borders (DS at grace %s, P-spike at grace %s)%s" % (
+            gw(((run.get("borders") or {}).get("ds") or {}).get("grace")),
+            gw(((run.get("borders") or {}).get("pspike") or {}).get("grace")),
+            ("; " + rcworkflow.halo_words(halo)) if halo
+            else "; no Halo on this version"))
+    else:
+        rule = "its border at grace %s" % gw(run.get("grace"))
+    projects = sorted({str(e.get("project")) for e in
+                       (BANK.get(s["entry_id"]) or {} for s in srcs.values()
+                        if s.get("entry_id")) if e.get("project")})
+    made = BANK.add({
+        "id": eid,
+        "project": projects[0] if len(projects) == 1 else (
+            ", ".join(projects) or "Unfiled"),
+        "type": shape["type"], "type_name": shape["type_name"],
+        "label_names": _wf_bank_label_names(shape),
+        "name": (str(body.get("name") or "").strip()
+                 or "%s · %s v%s" % (" + ".join(
+                     lab["label"] for lab in shape["labels"]), nick, ver)),
+        "note": ("From the Root Canal workflow ‘%s’ v%s, by %s: %s. %s A "
+                 "border's call, not a person's. %d recordings in one entry; "
+                 "each event says which."
+                 % (nick, ver, rule, rcworkflow.labels_words(shape),
+                    "Each event says its label, the class it came from and "
+                    "whether the Halo captured it." if shape["bundle"]
+                    else "", len(srcs))).replace("  ", " ")
+                + ((" " + str(body.get("note")).strip())
+                   if str(body.get("note") or "").strip() else ""),
+        "events": events, "curated": False, "pipeline": WF_PIPELINE,
+        "added_by": (STORE.provenance() or {}).get("user"),
+        "parameters": {"tool": "rootcanal_workflow",
+                       "workflow": {"artifact_id": rec["id"], "version": ver,
+                                    "nickname": nick, "kind": kind},
+                       "labels": shape["labels"], "bundle": shape["bundle"],
+                       "halo": ({k: halo.get(k) for k in
+                                 ("reach", "margin", "captured",
+                                  "from_version")} if halo else None),
+                       "target": run.get("target"),
+                       "grace": run.get("grace"),
+                       "border": run.get("border_ref"),
+                       "borders": {k: {"workflow": (v or {}).get("workflow"),
+                                       "grace": (v or {}).get("grace")}
+                                   for k, v in (run.get("borders") or {})
+                                   .items()} or None,
+                       "sources": sorted(srcs.values(), key=lambda s: str(
+                           s.get("session_label") or ""))},
+    })
+    return {"entry_id": made["id"], "n": len(events),
+            "name": made.get("name"), "type": shape["type"],
+            "bundle": shape["bundle"], "recordings": len(srcs),
+            "labels": [{k: lab[k] for k in ("id", "label", "n", "halo")}
+                       for lab in shape["labels"]]}
+
+
 @app.route("/api/rootcanal/workflow/<artifact_id>/bank", methods=["POST"])
 def api_rootcanal_workflow_bank(artifact_id):
     """Bank the events a person picked out of an ambiguous run, as one
@@ -18710,8 +19181,15 @@ def api_rootcanal_workflow_bank(artifact_id):
             raise rcworkflow.WorkflowError("There is no workflow %s."
                                            % artifact_id)
         ver = body.get("version") or rec.get("version")
-        run = (ARTIFACTS.payload(artifact_id, ver) or {}).get("run") or {}
+        pay = ARTIFACTS.payload(artifact_id, ver) or {}
+        run = pay.get("run") or {}
         col = run.get("cols") or {}
+        # BY LABEL (PROJECT EVOLVE, 2026-11-19): the labels ticked in the
+        # bank dialog -- one a plain entry, two or more a Root Canal bundle.
+        if body.get("labels") is not None:
+            out = _wf_bank_by_labels(rec, ver, run, (pay.get(
+                "definition") or {}).get("kind"), body)
+            return jsonify(dict(out, ok=True))
         # A WHOLE SIDE (2026-11-12): every event of one border alone, and
         # what its halo captured -- a border's and a halo's call, not a
         # person's picks.
@@ -18747,7 +19225,7 @@ def api_rootcanal_workflow_bank(artifact_id):
         made = BANK.add({
             "type": etype,
             "type_name": {"ds": "Dentate spike", "ied": "P-spike"}.get(
-                etype, "Ambiguous DS / P-spike"),
+                etype, "Twilight Zone"),
             "name": name,
             "id": (str(body.get("entry_id") or "").strip() or None)
             if side else None,
@@ -18759,8 +19237,9 @@ def api_rootcanal_workflow_bank(artifact_id):
                           rcworkflow.halo_words(run["halo"])
                           if run.get("halo") else "no halo on this version"))
                      if side else
-                     ("Picked by hand from the ambiguous events of the Root "
-                      "Canal workflow ‘%s’ v%s." % (nick, ver)))
+                     ("Picked by hand from the Twilight Zone and outside-both "
+                      "events of the Root Canal workflow ‘%s’ v%s."
+                      % (nick, ver)))
             + ((" " + str(body.get("note")).strip())
                if str(body.get("note") or "").strip() else ""),
             "events": events, "curated": not side, "pipeline": WF_PIPELINE,
@@ -23020,7 +23499,8 @@ def api_curation_from_bank():
         except (TypeError, ValueError):
             continue
         facts[key] = {k: e[k] for k in ("origin", "pair_t", "stamp",
-                                         "channel", "amplitude")
+                                         "channel", "amplitude",
+                                         "note", "note_by")
                       if e.get(k) is not None}
     if facts:
         for item in events:
@@ -23096,6 +23576,17 @@ def api_curation_from_bank():
             pass
 
     prog = CURATE.progress(rec)
+    # Started from a version where every event is already decided: the
+    # "first time every event is decided" has happened, in that version, so
+    # this set never banks itself. Without this, picking up an old finished
+    # version and changing one call banked a new version on the spot
+    # (Rain, 2026-11-20: "if people pull up old shit ... it can save a new
+    # version").
+    if prog.get("total") and not prog.get("left"):
+        try:
+            rec = CURATE.mark_autobanked(gid, skind, want_v) or rec
+        except curation.CurationError:
+            pass
     STORE.record_activity([{
         "action": "curation.from_bank",
         "detail": {"gid": gid, "kind": skind, "entry": ent["id"],
@@ -23715,6 +24206,101 @@ def api_curation_label(gid, kind):
     except Exception as exc:
         return fail("curation/label", exc, 400, {"gid": gid, "kind": kind})
     return jsonify({"ok": True, "event": ev, "progress": prog})
+
+
+@app.route("/api/curation/<gid>/<kind>/note", methods=["POST"])
+def api_curation_note(gid, kind):
+    """A note on one candidate, or none (2026-11-20). `{event, note}`.
+
+    Changes nothing but the note: not the label, not who decided, not whose
+    the set is. It goes into the bank with the event when the set is banked.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        ev = CURATE.note(gid, kind, body.get("event"), body.get("note"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "event": {
+        "id": ev.get("id"), "note": ev.get("note") or "",
+        "note_by": ev.get("note_by"), "note_at": ev.get("note_at")}})
+
+
+@app.route("/api/curation/<gid>/<kind>/save", methods=["POST"])
+def api_curation_save(gid, kind):
+    """Save, and say so (2026-11-20).
+
+    Every decision is already written here the moment it is made. This sends
+    the set to the shared database now, rather than with the next sync, and
+    reads back what the database holds -- so "is it saved?" has an answer
+    somebody can see: "412 of 1,476 decided, uploaded and confirmed".
+    """
+    try:
+        got = CLOUD.save_curation_set(gid, kind)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    STORE.record_activity([{
+        "action": "curation.save",
+        "detail": {"gid": gid, "kind": kind,
+                   "decided": got.get("decided"), "total": got.get("total"),
+                   "confirmed": got.get("confirmed")},
+    }])
+    return jsonify(dict(got, ok=True))
+
+
+@app.route("/api/curation/<gid>/<kind>/keep-only", methods=["POST"])
+def api_curation_keep_only(gid, kind):
+    """Keep this set in view and hide the other sets of the same step on the
+    same recording (2026-11-20, Rain: "an option to ... remove them from
+    view").
+
+    Hiding is archiving: nothing is deleted, every decision stays, and each
+    can be brought back from the "archived" fold. Only sets of the same kind
+    family (every Panning set of a recording, say) are touched, and never
+    one somebody is in right now.
+    """
+    me = CURATE.get(gid, kind)
+    if not me:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    base = curation.kind_of(kind)
+    busy = set()
+    try:
+        for r in PRESENCE.all():
+            if r.get("active") and r.get("gid") == gid:
+                busy.add(r.get("kind"))
+    except Exception:                                    # noqa: BLE001
+        pass
+    hidden, skipped = [], []
+    for rec in CURATE.all():
+        if rec.get("gid") != gid or rec.get("kind") == kind:
+            continue
+        if curation.kind_of(rec.get("kind")) != base or rec.get("archived"):
+            continue
+        if rec.get("kind") in busy:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": "somebody is in it right now"})
+            continue
+        try:
+            CURATE.archive(gid, rec["kind"], True)
+            hidden.append({"kind": rec["kind"], "name": rec.get("name")})
+        except curation.CurationError as exc:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": str(exc)})
+    if me.get("archived"):
+        try:
+            CURATE.archive(gid, kind, False)
+        except curation.CurationError:
+            pass
+    STORE.record_activity([{
+        "action": "curation.keep_only",
+        "detail": {"gid": gid, "kind": kind, "hidden": len(hidden),
+                   "skipped": len(skipped)},
+    }])
+    return jsonify({"ok": True, "hidden": hidden, "skipped": skipped})
 
 
 @app.route("/api/curation/<gid>/<kind>/rename", methods=["POST"])
@@ -25714,6 +26300,10 @@ def api_curation_restore(gid, kind):
     # pass on top of whatever was newest.
     try:
         CURATE.set_based_on(gid, kind, want_v)
+        # A finished version put back is not a first finish: it never banks
+        # itself again (see api_curation_from_bank).
+        if prog.get("total") and not prog.get("left"):
+            CURATE.mark_autobanked(gid, kind, want_v)
     except curation.CurationError:
         pass        # the set is gone; the restore already reported that
     STORE.record_activity([{
@@ -28986,6 +29576,7 @@ _SHARD_WHAT = {
     "presets": "saved filter and analysis presets",
     "results": "the figure catalogue",
     "storyboards": "decks",
+    "seahorse": "Seahorse atlas notes, saved views and quiz progress",
     "feedback": "reports filed from the interface",
     "tombstones": "what has been deleted, so a delete travels",
 }
@@ -29931,6 +30522,10 @@ COLUMN_MIGRATIONS = {
     "synced_at": "24_arrival_clock.sql",
     "aligned": "24_arrival_clock.sql",
     "by_label": "24_arrival_clock.sql",
+    # Notes on curated events, each half of the row on its own clock
+    # (2026-11-20).
+    "note_at": "25_curation_notes.sql",
+    "note_by": "25_curation_notes.sql",
 }
 
 
@@ -29970,6 +30565,8 @@ COLUMN_TABLES = {
     "synced_at": "bank_entries",
     "aligned": "bank_entries",
     "by_label": "bank_entries",
+    "note_at": "curation_events",
+    "note_by": "curation_events",
 }
 
 
@@ -31121,6 +31718,14 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 # or on the VACC. Its routes live in er2routes.py.
 from . import er2routes as er2routesmod                       # noqa: E402
 er2routesmod.install(app, sys.modules[__name__])
+# PROJECT EVOLVE (2026-11-21): branching labels out of a bank entry and
+# every thing's family (evolveroutes.py, family.py); the Cells -- curated
+# Kilosort units, read, versioned, banked and viewed (cellroutes.py,
+# cells.py).
+from . import evolveroutes as evolveroutesmod                 # noqa: E402
+evolveroutesmod.install(app, sys.modules[__name__])
+from . import cellroutes as cellroutesmod                     # noqa: E402
+cellroutesmod.install(app, sys.modules[__name__])
 
 # VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
 # its Chrome and its routes live in vos.py.
@@ -31137,6 +31742,11 @@ softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("us
 from . import chickenscratch as chickenscratchmod             # noqa: E402
 chickenscratchmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                                   _vacc_device()))
+# Seahorse (the mouse-brain atlas tab): shared lab notes, saved views and
+# per-person quiz progress in GUI_logs/seahorse. seahorse.py.
+from . import seahorse as seahorsemod                         # noqa: E402
+SEAHORSE = seahorsemod.install(app, fail, LOGS_DIR, STORE,
+                               who=lambda: (PROFILE.effective() or {}).get("user"))
 # Floss, the bug fixer anyone can ask (the rail's Floss chip): Claude Code on
 # the lab's account, in a private copy of the code. floss.py, docs/floss.md.
 from . import floss as flossmod                               # noqa: E402
@@ -31155,6 +31765,10 @@ weeklymod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user")
                   machine=_vacc_device, shard=shardsmod_id, reg=lambda: REG,
                   bank=lambda: BANK, curate=lambda: CURATE, is_test=peoplemod.is_test_name,
                   save=lambda blob, name: save_output(blob, name, subdir="Weekly"))
+# StrataScope Beta's Consult (2026-11-19): the page primes a consult, Claude
+# Code answers it (tools/strata_consult.py), the reply lands over /api/link.
+from . import strataconsult as strataconsultmod               # noqa: E402
+strataconsultmod.install(app, sys.modules[__name__])
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
@@ -32785,6 +33399,13 @@ def api_profile():
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:                              # noqa: BLE001
         return fail("profile/save", exc, 400)
+    # A profile that has just become the PI's starts the practice layer at
+    # once. Read from the real shard only, so nothing saved inside the layer
+    # can turn it off (pisafe.py).
+    try:
+        pisafemod.decide(LOGS_DIR)
+    except Exception as exc:                              # noqa: BLE001
+        STORE.record_error("pisafe.decide", exc)
     return jsonify({"ok": True, "profile": prof,
                     "provenance": STORE.provenance()})
 
@@ -33022,6 +33643,27 @@ def api_bank_version(entry_id, v):
         elif action in ("archive", "unarchive"):
             rec, changed = BANK.edit_version(
                 entry_id, v, {"archived": action == "archive"})
+        elif action == "keep_only":
+            # This version in view and every other one hidden (2026-11-20,
+            # Rain: "consolidate them or remove them from view"). Hidden is
+            # archived: nothing is deleted, each comes back from the
+            # "hidden" fold of any version picker. The one kept is
+            # unarchived if it was hidden itself.
+            ent = BANK.get(entry_id)
+            if not ent:
+                raise eventbank.BankError("No such entry.")
+            keep = BANK._version_ref(ent, v)
+            changed = []
+            for ver in list(ent.get("versions") or []):
+                ref = (str(ver["id"]) if ver.get("id")
+                       else versionsmod.stable_id(entry_id, ver))
+                want = not (ver is keep or versionsmod._twin_of(keep, ver))
+                if bool(ver.get("archived")) == want:
+                    continue
+                rec, _c = BANK.edit_version(entry_id, ref, {"archived": want})
+                changed.append(("hid " if want else "kept ")
+                               + "v%s" % ver.get("v"))
+            rec = BANK.get(entry_id)
         else:
             patch = {}
             if "note" in body:
@@ -33489,7 +34131,16 @@ def _cloud_results():
 
 def cloud_sync_once(push=True, pull=True, files=False):
     """One round trip. Never raises: a sync that fails is a status line,
-    not an interruption to whatever someone is doing."""
+    not an interruption to whatever someone is doing.
+
+    In the real view always (pisafe.py): what colleagues did lands in the
+    real records, and nothing from the PI's practice layer is swept, mirrored
+    or copied into one. With the layer on, the push half does nothing."""
+    with shards.real_view():
+        return _cloud_sync_once(push=push, pull=pull, files=files)
+
+
+def _cloud_sync_once(push=True, pull=True, files=False):
     # `ok=False` explicitly on both of these. They return a copy of the LAST
     # sync's record, and that record's `ok` belongs to a run that already
     # finished -- so a refusal after a good sync came back saying ok, and the
@@ -33593,12 +34244,22 @@ def cloud_sync_once(push=True, pull=True, files=False):
         # gets past (2026-10-21, two machines in the same minute, both
         # syncing again at once).
         first = _cloud_last.get("ok") is not False
-        transient = (" timed out after " in str(exc)
+        # Held back by ONE dropped request (cloud.CloudAway): nothing was
+        # asked, so it is not "the next attempt failing too". Isabella's Mac
+        # filed one at every start on 11-22: a request dropped seconds after
+        # start-up held the database for 15 s, and the sync behind it landed
+        # inside the hold. Two failures in a row behind a hold still count.
+        lone_hold = (isinstance(exc, cloudmod.CloudAway)
+                     and getattr(exc, "failures", 0) < 2)
+        transient = (lone_hold
+                     or " timed out after " in str(exc)
                      or str(exc).startswith("cannot reach ")
                      or _cloud_skew(str(exc)))
         if first and transient:
             _cloud_last["log_next"] = True
             first = False
+        elif lone_hold:
+            first = False     # log_next waits for a sync that is sent
         elif _cloud_last.pop("log_next", False):
             first = True
         _cloud_last.update({"at": cloudmod.now(), "ok": False,
@@ -34202,7 +34863,9 @@ def mirror_bank_soon():
         if not _mirror_lock.acquire(blocking=False):
             return
         try:
-            CLOUD.mirror_bank(APP_DIR)
+            # The mirror is committed: from the real records only.
+            with shards.real_view():
+                CLOUD.mirror_bank(APP_DIR)
         except Exception as exc:                   # noqa: BLE001
             STORE.record_error("bank.mirror", exc)
         finally:

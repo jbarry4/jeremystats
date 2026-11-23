@@ -1,0 +1,218 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>supportlive: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* 2026-11-19, Aggie: "I tried copying Rain's set up but it's showing every
+   channel but not showing the unfiltered stuff ... It still looks the exact
+   same." She copied while Panning was open, and support panel preferences
+   were read only when an add-on OPENED -- so nothing on screen moved, and a
+   copy made in the support window (a copy of the app, with its own copy of
+   the preferences) never reached the main window at all. And the user:
+   "make my current set ups the default ones".
+
+   1. The lab's default: used for an add-on nobody here has set up, before
+      the add-on's own; one's own beats it; Defaults goes back to it; changing
+      one window of a lab-default add-on keeps the other window the lab's.
+   2. A copy while the add-on is open lays out its main window again and
+      sends its second window to the new arrangement, at once.
+   3. A change made in another window of the app (BroadcastChannel) does the
+      same in this one.
+   4. Leaving the add-on stops it.
+   5. "Make mine the lab default".
+
+   NOTHING IS WRITTEN: BARRY.prefs.get/set are answered here, the frame's
+   fetch answers every POST to prefs and presets, and the second window is a
+   stand-in that records where it was sent. The demo recording. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(100);
+  }
+  return null;
+}
+
+(async () => {
+  const fr = document.getElementById('app');
+  const W = () => fr.contentWindow, D = () => fr.contentDocument;
+  let realFetch = null;
+  try {
+    await new Promise((r) => fr.addEventListener('load', r, { once: true }));
+    await until(() => W().BARRY && W().BARRY.views && W().BARRY.views.xplore
+                      && W().BARRY.supportPanels && typeof W().setView === 'function', 30000);
+    const B = W().eval('BARRY');
+    const X = B.views.xplore, XF = X.state, SP = B.supportPanels;
+
+    // Every write answered here (memory: stub fetch, probe first).
+    const posted = [];
+    realFetch = W().fetch;
+    W().fetch = function (url, o) {
+      const m = String((o && o.method) || 'GET').toUpperCase();
+      const u = String(url);
+      if (m !== 'GET' && /\/api\/(prefs|presets)/.test(u)) {
+        posted.push(m + ' ' + u.replace(/^.*\/api\//, '/api/'));
+        return Promise.resolve(new (W().Response)(JSON.stringify(
+          { ok: true, prefs: B.prefs.all(), presets: [] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return realFetch.apply(this, arguments);
+    };
+    await W().eval('apiPost')('/api/prefs', { probe: 1 }).catch(() => null);
+    check('the stub answers a prefs POST (probe)', posted.length === 1, posted.join(' '));
+
+    const kept = {};
+    const realGet = B.prefs.get, realSet = B.prefs.set;
+    B.prefs.get = (k, d) => (k in kept ? kept[k] : realGet.call(B.prefs, k, d));
+    B.prefs.set = (k, v) => { kept[k] = JSON.parse(JSON.stringify(v)); };
+    const realConfirm = B.confirm;
+    B.confirm = async () => true;
+
+    const LAB_MAIN = { panels: [{ panel: 'traces', filter: 'p:ds', gain: 2.5, notch: true }],
+                       shape: null, layout: null, span: null };
+    const LAB = { panning: {
+      open: true, shape: 'linked', layout: null, span: null, overview: null,
+      panels: [{ panel: 'csd', filter: 'p:ds' }, { panel: 'csd', filter: 'custom', hp: 1 },
+               { panel: 'traces', filter: 'p:none', gain: 2.5 },
+               { panel: 'spectrogram', filter: 'raw', band: 'custom', fmin: 1, fmax: 800 }],
+      main: LAB_MAIN } };
+    kept.support_panels = {};
+    kept.support_panels_lab = { addons: LAB, by: 'zz harness', at: '2026-11-19T00:00:00Z' };
+
+    say('=== 1. the lab’s default ===');
+    check('an add-on nobody here set up uses the lab’s', SP.sourceOf('panning') === 'lab');
+    check('its second window is the lab’s four panels',
+          SP.choice('panning').panels.map((e) => e.panel).join(',') === 'csd,csd,traces,spectrogram',
+          SP.choice('panning').panels.map((e) => e.panel).join(','));
+    check('and its main window the lab’s too', SP.choiceMain('panning').custom === true
+          && SP.choiceMain('panning').panels[0].filter === 'p:ds');
+    check('an add-on the lab has no default for keeps its own',
+          SP.sourceOf('spotter') === 'addon' && SP.choice('spotter').panels.length === 3);
+    kept.support_panels = { panning: { open: true, panels: [{ panel: 'theta' }] } };
+    check('one’s own beats the lab’s', SP.sourceOf('panning') === 'mine'
+          && SP.choice('panning').panels.length === 1);
+    kept.support_panels = {};
+
+    const sec = SP.section();
+    sec.open = true;
+    D().body.appendChild(sec);
+    const tile = sec.querySelector('.spp-tile[data-mode="panning"]');
+    tile.click();
+    const prow = () => Array.from(sec.querySelectorAll('.spp-row'))
+      .find((r) => r.dataset.mode === 'panning');
+    check('the editor says it is the lab’s default',
+          /the lab’s default/.test(prow().textContent), prow().textContent.slice(0, 120));
+    check('with no Defaults button to press (it already is)',
+          !prow().querySelector('.spp-reset'));
+    prow().querySelector('.spp-block.aid button.spp-addp[data-add="theta"]').click();
+    const own = (kept.support_panels || {}).panning || {};
+    check('adding a panel makes it one’s own, with five', (own.panels || []).length === 5,
+          JSON.stringify(own.panels || []));
+    check('and the main window comes along as the lab had it',
+          JSON.stringify(own.main) === JSON.stringify(LAB_MAIN), JSON.stringify(own.main));
+    sec.remove();
+    kept.support_panels = {};
+
+    say('');
+    say('=== 2. a copy while the add-on is open shows at once ===');
+    W().eval("setView('xplore')");
+    await X.open('demo:long-session');
+    const sess = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    sess.t0 = 120; sess.span = 6;
+    // What Panning does on entering: lay the main window out, ask for the
+    // plan, open the second window (here a stand-in that records its moves).
+    SP.applyMain('panning', [{ panel: 'traces' }], sess, { col: 0.5, row: 0.5 });
+    const defaults = [{ panel: 'csd' }, { panel: 'voltage' }, { panel: 'spectrogram' }];
+    SP.plan('panning', defaults, sess);
+    const fake = { closed: false, urls: [], close() { this.closed = true; },
+                   location: { replace: (u) => fake.urls.push(u) } };
+    SP.noteWindow(fake, { role: 'aids', name: 'barry-panning-aids', width: 720 });
+    check('the main window opens as the lab has it (one traces pane)',
+          XF.panes.length === 1, String(XF.panes.length));
+    const rain = { id: 'zz-rain', name: 'zz Rain — current', label: 'current', owner: 'zz Rain',
+      addons: { panning: {
+        open: true, shape: 'cols', layout: null, span: null, overview: null,
+        panels: [{ panel: 'theta' }, { panel: 'voltage' }],
+        main: { panels: [{ panel: 'traces', filter: 'p:none' }, { panel: 'csd' }],
+                shape: 'cols', layout: null, span: null } } } };
+    await SP.copyFrom(rain, null);
+    const moved = await until(() => XF.panes.length === 2, 4000);
+    check('the copy lays the main window out again, with its two panes', !!moved,
+          String(XF.panes.length));
+    check('as theirs: traces, then the CSD',
+          XF.panes.map((p) => p.panel).join(',') === 'traces,csd',
+          XF.panes.map((p) => p.panel).join(','));
+    await until(() => fake.urls.length, 3000);
+    const sent = fake.urls[0] ? JSON.parse(new URL(fake.urls[0]).searchParams.get('panes')) : [];
+    check('and sends the second window to the new arrangement, the same window',
+          fake.urls.length === 1 && sent.map((s) => s.panel).join(',') === 'theta,voltage',
+          fake.urls.length + ' ' + sent.map((s) => s.panel).join(','));
+    check('nothing new was opened (no pop-up blocker to ask)', !fake.closed);
+    check('nothing reached the server', posted.every((p) => /\/api\/(prefs|presets)/.test(p)),
+          posted.join(' '));
+
+    say('');
+    say('=== 3. a change in another window of the app ===');
+    W().__sppHear = true;
+    // The support window wrote it; this window holds an older copy.
+    delete kept.support_panels;
+    const other = new BroadcastChannel('barry-support-panels');
+    other.postMessage({ modes: ['panning'], every: { panning: {
+      open: true, shape: 'rows', panels: [{ panel: 'csd' }, { panel: 'theta' }, { panel: 'voltage' }],
+      main: { panels: [{ panel: 'traces' }, { panel: 'theta' }, { panel: 'csd' }],
+              shape: 'cols' } } } });
+    const heard = await until(() => XF.panes.length === 3, 4000);
+    check('this window takes it and lays the main window out again', !!heard,
+          String(XF.panes.length));
+    await until(() => fake.urls.length === 2, 3000);
+    check('and moves the second window too', fake.urls.length === 2, String(fake.urls.length));
+    other.close();
+    W().__sppHear = false;
+    kept.support_panels = B.prefs.all().support_panels || {};
+
+    say('');
+    say('=== 4. leaving the add-on stops it ===');
+    SP.restoreMain();
+    await sleep(100);
+    const before = fake.urls.length;
+    await SP.copyFrom(rain, null);
+    await sleep(900);
+    check('a copy after leaving moves nothing', fake.urls.length === before
+          && XF.panes.length === 1, fake.urls.length + ' / ' + XF.panes.length);
+
+    say('');
+    say('=== 5. Make mine the lab default ===');
+    kept.support_panels = { curate: { open: true, panels: [{ panel: 'csd', channels: 'even' }] } };
+    await SP.makeLabDefault();
+    check('mine becomes the lab’s, saying whose',
+          JSON.stringify(kept.support_panels_lab.addons) === JSON.stringify(kept.support_panels)
+          && !!kept.support_panels_lab.at);
+
+    B.prefs.get = realGet; B.prefs.set = realSet; B.confirm = realConfirm;
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try { if (realFetch) W().fetch = realFetch; } catch (e) { /* going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'supportlive: ' + fails + ' FAILED' : 'supportlive: passed';
+  fr.src = 'about:blank';
+})();
+</script>
+</body></html>

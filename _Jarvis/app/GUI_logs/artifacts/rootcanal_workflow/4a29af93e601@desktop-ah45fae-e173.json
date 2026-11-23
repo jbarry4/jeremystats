@@ -1,0 +1,240 @@
+{
+  "_at": {
+    "added": "2026-11-13T16:35:40.872642+00:00",
+    "deleted": "2026-11-19T20:44:04.389858+00:00",
+    "id": "2026-11-13T20:38:27.750944+00:00",
+    "kind": "2026-11-13T20:38:27.750944+00:00",
+    "name": "2026-11-13T20:38:27.750944+00:00",
+    "nickname": "2026-11-13T20:38:27.750944+00:00",
+    "schema": "2026-11-13T20:38:27.750944+00:00",
+    "subject": "2026-11-13T20:38:27.750944+00:00",
+    "subject_key": "2026-11-13T20:38:27.750944+00:00",
+    "version": "2026-11-19T20:44:04.389858+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "4a29af93e601:1f8b48f3741f>a7eee6a6ca9f:3": [
+        "set",
+        "2026-11-19T20:44:04.389858+00:00"
+      ],
+      "4a29af93e601:42150c1fc416>a7eee6a6ca9f:4": [
+        "set",
+        "2026-11-19T20:44:04.389858+00:00"
+      ],
+      "4a29af93e601:6656d461e703>a7eee6a6ca9f:2": [
+        "set",
+        "2026-11-13T20:38:27.750944+00:00"
+      ]
+    },
+    "versions": {
+      "1f8b48f3741f": [
+        "set",
+        "2026-11-19T20:44:04.389858+00:00"
+      ],
+      "42150c1fc416": [
+        "set",
+        "2026-11-19T20:44:04.389858+00:00"
+      ],
+      "488effc232ad": [
+        "set",
+        "2026-11-13T20:38:27.750944+00:00"
+      ],
+      "6656d461e703": [
+        "set",
+        "2026-11-13T20:38:27.750944+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-19T20:44:04.389858+00:00",
+    "machine": "desktop-ah45fae-e173",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-13T11:35:40-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-13T17:24:19+00:00",
+      "by_id": "a7eee6a6ca9f",
+      "by_version": 2,
+      "digest": "23a7a6e2059b",
+      "id": "4a29af93e601:6656d461e703>a7eee6a6ca9f:2",
+      "version": 2,
+      "version_id": "6656d461e703"
+    },
+    {
+      "at": "2026-11-19T17:09:04+00:00",
+      "by_id": "a7eee6a6ca9f",
+      "by_version": 3,
+      "digest": "f2b7d59fcbb7",
+      "id": "4a29af93e601:1f8b48f3741f>a7eee6a6ca9f:3",
+      "version": 3,
+      "version_id": "1f8b48f3741f"
+    },
+    {
+      "at": "2026-11-19T20:04:47+00:00",
+      "by_id": "a7eee6a6ca9f",
+      "by_version": 4,
+      "digest": "8b5e468416de",
+      "id": "4a29af93e601:42150c1fc416>a7eee6a6ca9f:4",
+      "version": 4,
+      "version_id": "42150c1fc416"
+    }
+  ],
+  "deleted": null,
+  "id": "4a29af93e601",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+  "nickname": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room]))",
+    "workflow_key": "4e555800f3a3424e8c87713850a35128"
+  },
+  "subject_key": "rootcanal_workflow|4e555800f3a3424e8c87713850a35128",
+  "version": 4,
+  "versions": [
+    {
+      "app_version": "2026.11.13.1",
+      "at": "2026-11-13T11:35:40-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "916c37ecda2c",
+      "id": "488effc232ad",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.1,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-13T11:35:40-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.13.1",
+      "at": "2026-11-13T11:35:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "de71a7fc",
+      "digest": "23a7a6e2059b",
+      "id": "6656d461e703",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 2
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": 0.1,
+        "kept": 4201,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.18.2",
+      "at": "2026-11-19T12:08:57-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "a5e56299",
+      "digest": "f2b7d59fcbb7",
+      "id": "1f8b48f3741f",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 3
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 2
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5203,
+        "grace": 0.1,
+        "kept": 4200,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 3
+    },
+    {
+      "app_version": "2026.11.19.1",
+      "at": "2026-11-19T15:04:40-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "8c18a666",
+      "digest": "8b5e468416de",
+      "id": "42150c1fc416",
+      "inputs": [
+        {
+          "artifact_id": "3561fc988afd",
+          "kind": "rootcanal_pool",
+          "version": 4
+        },
+        {
+          "artifact_id": "07cdcb084c86",
+          "kind": "rootcanal_pool",
+          "version": 3
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 5100,
+        "grace": 0.1,
+        "kept": 4122,
+        "kind": "ds",
+        "ran": true,
+        "target": "CTL & PTEN Baseline v2 (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 4
+    }
+  ]
+}

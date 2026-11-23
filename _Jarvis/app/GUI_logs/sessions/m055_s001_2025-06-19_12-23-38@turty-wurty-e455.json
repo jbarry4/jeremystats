@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-10-11T06:09:17.978528+00:00",
+    "first_seen_by": "2026-10-11T06:09:17.978528+00:00",
+    "found_on": "2026-10-11T06:09:17.978528+00:00",
+    "fs": "2026-10-11T06:09:17.978528+00:00",
+    "gid": "2026-10-11T06:09:17.978528+00:00",
+    "group": "2026-10-11T06:09:17.978528+00:00",
+    "key": "2026-10-11T06:09:17.978528+00:00",
+    "label": "2026-10-11T06:09:17.978528+00:00",
+    "loose_key": "2026-10-11T06:09:17.978528+00:00",
+    "mouse": "2026-10-11T06:09:17.978528+00:00",
+    "n_channels": "2026-10-11T06:09:17.978528+00:00",
+    "project": "2026-10-11T06:09:17.978528+00:00",
+    "project_source": "2026-10-11T06:09:17.978528+00:00",
+    "retired": "2026-10-12T01:04:05.226828+00:00",
+    "schema": "2026-10-11T06:09:17.978528+00:00",
+    "session": "2026-10-11T06:09:17.978528+00:00",
+    "start": "2026-10-11T06:09:17.978528+00:00",
+    "updated": "2026-10-12T01:04:05.226828+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-19_12-23-21": [
+        "set",
+        "2026-10-11T06:09:17.978528+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T01:04:05.226828+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": [],
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T02:09:17-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "sc35686356db0",
+  "group": "PTEN_DKO",
+  "key": "m055_s001_2025-06-19_12-23-38",
+  "label": "PTEN_DKO m55 s1 2025-06-19",
+  "loose_key": "m055_s001",
+  "mouse": 55,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-19_12-23-21"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 1,
+  "start": "2025-06-19T12:23:38",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T21:04:05-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}

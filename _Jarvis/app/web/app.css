@@ -7087,15 +7087,17 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
    chips beside them say. A row without one of them leaves its slot empty. */
 .cur-shelf-grid {
   display: grid; column-gap: var(--sp-10);
+  /* ...and View only (2026-11-20), between Pick it up and Archive. */
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) max-content
                          minmax(84px, max-content) max-content
-                         max-content max-content max-content max-content;
+                         max-content max-content max-content max-content
+                         max-content;
 }
 .cur-shelf-grid .csr-acts { display: contents; }
 .cur-shelf-grid .csr-chips { display: flex; gap: var(--sp-4); flex-wrap: wrap;
   align-items: center; justify-content: flex-end; }
 .cur-shelf-grid .csr-slot { display: block; }
-.cur-shelf-grid .cur-shelf-cols > span:last-child { grid-column: span 4; }
+.cur-shelf-grid .cur-shelf-cols > span:last-child { grid-column: span 5; }
 .cur-shelf-grid .cur-shelf-row > * { align-self: center; }
 .cur-shelf-grid > .cur-shelf-cols, .cur-shelf-grid > .cur-shelf-list,
 .cur-shelf-grid .cur-shelf-list > .cur-shelf-row,
@@ -8976,6 +8978,64 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 #xfBody.strata-on.ss-drawer-on .pane-grid {
   margin-right: var(--ss-drawer-w, 420px);
+}
+/* StrataScope Beta: the Consult card (strataconsult.js), top of the drawer. */
+.ss-beta-seg { margin-left: 8px; }
+.ss-consult-btn.busy { opacity: .7; }
+.ssc { display: flex; flex-direction: column; gap: 7px; padding: 8px 9px 10px;
+       margin: 0 0 12px; border: 1px solid var(--accent-line, var(--line));
+       border-radius: var(--radius-sm); background: var(--bg);
+       transition: box-shadow .4s ease; }
+.ssc.fresh { box-shadow: 0 0 0 2px var(--accent); }
+.ssc-head { display: flex; align-items: center; gap: 8px; }
+.ssc-beta { font-size: var(--fs-10); font-weight: 700; letter-spacing: .06em;
+            text-transform: uppercase; color: var(--accent);
+            border: 1px solid var(--accent-line, var(--accent)); border-radius: 999px;
+            padding: 0 7px; }
+.ssc-note { width: 100%; box-sizing: border-box; resize: vertical; min-height: 34px;
+            font: inherit; font-size: var(--fs-115); color: var(--text);
+            background: var(--bg-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); padding: 4px 6px; }
+.ssc-wait { display: flex; align-items: center; gap: 9px; color: var(--text-2);
+            font-size: var(--fs-115); }
+.ssc-radar { flex: none; width: 14px; height: 14px; border-radius: 50%;
+             border: 2px solid var(--accent); animation: ssc-ping 1.6s ease-out infinite; }
+@keyframes ssc-ping { 0% { transform: scale(.5); opacity: 1; }
+                      100% { transform: scale(1.4); opacity: 0; } }
+.ssc-meta { color: var(--text-3); font-size: var(--fs-105); }
+.ssc-summary { margin: 0; color: var(--text); font-size: var(--fs-115); line-height: 1.45; }
+.ssc-walk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ssc-walk .ss-say { flex: 1 1 200px; font-size: var(--fs-105); }
+.ssc-items { display: flex; flex-direction: column; gap: 5px; }
+.ssc-item { padding: 6px 8px; border-radius: var(--radius-sm); background: var(--bg-hover);
+            border-left: 3px solid var(--line); font-size: var(--fs-115);
+            transition: background .3s ease, border-color .3s ease, opacity .3s ease; }
+/* The drawer is rebuilt on every render; only a reply that just arrived
+   plays in, or every drag would replay it. */
+.ssc.fresh .ssc-item { animation: ssc-in .35s ease-out both; }
+.ssc-item.move, .ssc-item.label { border-left-color: var(--warn); }
+.ssc-item.param { border-left-color: var(--c4, var(--accent)); }
+.ssc-item.applied, .ssc-item.read { border-left-color: var(--ok); }
+.ssc-item.skipped { opacity: .55; }
+.ssc-item.now { background: var(--accent-soft, var(--bg-hover));
+                box-shadow: 0 0 0 1px var(--accent); }
+@keyframes ssc-in { from { opacity: 0; transform: translateY(6px); } }
+.ssc-item-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ssc-n { width: 18px; height: 18px; border-radius: 50%; flex: none; display: inline-flex;
+         align-items: center; justify-content: center; font-size: var(--fs-10);
+         background: var(--bg-2); color: var(--text-2); }
+.ssc-kind { font-weight: 600; }
+.ssc-step { color: var(--text-3); font-size: var(--fs-105); }
+.ssc-tag { margin-left: auto; color: var(--text-3); font-size: var(--fs-105); }
+.ssc-item.applied .ssc-tag, .ssc-item.read .ssc-tag { color: var(--ok); }
+.ssc-title { margin-top: 3px; color: var(--text); font-weight: 600; }
+.ssc-what { margin-top: 2px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ssc-why, .ssc-look { margin-top: 3px; color: var(--text-2); line-height: 1.45;
+                      white-space: normal; overflow-wrap: anywhere; }
+.ssc-refs { margin-top: 3px; color: var(--text-3); font-size: var(--fs-105); }
+.ssc-btns { display: flex; gap: 6px; margin-top: 5px; }
+@media (prefers-reduced-motion: reduce) {
+  .ssc-radar, .ssc-item { animation: none; }
 }
 .ss { display: flex; flex-direction: column; gap: 7px; }
 .ss-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -18095,6 +18155,19 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   border: 2px solid var(--accent-line, var(--accent)); }
 .wf-bankcard.done { border-color: var(--ok); }
 .wf-bankcard-btns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+/* Bank by label (2026-11-19): the labels as pills in the bank dialog, each
+   with its dot, its count and what the Halo put in it; the line under them
+   says what Bank would make. Scoped, as .tk-pills .pill is. */
+.wf-bank-labels { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+.wf-bank-labels .pill.wf-bank-l { display: inline-flex; align-items: center; gap: 6px; }
+.wf-bank-labels .pill.wf-bank-l:not(.active) { opacity: .6; }
+.wf-bank-labels .pill.wf-bank-l:disabled { opacity: .35; cursor: default; }
+.wf-bank-labels .pill.wf-bank-l i.wf-lg-dot { width: 10px; height: 10px;
+  border-radius: 50%; flex: none; }
+.wf-bank-labels .pill.wf-bank-l b { font-weight: 600; }
+.wf-bank-halo { font-size: var(--fs-105); color: var(--text-3); }
+.wf-bank-labels .pill.wf-bank-l.active .wf-bank-halo { color: inherit; opacity: .8; }
+.wf-bank-say { margin: 0; }
 .wf-insp-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: var(--sp-12); }
 .wf-insp-hist ol { margin: var(--sp-4) 0 0; }
@@ -18194,3 +18267,182 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; }
 .floss-row:hover { background: var(--bg-3); border-color: var(--line-soft); }
 .floss-row-ask { overflow-wrap: anywhere; font-size: var(--fs-13); }
+
+/* ==========================================================================
+   curkit.js (2026-11-20): notes, Save, View only -- the same in Panning,
+   Checkup, Spotter, Lock, Braces and Eye.
+   ========================================================================== */
+.ck-note-ta { width: 100%; min-height: 110px; resize: vertical; font: inherit;
+  font-size: var(--fs-13); padding: 8px 10px; color: var(--text);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-4); }
+.ck-note-ta:focus { outline: none; border-color: var(--accent-line); }
+.ck-note-dlg .mb .hint { margin: 0 0 var(--sp-6); }
+/* The note on the event on screen: whole, wrapping, never cut short. */
+.ck-note-line { display: inline-flex; align-items: baseline; gap: var(--sp-4);
+  max-width: 100%; padding: 2px 8px; font-size: var(--fs-11); text-align: left;
+  color: var(--text); background: var(--warn-soft); border: 1px solid var(--warn);
+  border-radius: var(--r-4); cursor: pointer; white-space: normal;
+  overflow-wrap: anywhere; }
+.ck-note-line.ro { cursor: default; }
+.ck-note-ico { color: var(--warn); }
+.ck-note-by { color: var(--text-3); white-space: nowrap; }
+.ck-note-btn { display: inline-flex; align-items: center; gap: var(--sp-4); }
+.ck-note-btn.has { border-color: var(--warn); color: var(--warn); }
+.ck-note-btn kbd { font-size: var(--fs-10); }
+/* View only: said first in the bar, and the bar says it in its colour. */
+.ck-view { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-6);
+  padding: 4px 10px; font-size: var(--fs-11); color: var(--text-2);
+  background: var(--accent-soft); border: 1px dashed var(--accent-line);
+  border-radius: var(--r-4); }
+.ck-view strong { color: var(--accent); text-transform: uppercase;
+  letter-spacing: .04em; font-size: var(--fs-10); }
+.cur-bar.ck-viewing { box-shadow: inset 0 0 0 1px var(--accent-line); }
+.cur-bar.ck-viewing .cur-cat { opacity: .55; }
+/* Save: quiet once the shared database has confirmed it. */
+.ck-save[data-state="clean"] { opacity: .75; }
+.ck-save[data-state="dirty"]::before { content: "\25CF"; margin-right: 5px;
+  color: var(--warn); font-size: .8em; }
+.ck-view-btn { white-space: nowrap; }
+.ck-keep-list { margin: var(--sp-6) 0 0 var(--sp-16); font-size: var(--fs-12);
+  color: var(--text-2); }
+/* Braces, Lock and Eye: the alignment rows, and the note column. */
+.br-recent-item { display: flex; align-items: stretch; gap: var(--sp-4); }
+.br-recent-item > .br-recent-row { flex: 1 1 auto; min-width: 0; }
+.br-recent-item > .ck-view-btn { flex: 0 0 auto; align-self: center; }
+.br-note-td { min-width: 90px; }
+.ck-note-cell, .ck-note-add { padding: 0; font: inherit; font-size: var(--fs-11);
+  text-align: left; background: none; border: 0; cursor: pointer;
+  white-space: normal; overflow-wrap: anywhere; }
+.ck-note-cell { color: var(--warn); }
+.ck-note-add { color: var(--text-3); opacity: .6; }
+.ck-note-add:hover { opacity: 1; color: var(--text-2); }
+/* A hidden version, behind the fold of a version picker. */
+.vtree-hidden-fold { margin-top: var(--sp-6); }
+.vtree-hidden-fold > summary { cursor: pointer; font-size: var(--fs-11);
+  color: var(--text-3); }
+.vpop-manage { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6); margin-top: var(--sp-8); }
+.vman-list { display: flex; flex-direction: column; gap: 4px; margin-top: var(--sp-6); }
+.vman-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-6);
+  padding: 4px 8px; border: 1px solid var(--line-soft); border-radius: var(--r-4); }
+.vman-row.is-hidden { opacity: .6; }
+.vman-who { font-size: var(--fs-11); color: var(--text-3); }
+.vman-state { font-size: var(--fs-10); color: var(--warn); text-transform: uppercase; }
+.vtree-hidden-toggle { margin-top: var(--sp-6); font-size: var(--fs-11); }
+
+/* ==========================================================================
+   PROJECT EVOLVE phase 2 (2026-11-21): the family tree (ui.familyTree), in
+   the Event Bank's entry and at the top of every version picker. Rows as
+   the version tree's are; the lineage is a line down the left of each
+   generation, and this thing sits highlighted between them.
+   ========================================================================== */
+.fam { display: flex; flex-direction: column; gap: 1px; }
+.fam-gen-head { margin: var(--sp-6) 0 2px; font-size: var(--fs-11);
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+.fam-gen { display: flex; flex-direction: column; gap: 1px;
+  margin-left: 8px; padding-left: 12px; border-left: 2px solid var(--line); }
+.fam-gen.fam-sub-gen { margin-left: 18px; border-left-style: dashed; }
+.fam-row { position: relative; display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px var(--sp-10); width: 100%; min-height: 28px; padding: 5px 8px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit;
+  font-size: var(--fs-12); text-align: left; }
+.fam-gen > .fam-row::before { content: ''; position: absolute; left: -13px;
+  top: 15px; width: 10px; border-top: 2px solid var(--line); }
+.fam-row.go { cursor: pointer; }
+.fam-row.go:hover { background: var(--bg-hover); }
+.fam-row.fam-self { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--text); }
+.fam-row.archived { opacity: .65; }
+.fam-name { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.fam-v, .fam-n { font-family: var(--mono); font-size: var(--fs-11);
+  color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fam-state { font-size: var(--fs-11); color: var(--text-3); }
+.fam-sub { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3);
+  overflow-wrap: anywhere; }
+.fam-kind { font-size: var(--fs-11); }
+.fam-none { margin: 0; }
+.fam-block { display: flex; flex-direction: column; gap: 4px; }
+.bank-detail .fam-block { margin: var(--sp-8) 0 var(--sp-4); }
+.vpop-family { padding-bottom: var(--sp-8); border-bottom: 1px solid var(--line-soft); }
+
+/* PROJECT EVOLVE phase 3 (2026-11-21): X-ray Many folders by label. */
+.xm-folder-labels { font-size: var(--fs-11); color: var(--text-2); }
+.xm-folder-labels.warn { color: var(--call-amb); }
+.xm-new .xm-wfs-head { margin: var(--sp-6) 0 2px; }
+.xm-new-labels { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+.xm-new-labels .pill.wf-bank-l { display: inline-flex; align-items: center; gap: 6px; }
+.xm-new-labels .pill.wf-bank-l:not(.active) { opacity: .6; }
+.xm-new-labels .pill.wf-bank-l b { font-weight: 600; }
+.xm-new-say, .xm-new-warn { margin: 0; }
+.xm-lwarn { margin: var(--sp-4) 0 0; flex-basis: 100%; }
+
+/* ==========================================================================
+   PROJECT EVOLVE phase 7 (2026-11-21): the Cells. Kilosort's Cells pane
+   (the step strip, the recordings, the cell cards, a curation diff), the
+   Xplorefinder add-on's ticks and bar, and its cards window.
+   ========================================================================== */
+:root { --mode-cells: var(--tool-kilosort, #8fd3ff); }
+#app.mode-cells { --mode: var(--mode-cells); }
+.ks-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-6); margin: var(--sp-8) 0; }
+@media (max-width: 900px) { .ks-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.wf-stage.ks-step { cursor: default; opacity: .55; }
+.wf-stage.ks-step:hover { border-color: var(--line); }
+.wf-stage.ks-step.on { opacity: 1;
+  border-color: color-mix(in srgb, var(--tool-kilosort) 60%, transparent);
+  background: color-mix(in srgb, var(--tool-kilosort) 10%, var(--bg-2)); }
+.wf-stage.ks-step.next { opacity: 1; border-style: dashed; border-color: var(--accent-line); }
+.ks-step-state { font-size: var(--fs-11); color: var(--text-3); }
+.ks-step.on .ks-step-state { color: var(--tool-kilosort); }
+.ks-cells { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: var(--sp-12); align-items: start; }
+@media (max-width: 900px) { .ks-cells { grid-template-columns: 1fr; } }
+.ks-cells-list { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.ks-cells-sum, .ks-cells-batch { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.ks-cell-recs { display: flex; flex-direction: column; gap: 1px; max-height: 62vh;
+  overflow: auto; }
+.ks-cell-rec { display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 5px 8px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-12);
+  text-align: left; cursor: pointer; }
+.ks-cell-rec:hover { background: var(--bg-hover); }
+.ks-cell-rec.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); }
+.ks-cell-rec.uncurated { opacity: .6; }
+.ks-cell-rec .hint { font-size: var(--fs-11); }
+.ks-cells-main { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.ks-cells-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-6); }
+.ks-cells-head h3 { margin: 0; }
+.ks-cells-head .hint { margin: 2px 0 0; overflow-wrap: anywhere; }
+.ks-polarity, .ks-busy { margin: 0; }
+.ks-sources { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ks-source { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-8);
+  padding: 6px 8px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  background: var(--bg-2); }
+.ks-source .hint { overflow-wrap: anywhere; }
+.ks-vers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.ks-cellgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-8); }
+.ks-layer.none { opacity: .6; }
+.ks-diff { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ks-diff-rows { display: flex; flex-direction: column; gap: 1px; }
+.ks-diff-row { display: flex; flex-wrap: wrap; gap: var(--sp-10); align-items: baseline;
+  padding: 3px 8px; font-size: var(--fs-12); border-left: 3px solid var(--line); }
+.ks-diff-kind { min-width: 7ch; font-weight: 600; }
+.ks-diff-row.kept { border-left-color: var(--ok, #3fb950); }
+.ks-diff-row.changed, .ks-diff-row.merged, .ks-diff-row.split { border-left-color: var(--warn); }
+.ks-diff-row.removed { border-left-color: var(--err); }
+.ks-diff-row.added { border-left-color: var(--accent); }
+.cells-overlay { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 40; }
+.cells-bar .cells-which { font-family: var(--mono); }
+.cells-bar .cells-where { font-size: var(--fs-12); color: var(--text-2); }
+.cells-bar .cells-set { max-width: 100%; }
+#cellsBody .cells-head h2 { margin: 0; }
+#cellsBody .cells-head .hint { margin: 2px 0; }
+.cells-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-8); margin-top: var(--sp-8); }
+.cells-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cells-card .cells-sub { margin: 0; font-size: var(--fs-11); }
+.cells-cv { width: 100%; display: block; }
+/* The list scrolls so the labels, the name and Carry over stay in view. */
+.xm-new .xm-wfs { max-height: 38vh; overflow: auto; }

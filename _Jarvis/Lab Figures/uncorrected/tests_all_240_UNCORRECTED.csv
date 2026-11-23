@@ -1,0 +1,241 @@
+measure (script name),test,effect,P
+src_per_sink,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.6689,0.00332
+sink_asym,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.6081,0.0096
+ds2_rate_si,"vs % knockout, PTEN only (Spearman rho)",-0.8,0.00963
+ds1_rate,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.5991,0.01105
+ratio12_sink_ms,"vs % knockout, PTEN only (Spearman rho)",0.7833,0.01252
+src_net,"vs % knockout, PTEN only (Spearman rho)",-0.7833,0.01252
+blade_balance,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.581,0.01446
+src_area_event,"vs % knockout, PTEN only (Spearman rho)",-0.7667,0.01594
+src_net,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.5719,0.01645
+src_peak_event,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.5551,0.02073
+ds1_share,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.5421,0.02456
+ds1_rate,PTEN vs control (Mann-Whitney; effect = difference of medians),1.1681,0.0274
+src_per_sink,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.2677,0.0274
+ds1_sink_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.5318,0.02801
+lfp_at_src,"vs % knockout, PTEN only (Spearman rho)",0.7,0.03577
+sink_asym,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.2326,0.03595
+src_area_mean,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.5033,0.03943
+both_blades,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0053,0.04067
+blade_balance,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.1712,0.0464
+ds2_rate,"vs % knockout, PTEN only (Spearman rho)",-0.6667,0.04987
+src_peak_mean,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.4774,0.05261
+ds1_rate_delta,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4762,0.05334
+vote_ds2_rate,"vs % knockout, PTEN only (Spearman rho)",-0.65,0.05807
+src_area_event,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.4632,0.06113
+ds1_share_delta,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.458,0.06446
+both_blades,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.457,0.06512
+ds1_share_si,"vs % knockout, PTEN only (Spearman rho)",0.6333,0.06709
+lfp_ms,"vs % knockout, PTEN only (Spearman rho)",-0.6333,0.06709
+ratio12_lfp_amp,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.4451,0.0734
+ds1_sink_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),1.8478,0.07445
+src_area_mean,"vs % knockout, PTEN only (Spearman rho)",-0.6167,0.07693
+ds1_rate_si,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4335,0.08218
+src_peak_event,"vs % knockout, PTEN only (Spearman rho)",-0.6,0.08762
+src_per_sink,"vs % knockout, PTEN only (Spearman rho)",-0.6,0.08762
+ds1_rate_delta,PTEN vs control (Mann-Whitney; effect = difference of medians),3.6642,0.09272
+lfp_at_src,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4192,0.09393
+ratio12_sink_width,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4442,0.09714
+ratio12_sink_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4089,0.10319
+source_peak,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.405,0.10683
+ds1_rate_si,"vs % knockout, PTEN only (Spearman rho)",0.5667,0.11163
+ds2_sink_ms,"vs % knockout, PTEN only (Spearman rho)",-0.5667,0.11163
+unscorable,"vs % knockout, PTEN only (Spearman rho)",-0.5667,0.11163
+ds1_share_si,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.3985,0.11309
+ds1_share,PTEN vs control (Mann-Whitney; effect = difference of medians),0.1449,0.11394
+source_peak,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.1834,0.11394
+src_peak_event,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.2298,0.11394
+oml_mml_si,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.4085,0.11621
+ds2_rate,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.3933,0.11829
+ratio12_sink_width,"vs % knockout, PTEN only (Spearman rho)",0.5952,0.11953
+ds1_share_delta,PTEN vs control (Mann-Whitney; effect = difference of medians),0.3398,0.13879
+ds2_sink_peak,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0902,0.13879
+ds1_share,"vs % knockout, PTEN only (Spearman rho)",0.5333,0.13923
+ds1_sink_ms,"vs % knockout, PTEN only (Spearman rho)",0.5333,0.13923
+oml_mml_si,PTEN vs control (Mann-Whitney; effect = difference of medians),25.0,0.15661
+src_peak_mean,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.2279,0.16717
+ratio12_sink_peak,"vs % knockout, PTEN only (Spearman rho)",0.5,0.17047
+src_peak_mean,"vs % knockout, PTEN only (Spearman rho)",-0.5,0.17047
+si_best,"vs % knockout, PTEN only (Spearman rho)",-0.4833,0.18747
+ratio12_lfp_amp,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.8277,0.19959
+src_net,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0428,0.19959
+ds1_sink_width,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.3501,0.2008
+ds1_lfp_amp,"vs % knockout, PTEN only (Spearman rho)",-0.4667,0.20539
+vote_ambig,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.3222,0.20725
+blade_gap_mean,"vs % knockout, PTEN only (Spearman rho)",0.4622,0.21034
+blade_um,"vs % knockout, PTEN only (Spearman rho)",0.4622,0.21034
+ds1_rate_pca,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.3118,0.22306
+ds1_rate_pca_gap,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.3118,0.22306
+ratio12_sink_width,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0942,0.23186
+ds1_rate_pca,PTEN vs control (Mann-Whitney; effect = difference of medians),2.2366,0.23587
+ds1_rate_pca_gap,PTEN vs control (Mann-Whitney; effect = difference of medians),2.2366,0.23587
+ds1_rate_si,PTEN vs control (Mann-Whitney; effect = difference of medians),0.7009,0.23587
+src_area_mean,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.1484,0.23587
+amp_cv,"vs % knockout, PTEN only (Spearman rho)",-0.4333,0.24395
+ds1_lfp_ms,"vs % knockout, PTEN only (Spearman rho)",-0.4333,0.24395
+ds1_rate,"vs % knockout, PTEN only (Spearman rho)",0.4333,0.24395
+ratio12_sink_peak,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.295,0.25034
+ds3_share_best,"vs % knockout, PTEN only (Spearman rho)",0.4167,0.26459
+sink_spread,"vs % knockout, PTEN only (Spearman rho)",0.4167,0.26459
+mix_best,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0003,0.2673
+burst,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2808,0.27499
+ds1_sink_width,PTEN vs control (Mann-Whitney; effect = difference of medians),16.2816,0.28096
+ds2_sink_peak,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.2769,0.28196
+blade_gap,"vs % knockout, PTEN only (Spearman rho)",0.4017,0.2839
+ds1_sink_peak,"vs % knockout, PTEN only (Spearman rho)",0.4,0.28611
+vote_ambig,"vs % knockout, PTEN only (Spearman rho)",0.4,0.28611
+ds1_lfp_amp,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.2743,0.28667
+mix_best,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2724,0.29019
+abs_score,"vs % knockout, PTEN only (Spearman rho)",-0.3899,0.29959
+ds1_rate_delta_mid,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2652,0.30351
+ds2_rate_si,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.264,0.30597
+ds1_share_pca,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2627,0.30843
+blade_gap,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2612,0.31124
+burst,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0707,0.32127
+ds1_rate_delta_mid,PTEN vs control (Mann-Whitney; effect = difference of medians),3.0136,0.32127
+si_best2,PTEN vs control (Mann-Whitney; effect = difference of medians),0.1699,0.32127
+vote_ambig,PTEN vs control (Mann-Whitney; effect = difference of medians),0.1102,0.32127
+ds1_share_pca_gap,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2523,0.32857
+ds3_rate_best,"vs % knockout, PTEN only (Spearman rho)",0.3667,0.33174
+lfp_amp,"vs % knockout, PTEN only (Spearman rho)",-0.3667,0.33174
+ds3_rate_best,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.249,0.33509
+blade_gap_mean,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2479,0.33739
+blade_um,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2479,0.33739
+ds1_share_delta_mid,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.2445,0.34417
+blade_balance,"vs % knockout, PTEN only (Spearman rho)",-0.35,0.35582
+ds3_share_si,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.2413,0.36796
+ds1_share_si,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0317,0.37038
+lfp_at_src,PTEN vs control (Mann-Whitney; effect = difference of medians),0.6834,0.37038
+ratio12_sink_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0885,0.37038
+sink_peak,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0518,0.37038
+src_area_event,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.1272,0.37038
+si_best2,"vs % knockout, PTEN only (Spearman rho)",-0.3333,0.38071
+sink_asym,"vs % knockout, PTEN only (Spearman rho)",-0.3333,0.38071
+ds3_share_si,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.3682,0.40047
+ds1_share_pca_gap,"vs % knockout, PTEN only (Spearman rho)",0.3167,0.4064
+ds2_lfp_ms,"vs % knockout, PTEN only (Spearman rho)",-0.3167,0.4064
+si_median,"vs % knockout, PTEN only (Spearman rho)",-0.3167,0.4064
+vote_agree,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.2122,0.41356
+ds1_sink_width,"vs % knockout, PTEN only (Spearman rho)",0.3333,0.41975
+oml_mml_um,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.209,0.42091
+ds1_share_delta_mid,PTEN vs control (Mann-Whitney; effect = difference of medians),0.216,0.42345
+ds1_share_pca,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0706,0.42345
+fano30,PTEN vs control (Mann-Whitney; effect = difference of medians),0.2868,0.42345
+vote_ds2_rate,PTEN vs control (Mann-Whitney; effect = difference of medians),1.7449,0.42345
+fano30,"vs % knockout, PTEN only (Spearman rho)",-0.3,0.43285
+vote_agree,"vs % knockout, PTEN only (Spearman rho)",-0.3,0.43285
+lfp_amp,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1954,0.45236
+ds1_rate_delta,"vs % knockout, PTEN only (Spearman rho)",0.2833,0.46003
+ds1_share_delta,"vs % knockout, PTEN only (Spearman rho)",0.2833,0.46003
+ds2_lfp_amp,"vs % knockout, PTEN only (Spearman rho)",-0.2833,0.46003
+ratio12_lfp_amp,"vs % knockout, PTEN only (Spearman rho)",-0.2833,0.46003
+unscorable,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1902,0.46465
+mix_median,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0348,0.46994
+sink_spread,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1863,0.47398
+ds2_rate,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.4481,0.48071
+iei_med,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.9925,0.48071
+si_bite,PTEN vs control (Mann-Whitney; effect = difference of medians),0.3108,0.48071
+amp_cv,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1824,0.4834
+ds2_sink_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1824,0.4834
+ds1_share_delta_mid,"vs % knockout, PTEN only (Spearman rho)",0.2667,0.48792
+sink_peak,"vs % knockout, PTEN only (Spearman rho)",0.2667,0.48792
+sink_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1708,0.51221
+sink_total,"vs % knockout, PTEN only (Spearman rho)",0.25,0.51649
+oml_mml_um,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0,0.5301
+ratio12_lfp_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1617,0.53515
+ds1_share_pca_gap,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0735,0.54142
+rate,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0305,0.54142
+sink_total,PTEN vs control (Mann-Whitney; effect = difference of medians),0.1224,0.54142
+si_best2,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1591,0.54178
+ds1_share_bite,"vs % knockout, PTEN only (Spearman rho)",0.2333,0.5457
+ds1_share_pca,"vs % knockout, PTEN only (Spearman rho)",0.2333,0.5457
+blade_gap,PTEN vs control (Mann-Whitney; effect = difference of medians),-25.0,0.56105
+ds3_share_best,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1479,0.57115
+sink_peak,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1475,0.5721
+burst,"vs % knockout, PTEN only (Spearman rho)",0.2167,0.57551
+ds1_rate_bite,"vs % knockout, PTEN only (Spearman rho)",0.2167,0.57551
+ds2_lfp_amp,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1436,0.58237
+rate,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.141,0.58925
+mix_median,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1386,0.59572
+ds3_rate_best,PTEN vs control (Mann-Whitney; effect = difference of medians),2.4463,0.59574
+ds1_lfp_amp,PTEN vs control (Mann-Whitney; effect = difference of medians),-69.4013,0.60584
+ds1_lfp_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),0.6291,0.60584
+mix_bite,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.15,0.60584
+ratio12_sink_peak,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0607,0.60584
+sink_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.2021,0.60584
+vote_agree,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0504,0.60584
+ds2_sink_peak,"vs % knockout, PTEN only (Spearman rho)",0.2,0.6059
+mix_bite,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1294,0.62064
+si_bite,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1294,0.62064
+ds1_sink_peak,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.1268,0.6277
+bimodality,"vs % knockout, PTEN only (Spearman rho)",-0.1833,0.63682
+iei_med,"vs % knockout, PTEN only (Spearman rho)",0.1833,0.63682
+sink_per_lfp,"vs % knockout, PTEN only (Spearman rho)",-0.1833,0.63682
+iei_med,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1216,0.64192
+oml_mml_si,"vs % knockout, PTEN only (Spearman rho)",0.1916,0.64953
+oml_mml_um,"vs % knockout, PTEN only (Spearman rho)",-0.1749,0.6527
+blade_gap_mean,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0,0.66404
+blade_um,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0,0.66404
+si_best,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1126,0.66708
+mix_median,"vs % knockout, PTEN only (Spearman rho)",-0.1667,0.66823
+ratio12_lfp_ms,"vs % knockout, PTEN only (Spearman rho)",-0.1667,0.66823
+ds1_share_bite,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.3915,0.67297
+lfp_amp,PTEN vs control (Mann-Whitney; effect = difference of medians),-260.64,0.67297
+ratio12_lfp_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),0.1969,0.67297
+fano30,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.11,0.67434
+lfp_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.1022,0.69626
+ds1_rate_pca,"vs % knockout, PTEN only (Spearman rho)",0.15,0.70009
+ds1_rate_pca_gap,"vs % knockout, PTEN only (Spearman rho)",0.15,0.70009
+si_bite,"vs % knockout, PTEN only (Spearman rho)",-0.15,0.70009
+sink_ms,"vs % knockout, PTEN only (Spearman rho)",0.15,0.70009
+abs_score,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0939,0.72014
+iei_cv,"vs % knockout, PTEN only (Spearman rho)",0.1333,0.73237
+ds1_rate_bite,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.317,0.74299
+sink_per_lfp,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0002,0.74299
+sink_spread,PTEN vs control (Mann-Whitney; effect = difference of medians),11.6208,0.74299
+n_clean,"vs % knockout, PTEN only (Spearman rho)",-0.1266,0.74553
+sink_total,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0789,0.76333
+bimodality,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0712,0.78607
+both_blades,"vs % knockout, PTEN only (Spearman rho)",0.1017,0.79458
+vote_ds1,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.066,0.80133
+ds2_lfp_amp,PTEN vs control (Mann-Whitney; effect = difference of medians),-199.5442,0.81481
+ds2_lfp_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),0.4242,0.81481
+lfp_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.4986,0.81481
+si_median,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0608,0.81665
+ds2_sink_width,"vs % knockout, PTEN only (Spearman rho)",-0.0833,0.83121
+ds2_lfp_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0505,0.84748
+vote_ds1_rate,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0466,0.8591
+vote_ds2_rate,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0453,0.86298
+ds1_rate_delta_mid,"vs % knockout, PTEN only (Spearman rho)",0.0667,0.86469
+sink_width,"vs % knockout, PTEN only (Spearman rho)",-0.0667,0.86469
+vote_ds1,"vs % knockout, PTEN only (Spearman rho)",0.0667,0.86469
+iei_cv,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0427,0.87074
+ds3_share_best,PTEN vs control (Mann-Whitney; effect = difference of medians),0.154,0.88495
+ds2_rate_si,PTEN vs control (Mann-Whitney; effect = difference of medians),0.6261,0.88836
+vote_ds1_rate,PTEN vs control (Mann-Whitney; effect = difference of medians),0.3596,0.88836
+ds1_rate_bite,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0362,0.89021
+mix_best,"vs % knockout, PTEN only (Spearman rho)",-0.05,0.89835
+ds3_share_si,"vs % knockout, PTEN only (Spearman rho)",0.0476,0.91085
+n_clean,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0237,0.92819
+mix_bite,"vs % knockout, PTEN only (Spearman rho)",0.0333,0.93216
+rate,"vs % knockout, PTEN only (Spearman rho)",-0.0333,0.93216
+ds1_lfp_ms,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0155,0.95284
+sink_per_lfp,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0155,0.95284
+amp_cv,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0916,0.96257
+bimodality,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0607,0.96257
+ds2_sink_ms,PTEN vs control (Mann-Whitney; effect = difference of medians),-1.0669,0.96257
+iei_cv,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0005,0.96257
+si_best,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0655,0.96257
+si_median,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0346,0.96257
+unscorable,PTEN vs control (Mann-Whitney; effect = difference of medians),0.01,0.96257
+vote_ds1,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.0301,0.96257
+ds1_share_bite,"vs % knockout, all mice, controls at 0 (Spearman rho)",-0.0116,0.96462
+vote_ds1_rate,"vs % knockout, PTEN only (Spearman rho)",0.0167,0.96605
+sink_width,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0052,0.98427
+ds2_sink_width,"vs % knockout, all mice, controls at 0 (Spearman rho)",0.0026,0.99214
+abs_score,PTEN vs control (Mann-Whitney; effect = difference of medians),-0.1889,1.0
+ds1_sink_peak,PTEN vs control (Mann-Whitney; effect = difference of medians),0.0203,1.0
+ds2_sink_width,PTEN vs control (Mann-Whitney; effect = difference of medians),-9.3185,1.0
+n_clean,PTEN vs control (Mann-Whitney; effect = difference of medians),-2.5,1.0
+sink_width,PTEN vs control (Mann-Whitney; effect = difference of medians),-8.2864,1.0
+source_peak,"vs % knockout, PTEN only (Spearman rho)",0.0,1.0

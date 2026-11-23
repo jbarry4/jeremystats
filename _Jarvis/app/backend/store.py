@@ -1297,7 +1297,10 @@ def delete_spike_set(self, identity, set_id):
 # One file rather than one per setting: favourites, smart collections and
 # "where was I" all live here, so a git pull brings the whole workbench over.
 def _prefs_path(self):
-    return self.prefs.mine(PREFS_BASE)
+    # Read-only callers (the screen-shaped local keys): the file holding
+    # this machine's own view, which in the PI's practice layer is the
+    # layer's copy once it has one (shards.Book.own_path).
+    return self.prefs.own_path(PREFS_BASE)
 
 
 def get_prefs(self):

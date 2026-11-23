@@ -1924,7 +1924,7 @@ BARRY.errorBadgeCount = function errorBadgeCount(data) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit', 'comod', 'spectrum'];
+               'toolkit', 'comod', 'spectrum', 'seahorse', 'cells'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -2142,6 +2142,14 @@ const MODES = {
         + '· nothing here is saved until you file the pairs',
     keys: '\u2190 \u2192 or n p step pairs · \u2191 \u2193 pick a channel · '
         + 'k keeps · x drops · t state / transition · Esc calls off a drag',
+  },
+  /* PROJECT EVOLVE phase 7 (2026-11-21): a recording's curated Kilosort
+     units. Looks only, like Braid; banking is the bar's Bank. */
+  cells: {
+    name: 'Cells',
+    what: 'Looking only · every curated cell’s spikes ticked on its own '
+        + 'contact, in its layer’s color · the cards are in the second window',
+    keys: '← → or n p step cells',
   },
   coupling: {
     name: 'Coupling',
@@ -4581,7 +4589,7 @@ BARRY.init = async function init() {
     // because hands that learned those keep them.
     const map = { '1': 'sessions', '2': 'xplore', '3': 'toolkit',
                   '4': 'history', '5': 'results', '6': 'eventbank',
-                  '7': 'storyboard', '8': 'misc', '0': 'misc',
+                  '7': 'storyboard', '8': 'misc', '9': 'seahorse', '0': 'misc',
                   't': 'toolkit', 'T': 'toolkit' };
     // Same as the rail: pressing 4 while already on History should not
     // reload it.
@@ -4714,7 +4722,8 @@ BARRY.init = async function init() {
   /* A window opened for one thing should not offer to navigate away from
      it. Same idea as `aid-window` for the panel pop-outs: the app is the
      whole app, it just has no rail here. */
-  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum'
+      || params.get('role') === 'cells') {
     document.body.classList.add('solo-window');
   }
   /* Where to land.
