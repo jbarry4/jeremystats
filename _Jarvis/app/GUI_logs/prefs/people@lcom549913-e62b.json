@@ -4,11 +4,11 @@
     "added": {
       "Aggie Krempasky": [
         "set",
-        "2026-11-12T19:09:35.593079+00:00"
+        "2026-11-17T18:32:36.705605+00:00"
       ],
       "Angelina Woychosky": [
         "set",
-        "2026-11-09T21:15:42.331339+00:00"
+        "2026-11-23T16:40:14.905621+00:00"
       ],
       "Avery (AI)": [
         "set",
@@ -16,7 +16,11 @@
       ],
       "Avery Sullenberger": [
         "set",
-        "2026-11-09T15:47:43.414827+00:00"
+        "2026-11-16T15:51:29.055808+00:00"
+      ],
+      "Daphne Lyons": [
+        "set",
+        "2026-11-20T18:28:31.630580+00:00"
       ],
       "Debug_Bot": [
         "set",
@@ -32,7 +36,7 @@
       ],
       "Isabella Piatek": [
         "set",
-        "2026-11-09T16:58:56.340522+00:00"
+        "2026-11-20T18:30:47.420410+00:00"
       ],
       "Jeremy": [
         "set",
@@ -40,7 +44,7 @@
       ],
       "Maddie Massad": [
         "set",
-        "2026-11-09T15:33:54.311995+00:00"
+        "2026-11-16T18:08:53.062845+00:00"
       ],
       "Prospector (AI)": [
         "set",
@@ -50,13 +54,17 @@
         "set",
         "2026-11-06T21:24:59.783965+00:00"
       ],
+      "Samara Sahagian": [
+        "set",
+        "2026-10-20T17:41:24.527837+00:00"
+      ],
       "Shahriar": [
         "set",
         "2026-09-09T13:38:41.353784+00:00"
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-11-13T17:37:35.642989+00:00"
+        "2026-11-13T20:38:25.803757+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -73,6 +81,10 @@
       "a colleague": [
         "set",
         "2026-09-13T16:42:18.939693+00:00"
+      ],
+      "akrempas@uvm.edu": [
+        "set",
+        "2026-11-20T18:28:31.432141+00:00"
       ],
       "bankback@harness": [
         "set",
@@ -110,6 +122,10 @@
         "set",
         "2026-09-25T20:59:31.657966+00:00"
       ],
+      "stormregion test": [
+        "set",
+        "2026-11-20T18:28:31.563930+00:00"
+      ],
       "theexaminedexistence@gmail.com": [
         "set",
         "2026-09-09T13:38:41.305714+00:00"
@@ -121,7 +137,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-13T17:37:35.642989+00:00",
+    "at": "2026-11-23T16:40:14.905621+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -160,7 +176,7 @@
     {
       "at": "2026-09-08T21:23:16.555182+00:00",
       "by": "Isabella Piatek",
-      "edited_at": "2026-11-09T16:58:56.329261+00:00",
+      "edited_at": "2026-11-20T18:30:47.419421+00:00",
       "email": "Isabella.Piatek@uvm.edu",
       "id": "Isabella Piatek",
       "initials": "IP",
@@ -197,16 +213,6 @@
       "edited_at": "2026-10-14T19:00:10.085269+00:00",
       "id": "Tooth Fairy (AI)",
       "name": "Tooth Fairy (AI)"
-    },
-    {
-      "at": "2026-10-20T17:00:18.105309+00:00",
-      "by": "Avery Sullenberger",
-      "edited_at": "2026-11-09T15:47:43.414826+00:00",
-      "email": "asullenb@uvm.edu",
-      "id": "Avery Sullenberger",
-      "initials": "AS",
-      "name": "Avery Sullenberger",
-      "role": "Undergraduate Student"
     },
     {
       "aliases": [
@@ -246,26 +252,6 @@
       "name": "Prospector (AI)"
     },
     {
-      "at": "2026-11-02T19:24:47.345408+00:00",
-      "by": "Aggie Krempasky",
-      "edited_at": "2026-11-12T19:09:35.578954+00:00",
-      "email": "akrempas@uvm.edu",
-      "id": "Aggie Krempasky",
-      "initials": "AK",
-      "name": "Aggie Krempasky",
-      "role": "Undergraduate Student"
-    },
-    {
-      "at": "2026-11-09T15:33:54.310964+00:00",
-      "by": "Isabella Piatek",
-      "edited_at": "2026-11-09T15:33:54.310965+00:00",
-      "email": "mmassad@uvm.edu",
-      "id": "Maddie Massad",
-      "initials": "MM",
-      "name": "Maddie Massad",
-      "role": "Undergraduate Student"
-    },
-    {
       "aliases": [
         "rain"
       ],
@@ -277,16 +263,6 @@
       "initials": "RY",
       "name": "Rain Younger",
       "role": "Graduate Student"
-    },
-    {
-      "at": "2026-11-09T21:15:42.330771+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-11-09T21:15:42.330794+00:00",
-      "email": "awoychos@uvm.edu",
-      "id": "Angelina Woychosky",
-      "initials": "AW",
-      "name": "Angelina Woychosky",
-      "role": "Undergraduate Student"
     },
     {
       "at": "2026-11-12T19:01:37.168694+00:00",
@@ -306,13 +282,85 @@
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Isabella Piatek",
-      "edited_at": "2026-11-13T17:37:35.641989+00:00",
+      "by": "Eshal Anwer",
+      "edited_at": "2026-11-13T20:38:25.798742+00:00",
       "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
       "role": "Graduate Student"
+    },
+    {
+      "at": "2026-10-20T17:00:18.105309+00:00",
+      "by": "Avery Sullenberger",
+      "edited_at": "2026-11-16T15:51:29.055807+00:00",
+      "email": "asullenb@uvm.edu",
+      "id": "Avery Sullenberger",
+      "initials": "AS",
+      "name": "Avery Sullenberger",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-09T15:33:54.310964+00:00",
+      "by": "Maddie Massad",
+      "edited_at": "2026-11-16T18:08:53.061854+00:00",
+      "email": "mmassad@uvm.edu",
+      "id": "Maddie Massad",
+      "initials": "MM",
+      "name": "Maddie Massad",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-02T19:24:47.345408+00:00",
+      "by": "Aggie Krempasky",
+      "edited_at": "2026-11-17T18:32:36.705604+00:00",
+      "email": "akrempas@uvm.edu",
+      "id": "Aggie Krempasky",
+      "initials": "AK",
+      "name": "Aggie Krempasky",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-10-20T17:40:30.721082+00:00",
+      "by": "Samara Sahagian",
+      "edited_at": "2026-10-20T17:41:22.674512+00:00",
+      "email": "samara.sahagian@uvm.edu",
+      "id": "Samara Sahagian",
+      "initials": "SS",
+      "name": "Samara Sahagian",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-20T18:28:31.432139+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-20T18:28:31.432140+00:00",
+      "id": "akrempas@uvm.edu",
+      "name": "akrempas@uvm.edu"
+    },
+    {
+      "at": "2026-11-20T18:28:31.563928+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-20T18:28:31.563929+00:00",
+      "id": "stormregion test",
+      "name": "stormregion test"
+    },
+    {
+      "at": "2026-11-20T18:28:31.630578+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-20T18:28:31.630579+00:00",
+      "email": "dlyons1@uvm.edu",
+      "id": "Daphne Lyons",
+      "name": "Daphne Lyons"
+    },
+    {
+      "at": "2026-11-09T21:15:42.330771+00:00",
+      "by": "Angelina Woychosky",
+      "edited_at": "2026-11-23T16:40:14.905620+00:00",
+      "email": "awoychos@uvm.edu",
+      "id": "Angelina Woychosky",
+      "initials": "AW",
+      "name": "Angelina Woychosky",
+      "role": "Undergraduate Student"
     }
   ]
 }

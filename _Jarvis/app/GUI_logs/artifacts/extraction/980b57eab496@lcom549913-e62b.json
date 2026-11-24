@@ -1,21 +1,21 @@
 {
   "_at": {
     "added": "2026-11-10T21:07:05.977306+00:00",
-    "deleted": "2026-11-16T17:20:22.901578+00:00",
+    "deleted": "2026-11-23T16:25:23.365658+00:00",
     "id": "2026-11-10T21:07:05.977306+00:00",
     "kind": "2026-11-10T21:07:05.977306+00:00",
     "name": "2026-11-10T21:07:05.977306+00:00",
-    "nickname": "2026-11-16T17:20:22.901578+00:00",
+    "nickname": "2026-11-23T16:25:23.365658+00:00",
     "schema": "2026-11-10T21:07:05.977306+00:00",
     "subject": "2026-11-10T21:07:05.977306+00:00",
     "subject_key": "2026-11-10T21:07:05.977306+00:00",
-    "version": "2026-11-13T17:43:38.330960+00:00"
+    "version": "2026-11-23T16:25:23.365658+00:00"
   },
   "_keys": {
     "cited": {
       "980b57eab496:f44700dbf421>eeea75890533:1": [
         "set",
-        "2026-11-13T18:25:00.058257+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
       ],
       "980b57eab496:f44700dbf421>eeea75890533:2": [
         "set",
@@ -25,23 +25,35 @@
     "versions": {
       "0c560e454fc6": [
         "set",
-        "2026-11-12T20:06:41.582682+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
+      ],
+      "4718443b12ee": [
+        "set",
+        "2026-11-20T18:28:33.414725+00:00"
       ],
       "5bbb8f9bc252": [
         "set",
-        "2026-11-13T16:48:01.269132+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
       ],
       "63ea5e3ed4a0": [
         "set",
-        "2026-11-13T16:48:01.269132+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
+      ],
+      "6445df9762e7": [
+        "set",
+        "2026-11-23T16:25:23.365658+00:00"
       ],
       "97d9d9003432": [
         "set",
-        "2026-11-13T17:43:38.330960+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
       ],
       "9e560e5bd512": [
         "set",
         "2026-11-10T21:07:05.977306+00:00"
+      ],
+      "b8b0201913d2": [
+        "set",
+        "2026-11-20T18:28:33.414725+00:00"
       ],
       "cd3e694f9793": [
         "set",
@@ -49,16 +61,20 @@
       ],
       "f44700dbf421": [
         "set",
-        "2026-11-13T16:48:01.269132+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
       ],
       "fa966fec0f82": [
         "set",
-        "2026-11-13T17:26:17.499533+00:00"
+        "2026-11-13T20:38:29.369356+00:00"
+      ],
+      "fd61c222e41e": [
+        "set",
+        "2026-11-23T16:25:23.365658+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-16T17:20:22.901578+00:00",
+    "at": "2026-11-23T16:25:23.365658+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -118,7 +134,7 @@
     "room_name": "Dentate Spike"
   },
   "subject_key": "extraction|dentate_spike",
-  "version": 8,
+  "version": 12,
   "versions": [
     {
       "app_version": "2026.11.09.4",
@@ -488,6 +504,118 @@
       },
       "params_hash": "ad3da79b6dbe",
       "v": 8
+    },
+    {
+      "app_version": "2026.11.19.1",
+      "at": "2026-11-19T15:49:15-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "8c18a666",
+      "digest": "ce9ece4540ba",
+      "id": "b8b0201913d2",
+      "inputs": [
+        {
+          "artifact_id": "6fa7fef7b7a3",
+          "version": 5
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4733,
+        "folder": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific \u00b7 fixed 2026-11-19",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": "Halo set rebuilt 2026-11-19: m1 s2 on Lock's stamps, duplicate stamps removed; calls and bands carried from xm-f6c45faefb.",
+      "params": {
+        "folder": "xm-f9ba0085e4",
+        "round": "direct"
+      },
+      "params_hash": "0f65aec8ece0",
+      "v": 9
+    },
+    {
+      "app_version": "2026.11.19.3",
+      "at": "2026-11-20T09:25:04-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "05e38e79",
+      "digest": "049286ba5038",
+      "id": "4718443b12ee",
+      "inputs": [
+        {
+          "artifact_id": "a7eee6a6ca9f",
+          "version": 4
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4098,
+        "folder": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room; No P-spikes])) \u00b7 fixed 2026-11-19",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": "No P-spikes set rebuilt 2026-11-19: m1 s2 on Lock's stamps, duplicate stamps removed; calls and bands carried from xm-1d6cfcdd3d.",
+      "params": {
+        "folder": "xm-320ab6681b",
+        "round": "direct"
+      },
+      "params_hash": "83e215953ba2",
+      "v": 10
+    },
+    {
+      "app_version": "2026.11.21.1",
+      "at": "2026-11-21T16:59:34-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "6c4e481eb712",
+      "id": "fd61c222e41e",
+      "inputs": [
+        {
+          "artifact_id": "6fa7fef7b7a3",
+          "version": 5
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4733,
+        "folder": "Halo (DS, from its Root Canal bundle)",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-b2d963ef1c",
+        "round": "direct"
+      },
+      "params_hash": "a077a715f4b3",
+      "v": 11
+    },
+    {
+      "app_version": "2026.11.21.1",
+      "at": "2026-11-21T17:01:18-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "d1ab8e63",
+      "digest": "632fc8a10e2b",
+      "id": "6445df9762e7",
+      "inputs": [
+        {
+          "artifact_id": "a7eee6a6ca9f",
+          "version": 4
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 4098,
+        "folder": "Strict (DS, from its Root Canal bundle)",
+        "recordings": 18,
+        "room": "dentate_spike"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-7d6c8cfb0b",
+        "round": "direct"
+      },
+      "params_hash": "375b34ccc547",
+      "v": 12
     }
   ]
 }
