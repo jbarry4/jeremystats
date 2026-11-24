@@ -1,0 +1,98 @@
+{
+ "cells": [
+  {
+   "binary_down": false,
+   "ch_index": 12,
+   "csc": 14,
+   "depth_um": 260.0,
+   "digest": "60b9b628d971c12b",
+   "first_s": 1.231499,
+   "id": 7,
+   "last_s": 2123.570985,
+   "layer": "ca1_sr",
+   "layer_color": "#33FF57",
+   "layer_name": "CA1",
+   "n": 7757,
+   "rate_hz": 3.651
+  },
+  {
+   "binary_down": false,
+   "ch_index": 18,
+   "csc": 20,
+   "depth_um": 380.0,
+   "digest": "22369176ca4eb589",
+   "first_s": 1.739033,
+   "id": 12,
+   "last_s": 2123.804185,
+   "layer": "ca1_slm",
+   "layer_color": "#3357FF",
+   "layer_name": "CA1 SLM",
+   "n": 4345,
+   "rate_hz": 2.045
+  },
+  {
+   "binary_down": false,
+   "ch_index": 36,
+   "csc": 39,
+   "depth_um": 760.0,
+   "digest": "9e5e991c70f22030",
+   "first_s": 0.023533,
+   "id": 32,
+   "last_s": 2124.340318,
+   "layer": "hil",
+   "layer_color": "#FF8C00",
+   "layer_name": "HIL",
+   "n": 89329,
+   "rate_hz": 42.048
+  },
+  {
+   "binary_down": false,
+   "ch_index": 53,
+   "csc": 56,
+   "depth_um": 1100.0,
+   "digest": "fa5e58574e735da3",
+   "first_s": 2.037499,
+   "id": 44,
+   "last_s": 2123.387019,
+   "layer": "dg_mml2",
+   "layer_color": "#006400",
+   "layer_name": "DG MML2",
+   "n": 9146,
+   "rate_hz": 4.305
+  },
+  {
+   "binary_down": false,
+   "ch_index": 56,
+   "csc": 60,
+   "depth_um": 1180.0,
+   "digest": "1837f3d6272d956c",
+   "first_s": 1.945532,
+   "id": 49,
+   "last_s": 2124.400718,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 12946,
+   "rate_hz": 6.094
+  }
+ ],
+ "exact_clusters": 5,
+ "layers_from": "the layer sheet (feeder sheet import)",
+ "polarity": {
+  "binary_down": 0,
+  "input_inverted": true,
+  "of": 5,
+  "ok": true,
+  "true_down": 5,
+  "words": "5 of 5 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage, as a spike should. The sort read is the non-inverted run, made on the binary as written."
+ },
+ "run": "kilosort_tl6_tu7_fs30000.0",
+ "run_dir": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46\\binary\\kilosort_tl6_tu7_fs30000.0",
+ "session_label": "PTEN m8 s9 2024-02-09",
+ "source": {
+  "kind": "export",
+  "name": "Isabella's export",
+  "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46\\timestamps"
+ },
+ "source_digest": "1951815f5d0d73c8"
+}

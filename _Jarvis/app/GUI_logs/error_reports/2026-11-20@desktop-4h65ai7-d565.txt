@@ -1,0 +1,52 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-11-20
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.11.19.3 1abcd96b
+written     2026-11-20T18:03:47-05:00
+faults      1 error(s), 1 distinct
+left out    22 test fault(s) (harness pages, the test client)
+activity    403 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    09:21:58-09:21:58  er2/run/refresh: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json.part' -> 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json'
+
+==========================================================================
+1/1  er2/run/refresh  x1
+==========================================================================
+first       2026-11-20T09:21:58-05:00
+latest      2026-11-20T09:21:58-05:00
+who         Shahriar Tafti
+signature   er2/run/refresh||[WinError N] The process cannot access the file because it is being used by another process: '<path>' -> '<path>'
+
+message
+    [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json.part' -> 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json'
+
+context
+    rid                r005
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\er2routes.py", line 148, in api_er2_run_refresh
+        out["fetch"] = R.fetch_vacc(cfg, rid)
+                       ~~~~~~~~~~~~^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\er2run.py", line 302, in fetch_vacc
+        _write_json(os.path.join(_dir(rid), "results", "%d.json" % t["i"]), json.loads(txt))
+        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\_Jarvis\app\backend\er2run.py", line 73, in _write_json
+        os.replace(tmp, path)
+        ~~~~~~~~~~^^^^^^^^^^^
+    PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json.part' -> 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json'
+
+--- around 2026-11-20T09:21:58-05:00 ---
+    09:20:05   -112.4s  link.scope  [sessions]  {"scope":"session"}
+    09:21:13    -45.0s  session.open  [sessions]  rec=m008_s002_2022-07-27_12-15-50  {"channels":128,"duration_s":552.4138666666666,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM8_YH\\kcnt1m8_s2jul27\\2022-07-27_12-15-50","restored":["view restored"]}
+    09:21:13    -44.8s  events.import  [sessions]  rec=m008_s002_2022-07-27_12-15-50  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    09:21:58     +0.0s  >>> er2/run/refresh: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json.part' -> 'C:\\Users\\Z390\\AppData\\Local\\Jarvis\\er2\\runs\\r005\\results\\146.json'
+    09:23:18    +80.7s  extraction.open  [toolkit]

@@ -7828,7 +7828,7 @@ def api_braces_set(set_id):
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
                  "params", "summary", "created", "committed", "rows",
-                 "calls")},
+                 "calls", "notes")},
         "counts": counts,
         # Which rows currently sit on a time another row also claims, by
         # row number so the panel can jump to them. Worked out from the
@@ -7885,6 +7885,45 @@ def api_braces_decide(set_id):
                     "calls": rec.get("calls") or {}})
 
 
+@app.route("/api/braces/set/<set_id>/note", methods=["POST"])
+def api_braces_note(set_id):
+    """A note on one row of an alignment (2026-11-20). `{row, note}`."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = BRACES.note(set_id, body.get("row"), body.get("note"),
+                          by=_braces_who(body))
+    except brsetmod.BracesSetError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "notes": rec.get("notes") or {}})
+
+
+@app.route("/api/braces/set/<set_id>/save", methods=["POST"])
+def api_braces_save(set_id):
+    """Send this alignment's review up now and confirm it arrived
+    (2026-11-20, the Save button)."""
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    try:
+        got = CLOUD.save_shard_file("braces", BRACES._base(rec))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    calls = rec.get("calls") or {}
+    STORE.record_activity([{"action": "braces.save",
+                            "detail": {"set": set_id, "calls": len(calls),
+                                       "confirmed": got.get("confirmed")}}])
+    return jsonify(dict(got, ok=True, calls=len(calls),
+                        rows=len(rec.get("rows") or []),
+                        notes=sum(1 for v in (rec.get("notes") or {}).values()
+                                  if (v or {}).get("text"))))
+
+
 @app.route("/api/braces/set/<set_id>/commit", methods=["POST"])
 def api_braces_commit(set_id):
     """Write the alignment as the next version of the bank entry.
@@ -7923,12 +7962,21 @@ def api_braces_commit(set_id):
         for lid, name in (entry.get("label_names") or {}).items():
             if lid in keep_ids:
                 keep_ids.add(name)
+        # The review's notes (2026-11-20), from row number to event index,
+        # so they ride into the version with their events.
+        rows = rec.get("rows") or []
+        notes = {}
+        for k, said in (rec.get("notes") or {}).items():
+            try:
+                notes[rows[int(k)]["i"]] = said
+            except (TypeError, ValueError, IndexError, KeyError):
+                continue
         report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
                             flags=flags, keep_ids=keep_ids,
-                            reject=rejects)
+                            reject=rejects, notes=notes)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -10330,7 +10378,8 @@ def _xm_folder(fid):
     if not isinstance(f, dict) or f.get("gone"):
         raise ValueError("There is no X-ray Many folder %s." % fid)
     wf, v, run = _xm_source(f.get("source"))
-    return f, wf, v, xraymanymod.members_of(wf["id"], v, run)
+    return f, wf, v, xraymanymod.members_of(
+        wf["id"], v, run, xraymanymod.labels_of(f.get("source")))
 
 
 def _xm_reads():
@@ -10416,7 +10465,9 @@ def api_dspca_many():
                 continue
             try:
                 wf, v, run = _xm_source(f.get("source"))
-                mem, err = xraymanymod.members_of(wf["id"], v, run), None
+                mem, err = xraymanymod.members_of(
+                    wf["id"], v, run,
+                    xraymanymod.labels_of(f.get("source"))), None
             except Exception as exc:                     # noqa: BLE001
                 mem, err = [], str(exc)
             rows.append((fid, f, mem, err))
@@ -10443,6 +10494,9 @@ def api_dspca_many():
             out.append({"id": fid, "name": f.get("name"),
                         "at": f.get("at"), "by": f.get("by"),
                         "source": f.get("source") or {},
+                        "warning": xraymanymod.warning(f.get("source")),
+                        "type_prefix": xraymanymod.type_prefix(
+                            f.get("source")),
                         "archived": bool(f.get("archived")),
                         "archived_at": f.get("archived_at"),
                         "params": xraymanymod.clean_params(params.get(fid)),
@@ -10454,30 +10508,137 @@ def api_dspca_many():
     return jsonify({"ok": True, "folders": out})
 
 
+def _xm_entry_source(eid):
+    """(workflow source, entry) for a folder made from a bank bundle
+    (PROJECT EVOLVE phase 3): the run the entry was banked from."""
+    rec = BANK.get(eid)
+    if not rec:
+        raise ValueError("There is no bank entry %s." % eid)
+    prm = ((rec.get("source") or {}).get("parameters") or {})
+    wf = prm.get("workflow") or {}
+    if prm.get("tool") != "rootcanal_workflow" or not wf.get("artifact_id"):
+        raise ValueError("‘%s’ was not banked by a Root Canal workflow, so "
+                         "there is no run to read it from."
+                         % (rec.get("name") or eid))
+    vers = rec.get("versions") or []
+    return ({"artifact_id": wf["artifact_id"], "version": wf.get("version")},
+            {"entry_id": rec["id"],
+             "version": (vers[-1].get("id") if vers else None)})
+
+
 @app.route("/api/dspca/many/folder", methods=["POST"])
 def api_dspca_many_folder():
     """A folder from a Root Canal workflow that has run: {name, source:
-    {artifact_id, version?}}. A server-side merge of one id."""
+    {artifact_id, version?}}. A server-side merge of one id.
+
+    PROJECT EVOLVE phase 3 (2026-11-21): `source.entry_id` makes it from a
+    banked Root Canal bundle instead (the run it was banked from), and
+    `labels` says which of its labels to read -- DS when left out. And
+    `carry_from`, another folder's id: its boxes and parameters, and every
+    call the Extraction Room keeps per folder (bands, splits, separable,
+    DS1/DS2 swaps), are copied onto the new folder's recordings that have
+    the same events -- a set made again, with nothing a person decided
+    lost."""
     body = request.get_json(force=True) or {}
     src = body.get("source") or {}
     try:
+        entry = None
+        if src.get("entry_id"):
+            src2, entry = _xm_entry_source(src["entry_id"])
+            src = dict(src, **src2)
         wf, v, run = _xm_source({"artifact_id": src.get("artifact_id"),
                                  "version": src.get("version")})
-        mem = xraymanymod.members_of(wf["id"], v, run)
+        labels = xraymanymod.clean_labels(run.get("kind"),
+                                          body.get("labels"))
+        if body.get("labels") and not labels:
+            raise ValueError("A %s run has none of the labels %s."
+                             % (run.get("kind"), body.get("labels")))
+        mem = xraymanymod.members_of(wf["id"], v, run, labels)
         if not any(m["n"] for m in mem):
-            raise ValueError("‘%s’ v%d kept no events inside its border, so "
-                             "there is nothing to read."
-                             % (wf.get("nickname") or wf["id"], v))
+            raise ValueError("‘%s’ v%d has no events in %s, so there is "
+                             "nothing to read."
+                             % (wf.get("nickname") or wf["id"], v,
+                                xraymanymod.label_words(run.get("kind"),
+                                                        labels)
+                                if labels else "its border"))
     except Exception as exc:                             # noqa: BLE001
         return fail("dspca/many/folder", exc, 400, {"source": src})
     fid = xraymanymod.new_folder_id()
     rec = xraymanymod.folder_record(body.get("name"), wf, v, run,
-                                    STORE.provenance())
+                                    STORE.provenance(), labels=labels,
+                                    entry=entry)
+    carried = None
+    if body.get("carry_from"):
+        try:
+            carried = _xm_carry(body["carry_from"], fid, mem)
+            rec["carried_from"] = body["carry_from"]
+        except Exception as exc:                         # noqa: BLE001
+            return fail("dspca/many/folder", exc, 400,
+                        {"carry_from": body.get("carry_from")})
     STORE.set_prefs({}, merge={xraymanymod.FOLDERS_KEY: {fid: rec}})
+    if carried and carried.get("merge"):
+        STORE.set_prefs({}, merge=carried.pop("merge"))
+    elif carried:
+        carried.pop("merge", None)
     STORE.record_activity([{"action": "dspca.many.folder",
                             "detail": {"id": fid, "workflow": wf["id"],
-                                       "version": v, "n": len(mem)}}])
-    return jsonify({"ok": True, "id": fid, "n": len(mem)})
+                                       "version": v, "n": len(mem),
+                                       "labels": labels,
+                                       "entry": (entry or {}).get("entry_id"),
+                                       "carried_from":
+                                           body.get("carry_from")}}])
+    return jsonify({"ok": True, "id": fid, "n": len(mem),
+                    "labels": labels, "carried": carried,
+                    "warning": xraymanymod.warning(rec["source"])})
+
+
+def _xm_carry(old_fid, new_fid, new_mem):
+    """What to copy from folder `old_fid` onto `new_fid`: a recording's box
+    and its room calls go across only when its events are the same in both
+    (the same stamps hash) -- a call made on other events is not a call on
+    these. Returns {copied, same, differ, merge}; `merge` is the prefs
+    merge to write."""
+    f_old, _wf, _v, old_mem = _xm_folder(old_fid)
+    prefs = STORE.get_prefs() or {}
+    same = {m["gid"] for m in new_mem if m.get("n")} & {
+        m["gid"] for m in old_mem if m.get("n")}
+    old_sh = {m["gid"]: m.get("stamps_hash") for m in old_mem}
+    new_sh = {m["gid"]: m.get("stamps_hash") for m in new_mem}
+    match = {g for g in same if old_sh.get(g) and old_sh[g] == new_sh.get(g)}
+    differ = sorted(same - match)
+    merge, copied = {}, {}
+    boxes = prefs.get(xraymanymod.BOXES_KEY) or {}
+    for g in match:
+        b = boxes.get(xraymanymod.box_key(old_fid, g))
+        if b:
+            merge.setdefault(xraymanymod.BOXES_KEY, {})[
+                xraymanymod.box_key(new_fid, g)] = b
+            copied["boxes"] = copied.get("boxes", 0) + 1
+    p = (prefs.get(xraymanymod.PARAMS_KEY) or {}).get(old_fid)
+    if p:
+        merge.setdefault(xraymanymod.PARAMS_KEY, {})[new_fid] = p
+        copied["params"] = 1
+    for key in (extractionmod.BAND_KEY, extractionmod.SEP_KEY,
+                extractionmod.FLIP_KEY, extractionmod.SPLIT_KEY):
+        got = prefs.get(key) or {}
+        for room, _n in extractionmod.ROOMS:
+            for g in match:
+                val = got.get(extractionmod.call_key(room, old_fid, g))
+                if val is None:
+                    continue
+                merge.setdefault(key, {})[
+                    extractionmod.call_key(room, new_fid, g)] = val
+                copied[key] = copied.get(key, 0) + 1
+    # The set's own mode in the room (one per room and folder).
+    modes = prefs.get(MODE_KEY) or {}
+    for room, _n in extractionmod.ROOMS:
+        val = modes.get("%s|%s" % (room, old_fid))
+        if val is not None:
+            merge.setdefault(MODE_KEY, {})["%s|%s" % (room, new_fid)] = val
+            copied[MODE_KEY] = copied.get(MODE_KEY, 0) + 1
+    return {"from": old_fid, "from_name": f_old.get("name"),
+            "copied": copied, "same": len(match),
+            "differ": differ, "merge": merge}
 
 
 @app.route("/api/dspca/many/read", methods=["POST"])
@@ -10678,7 +10839,10 @@ def api_dspca_many_run():
                        "group": groups.get(gid),
                        "source": {k: src.get(k) for k in
                                   ("artifact_id", "version", "nickname",
-                                   "grace")}}
+                                   "grace", "labels", "entry_id")
+                                  if src.get(k) is not None
+                                  or k in ("artifact_id", "version",
+                                           "nickname", "grace")}}
             have = ARTIFACTS.find(xraymanymod.KIND, subject)
             before = (have or {}).get("version")
             saved = ARTIFACTS.put(
@@ -10826,7 +10990,9 @@ def api_extraction():
                 continue
             try:
                 _wf, _v, _run = _xm_source(f.get("source"))
-                mem = xraymanymod.members_of(_wf["id"], _v, _run)
+                mem = xraymanymod.members_of(
+                    _wf["id"], _v, _run,
+                    xraymanymod.labels_of(f.get("source")))
             except Exception:                            # noqa: BLE001
                 mem = []
             n_read = sum(1 for m in mem if m.get("n") and _xm_read_of(
@@ -23333,7 +23499,8 @@ def api_curation_from_bank():
         except (TypeError, ValueError):
             continue
         facts[key] = {k: e[k] for k in ("origin", "pair_t", "stamp",
-                                         "channel", "amplitude")
+                                         "channel", "amplitude",
+                                         "note", "note_by")
                       if e.get(k) is not None}
     if facts:
         for item in events:
@@ -23409,6 +23576,17 @@ def api_curation_from_bank():
             pass
 
     prog = CURATE.progress(rec)
+    # Started from a version where every event is already decided: the
+    # "first time every event is decided" has happened, in that version, so
+    # this set never banks itself. Without this, picking up an old finished
+    # version and changing one call banked a new version on the spot
+    # (Rain, 2026-11-20: "if people pull up old shit ... it can save a new
+    # version").
+    if prog.get("total") and not prog.get("left"):
+        try:
+            rec = CURATE.mark_autobanked(gid, skind, want_v) or rec
+        except curation.CurationError:
+            pass
     STORE.record_activity([{
         "action": "curation.from_bank",
         "detail": {"gid": gid, "kind": skind, "entry": ent["id"],
@@ -24028,6 +24206,101 @@ def api_curation_label(gid, kind):
     except Exception as exc:
         return fail("curation/label", exc, 400, {"gid": gid, "kind": kind})
     return jsonify({"ok": True, "event": ev, "progress": prog})
+
+
+@app.route("/api/curation/<gid>/<kind>/note", methods=["POST"])
+def api_curation_note(gid, kind):
+    """A note on one candidate, or none (2026-11-20). `{event, note}`.
+
+    Changes nothing but the note: not the label, not who decided, not whose
+    the set is. It goes into the bank with the event when the set is banked.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        ev = CURATE.note(gid, kind, body.get("event"), body.get("note"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "event": {
+        "id": ev.get("id"), "note": ev.get("note") or "",
+        "note_by": ev.get("note_by"), "note_at": ev.get("note_at")}})
+
+
+@app.route("/api/curation/<gid>/<kind>/save", methods=["POST"])
+def api_curation_save(gid, kind):
+    """Save, and say so (2026-11-20).
+
+    Every decision is already written here the moment it is made. This sends
+    the set to the shared database now, rather than with the next sync, and
+    reads back what the database holds -- so "is it saved?" has an answer
+    somebody can see: "412 of 1,476 decided, uploaded and confirmed".
+    """
+    try:
+        got = CLOUD.save_curation_set(gid, kind)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "saved_here": True,
+                        "error": "Saved on this computer, but the upload did "
+                                 "not go through: %s. The next sync will try "
+                                 "again." % str(exc)[:200]}), 502
+    STORE.record_activity([{
+        "action": "curation.save",
+        "detail": {"gid": gid, "kind": kind,
+                   "decided": got.get("decided"), "total": got.get("total"),
+                   "confirmed": got.get("confirmed")},
+    }])
+    return jsonify(dict(got, ok=True))
+
+
+@app.route("/api/curation/<gid>/<kind>/keep-only", methods=["POST"])
+def api_curation_keep_only(gid, kind):
+    """Keep this set in view and hide the other sets of the same step on the
+    same recording (2026-11-20, Rain: "an option to ... remove them from
+    view").
+
+    Hiding is archiving: nothing is deleted, every decision stays, and each
+    can be brought back from the "archived" fold. Only sets of the same kind
+    family (every Panning set of a recording, say) are touched, and never
+    one somebody is in right now.
+    """
+    me = CURATE.get(gid, kind)
+    if not me:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    base = curation.kind_of(kind)
+    busy = set()
+    try:
+        for r in PRESENCE.all():
+            if r.get("active") and r.get("gid") == gid:
+                busy.add(r.get("kind"))
+    except Exception:                                    # noqa: BLE001
+        pass
+    hidden, skipped = [], []
+    for rec in CURATE.all():
+        if rec.get("gid") != gid or rec.get("kind") == kind:
+            continue
+        if curation.kind_of(rec.get("kind")) != base or rec.get("archived"):
+            continue
+        if rec.get("kind") in busy:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": "somebody is in it right now"})
+            continue
+        try:
+            CURATE.archive(gid, rec["kind"], True)
+            hidden.append({"kind": rec["kind"], "name": rec.get("name")})
+        except curation.CurationError as exc:
+            skipped.append({"kind": rec.get("kind"), "name": rec.get("name"),
+                            "why": str(exc)})
+    if me.get("archived"):
+        try:
+            CURATE.archive(gid, kind, False)
+        except curation.CurationError:
+            pass
+    STORE.record_activity([{
+        "action": "curation.keep_only",
+        "detail": {"gid": gid, "kind": kind, "hidden": len(hidden),
+                   "skipped": len(skipped)},
+    }])
+    return jsonify({"ok": True, "hidden": hidden, "skipped": skipped})
 
 
 @app.route("/api/curation/<gid>/<kind>/rename", methods=["POST"])
@@ -26027,6 +26300,10 @@ def api_curation_restore(gid, kind):
     # pass on top of whatever was newest.
     try:
         CURATE.set_based_on(gid, kind, want_v)
+        # A finished version put back is not a first finish: it never banks
+        # itself again (see api_curation_from_bank).
+        if prog.get("total") and not prog.get("left"):
+            CURATE.mark_autobanked(gid, kind, want_v)
     except curation.CurationError:
         pass        # the set is gone; the restore already reported that
     STORE.record_activity([{
@@ -29299,6 +29576,7 @@ _SHARD_WHAT = {
     "presets": "saved filter and analysis presets",
     "results": "the figure catalogue",
     "storyboards": "decks",
+    "seahorse": "Seahorse atlas notes, saved views and quiz progress",
     "feedback": "reports filed from the interface",
     "tombstones": "what has been deleted, so a delete travels",
 }
@@ -30244,6 +30522,10 @@ COLUMN_MIGRATIONS = {
     "synced_at": "24_arrival_clock.sql",
     "aligned": "24_arrival_clock.sql",
     "by_label": "24_arrival_clock.sql",
+    # Notes on curated events, each half of the row on its own clock
+    # (2026-11-20).
+    "note_at": "25_curation_notes.sql",
+    "note_by": "25_curation_notes.sql",
 }
 
 
@@ -30283,6 +30565,8 @@ COLUMN_TABLES = {
     "synced_at": "bank_entries",
     "aligned": "bank_entries",
     "by_label": "bank_entries",
+    "note_at": "curation_events",
+    "note_by": "curation_events",
 }
 
 
@@ -31434,6 +31718,14 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 # or on the VACC. Its routes live in er2routes.py.
 from . import er2routes as er2routesmod                       # noqa: E402
 er2routesmod.install(app, sys.modules[__name__])
+# PROJECT EVOLVE (2026-11-21): branching labels out of a bank entry and
+# every thing's family (evolveroutes.py, family.py); the Cells -- curated
+# Kilosort units, read, versioned, banked and viewed (cellroutes.py,
+# cells.py).
+from . import evolveroutes as evolveroutesmod                 # noqa: E402
+evolveroutesmod.install(app, sys.modules[__name__])
+from . import cellroutes as cellroutesmod                     # noqa: E402
+cellroutesmod.install(app, sys.modules[__name__])
 
 # VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
 # its Chrome and its routes live in vos.py.
@@ -31450,6 +31742,11 @@ softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("us
 from . import chickenscratch as chickenscratchmod             # noqa: E402
 chickenscratchmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                                   _vacc_device()))
+# Seahorse (the mouse-brain atlas tab): shared lab notes, saved views and
+# per-person quiz progress in GUI_logs/seahorse. seahorse.py.
+from . import seahorse as seahorsemod                         # noqa: E402
+SEAHORSE = seahorsemod.install(app, fail, LOGS_DIR, STORE,
+                               who=lambda: (PROFILE.effective() or {}).get("user"))
 # Floss, the bug fixer anyone can ask (the rail's Floss chip): Claude Code on
 # the lab's account, in a private copy of the code. floss.py, docs/floss.md.
 from . import floss as flossmod                               # noqa: E402
@@ -33346,6 +33643,27 @@ def api_bank_version(entry_id, v):
         elif action in ("archive", "unarchive"):
             rec, changed = BANK.edit_version(
                 entry_id, v, {"archived": action == "archive"})
+        elif action == "keep_only":
+            # This version in view and every other one hidden (2026-11-20,
+            # Rain: "consolidate them or remove them from view"). Hidden is
+            # archived: nothing is deleted, each comes back from the
+            # "hidden" fold of any version picker. The one kept is
+            # unarchived if it was hidden itself.
+            ent = BANK.get(entry_id)
+            if not ent:
+                raise eventbank.BankError("No such entry.")
+            keep = BANK._version_ref(ent, v)
+            changed = []
+            for ver in list(ent.get("versions") or []):
+                ref = (str(ver["id"]) if ver.get("id")
+                       else versionsmod.stable_id(entry_id, ver))
+                want = not (ver is keep or versionsmod._twin_of(keep, ver))
+                if bool(ver.get("archived")) == want:
+                    continue
+                rec, _c = BANK.edit_version(entry_id, ref, {"archived": want})
+                changed.append(("hid " if want else "kept ")
+                               + "v%s" % ver.get("v"))
+            rec = BANK.get(entry_id)
         else:
             patch = {}
             if "note" in body:
@@ -33926,12 +34244,22 @@ def _cloud_sync_once(push=True, pull=True, files=False):
         # gets past (2026-10-21, two machines in the same minute, both
         # syncing again at once).
         first = _cloud_last.get("ok") is not False
-        transient = (" timed out after " in str(exc)
+        # Held back by ONE dropped request (cloud.CloudAway): nothing was
+        # asked, so it is not "the next attempt failing too". Isabella's Mac
+        # filed one at every start on 11-22: a request dropped seconds after
+        # start-up held the database for 15 s, and the sync behind it landed
+        # inside the hold. Two failures in a row behind a hold still count.
+        lone_hold = (isinstance(exc, cloudmod.CloudAway)
+                     and getattr(exc, "failures", 0) < 2)
+        transient = (lone_hold
+                     or " timed out after " in str(exc)
                      or str(exc).startswith("cannot reach ")
                      or _cloud_skew(str(exc)))
         if first and transient:
             _cloud_last["log_next"] = True
             first = False
+        elif lone_hold:
+            first = False     # log_next waits for a sync that is sent
         elif _cloud_last.pop("log_next", False):
             first = True
         _cloud_last.update({"at": cloudmod.now(), "ok": False,

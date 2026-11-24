@@ -634,7 +634,50 @@ BARRY.ui = (function () {
        unit       what the count counts, "stamps" */
   const LANE = 14, PAD = 8;
 
+  /* HIDDEN VERSIONS (2026-11-20, Rain: "remove them from view"). A version
+     that is archived -- hidden, in the pickers' words -- is left out of a
+     choice and counted under it, with one press to show it again. A
+     history to read (`readonly`) still shows everything, and so does a
+     version that is the current choice. `showHidden: true` starts open. */
   function versionTree(o) {
+    const opt = o || {};
+    const all = opt.versions || [];
+    const idOf = typeof opt.idOf === 'function' ? opt.idOf
+      : (v) => (v && (v.id || v.label || v.v));
+    const want = opt.value === undefined || opt.value === null ? null
+      : String(opt.value).replace(/^v/i, '');
+    const isChosen = (v) => want !== null
+      && (String(idOf(v)).replace(/^v/i, '') === want
+          || String(versionLabel(v)).slice(1) === want);
+    const hidden = opt.readonly ? [] : all.filter((v) => v.archived && !isChosen(v));
+    if (!hidden.length || all.length === hidden.length) return versionTreeAll(opt);
+    let open = !!opt.showHidden;
+    const wrap = el('div', { class: 'vtree-wrap' });
+    let tree = null;
+    const draw = () => {
+      tree = versionTreeAll(Object.assign({}, opt, {
+        versions: open ? all : all.filter((v) => hidden.indexOf(v) < 0),
+        value: tree && tree.value && tree.value()
+          ? idOf(tree.value()) : opt.value,
+      }));
+      wrap.replaceChildren(tree, el('button', {
+        type: 'button', class: 'linkish vtree-hidden-toggle',
+        text: open ? 'Leave out the ' + hidden.length + ' hidden'
+                   : 'Show ' + hidden.length + ' hidden version'
+                     + (hidden.length === 1 ? '' : 's'),
+        title: 'Hidden versions are archived: kept, and not offered. Showing '
+             + 'them changes nothing.',
+        onclick: () => { open = !open; draw(); },
+      }));
+    };
+    draw();
+    wrap.redraw = () => tree && tree.redraw && tree.redraw();
+    wrap.value = () => (tree && tree.value ? tree.value() : null);
+    wrap.choose = (ref) => tree && tree.choose && tree.choose(ref);
+    return wrap;
+  }
+
+  function versionTreeAll(o) {
     const opt = o || {};
     const vs = (opt.versions || []).map((v) => ({
       v, name: versionLabel(v).slice(1), k: vkey(versionLabel(v).slice(1)),
@@ -1007,6 +1050,13 @@ BARRY.ui = (function () {
   function versionPop(o) {
     const opt = o || {};
     const tree = versionTree(Object.assign({ notes: true }, opt));
+    /* Its family at the top (PROJECT EVOLVE phase 2, 2026-11-21): what this
+       was made from and what went on to use it, in every version picker
+       that says what it is a version of -- `family: {entry}` or
+       `{artifact}`, else the entry `manage` names. */
+    const famRef = opt.family
+      || (opt.manage && opt.manage.entry ? { entry: opt.manage.entry } : null);
+    const fam = famRef ? familyBlock(famRef, { extra: 'vpop-family' }) : null;
     showModal(el('div', { class: 'vpop' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: opt.heading || 'Versions' }),
@@ -1014,6 +1064,7 @@ BARRY.ui = (function () {
       ]),
       el('div', { class: 'mb' }, [
         opt.sub ? el('p', { class: 'hint', text: opt.sub }) : null,
+        fam,
         typeof opt.disabled === 'string'
           ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
         el('p', { class: 'hint vpop-how', text: opt.readonly
@@ -1023,11 +1074,233 @@ BARRY.ui = (function () {
             + 'the version it was worked from. Click a version to use it.' }),
         tree,
       ].filter(Boolean)),
-      modalFoot([], [button({ kind: 'ghost', text: 'Close',
-                               onclick: () => closeModal() })]),
+      modalFoot(opt.manage && opt.manage.entry ? [button({
+        kind: 'ghost', size: 'sm', text: 'Hide versions…',
+        title: 'Hide the versions nobody should pick up, or keep only one. '
+             + 'Nothing is deleted.',
+        onclick: () => { closeModal(); manageVersions(Object.assign(
+          { versions: opt.versions, heading: opt.heading }, opt.manage)); },
+      })] : [], [button({ kind: 'ghost', text: 'Close',
+                          onclick: () => closeModal() })]),
     ]));
     requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
     return tree;
+  }
+
+  /* HIDING VERSIONS (2026-11-20, Rain: "an option to fully delete those
+     extra versions or consolidate them or remove them from view"). Hidden
+     is the bank's `archived`: kept, and not offered in a picker. "Keep only
+     this one" hides every other version of the entry in one step. Deleting
+     for good stays in the Event Bank, where its consequences are spelled
+     out. `o`: { entry, versions, heading, onChange }. */
+  function manageVersions(o) {
+    const opt = o || {};
+    const vs = (opt.versions || []).slice().sort((a, b) => vcmp(
+      vkey(versionLabel(b).slice(1)), vkey(versionLabel(a).slice(1))));
+    const refOf = (v) => (v.id != null ? v.id : v.v);
+    const say = el('p', { class: 'confirm-err hidden' });
+    const act = async (v, action) => {
+      say.classList.add('hidden');
+      try {
+        await apiPost('/api/bank/' + encodeURIComponent(opt.entry)
+                      + '/version/' + encodeURIComponent(refOf(v)),
+                      { action });
+        if (action === 'keep_only') {
+          vs.forEach((x) => { x.archived = x !== v; });
+        } else {
+          v.archived = action === 'archive';
+        }
+        paint();
+        if (typeof opt.onChange === 'function') opt.onChange();
+      } catch (e) {
+        say.textContent = e.message || String(e);
+        say.classList.remove('hidden');
+      }
+    };
+    const list = el('div', { class: 'vman-list' });
+    function paint() {
+      list.replaceChildren(...vs.map((v) => el('div', {
+        class: 'vman-row' + (v.archived ? ' is-hidden' : '') }, [
+        el('strong', { text: versionLabel(v) }),
+        versionChip(v, null, null),
+        el('span', { class: 'vman-who', text: [v.by, when(v.at),
+          v.n != null ? Number(v.n).toLocaleString() : null]
+          .filter(Boolean).join('  ·  ') }),
+        v.archived ? el('span', { class: 'vman-state', text: 'hidden' }) : null,
+        el('div', { class: 'spacer' }),
+        button({ kind: 'ghost', size: 'sm',
+                 text: v.archived ? 'Show it again' : 'Hide',
+                 onclick: () => act(v, v.archived ? 'unarchive' : 'archive') }),
+        button({ kind: 'ghost', size: 'sm', text: 'Keep only this one',
+                 title: 'Hide every other version of this entry',
+                 onclick: () => act(v, 'keep_only') }),
+      ].filter(Boolean))));
+    }
+    paint();
+    showModal(el('div', { class: 'vpop' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hide versions' + (opt.heading ? ' — ' + opt.heading : '') }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint', text: 'A hidden version is kept, with '
+          + 'everything in it, and is not offered when somebody picks a '
+          + 'version to work from; every picker can still show it. To delete '
+          + 'one for good, use the Event Bank.' }),
+        list, say,
+      ]),
+      modalFoot([], [button({ kind: 'ghost', text: 'Done',
+                               onclick: () => closeModal() })]),
+    ]));
+  }
+
+  /* ---------- the family tree ---------- */
+
+  /* FAMILY (PROJECT EVOLVE phase 2, 2026-11-21: "family tree in the bank
+     and every version picker"). What a thing was made from and what was
+     made from it, read from /api/family -- worked out on the server from
+     what each thing records, never stored. Drawn the way the version tree
+     is: a column of rows, the lineage in a gutter on the left, newest
+     generation at the bottom; this thing highlighted in the middle; a
+     child's own children (a folder's room sets) hang one step in.
+
+       familyTree(data, {current})   the tree for a /api/family answer
+       familyBlock(ref)              { entry } or { artifact, version }:
+                                     fetches and draws it, saying so while
+                                     it loads and when there is none */
+  const FAM_PRODUCER = {
+    workflow: 'root-canal', pool: 'root-canal', border: 'root-canal',
+    sources: 'root-canal', folder: 'x-ray', xray: 'x-ray', room: 'x-ray',
+    cells: 'kilosort', sort: 'kilosort',
+  };
+  const FAM_WORDS = {
+    entry: 'Bank entry', workflow: 'Workflow', pool: 'Pool', border: 'Border',
+    sources: 'Sets', folder: 'X-ray folder', xray: 'X-ray bundle',
+    room: 'Room set', cells: 'Curation', sort: 'Sort', artifact: 'Artifact',
+  };
+
+  function famOpen(n) {
+    const ref = n && n.ref;
+    if (!ref) return null;
+    if (ref.entry && BARRY.views && BARRY.views.eventbank
+        && BARRY.views.eventbank.openEntry) {
+      return () => { closeModal(); BARRY.views.eventbank.openEntry(ref.entry); };
+    }
+    if (ref.folder) {
+      return () => {
+        try { localStorage.setItem('barry.dspcamany.folder', ref.folder); }
+        catch (e) { /* the folder bar still opens */ }
+        closeModal();
+        const tk = BARRY.views && BARRY.views.toolkit;
+        if (tk && tk.pick) tk.pick('dspca');
+        if (typeof setView === 'function') setView('toolkit');
+      };
+    }
+    if (ref.room) return () => window.open('/extraction.html', '_blank');
+    return null;
+  }
+
+  function famRow(n, cls) {
+    const go = famOpen(n);
+    const kindChip = el('span', {
+      class: 'flagchip producer fam-kind',
+      'data-producer': FAM_PRODUCER[n.kind]
+        || (n.kind === 'entry' && n.type === 'cell' ? 'kilosort'
+            : n.kind === 'entry' && n.type === 'rcbundle' ? 'root-canal' : null),
+      text: n.kind === 'entry' && n.type_name ? n.type_name
+            : (FAM_WORDS[n.kind] || n.kind),
+    });
+    const bits = [
+      kindChip,
+      el('strong', { class: 'fam-name', text: n.name || n.id || '—' }),
+      n.version != null && n.kind !== 'room'
+        ? el('span', { class: 'fam-v', text: 'v' + n.version }) : null,
+      n.n != null ? el('span', { class: 'fam-n',
+                                 text: Number(n.n).toLocaleString() }) : null,
+      n.archived ? el('span', { class: 'fam-state', text: 'archived' }) : null,
+      n.sub ? el('span', { class: 'fam-sub', text: n.sub }) : null,
+    ].filter(Boolean);
+    return el(go ? 'button' : 'div', {
+      type: go ? 'button' : null,
+      class: 'fam-row ' + cls + (go ? ' go' : '') + (n.archived ? ' archived' : ''),
+      'data-kind': n.kind, 'data-id': n.id || '',
+      title: go ? 'Open it' : null,
+      onclick: go,
+    }, bits);
+  }
+
+  function familyTree(data, o) {
+    const d = data || {};
+    const parents = d.parents || [];
+    const children = d.children || [];
+    const box = el('div', { class: 'fam' });
+    if (parents.length) {
+      box.appendChild(el('div', { class: 'fam-gen-head', text: 'Made from' }));
+      const g = el('div', { class: 'fam-gen fam-up' });
+      parents.forEach((n) => g.appendChild(famRow(n, 'fam-parent')));
+      box.appendChild(g);
+    }
+    if (d.self) {
+      box.appendChild(famRow(Object.assign({}, d.self, { ref: null }),
+                             'fam-self'));
+    }
+    if (children.length) {
+      box.appendChild(el('div', { class: 'fam-gen-head', text: 'Went into' }));
+      const g = el('div', { class: 'fam-gen fam-down' });
+      children.forEach((n) => {
+        g.appendChild(famRow(n, 'fam-child'));
+        const kids = n.children || [];
+        if (kids.length) {
+          const sub = el('div', { class: 'fam-gen fam-sub-gen' });
+          kids.forEach((k) => sub.appendChild(famRow(k, 'fam-grand')));
+          g.appendChild(sub);
+        }
+      });
+      box.appendChild(g);
+    }
+    if (!parents.length && !children.length) {
+      box.appendChild(el('p', { class: 'hint fam-none',
+        text: 'Nothing recorded made this, and nothing has been made from '
+            + 'it yet.' }));
+    }
+    return box;
+  }
+
+  const FAM_SEEN = new Map();
+  function familyBlock(ref, o) {
+    const opt = o || {};
+    const r = ref || {};
+    const q = r.entry ? 'entry=' + encodeURIComponent(r.entry)
+      : r.artifact ? 'artifact=' + encodeURIComponent(r.artifact)
+        + (r.version != null ? '&version=' + encodeURIComponent(r.version) : '')
+      : null;
+    const host = el('div', { class: 'fam-block' + (opt.extra ? ' ' + opt.extra : '') }, [
+      el('div', { class: 'section-label', text: opt.label || 'Family' }),
+      el('p', { class: 'hint fam-loading', text: 'Reading where it came from '
+                                                 + 'and where it went…' }),
+    ]);
+    if (!q) return null;
+    const draw = (got) => {
+      host.replaceChildren(
+        el('div', { class: 'section-label', text: opt.label || 'Family' }),
+        familyTree(got));
+      host.dataset.ready = '1';
+    };
+    /* A repaint of the panel it sits in asks again; the answer from a few
+       seconds ago is drawn at once rather than flashing "Reading…". */
+    const hit = FAM_SEEN.get(q);
+    if (hit && Date.now() - hit.at < 20000) { draw(hit.data); return host; }
+    api('/api/family?' + q).then((got) => {
+      FAM_SEEN.set(q, { at: Date.now(), data: got });
+      draw(got);
+    }).catch((e) => {
+      host.replaceChildren(
+        el('div', { class: 'section-label', text: opt.label || 'Family' }),
+        el('p', { class: 'hint', text: 'Its family could not be read: '
+                                       + (e.message || e) }));
+      host.dataset.ready = 'error';
+    });
+    return host;
   }
 
   /* ---------- the bank dialog ---------- */
@@ -1454,6 +1727,8 @@ BARRY.ui = (function () {
     [/curation \(ds/i, 'Checkup'], [/curation \(ied/i, 'Spotter'],
     [/curation \(pooled/i, 'Panning'],
     [/Confluence|Junction/i, 'Junction'], [/Root Canal/i, 'Root Canal'],
+    // PROJECT EVOLVE (2026-11-21): a hand branch, and the Cells.
+    [/^Event Bank branch/i, 'Branch'], [/^Kilosort/i, 'Kilosort'],
     [/Braces/i, 'Braces'], [/^Eye\b/i, 'Eye'], [/^Lock\b/i, 'Lock'],
     [/X-ray|DS1\/DS2/i, 'X-ray'], [/Tooth Fairy/i, 'Tooth Fairy'],
     [/Spark|The Arc/i, 'Spark'],
@@ -1591,6 +1866,18 @@ BARRY.ui = (function () {
                          title: opt.bank.title || null,
                          disabled: !!opt.bank.disabled,
                          onclick: opt.bank.onclick }));
+    }
+    /* Save (2026-11-20): every curation tool's, in one place, last before
+       the shell's Leave. Not a ghost: it is the one people look for. */
+    if (opt.save) {
+      const sb = button({ kind: 'primary', size: 'sm',
+                          text: opt.save.text || 'Save',
+                          title: opt.save.title || null,
+                          disabled: !!opt.save.disabled,
+                          onclick: opt.save.onclick });
+      sb.classList.add('ck-save');
+      if (opt.save.state) sb.dataset.state = opt.save.state;
+      bits.push(sb);
     }
     return el('div', { class: 'mode-own-end' }, bits);
   }
@@ -1916,6 +2203,10 @@ BARRY.ui = (function () {
     versionTree: versionTree,
     versionButton: versionButton,
     versionPop: versionPop,
+    familyTree: familyTree,
+    familyBlock: familyBlock,
+    familyForget: () => FAM_SEEN.clear(),
+    manageVersions: manageVersions,
     versionProducer: versionProducer,
     versionChip: versionChip,
     bankDialog: bankDialog,

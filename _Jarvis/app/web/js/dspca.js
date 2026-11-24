@@ -1303,6 +1303,7 @@ BARRY.dspca = (function () {
     const stampsNow = fromPlan ? (plan.stamps || {}).of : null;
     return BARRY.ui.versionButton({
       versions: vs, idOf,
+      family: c.id ? { entry: c.id } : null,
       value: on ? q.from_version : dflt,
       unit: 'stamps',
       lead: {
@@ -1528,6 +1529,7 @@ BARRY.dspca = (function () {
       ? BARRY.ui.versionButton({
           versions: r.versions, idOf: (v) => v.v, value: want,
           producer: false, unit: 'events',
+          family: { artifact: r.artifact_id },
           heading: 'Which version of the X-ray bundle for '
                    + r.session_label,
           sub: 'Every run that changed the answer is a version. Open '
@@ -1754,10 +1756,20 @@ BARRY.dspca = (function () {
     const box = el('div', { class: 'card dp-choose dp-bundle' });
     box.appendChild(label(b.artifact_id ? 'X-ray bundle'
                                         : 'A read X-ray Many made'));
+    /* PROJECT EVOLVE phase 3 (2026-11-21): a bundle from a folder of
+       anything but dentate spikes says what X-ray was built for. */
+    const labs = src.labels || [];
+    if (labs.length && !(labs.length === 1 && labs[0] === 'ds')) {
+      box.appendChild(el('p', { class: 'hint warn-line dp-lwarn', text:
+        'Read from ' + (labs.indexOf('pspike') >= 0 && labs.length === 1
+          ? 'P-spikes' : labs.join(' + ')) + '. X-ray was built for dentate '
+        + 'spikes: read its two types here as a description, not as DS1 and DS2.' }));
+    }
     const vbtn = b.artifact_id && b.versions.length
       ? BARRY.ui.versionButton({
           versions: b.versions, idOf: (v) => v.v, value: b.version,
           producer: false, unit: 'events',
+          family: { artifact: b.artifact_id },
           heading: 'Which version of the X-ray bundle for '
                    + (s.session_label || s.gid),
           sub: 'Every run that changed the answer is a version. Picking '

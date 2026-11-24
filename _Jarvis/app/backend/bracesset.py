@@ -60,6 +60,11 @@ SET_SPEC = {
     "rows": shards.FIRST,
     # The review. The only field anybody writes after the set exists.
     "calls": shards.MAPLWW,
+    # Notes on rows (2026-11-20), keyed like `calls` by row number: a person
+    # saying why, beside a flag. Apart from `calls` because a note is not a
+    # decision -- it can be written on a row nobody has answered, and on a
+    # set already accepted -- and it goes into the bank with the event.
+    "notes": shards.MAPLWW,
 }
 
 # What a person can decide about one row.
@@ -262,6 +267,34 @@ class BracesSets:
                         "Moving a stamp needs the time to move it to.")
             fresh[str(i)] = item
         rec["calls"] = fresh
+        return self.book.write(self._base(rec), rec)
+
+    @shards.atomic
+    def note(self, set_id, row, text, by=None):
+        """Write, change or clear the note on one row (2026-11-20).
+
+        Allowed on an accepted set too: a note changes nothing about where
+        a stamp is, and "why did we keep this one" is often written after.
+        """
+        rec = self.get(set_id)
+        if not rec:
+            raise BracesSetError("No alignment set %s." % set_id)
+        try:
+            i = int(row)
+        except (TypeError, ValueError):
+            raise BracesSetError("%r is not a row." % row)
+        if i < 0 or i >= len(rec.get("rows") or []):
+            raise BracesSetError("Row %d is not in this set." % i)
+        prov = self.store.provenance() if self.store else {}
+        who = (by or prov.get("user") or "unknown").strip()
+        text = str(text or "").strip()[:2000]
+        notes = dict(rec.get("notes") or {})
+        if (notes.get(str(i)) or {}).get("text", "") == text:
+            return rec
+        # A cleared note stays as an empty one with its time, so the clearing
+        # wins over an older note on another machine (MAPLWW, key by key).
+        notes[str(i)] = {"text": text, "by": who, "at": _now()}
+        rec["notes"] = notes
         return self.book.write(self._base(rec), rec)
 
     @shards.atomic

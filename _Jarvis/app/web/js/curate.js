@@ -65,6 +65,11 @@ BARRY.curate = (function () {
      set -- the bar says which version you are writing onto, and that is not
      a question worth a second round trip on a network share. */
   let vhist = [];
+  /* View only, and changes not yet confirmed by a Save (curkit.js,
+     2026-11-20) -- as in Panning and Spotter. */
+  let viewOnly = false;
+  let dirty = 0;
+  const ro = () => (viewOnly ? BARRY.curKit.refuse() || true : false);
 
   /* ---------- presence ----------
      Saying "somebody is in this set" often enough that the answer is still
@@ -143,6 +148,8 @@ BARRY.curate = (function () {
     if (!(span > 0)) span = 1.0;
     index = 0;
     history = [];
+    viewOnly = !!(opts && opts.viewOnly);
+    dirty = 0;
     /* Open on a pass that has something in it.
 
        An imported sort arrives with every candidate already decided, so the
@@ -154,7 +161,7 @@ BARRY.curate = (function () {
     /* Opening it is what puts it on the workbench. Nothing else does:
        importing candidates leaves a set closed, because a set nobody has
        opened is not work in progress, it is just a list that exists. */
-    apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
+    if (!viewOnly) apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
             + encodeURIComponent(kindId) + '/open', { open: true })
       .then((res) => { if (res && res.set) set_.assignee = res.set.assignee; })
       .catch((e) => {
@@ -169,7 +176,7 @@ BARRY.curate = (function () {
         }
       });
 
-    setMode('curate', exit);
+    setMode('curate', leave);
     layout();
     // So the bar can say who else is here without asking again.
     sess.curationOthers = beatOthers;
@@ -258,7 +265,7 @@ BARRY.curate = (function () {
     try {
       res = await apiPost('/api/presence/beat', {
         gid: set_.gid, kind: set_.kind, first: !!first,
-        doing: 'curating',
+        doing: viewOnly ? 'viewing' : 'curating',
         n_total: evs.length,
         n_decided: decided,
         n_this_visit: Math.max(0, decided - decidedAtEntry),
@@ -298,6 +305,54 @@ BARRY.curate = (function () {
     }
     render();
     return res;
+  }
+
+  /* Leave as a person does it: Save & leave first when the shared
+     database has not confirmed the work (curkit.js). */
+  async function leave() {
+    if (!set_) return;
+    const go = await BARRY.curKit.leaveAsk({
+      dirty: !viewOnly && dirty > 0, tool: 'Checkup', save: saveNow });
+    if (go) exit();
+  }
+
+  async function saveNow() {
+    if (!set_) return null;
+    if (viewOnly) { ro(); return null; }
+    const r = await BARRY.curKit.save({
+      url: BARRY.ui.setUrl(set_.gid, set_.kind, 'save'), settle: settled });
+    if (r && r.confirmed) { dirty = 0; if (set_) render(); }
+    return r;
+  }
+
+  async function workOnIt() {
+    if (!set_) return;
+    if (!(await BARRY.curKit.askToWork(set_.name))) return;
+    const gid = set_.gid, k = set_.kind;
+    exit();
+    enter(gid, k);
+  }
+
+  async function writeNote() {
+    const ev = current();
+    if (!ev) return;
+    if (ro()) return;
+    const own = set_;
+    const lab = ev.label ? ((kind.labels || []).find((l) => l.id === ev.label)
+                            || {}).name || ev.label : null;
+    const got = await BARRY.curKit.editNote({
+      title: 'Note on the candidate at ' + clock(ev.start),
+      about: lab ? 'Decided: ' + lab + '.' : 'Not decided yet.',
+      text: ev.note || '',
+      onSave: (text) => apiPost(BARRY.ui.setUrl(own.gid, own.kind, 'note'),
+                                { event: ev.id, note: text }),
+    });
+    if (got === null || set_ !== own) return;
+    if (got) { ev.note = got; ev.note_by = (BARRY.profile && BARRY.profile.who
+                                            && BARRY.profile.who()) || ev.note_by; }
+    else { delete ev.note; delete ev.note_by; }
+    dirty += 1; BARRY.curKit.saveState(true);
+    render();
   }
 
   function exit() {
@@ -344,6 +399,7 @@ BARRY.curate = (function () {
     }
     set_ = null; kind = null; sess = null; history = []; vhist = [];
     marksStamp = 0;
+    viewOnly = false; dirty = 0;
     const bar = $('#curBar');
     if (bar) bar.remove();
     document.removeEventListener('keydown', keys, true);
@@ -649,6 +705,7 @@ BARRY.curate = (function () {
   async function assign(labelId) {
     const ev = current();
     if (!ev) return;
+    if (ro()) return;
     const was = ev.label || null;
     // The set this decision belongs to, kept: by the time the save answers,
     // the mode may have moved on to another set or left altogether.
@@ -679,6 +736,7 @@ BARRY.curate = (function () {
         '/api/curation/' + encodeURIComponent(own.gid) + '/'
         + encodeURIComponent(own.kind) + '/label',
         { event: ev.id, label: labelId });
+      if (set_ === own) dirty += 1; BARRY.curKit.saveState(true);
       if (res.progress) own._progress = res.progress;
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
@@ -732,7 +790,7 @@ BARRY.curate = (function () {
      a toast when a version was written; quiet otherwise. */
   async function quietBank(gid, kind, why) {
     // A harness's throwaway set is not banked (`BARRY.testNoAutobank`).
-    if (BARRY.testNoAutobank) return;
+    if (BARRY.testNoAutobank || viewOnly) return;
     for (let i = 0; i < 60 && saving > 0; i++) {
       await new Promise((r) => setTimeout(r, 100));
     }
@@ -775,6 +833,7 @@ BARRY.curate = (function () {
     const own = set_;
     const gid_ = garbageId();
     if (!own || !gid_) return false;
+    if (ro()) return false;
     await settled();
     if (set_ !== own) return false;
     const evs = events();
@@ -787,6 +846,7 @@ BARRY.curate = (function () {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(own.gid) + '/'
         + encodeURIComponent(own.kind) + '/label', { labels: pairs });
+      if (set_ === own) dirty += 1; BARRY.curKit.saveState(true);
       if (res.progress) own._progress = res.progress;
     } catch (e) {
       toast('All Garbage did not save: ' + e.message, 'err', 9000);
@@ -832,6 +892,7 @@ BARRY.curate = (function () {
       await apiPost('/api/curation/' + encodeURIComponent(own.gid) + '/'
                     + encodeURIComponent(own.kind) + '/label',
                     { labels: pairs });
+      dirty += 1; BARRY.curKit.saveState(true);
       toast('Put back the way they were.', 'ok', 4000);
     } catch (e) {
       if (set_ === own) {
@@ -872,6 +933,7 @@ BARRY.curate = (function () {
   }
 
   async function undo() {
+    if (ro()) return;
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
     if (last.bulk) { await undoBulk(last); return; }
@@ -890,6 +952,7 @@ BARRY.curate = (function () {
       await apiPost('/api/curation/' + encodeURIComponent(set_.gid) + '/'
                     + encodeURIComponent(set_.kind) + '/label',
                     { event: last.id, label: last.from });
+      dirty += 1; BARRY.curKit.saveState(true);
     } catch (e) {
       /* The undo did not save, so the server still holds the decision.
          Showing it as undone would be a lie, and the history entry is
@@ -921,6 +984,8 @@ BARRY.curate = (function () {
     const n = events().length;
     const done = n - left();
     const ev = current();
+    bar.classList.toggle('ck-viewing', viewOnly);
+    if (viewOnly) bar.appendChild(BARRY.curKit.viewBadge(workOnIt));
 
     bar.appendChild(el('div', { class: 'cur-where' }, [
       el('strong', { text: set_.name || 'Curating' }),
@@ -930,7 +995,9 @@ BARRY.curate = (function () {
       el('span', { class: 'cur-count',
         text: (index + 1) + ' / ' + n }),
       verChip(),
-    ]));
+      ev ? BARRY.curKit.noteLine(ev.note, ev.note_by,
+                                 viewOnly ? null : writeNote) : null,
+    ].filter(Boolean)));
 
     bar.appendChild(el('div', { class: 'cur-prog' }, [
       el('i', { style: 'width:' + (n ? (done / n * 100) : 0) + '%' }),
@@ -983,6 +1050,7 @@ BARRY.curate = (function () {
       el('button', { class: 'mini', text: '↶', title: 'Undo the last decision  (u, or Ctrl+Z)',
                      disabled: history.length ? null : 'disabled',
                      onclick: undo }),
+      BARRY.curKit.noteButton(!!(ev && ev.note), writeNote, !ev || viewOnly),
       /* Which pass you are making. Flagged is the one that was missing:
          Flag is already a label in both vocabularies, and marking one used
          to mean never finding it again without walking the whole set. */
@@ -1071,9 +1139,16 @@ BARRY.curate = (function () {
           setView('toolkit');
         },
       },
-      bank: { text: 'Bank the results\u2026', onclick: bank,
+      bank: viewOnly ? null : { text: 'Bank the results\u2026', onclick: bank,
               title: 'Write these decisions as a new version of the banked '
                    + 'entry' },
+      save: viewOnly ? null : {
+        onclick: saveNow,
+        text: dirty ? 'Save' : 'Saved',
+        state: dirty ? 'dirty' : 'clean',
+        title: 'Upload this set to the shared database now and check it '
+             + 'arrived. Every decision is already saved on this computer as '
+             + 'you make it; this makes sure everyone else has it too.' },
     }));
 
     // Only the overlay changed, so repaint rather than refetch. The window
@@ -1141,6 +1216,7 @@ BARRY.curate = (function () {
   /* ---------- Tooth Fairy ---------- */
   function toothFairySweep() {
     if (!set_) return;
+    if (ro()) return;
     BARRY.toothFairy.open({
       gid: set_.gid, kind: set_.kind,
       name: set_.name || set_.session_label || '',
@@ -1199,6 +1275,7 @@ BARRY.curate = (function () {
      whatever happened to be newest. */
   async function switchVersion() {
     if (!set_) return;
+    if (ro()) return;
     if (!BARRY.vers.askable(vhist)) {
       toast('There is only one banked version of this set, so there is '
             + 'nothing to switch to. Bank a pass and there will be.',
@@ -1334,7 +1411,7 @@ BARRY.curate = (function () {
       nav[k]();
       return;
     }
-    const once = { u: undo, backspace: undo, escape: exit };
+    const once = { u: undo, backspace: undo, escape: leave, w: writeNote };
     if (once[k]) {
       e.preventDefault(); e.stopPropagation();
       // Held, undo would walk back through the afternoon. Once per press.
@@ -1765,6 +1842,7 @@ BARRY.curate = (function () {
 
   async function bank() {
     if (!set_) return;
+    if (ro()) return;
     if (banking) {
       toast('Already opening the banking dialog\u2026', null, 2500);
       return;
@@ -1951,6 +2029,9 @@ BARRY.curate = (function () {
 
   return {
     enter, exit, draw, receipt,
+    // 2026-11-20 (curkit.js).
+    leave, save: saveNow, note: writeNote,
+    viewOnly: () => viewOnly, dirty: () => dirty,
     // Spotter banks through this, not through a copy of it.
     bankAt,
     // Diagnostics for the marker: what the last paint saw and drew.

@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-10-13T17:55:06.086229+00:00",
+    "bad_channels": "2026-10-13T17:56:27.125153+00:00",
     "created": "2026-09-02T23:21:29.172499+00:00",
     "duration_s": "2026-09-02T23:21:29.172499+00:00",
     "first_seen_by": "2026-09-02T23:21:29.172499+00:00",
@@ -19,8 +19,8 @@
     "schema": "2026-09-02T23:21:29.172499+00:00",
     "session": "2026-09-02T23:21:29.172499+00:00",
     "start": "2026-09-02T23:21:29.172499+00:00",
-    "updated": "2026-10-13T18:05:10.516196+00:00",
-    "view_state": "2026-10-13T18:05:10.516196+00:00"
+    "updated": "2026-11-23T16:14:39.708485+00:00",
+    "view_state": "2026-11-20T21:30:53.044410+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,6 +31,10 @@
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28": [
         "set",
         "2026-09-02T23:21:29.172499+00:00"
+      ],
+      "vacc:s9619387fd35c": [
+        "set",
+        "2026-11-23T16:14:39.708485+00:00"
       ]
     },
     "seen": {
@@ -44,7 +48,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-01T16:30:00.147596+00:00"
+        "2026-11-20T20:31:18.509591+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -53,7 +57,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-13T18:05:10.516196+00:00",
+    "at": "2026-11-23T16:14:39.708485+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -79,7 +83,8 @@
   "n_channels": 64,
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
-    "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28"
+    "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
+    "vacc:s9619387fd35c"
   ],
   "project": "KCNT1",
   "project_source": "guessed",
@@ -101,12 +106,20 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-01T12:30:00-04:00",
-      "by": "Rain Younger",
+      "at": "2026-11-20T15:31:18-05:00",
+      "by": "Daphne Lyons",
+      "copies": {
+        "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28": {
+          "at": "2026-10-29T13:09:31-04:00",
+          "duration_s": 2075.3749333333335,
+          "fs": 30000.0,
+          "n_channels": 64
+        }
+      },
       "machine": "Strawbarry",
-      "path": "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
-      "root": "Y:/Jeremy3/KCNT1",
-      "scan": "scan_22235c040e"
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
+      "root": null,
+      "scan": null
     },
     "desktop-4h65ai7-d565": {
       "at": "2026-10-13T13:54:55-04:00",
@@ -120,9 +133,9 @@
   "session": 1,
   "start": "2026-02-24T17:46:29",
   "updated": {
-    "app_version": "2026.10.13.2",
-    "at": "2026-10-13T14:05:10-04:00",
-    "commit": "214b00e3",
+    "app_version": "2026.11.21.1",
+    "at": "2026-11-23T11:14:39-05:00",
+    "commit": "38ec1337",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -131,85 +144,55 @@
   },
   "view_state": {
     "channels": [
-      0,
       1,
-      2,
       3,
-      4,
       5,
-      6,
       7,
-      8,
       9,
-      10,
       11,
-      12,
       13,
-      14,
       15,
-      16,
       17,
-      18,
       19,
-      20,
       21,
-      22,
       23,
-      24,
       25,
-      26,
       27,
-      28,
       29,
-      30,
       31,
-      32,
       33,
-      34,
       35,
-      36,
       37,
-      38,
       39,
-      40,
       41,
-      42,
       43,
-      44,
       45,
-      46,
       47,
-      48,
       49,
-      50,
       51,
-      52,
       53,
-      54,
       55,
-      56,
       57,
       59,
-      60,
       61,
-      62,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 0,
+    "gain": 2.5,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 22.153345599999998,
+    "span": 1,
     "stft_mode": null,
-    "t0": 1033.0913622736505,
+    "t0": 130.068796,
     "ylim": null
   }
 }

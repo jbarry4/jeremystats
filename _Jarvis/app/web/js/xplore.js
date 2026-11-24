@@ -8957,6 +8957,8 @@ BARRY.views.xplore = (function () {
        the window changes, and a form that quietly went stale would be a
        form that runs the wrong window. */
     if (BARRY.cfc && BARRY.cfc.active && BARRY.cfc.refresh) BARRY.cfc.refresh();
+    // The Cells' ticks follow the window (PROJECT EVOLVE phase 7).
+    if (BARRY.cells && BARRY.cells.active && BARRY.cells.refresh) BARRY.cells.refresh();
   }
 
   function pan(index, frac) {

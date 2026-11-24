@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-10-09T17:28:37.919311+00:00",
+    "duration_s": "2026-10-09T17:28:37.919311+00:00",
+    "first_seen_by": "2026-10-09T17:28:37.919311+00:00",
+    "found_on": "2026-10-09T17:28:37.919311+00:00",
+    "fs": "2026-10-09T17:28:37.919311+00:00",
+    "gid": "2026-10-09T17:28:37.919311+00:00",
+    "group": "2026-10-09T17:28:37.919311+00:00",
+    "key": "2026-10-09T17:28:37.919311+00:00",
+    "label": "2026-10-09T17:28:37.919311+00:00",
+    "loose_key": "2026-10-09T17:28:37.919311+00:00",
+    "mouse": "2026-10-09T17:28:37.919311+00:00",
+    "n_channels": "2026-10-09T17:28:37.919311+00:00",
+    "project": "2026-10-09T17:28:37.919311+00:00",
+    "project_source": "2026-10-09T17:28:37.919311+00:00",
+    "schema": "2026-10-09T17:28:37.919311+00:00",
+    "session": "2026-10-09T17:28:37.919311+00:00",
+    "start": "2026-10-09T17:28:37.919311+00:00",
+    "updated": "2026-10-09T17:28:37.919311+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s7aug16\\2024-08-16_14-58-41": [
+        "set",
+        "2026-10-09T17:28:37.919311+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-09T17:28:37.919311+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": null,
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T13:28:37-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 1874.244,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s6f06fb3fbfe9",
+  "group": "PTEN",
+  "key": "m024_s007_2024-08-16_14-58-41",
+  "label": "PTEN m24 s7 2024-08-16",
+  "loose_key": "m024_s007",
+  "mouse": 24,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s7aug16\\2024-08-16_14-58-41"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "session": 7,
+  "start": "2024-08-16T14:58:41",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-09T13:28:37-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}
