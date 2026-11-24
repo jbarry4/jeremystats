@@ -37,11 +37,15 @@
       "d91b47958b1d": [
         "set",
         "2026-11-21T21:57:35.511792+00:00"
+      ],
+      "e174ff0b590a": [
+        "set",
+        "2026-11-23T21:08:41.608698+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-23T16:24:35.000000+00:00",
+    "at": "2026-11-23T21:08:41.608698+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -56402,6 +56406,23 @@
       "id": "d138ad48943c",
       "imported": true,
       "machine": "LCOM549913",
+      "n": 5097,
+      "note": "Imported from Root Canal workflow. 5097 candidates, none decided yet.",
+      "snap_elsewhere": true,
+      "v": 0
+    },
+    {
+      "at": "2026-11-23T13:18:28-05:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "DS": 4098,
+        "Outside both borders": 783,
+        "P-spike": 192,
+        "Twilight Zone": 24
+      },
+      "id": "e174ff0b590a",
+      "imported": true,
+      "machine": "DESKTOP-AH45FAE",
       "n": 5097,
       "note": "Imported from Root Canal workflow. 5097 candidates, none decided yet.",
       "snap_elsewhere": true,

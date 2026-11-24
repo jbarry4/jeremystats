@@ -1,0 +1,11 @@
+Old KCNT1 Hom mice fail to improve across days of active place avoidance; young Hom and Het mice do not differ from WT.
+
+a, Paths of a representative mouse per group in its best session of each day (fewest shocks per floor turn). Each mouse is the one closest to its group's median day-1-to-day-2 change; for young Het, closest to the median on both that change and distance traveled. Line, the mouse's position over the 10-min session; red wedge, shock zone (fixed in the room; the floor turns counter-clockwise); x, shocks.
+
+b, Shocks per turn of the rotating floor across the 16 training sessions (mean of each pair of sessions +/- s.e.m. across mice), Het (orange) and Hom (purple) each shown against WT (gray) of the same age. Dashed line, overnight break between day 1 (s1-s8) and day 2 (s9-s16).
+
+c, Poisson generalized estimating equation (GEE) of shocks per session with log(floor turns) as offset; mice as clusters, exchangeable working correlation, robust standard errors; reference, old WT on day 2. Points, each genotype's day-2/day-1 rate ratio relative to WT of the same age, with 95% CI (> 1, smaller improvement than WT). Old Hom improve less than old WT (rate ratio 2.30, 95% CI 1.50-3.51, P < 0.001); young Hom and Het of either age do not differ from WT. Genotype x age x day: Hom P = 0.006, Het P = 0.99.
+
+d, Each mouse's change in shocks per turn from day 1 to day 2 (dots); bars, 20% trimmed mean +/- 95% CI. Within-age comparisons with WT, Yuen's trimmed-mean t-test (old Hom vs old WT, P < 0.001; all others P >= 0.17); genotype x age, GEE interaction from c.
+
+Shocks are counted per turn of the floor because the floor's speed differed between cohorts (about 2.5 to 6 deg/s). Four sessions with documented shock-delivery faults were excluded, and four outlier mice by a robust rule (old Hom 413 and 417; young WT 1665 and 1667); 52 mice (n per group in d). Exploratory analysis; P values are not corrected for multiple comparisons. *P < 0.05, **P < 0.01, ***P < 0.001; ns, P >= 0.05.

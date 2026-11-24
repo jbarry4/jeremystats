@@ -38,8 +38,9 @@ BARRY.shSchem = (function () {
     return n;
   }
   function defs() {
-    return svg('defs', {}, [['exc', 'var(--text-2)'], ['inh', 'var(--err)'], ['lit', 'var(--accent)']].map(([k, c]) =>
-      svg('marker', { id: 'shm-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
+    const exc = 'color-mix(in srgb, var(--text) 55%, transparent)';
+    return svg('defs', {}, [['exc', exc, 6], ['pp', exc, 3.4], ['inh', 'var(--err)', 6], ['lit', 'var(--accent)', 6]].map(([k, c, mw]) =>
+      svg('marker', { id: 'shm-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: mw, markerHeight: mw, orient: 'auto-start-reverse' },
         [k === 'inh' ? svg('rect', { x: 3, y: 1, width: 4, height: 8, style: 'fill:' + c })
                      : svg('path', { d: 'M0,0 L10,5 L0,10 z', style: 'fill:' + c })])));
   }
@@ -90,6 +91,9 @@ BARRY.shSchem = (function () {
   };
   // drawn in the dentate view instead (same pair of boxes as a stronger edge)
   const CIRCUIT_SKIP = new Set(['pp_pv']);
+  /* the names the circuit uses when it is drawn small (the rail's map): the hover card has the full name */
+  const SHORT = { ctx: 'Neocortex', per: 'Perirhinal', por: 'Postrhinal', lec2: 'LEC II', mec2: 'MEC II', ec3: 'EC III', ec5: 'EC V–VI',
+    dg: 'DG', ca3: 'CA3', ca2: 'CA2', ca1: 'CA1', sub: 'Subiculum', prepar: 'Pre/Para', subc: 'Fornix' };
   const LABELED = { lpp: 'lateral perforant path', mpp: 'medial perforant path', mf_ca3: 'mossy fibers', sc: 'Schaffer collaterals',
     ta: 'temporoammonic', rc: 'recurrent collaterals', sub_ec5: 'loop closes in deep EC', ec5_ctx: 'back to neocortex',
     sub_subc: 'fimbria-fornix', pp_ca3: 'EC II to CA3', back: 'back-projection' };
@@ -139,8 +143,9 @@ BARRY.shSchem = (function () {
     for (const r of kb.regions) if (POS[r.key]) POS[r.key][2] = Math.max(POS[r.key][2] || BW, Math.ceil(r.label.length * 11.2 + 28));
     const out = svg('svg', { class: 'sh-svg', viewBox: '0 0 1000 660', preserveAspectRatio: 'xMidYMid meet', role: 'img',
       'aria-label': 'Circuit of the hippocampal formation' }, [defs()]);
+    out.classList.add('sh-circuit');
     out._full = [0, 0, 1000, 660];
-    out.appendChild(svg('rect', { class: 'ec-box', x: 18, y: 230, width: 210, height: 330, rx: 10 }));
+    out.appendChild(svg('rect', { class: 'ec-box', x: 18, y: 230, width: 210, height: 330, rx: 16 }));
     out.appendChild(svg('text', { class: 'ec-label', x: 122, y: 582, 'text-anchor': 'middle', text: 'ENTORHINAL CORTEX' }));
     const edges = svg('g', {}), boxes = svg('g', {}), labels = svg('g', { style: 'pointer-events:none' });
     out.append(edges, boxes, labels);
@@ -182,7 +187,7 @@ BARRY.shSchem = (function () {
       const ppCol = pp ? (h.cellOf(c.key === 'lpp' ? 'fan' : 'stel') || {}).color : null;
       const g = part(h, { type: 'conn', key: c.key }, { class: 'edge ' + c.sign + (c.dash ? ' dash' : '') + (pp ? ' pp' : ''), 'data-conn': c.key }, [
         svg('path', { class: 'hit', d }),
-        svg('path', { class: 'ln', d, 'marker-end': 'url(#shm-' + c.sign + ')', style: pp ? 'stroke:' + ppCol : null }),
+        svg('path', { class: 'ln', d, 'marker-end': 'url(#shm-' + (pp ? 'pp' : c.sign) + ')', style: pp ? 'stroke:' + ppCol : null }),
         svg('circle', { class: 'badge', cx: mid[0], cy: mid[1], r: 4.2, style: 'fill:' + verdictColor(v.status) }),
         svg('title', { text: c.label + ' (' + (v.status || 'cited') + ')' }),
       ]);
@@ -217,9 +222,12 @@ BARRY.shSchem = (function () {
       if (!POS[r.key]) continue;
       const b = rect(r.key);
       const n = h.notes ? h.notes('region', r.key) : 0;
-      boxes.appendChild(part(h, { type: 'region', key: r.key }, { class: 'box', 'data-region': r.key }, [
-        svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8 }),
-        svg('text', { x: b.cx, y: b.cy - 3, 'text-anchor': 'middle', class: 'bt', text: r.label }),
+      const rc = h.regionColor ? h.regionColor(r.key) : null;
+      boxes.appendChild(part(h, { type: 'region', key: r.key }, { class: 'box', 'data-region': r.key, style: rc ? '--rc:' + rc : null }, [
+        svg('rect', { class: 'body', x: b.x, y: b.y, width: b.w, height: b.h, rx: 11 }),
+        svg('rect', { class: 'bar', x: b.x + 7, y: b.y + 10, width: 4, height: b.h - 20, rx: 2 }),
+        svg('text', { x: b.cx, y: b.cy - 3, 'text-anchor': 'middle', class: 'bt full', text: r.label }),
+        svg('text', { x: b.cx + 4, y: b.cy + 5, 'text-anchor': 'middle', class: 'bt short', text: SHORT[r.key] || r.label }),
         svg('text', { class: 'sub', x: b.cx, y: b.cy + 15, 'text-anchor': 'middle', text: r.sub }),
         n ? svg('g', { class: 'note-badge' }, [svg('circle', { cx: b.x + b.w - 8, cy: b.y + 8, r: 7 }), svg('text', { x: b.x + b.w - 8, y: b.y + 11.5, 'text-anchor': 'middle', text: String(n) })]) : null,
       ]));
@@ -262,19 +270,22 @@ BARRY.shSchem = (function () {
     const L = {};      // anchor points per layer key, for _anchor and edges
     const bands = svg('g', { class: 'plate-bands' });
     out.appendChild(bands);
+    // the layer names go on top of everything (added last), each with a halo in its own band's
+    // color, so a fibre or a cell passing under a name never makes it hard to read
+    const bandLabels = svg('g', { class: 'band-labels', style: 'pointer-events:none' });
     const band = (key, d, labelAt, label) => {
       bands.appendChild(part(h, { type: 'lamina', key }, { class: 'band', 'data-layer': key }, [
         svg('path', { d, style: 'fill:' + (LC[key] || '#999') }),
-        label ? svg('text', { class: 'blabel', x: labelAt[0], y: labelAt[1] + 4, 'text-anchor': 'middle', text: label }) : null,
       ]));
+      if (label) bandLabels.appendChild(svg('text', { class: 'blabel', 'data-layer': key, x: labelAt[0], y: labelAt[1] + 4, 'text-anchor': 'middle', text: label, style: 'stroke:' + (LC[key] || '#999') }));
     };
     // the dentate: hilus, then each ring as an upper (1) and lower (2) blade
-    band('hil', sector(0, 62, DG.a0, DG.a1), P(34, 180), 'HIL');
+    band('hil', sector(0, 62, DG.a0, DG.a1), P(40, 140), 'HIL');
     L.hil = P(34, 180);
     for (const [k, r0, r1] of DG.rings.slice(1)) {
       const rm = (r0 + r1) / 2;
-      band(k + '1', sector(r0, r1, DG.a0, 180), P(rm, 150), k.toUpperCase() + '1');
-      band(k + '2', sector(r0, r1, 180, DG.a1), P(rm, 210), k.toUpperCase() + '2');
+      band(k + '1', sector(r0, r1, DG.a0, 180), P(rm, k === 'gcl' ? 160 : 65), k.toUpperCase() + '1');
+      band(k + '2', sector(r0, r1, 180, DG.a1), P(rm, 295), k.toUpperCase() + '2');
       L[k + '1'] = P(rm, 150); L[k + '2'] = P(rm, 210);
     }
     // the CA strip, field by field
@@ -316,23 +327,23 @@ BARRY.shSchem = (function () {
     out.append(conns, cells, tags);
     const glyph = (key, kids) => part(h, { type: 'cell', key }, { class: 'glyph', 'data-cell': key }, kids);
     const conn = (key, d, style, cls) => part(h, { type: 'conn', key }, { class: 'edge ' + ((h.connOf(key) || {}).sign || 'exc') + (cls ? ' ' + cls : ''), 'data-conn': key }, [
-      svg('path', { class: 'hit', d }), svg('path', { class: 'ln', d, style: style || '', 'marker-end': 'url(#shm-' + ((h.connOf(key) || {}).sign || 'exc') + ')' })]);
+      svg('path', { class: 'hit', d }), svg('path', { class: 'ln', d, style: style || '', 'marker-end': 'url(#shm-' + (cls === 'pp' ? 'pp' : ((h.connOf(key) || {}).sign || 'exc')) + ')' })]);
     const tag = (x, y, text, anchor) => tags.appendChild(svg('text', { class: 'ctag', x, y, 'text-anchor': anchor || 'middle', text }));
     const arcPath = (r, t0, t1) => { const a = P(r, t0), b = P(r, t1); return `M${a} A${r},${r} 0 0 ${t1 > t0 ? 0 : 1} ${b}`; };
     const pyr = (x, y, c, s) => `M${x - 9 * s},${y - 7 * s} L${x + 9 * s},${y - 7 * s} L${x},${y + 11 * s} Z`;   // apex toward the apical dendrite (down)
 
     // entorhinal inputs
     const ecBox = (key, y, title, sub, color) => glyph(key, [
-      svg('rect', { x: 18, y: y - 22, width: 150, height: 44, rx: 8, class: 'ecbox', style: 'stroke:' + color }),
+      svg('rect', { x: 18, y: y - 22, width: 150, height: 44, rx: 11, class: 'ecbox', style: 'stroke:' + color }),
       svg('text', { class: 'bt sm', x: 93, y: y - 3, 'text-anchor': 'middle', text: title }),
       svg('text', { class: 'sub', x: 93, y: y + 13, 'text-anchor': 'middle', text: sub })]);
     cells.appendChild(ecBox('fan', 70, 'LEC II', 'fan cells', col('fan')));
     cells.appendChild(ecBox('stel', 136, 'MEC II', 'stellate cells', col('stel')));
     out.appendChild(part(h, { type: 'region', key: 'ec3' }, { class: 'box', 'data-region': 'ec3' }, [
-      svg('rect', { x: 18, y: 560, width: 150, height: 44, rx: 8 }), svg('text', { class: 'bt sm', x: 93, y: 579, 'text-anchor': 'middle', text: 'EC III' }),
+      svg('rect', { class: 'body', x: 18, y: 560, width: 150, height: 44, rx: 11 }), svg('text', { class: 'bt sm', x: 93, y: 579, 'text-anchor': 'middle', text: 'EC III' }),
       svg('text', { class: 'sub', x: 93, y: 595, 'text-anchor': 'middle', text: 'pyramidal cells' })]));
     out.appendChild(part(h, { type: 'region', key: 'ec5' }, { class: 'box', 'data-region': 'ec5' }, [
-      svg('rect', { x: 18, y: 616, width: 150, height: 44, rx: 8 }), svg('text', { class: 'bt sm', x: 93, y: 635, 'text-anchor': 'middle', text: 'EC V-VI' }),
+      svg('rect', { class: 'body', x: 18, y: 616, width: 150, height: 44, rx: 11 }), svg('text', { class: 'bt sm', x: 93, y: 635, 'text-anchor': 'middle', text: 'EC V-VI' }),
       svg('text', { class: 'sub', x: 93, y: 651, 'text-anchor': 'middle', text: 'deep layers' })]));
     // lateral perforant path -> OML, medial -> MML, both blades (the medial one bold and labelled)
     const into = (k, th) => P(k, th);
@@ -416,6 +427,7 @@ BARRY.shSchem = (function () {
     conns.appendChild(conn('sub_ec5', `M1050,${STRATA.slm[1]} C1050,600 400,640 168,638`, ''));
     tags.appendChild(svg('text', { class: 'elabel', x: 720, y: 628, text: 'the loop closes in deep EC' }));
 
+    out.appendChild(bandLabels);
     out.addEventListener('click', () => h.select(null));
     out._anchor = (sel) => {
       if (!sel) return null;
@@ -443,6 +455,7 @@ BARRY.shSchem = (function () {
     const ins = kb.connections.filter((x) => !x.hidden && (x.to === type || (x.kind === 'region' && x.to === c.region)));
     const outs = kb.connections.filter((x) => !x.hidden && (x.from === type || (x.kind === 'region' && x.from === c.region && !h.cellOf(x.to))));
     const name = (k) => (h.cellOf(k) || h.regionOf(k) || { label: k }).label;
+    out.classList.add('sh-circuit');
     out.appendChild(svg('text', { class: 'bt', x: 500, y: 52, 'text-anchor': 'middle', text: c.label }));
     out.appendChild(svg('text', { class: 'sub', x: 500, y: 72, 'text-anchor': 'middle', text: 'what feeds it (left, by the layer it lands in) and where it leads (right)' }));
     // the cell, centre
@@ -469,9 +482,10 @@ BARRY.shSchem = (function () {
           svg('path', { class: 'hit', d }), svg('path', { class: 'ln', d, 'marker-end': 'url(#shm-' + x.sign + ')' })]));
         out.appendChild(part(h, h.cellOf(other) ? { type: 'cell', key: other } : { type: 'region', key: other },
           { class: 'box', 'data-cell': h.cellOf(other) ? other : null, 'data-region': h.cellOf(other) ? null : other }, [
-            svg('rect', { x: bx, y: y - 24, width: 260, height: 48, rx: 8 }),
+            svg('rect', { class: 'body', x: bx, y: y - 24, width: 260, height: 48, rx: 11 }),
             svg('circle', { cx: bx + 14, cy: y - 8, r: 4.5, style: 'fill:' + verdictColor(v.status) }),
-            svg('text', { x: bx + 26, y: y - 4, class: 'bt sm', text: name(other) }),
+            svg('text', { x: bx + 26, y: y - 4, class: 'bt sm full', text: name(other) }),
+            svg('text', { x: bx + 26, y: y + 6, class: 'bt sm short', text: (h.cellOf(other) || {}).short || SHORT[other] || name(other) }),
             svg('text', { x: bx + 26, y: y + 14, class: 'sub', text: (x.label || '') + (lay ? ' · ' + lay : '') }),
           ]));
       });
@@ -534,13 +548,15 @@ BARRY.shSchem = (function () {
     if (st.ds) {
       s.querySelectorAll('[data-layer]').forEach((n) => {
         const k = n.dataset.layer;
-        const r = n.querySelector('rect');
+        const r = n.querySelector('rect, path');
         if (!r) return;
         const sink = st.ds.sink.includes(k), src = st.ds.source.includes(k);
         if (!sink && !src) return;
         n.classList.remove('dim');
-        n.insertBefore(svg('rect', { class: 'sinkrect ' + (sink ? 'sink' : 'source'), x: r.getAttribute('x'), y: r.getAttribute('y'),
-          width: r.getAttribute('width'), height: r.getAttribute('height') }), r.nextSibling);
+        const cls = 'sinkrect ' + (sink ? 'sink' : 'source');
+        const over = r.tagName === 'path' ? svg('path', { class: cls, d: r.getAttribute('d') })
+          : svg('rect', { class: cls, x: r.getAttribute('x'), y: r.getAttribute('y'), width: r.getAttribute('width'), height: r.getAttribute('height') });
+        n.insertBefore(over, r.nextSibling);
       });
     }
     // where you are, and where you have been
@@ -579,7 +595,7 @@ BARRY.shSchem = (function () {
     if (a) {
       // a slight lean toward where you are: never so far that a word is cut
       // (the view always holds everything drawn, with a small margin)
-      if (!s._content) { try { const b = s.getBBox(); s._content = [b.x - 6, b.y - 6, b.width + 12, b.height + 12]; } catch (e) { s._content = full; } }
+      try { const b = s.getBBox(); s._content = [b.x - 8, b.y - 8, b.width + 16, b.height + 16]; } catch (e) { s._content = full; }
       const c = s._content;
       const k = 0.92;
       const w = Math.max(full[2] * k, c[2]), hh = Math.max(full[3] * k, c[3]);

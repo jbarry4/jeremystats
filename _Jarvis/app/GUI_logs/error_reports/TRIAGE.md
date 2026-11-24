@@ -41,6 +41,86 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 29: 2026-11-24 (morning, scheduled), 11-23 08:50 to 11-24 08:50
+
+Covered: Bluebarry's 11-23 report and shard (14 rows, all `test: true`).
+HEAD is now `4a5c9e3b` (maliajaff, 11-23 11:53). It commits pass 28's
+`2026.11.23.1` in `9c140d9d`. `git fetch` moved `origin/master` to `b1fd83fd`
+(12 commits). The fetch brought Rain's and Isabella's 11-23 reports and the
+first reports from Samara Sahagian's machine, `samarasahagia-839d` (11-17,
+11-22 and 11-23). No error shard came by git. The two
+`*@Isabellas-MacBook-Air.local.jsonl` shards on disk hold only the 11-22
+lines that pass 28 read. The cloud, read only, from `2026-11-23T13:50Z`:
+14 `errors` rows, all Bluebarry's test rows below. There are 1,830
+`activity` rows (Isabella's Mac 1,234, Rainberry 561, Bluebarry 32,
+Blackbarry 3) and 16 `client.error` rows, all "stuck". Floss: Rain's
+`20261109-102332-eca9` is still the only open ticket. No code changed.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-17, 11-22 | Samara's machine (`samarasahagia-839d`) | 0 | 0 actions. Build `2026.11.16.1 3f39ab7c` |
+| 11-23 | Bluebarry (Shahriar) | 0 (14 test) | `ui/mode.bounce` from `_dev/panfold.html` and `_dev/panmany.html`, 11:17:09 to 11:17:55. A harness run by the other session |
+| 11-23 | Rainberry (Rain) | 0 | 755 actions. Build `2026.11.23.1 b3f71e8d` |
+| 11-23 | Isabella's Mac (`-c6a7`) | 0 | 957 actions. Build `2026.11.23.1 6e659496`. Pass 28's fix holds (1) |
+| 11-23 | Samara's machine | 0 | 18 actions. Build `2026.11.16.1` (3) |
+| 11-23 | Blackbarry (Isabella, Aggie Krempasky) | 0 `errors` rows | 3 actions in the cloud (`link.scope`, `profile.who`). No report |
+| 11-23 to 11-24 | Rainberry, Isabella's Mac | 0 | 16 "stuck" rows. Slow, not faults (2) |
+
+1. **Pass 28's fix is holding on the Mac that showed the fault.** Isabella
+   merged `2026.11.23.1` at 14:03 local (`a5a08827`, 20:03Z). She then
+   started Jarvis four times (`link.scope` at 20:05Z, 00:06Z, 00:11Z and
+   02:37Z). No `cloud.sync` row came from the Mac after that. On 11-22 she
+   had one at every start. Four starts on one day is a small sample, so keep
+   watching. Since the fix, a first request that fails is no longer written
+   down. Pass 28's question about logging why it fails is still the user's.
+2. **"Stuck" rows**, in seven clusters:
+   - Rainberry start-ups, 14:26Z (ToolKit) and 03:37Z (Sessions):
+     `GET /api/registry` 30 to 35 s, with `prefs`, `toolkit/scopes`,
+     `toolkit/bad-channels` and `curation` beside it. All of them waited
+     while "Reading the recording list: gathering figures, decks and
+     banked events / merging every computer's records" ran. Pass 27's
+     17:09Z cluster had the same shape.
+   - Rainberry Xplorefinder: 14:57Z (`curation/<set>/pooled` 31.6 s),
+     03:50Z (`csc/window`, `cfc/job` ×2 and `session/state`, 32 to 33 s)
+     and 04:09Z (`csc/window` 34.5 s). Each came beside a run of "Checking
+     which records have reached the shared database" (5.7 to 7.4 s each),
+     "Working on syncstate: done in 13.5 s" or "Reading the curation sets:
+     done in 22.3 s", and syncs that sent 3 to 14 changes.
+   - Isabella's Mac Xplorefinder: 20:07Z (`csc/window` 30.3 s; "Reading a
+     stretch of the recording: done in 19.1 s" and "Putting together what
+     changed: done in 37.6 s", next to a sync of 6 changes). Then 20:22Z
+     (two spinners at 30 s, beside eight sync checks of 3.2 to 4.6 s and a
+     sync of 39 changes).
+   This is pass 24's lead again, and now it shows on a Mac too. It is still
+   not measured.
+3. **Samara's machine has never sent anything to the cloud.** The
+   `activity` table has no row for a machine like `samara`, at any time,
+   but her 11-23 report counts 18 actions. Her faults would reach a pass
+   only by git. She is a week behind (`2026.11.16.1`). This is not a fault
+   in the code. Whether her machine should be signed in to the shared
+   database is the user's call.
+
+Builds: Bluebarry's report says `2026.11.21.1 38ec1337`. The server that
+wrote it started before `2026.11.23.1` was written, so Bluebarry does not
+run that fix yet. Rain and Isabella run `2026.11.23.1`, Samara `2026.11.16.1`. The
+only uncommitted code in the app is `tools/ui_shots.py`, which is someone
+else's work. `origin/master` adds no app code. Besides `GUI_logs` it brings
+`.DS_Store` and the executable bit on `_Jarvis/Activate Jarvis.command` and
+`_Jarvis/Setup Mac.command` (Isabella, `722d136c`).
+
+Next pass: Bluebarry's 11-24 report and shard. Rain's, Isabella's and
+Samara's 11-24 reports. Strawbarry's 11-20 and later, and Blackbarry's
+11-13/11-14/11-18 and later, when git brings them. Then `git fetch`, then
+the cloud from `2026-11-24T13:50Z`. A start-up `cloud.sync` "not answering"
+line on a build at or after `2026.11.23.1` still means two real failures
+in a row. Watch for `er2/run/refresh` on a build at or after
+`2026.11.21.1`. Open, unchanged: pass 22's item 1, pass 18's two watches,
+the `session/state` and Xplorefinder stalls beside a sync check (pass 24's
+lead, now on the Mac too), Rain's Floss ticket, pass 23's NS_ERROR_ABORT
+watch, pass 25's question on handled refusals in the Errors view, and pass
+28's question on logging why the first request after a start fails. New:
+item 3, Samara's machine and the cloud.
+
 ## Pass 28: 2026-11-23 (morning, scheduled), 11-22 08:50 to 11-23 08:50
 
 Covered: Bluebarry's 11-22 report (0 faults, 0 actions; there is no 11-22

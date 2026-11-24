@@ -2,13 +2,21 @@
   "_at": {},
   "_keys": {
     "presets": {
+      "sp-akrempas-uvm-edu": [
+        "set",
+        "2026-11-12T19:09:32.043476+00:00"
+      ],
+      "sp-eanwer-uvm-edu": [
+        "set",
+        "2026-11-12T18:14:53.830941+00:00"
+      ],
       "sp-isabella-piatek-uvm-edu": [
         "set",
-        "2026-10-27T19:34:06.883805+00:00"
+        "2026-11-20T18:30:47.626350+00:00"
       ],
       "sp-rain-younger-uvm-edu": [
         "set",
-        "2026-10-27T15:48:24.382052+00:00"
+        "2026-10-29T17:30:33.378336+00:00"
       ],
       "sp-rain-younger-uvm-edu-rain-setup": [
         "set",
@@ -16,41 +24,25 @@
       ],
       "sp-sakhava1-uvm-edu": [
         "set",
-        "2026-10-23T13:14:59.110729+00:00"
+        "2026-11-13T17:36:58.893200+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-27T19:34:06.883805+00:00",
+    "at": "2026-11-20T18:30:47.626350+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
   "presets": [
     {
       "addons": {
-        "lock": {
-          "layout": {
-            "rows": [
-              {
-                "cols": [
-                  50,
-                  50
-                ],
-                "h": 50
-              },
-              {
-                "cols": [
-                  70,
-                  30
-                ],
-                "h": 50
-              }
-            ]
-          },
+        "curate": {
+          "layout": null,
           "main": {
             "layout": null,
             "panels": [
               {
+                "channels": "even",
                 "filter": "p:ds",
                 "gain": 2.5,
                 "notch": true,
@@ -58,125 +50,21 @@
               }
             ],
             "shape": null,
-            "span": 0.8
+            "span": null
           },
           "open": true,
           "overview": null,
           "panels": [
             {
+              "channels": "even",
               "filter": "p:ds",
               "notch": true,
               "panel": "csd"
-            },
-            {
-              "filter": "custom",
-              "hp": 1,
-              "notch": true,
-              "panel": "csd"
-            },
-            {
-              "filter": "p:none",
-              "gain": 2.5,
-              "notch": true,
-              "panel": "traces"
-            },
-            {
-              "band": "custom",
-              "filter": "p:none",
-              "fmax": 800,
-              "fmin": 1,
-              "notch": true,
-              "panel": "spectrogram"
             }
           ],
-          "shape": "linked",
+          "shape": null,
           "span": null
         },
-        "panning": {
-          "layout": {
-            "rows": [
-              {
-                "cols": [
-                  50,
-                  50
-                ],
-                "h": 50
-              },
-              {
-                "cols": [
-                  74,
-                  26
-                ],
-                "h": 50
-              }
-            ]
-          },
-          "main": {
-            "layout": null,
-            "panels": [
-              {
-                "filter": "p:ds",
-                "gain": 2.5,
-                "notch": true,
-                "panel": "traces"
-              }
-            ],
-            "shape": null,
-            "span": 0.4
-          },
-          "open": true,
-          "overview": null,
-          "panels": [
-            {
-              "filter": "p:ds",
-              "notch": true,
-              "panel": "csd"
-            },
-            {
-              "filter": "custom",
-              "hp": 1,
-              "notch": true,
-              "panel": "csd"
-            },
-            {
-              "filter": "p:none",
-              "gain": 2.5,
-              "notch": true,
-              "panel": "traces"
-            },
-            {
-              "band": "custom",
-              "filter": "raw",
-              "fmax": 800,
-              "fmin": 1,
-              "notch": true,
-              "panel": "spectrogram"
-            }
-          ],
-          "shape": "linked",
-          "span": null
-        }
-      },
-      "at": "2026-10-27T19:34:06.875Z",
-      "auto": true,
-      "id": "sp-isabella-piatek-uvm-edu",
-      "label": "current",
-      "name": "Isabella Piatek \u2014 current",
-      "owner": "Isabella Piatek",
-      "owner_email": "isabella.piatek@uvm.edu",
-      "saved": {
-        "app_version": "2026.10.27.1",
-        "at": "2026-10-27T15:34:06-04:00",
-        "commit": "a64cdea8",
-        "email": "Isabella.Piatek@uvm.edu",
-        "host": "LCOM549913",
-        "machine": "Blackbarry",
-        "os": "Windows",
-        "user": "Isabella Piatek"
-      }
-    },
-    {
-      "addons": {
         "lock": {
           "layout": {
             "rows": [
@@ -253,8 +141,8 @@
               },
               {
                 "cols": [
-                  74,
-                  26
+                  68,
+                  32
                 ],
                 "h": 50
               }
@@ -274,6 +162,7 @@
             "span": null
           },
           "open": true,
+          "overview": null,
           "panels": [
             {
               "filter": "p:ds",
@@ -281,7 +170,8 @@
               "panel": "csd"
             },
             {
-              "filter": "p:none",
+              "filter": "custom",
+              "hp": 1,
               "notch": true,
               "panel": "csd"
             },
@@ -314,7 +204,570 @@
           "shape": "linked"
         }
       },
-      "at": "2026-10-27T15:48:24.378Z",
+      "at": "2026-11-12T19:09:31.996Z",
+      "auto": true,
+      "id": "sp-akrempas-uvm-edu",
+      "label": "current",
+      "name": "Aggie Krempasky \u2014 current",
+      "owner": "Aggie Krempasky",
+      "owner_email": "akrempas@uvm.edu",
+      "saved": {
+        "app_version": "2026.11.11.4",
+        "at": "2026-11-12T14:09:32-05:00",
+        "commit": "233b1502",
+        "email": "akrempas@uvm.edu",
+        "machine": "ip0af5523d.int.uvm.edu",
+        "os": "Darwin",
+        "user": "Aggie Krempasky"
+      }
+    },
+    {
+      "addons": {
+        "curate": {
+          "layout": null,
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "channels": "even",
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "channels": "even",
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            }
+          ],
+          "shape": null,
+          "span": null
+        },
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "p:none",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  68,
+                  32
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-11-12T18:14:53.825Z",
+      "auto": true,
+      "id": "sp-eanwer-uvm-edu",
+      "label": "current",
+      "name": "Eshal Anwer \u2014 current",
+      "owner": "Eshal Anwer",
+      "owner_email": "eanwer@uvm.edu",
+      "saved": {
+        "app_version": "2026.11.11.4",
+        "at": "2026-11-12T13:14:53-05:00",
+        "commit": "f9792b6e",
+        "email": "eanwer@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Eshal Anwer"
+      }
+    },
+    {
+      "addons": {
+        "curate": {
+          "layout": null,
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "channels": "even",
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "channels": "even",
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            }
+          ],
+          "shape": null,
+          "span": null
+        },
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "p:none",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  68,
+                  32
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-11-20T18:30:47.619Z",
+      "auto": true,
+      "id": "sp-isabella-piatek-uvm-edu",
+      "label": "current",
+      "name": "Isabella Piatek \u2014 current",
+      "owner": "Isabella Piatek",
+      "owner_email": "isabella.piatek@uvm.edu",
+      "saved": {
+        "app_version": "2026.11.18.2",
+        "at": "2026-11-20T13:30:47-05:00",
+        "commit": "8c18a666",
+        "email": "Isabella.Piatek@uvm.edu",
+        "host": "LCOM549913",
+        "machine": "Blackbarry",
+        "os": "Windows",
+        "user": "Isabella Piatek"
+      }
+    },
+    {
+      "addons": {
+        "curate": {
+          "layout": null,
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "channels": "even",
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "channels": "even",
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            }
+          ],
+          "shape": null,
+          "span": null
+        },
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "p:none",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  68,
+                  32
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-29T17:30:33.379Z",
       "auto": true,
       "id": "sp-rain-younger-uvm-edu",
       "label": "current",
@@ -322,9 +775,9 @@
       "owner": "Rain Younger",
       "owner_email": "rain.younger@uvm.edu",
       "saved": {
-        "app_version": "2026.10.26.2",
-        "at": "2026-10-27T11:48:24-04:00",
-        "commit": "475259cf",
+        "app_version": "2026.10.27.1",
+        "at": "2026-10-29T13:30:33-04:00",
+        "commit": "7b90a533",
         "email": "rain.younger@uvm.edu",
         "host": "BarryLab",
         "machine": "Strawbarry",
@@ -510,14 +963,68 @@
           "span": null
         },
         "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  68,
+                  32
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
           "open": true,
+          "overview": null,
           "panels": [
-            "csd",
-            "theta",
-            "traces",
-            "spectrogram"
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
           ],
-          "shape": "linked"
+          "shape": "linked",
+          "span": null
         },
         "strata": {
           "open": true,
@@ -530,7 +1037,7 @@
           "shape": "linked"
         }
       },
-      "at": "2026-10-23T13:14:58.515Z",
+      "at": "2026-11-13T17:36:58.886Z",
       "auto": true,
       "id": "sp-sakhava1-uvm-edu",
       "label": "current",
@@ -538,9 +1045,9 @@
       "owner": "Shahriar Tafti",
       "owner_email": "sakhava1@uvm.edu",
       "saved": {
-        "app_version": "2026.10.22.5",
-        "at": "2026-10-23T09:14:58-04:00",
-        "commit": "b13e5f6c",
+        "app_version": "2026.11.13.2",
+        "at": "2026-11-13T12:36:58-05:00",
+        "commit": "de71a7fc",
         "email": "sakhava1@uvm.edu",
         "host": "DESKTOP-4H65AI7",
         "machine": "Bluebarry",

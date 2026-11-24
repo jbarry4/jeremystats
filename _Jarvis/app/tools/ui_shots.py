@@ -340,7 +340,12 @@ def main():
                 # name of a picture to take once the step has settled.
                 js_, wait_, settle_ = step[:3]
                 try:
-                    cdp.js(js_)
+                    got_ = cdp.js(js_)
+                    # A step can report: return a string that starts with
+                    # "@print" and the rest is printed whole (failures are
+                    # cut at 400 characters).
+                    if isinstance(got_, str) and got_.startswith("@print"):
+                        print("  " + got_[6:].strip())
                 except RuntimeError as exc:
                     print("  step failed: %s" % exc)
                 if not cdp.until(wait_ or "1", limit=30):

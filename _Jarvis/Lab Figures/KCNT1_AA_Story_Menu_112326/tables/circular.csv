@@ -1,0 +1,13 @@
+p,R,n,test,group,words,V,mean_deg,p_direction,p_spread,diff_deg,diff_R
+8.106330640973934e-12,0.9355936188582026,21.0,Rayleigh,WT,day-2 preferred directions cluster (Rayleigh),,,,,,
+3.218810004090855e-07,,21.0,V test,WT,day-2 preferred directions point to the opposite side (V test toward 180 deg),0.7680609690723055,,,,,
+,0.9355936188582027,21.0,circular mean,WT,mean of the preferred directions,,-145.1784386219618,,,,
+1.5327075665526917e-10,0.9159682017339449,20.0,Rayleigh,Het,day-2 preferred directions cluster (Rayleigh),,,,,,
+1.879798428028323e-08,,20.0,V test,Het,day-2 preferred directions point to the opposite side (V test toward 180 deg),0.8699090030202035,,,,,
+,0.915968201733945,20.0,circular mean,Het,mean of the preferred directions,,-161.75295686206528,,,,
+3.06827363086981e-07,0.8850005458448639,15.0,Rayleigh,Hom,day-2 preferred directions cluster (Rayleigh),,,,,,
+5.977540511703516e-05,,15.0,V test,Hom,day-2 preferred directions point to the opposite side (V test toward 180 deg),0.702371186487001,,,,,
+,0.8850005458448639,15.0,circular mean,Hom,mean of the preferred directions,,-142.5269194781923,,,,
+0.024848757562121893,,,permutation (direction / spread),Het_vs_WT,"preferred direction and its spread across mice, day 2",,,0.024848757562121893,0.7295135243237838,16.574518240103473,0.019625417124257694
+0.39343032848357584,,,permutation (direction / spread),Hom_vs_WT,"preferred direction and its spread across mice, day 2",,,0.7501124943752813,0.39343032848357584,2.6515191437695083,0.05059307301333882
+0.039948002599870004,,,permutation (direction / spread),Hom_vs_Het,"preferred direction and its spread across mice, day 2",,,0.039948002599870004,0.5809209539523024,19.22603738387298,0.030967655889081125

@@ -465,7 +465,7 @@ def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
     # "v2" because the shape of the response changed: a cache entry written
     # before mabs existed would come back without it.
     invert = bool(session.get("invert", True))
-    key = (session.get("path"), ch.get("number"), int(bins), invert, "v2")
+    key = (session.get("path"), ch.get("number"), int(bins), invert, "v3")
     hit = _OVERVIEW_CACHE.get(key)
     if hit:
         return hit
@@ -485,7 +485,7 @@ def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
     if ident:
         disk_key = {"file": src_file, "ident": ident, "ch": ch.get("number"),
                     "index": ch.get("index"), "bins": bins, "dur": round(dur, 3),
-                    "invert": invert, "v": 2}
+                    "invert": invert, "v": 3}
         kept = derived.get_json("overview", disk_key)
         if kept and kept.get("ok"):
             kept = dict(kept, cached="disk")
@@ -500,6 +500,14 @@ def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
     # absolute value tracks how big the signal typically is, which is what
     # you want from a strip you are using to find the busy stretches.
     mabs = np.zeros(bins, dtype=np.float32)
+
+    # Bins with nothing recorded in them: acquisition was paused (2026-11-24,
+    # KCNT1 m529 s1 paused 33 minutes at 6:15). The reader hands back the
+    # last record before a time it has no record for, so without this every
+    # bin of a pause repeated the last bin before it -- a flat line that read
+    # as signal, and as "the bug is still there".
+    gap = np.zeros(bins, dtype=bool)
+    fs_ch = float(session.get("fs") or 0) or 30000.0
 
     def take(i, seg):
         if seg is not None and seg.size:
@@ -524,8 +532,14 @@ def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
         # opens on network storage were ten seconds (2026-10-21).
         done = 0
         try:
-            for j, seg, _a in nlx.read_ncs_ranges(ch["file"], spans,
+            for j, seg, a0 in nlx.read_ncs_ranges(ch["file"], spans,
                                                   invert=invert):
+                # Data that ends before the bin begins is the record before
+                # a pause, not this bin's.
+                if (seg is not None and seg.size
+                        and a0 + seg.size / fs_ch < spans[j][0] - 0.05):
+                    gap[order[j]] = True
+                    seg = None
                 take(order[j], seg)
                 done = j + 1
             batched = True
@@ -550,6 +564,8 @@ def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
         "rms": [round(float(v), 1) for v in amp],
         "mabs": [round(float(v), 1) for v in mabs],
         "probe_s": probe,
+        # Where nothing was recorded, as [start_s, end_s] runs of bins.
+        "gaps": _bin_runs(gap, step),
     }
     if len(_OVERVIEW_CACHE) > 24:
         _OVERVIEW_CACHE.clear()
@@ -594,6 +610,18 @@ BG_MAX_COLUMNS = 6000
 _BANDGRAM_CACHE = {}
 _BANDGRAM_ORDER = []
 _BANDGRAM_MAX = 3
+
+
+def _bin_runs(flags, step):
+    """[[t0, t1], ...] for each run of True bins."""
+    out, start = [], None
+    for i, f in enumerate(list(flags) + [False]):
+        if f and start is None:
+            start = i
+        elif not f and start is not None:
+            out.append([round(start * step, 3), round(i * step, 3)])
+            start = None
+    return out
 
 
 def _bandgram(session, ch, bins):
