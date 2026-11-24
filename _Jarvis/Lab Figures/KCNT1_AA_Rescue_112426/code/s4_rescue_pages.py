@@ -480,6 +480,96 @@ def page_score():
     F.save(fig, OUT, "07_scoreboard")
 
 
+
+# ============================================================================ page 8: without the cooked sessions
+COOKED = {("527", 2), ("598", 6), ("1663", 3), ("1663", 16)}
+MEDIUM = {("528", 1), ("576", 3), ("531", 1), ("1665", 2), ("1633", 1), ("1633", 3), ("597", 1), ("597", 6)}
+MEDIUM_MICE = {"520", "1667", "1644"}          # flagged for every session (s0-s16)
+
+
+def cleaned(col, drop_sessions, drop_mice):
+    TR = CR["TR"]
+    keep = ~TR.apply(lambda r: (r.mouse, int(r.session)) in drop_sessions or r.mouse in drop_mice, axis=1)
+    d = TR[keep]
+    d1 = d[d.session <= 8].groupby("mouse")[col].mean()
+    d2 = d[d.session >= 9].groupby("mouse")[col].mean()
+    return (d2 - d1).dropna().to_dict(), int((~keep).sum())
+
+
+def did_test(v, seed=7):
+    rng = np.random.RandomState(seed)
+    cells = {(g, a): np.array([v[m] for m in ML if X.grp(m) == "%s %s" % (g, a) and m in v]) for g in ("WT", "Hom") for a in ("young", "old")}
+    mm = {k: x.mean() for k, x in cells.items()}
+    did = (mm[("Hom", "old")] - mm[("WT", "old")]) - (mm[("Hom", "young")] - mm[("WT", "young")])
+    boots = []
+    for _ in range(4000):
+        b = {k: x[rng.randint(0, x.size, x.size)].mean() for k, x in cells.items()}
+        boots.append((b[("Hom", "old")] - b[("WT", "old")]) - (b[("Hom", "young")] - b[("WT", "young")]))
+    boots = np.array(boots)
+    return did, np.percentile(boots, 2.5), np.percentile(boots, 97.5), min(1.0, 2 * min((boots <= 0).mean(), (boots >= 0).mean()))
+
+
+def page_cooked():
+    fig, y = F.page("Without the flagged sessions: the old-Hom improvement deficit holds; the young pair still shows nothing",
+                    "RESCUE · 7 · WITHOUT THE FLAGGED SESSIONS", number=8)
+    y += 0.3
+    sets = [("All sessions", set(), set()),
+            ("Without the cooked sessions", COOKED, set()),
+            ("Without cooked and medium-cooked", COOKED | MEDIUM, MEDIUM_MICE)]
+    res = []
+    for col in ("spr", "epr"):
+        for lab, ds, dm in sets:
+            v, n = cleaned(col, ds, dm)
+            pyo = S.two([v[m] for m in ML if X.grp(m) == "WT young" and m in v], [v[m] for m in ML if X.grp(m) == "Hom young" and m in v])["p"]
+            pol = S.two([v[m] for m in ML if X.grp(m) == "WT old" and m in v], [v[m] for m in ML if X.grp(m) == "Hom old" and m in v])["p"]
+            p24 = S.two([v[m] for m in ML if OLD24(m) and m in v], [v[m] for m in ML if OLDH(m) and m in v])["p"]
+            res.append(dict(col=col, set=lab, v=v, n_dropped=n, p_young=pyo, p_old=pol, p_old24=p24, did=did_test(v),
+                            n_mice=len(v)))
+    R = [r for r in res if r["col"] == "spr"]
+    F.letter(fig, 0.4, y, "a", "Shocks per turn, day 2 minus day 1: old pair %s, %s and %s; young pair %s, %s and %s" % (
+        F.pstr(R[0]["p_old"]), F.pstr(R[1]["p_old"]), F.pstr(R[2]["p_old"]), F.pstr(R[0]["p_young"]), F.pstr(R[1]["p_young"]),
+        F.pstr(R[2]["p_young"])), width=7.6)
+    for k, r in enumerate(R):
+        ax = F.axes_in(fig, 0.75 + k * 2.45, y + 0.75, 2.05, 2.3)
+        X.group_dots(ax, r["v"], pairs=((0, 1), (2, 3)), ylabel="Shocks per turn, day 2 - day 1" if k == 0 else "", size=13)
+        ax.axhline(0, color=F.FAINT, lw=0.5, zorder=0)
+        ax.set_ylim(-1.9, 1.6)
+        d = r["did"]
+        ax.set_title("%s\n%d sessions out, %d mice left\nyoung pair %s · old pair %s\ngaps differ by %.2f (95%% CI %.2f to %.2f), %s" % (
+            r["set"], r["n_dropped"], r["n_mice"], F.pstr(r["p_young"]), F.pstr(r["p_old"]), d[0], d[1], d[2], F.pstr(d[3])),
+            fontsize=5.5, loc="left", linespacing=1.2)
+        X.red(ax, "")
+    X.genotype_legend(fig, 0.75, y + 3.45)
+    X.red_legend(fig, 0.75, y + 3.7)
+    yb = y + 4.25
+    F.letter(fig, 0.4, yb, "b", "The same three ways for entrances per turn, and for old Hom against the 2024 old WT only (same floor)",
+             width=7.6)
+    ax = F.axes_in(fig, 0.6, yb + 0.2, 7.3, 1.6)
+    ax.axis("off")
+    hx = [0, 0.2, 0.47, 0.6, 0.73, 0.86]
+    for j, h in enumerate(["Measure", "Sessions used", "young pair", "old pair", "old Hom vs\n2024 old WT", "Hom x age\n(gaps differ)"]):
+        ax.text(hx[j], 1, h, fontsize=6.0, weight="bold", color=F.SOFT, va="top", transform=ax.transAxes)
+    for i, r in enumerate(res):
+        yy = 0.76 - i * 0.12
+        cells = ["Shocks per turn" if r["col"] == "spr" else "Entrances per turn", r["set"], r["p_young"], r["p_old"], r["p_old24"], r["did"][3]]
+        for j, c in enumerate(cells):
+            if j < 2:
+                txt, col = (c if (j == 1 or i % 3 == 0) else ""), F.INK
+            else:
+                txt, col = F.pstr(c) + (" " + F.stars(c) if c < 0.05 else ""), (F.INK if c < 0.05 else F.FAINT)
+            ax.text(hx[j], yy, txt, fontsize=6.1, va="top", transform=ax.transAxes, color=col)
+    F.put(fig, 0.6, yb + 2.0,
+          "From 'active avoidance outlier session notes.xlsx'. Cooked (yellow): 527 s2 (dropped before s2, no reaction), 598 s6 "
+          "(shocker not delivering), 1663 s3 and s16 (battery pins out). Medium: 528 s1, 576 s3, 531 s1, 1665 s2, 1633 s1 and "
+          "s3, 597 s1 and s6 (shocker off or doubtful), and every session of 520, 1667 and 1644 (very jumpy). Only the flagged "
+          "sessions come out; a mouse's day means come from its other sessions, and the three whole-run mice leave the "
+          "analysis. 520, 597 and 1644 are Het, so they never appear in this WT-and-Hom plot. Tests as on page 5: generous two-group tests; gaps differ = bootstrap of (old Hom - old WT) "
+          "- (young Hom - young WT).", 7.3, size=6.1, color=F.SOFT)
+    F.save(fig, OUT, "08_without_flagged_sessions")
+    pd.DataFrame([{k: v for k, v in r.items() if k not in ("v", "did")} | dict(did=r["did"][0], did_lo=r["did"][1], did_hi=r["did"][2],
+                                                                            p_did=r["did"][3]) for r in res]).to_csv(
+        os.path.join(OUT, "without_flagged_sessions.csv"), index=False)
+
 # ============================================================================ page 1: the menu
 def page_front():
     fig = plt.figure(figsize=(8.5, 11))
@@ -505,7 +595,7 @@ def page_front():
           "timed to the room."
           % (-e.mean_WT, -e.mean_Hom, F.pstr(e.p), F.pstr(s_.p), F.pstr(e.p_cohort), F.pstr(st_e["p_young"]),
              min(st_s["p_int"], MMC["spr"]["hom:old:sc"][1]), max(st_e["p_int"], r2("epr", "imp").p_boot)), 7.0, size=7.3)
-    F.put(fig, 0.72, 5.0, "The pages", 7.2, size=7.5, weight="bold")
+    F.put(fig, 0.72, 4.45, "The pages", 7.2, size=7.5, weight="bold")
     rows = [("2", "The map", "Who ran at which speed; the five routes; how every session got a speed.", "old Hom and 2024 old WT share a floor"),
             ("3", "A speed-free count", "Raw entrances against floor speed vs entrances per turn; which measures are speed-free.",
              "per turn: WT rho %.2f" % CR["WTC"][(CR["WTC"].measure == "epr") & (CR["WTC"].summary == "d1") &
@@ -514,8 +604,10 @@ def page_front():
             ("5", "Young and old, per turn", "Improvement and learning slopes per turn in the four genotype x age groups.",
              "young pair %s, old pair %s" % (F.pstr(st_e["p_young"]), F.pstr(st_e["p_old"]))),
             ("6", "Adults; extrapolation", "Age 19-46 weeks on one floor; raw counts moved along three slopes.", "no age-within-adults effect"),
-            ("7", "Scoreboard", "Every age claim by every route; what it would take to settle it.", "old Hom fail to improve")]
-    ax = F.axes_in(fig, 0.7, 5.25, 7.3, 3.0)
+            ("7", "Scoreboard", "Every age claim by every route; what it would take to settle it.", "old Hom fail to improve"),
+            ("8", "Without flagged sessions", "Page 5's shocks-per-turn plot without the cooked, then without cooked and medium-cooked sessions.",
+             "old pair P 0.028 / 0.037 / 0.041")]
+    ax = F.axes_in(fig, 0.7, 4.7, 7.3, 3.9)
     ax.axis("off")
     hx = [0, 0.05, 0.27, 0.68]
     for j, h in enumerate(["Page", "Story", "What it shows", "Best number"]):
@@ -526,9 +618,9 @@ def page_front():
         nl = max(c.count("\n") + 1 for c in cells)
         for j, c in enumerate(cells):
             ax.text(hx[j], yy, c, fontsize=6.8, va="top", weight="bold" if j == 1 else "normal", transform=ax.transAxes)
-        yy -= 0.05 * nl + 0.055
-        ax.plot([0, 1], [yy + 0.027, yy + 0.027], color=F.GRID, lw=0.6, transform=ax.transAxes)
-    F.put(fig, 0.72, 8.5,
+        yy -= 0.036 * nl + 0.04
+        ax.plot([0, 1], [yy + 0.02, yy + 0.02], color=F.GRID, lw=0.6, transform=ax.transAxes)
+    F.put(fig, 0.72, 8.85,
           "Floor speed: the refined reading of the stage speed check. Per turn = divided by the floor turns in the session. Red "
           "background on a panel or cell = the groups compared ran at different floor speeds. Day 2 - day 1 = each mouse's "
           "day-2 mean minus its day-1 mean. Exploratory: P values uncorrected. * P < 0.05, ** P < 0.01, *** P < 0.001.",
@@ -548,12 +640,15 @@ def package():
     pdfs = sorted(glob.glob(os.path.join(OUT, "*.pdf")))
     for f in pdfs + sorted(glob.glob(os.path.join(OUT, "*.png"))):
         shutil.copy2(f, os.path.join(DEST, "pages"))
+    if os.path.exists(os.path.join(OUT, "without_flagged_sessions.csv")):
+        pass
     doc = pymupdf.open()
     for f in pdfs:
         doc.insert_pdf(pymupdf.open(f))
     doc.save(os.path.join(DEST, "KCNT1_AA_Rescue_112426.pdf"))
     tab = os.path.join(DEST, "tables")
     R1.to_csv(os.path.join(tab, "route1_old_Hom_vs_old_WT_same_floor.csv"), index=False)
+    shutil.copy2(os.path.join(OUT, "without_flagged_sessions.csv"), tab)
     R2.to_csv(os.path.join(tab, "route2_genotype_x_age_per_turn.csv"), index=False)
     R3.to_csv(os.path.join(tab, "route3_age_within_adults.csv"), index=False)
     R4.to_csv(os.path.join(tab, "route4_extrapolation_three_slopes.csv"), index=False)
@@ -577,7 +672,7 @@ def package():
 if __name__ == "__main__":
     import sys
     fns = {"1": page_front, "2": page_map, "3": page_per_turn, "4": page_same_floor, "5": page_age, "6": page_adults_extrap,
-           "7": page_score, "pkg": package}
-    for w in (sys.argv[1:] or ["1", "2", "3", "4", "5", "6", "7", "pkg"]):
+           "7": page_score, "8": page_cooked, "pkg": package}
+    for w in (sys.argv[1:] or ["1", "2", "3", "4", "5", "6", "7", "8", "pkg"]):
         fns[w]()
         print("done", w)

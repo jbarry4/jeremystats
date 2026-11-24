@@ -270,18 +270,21 @@ BARRY.shSchem = (function () {
     const L = {};      // anchor points per layer key, for _anchor and edges
     const bands = svg('g', { class: 'plate-bands' });
     out.appendChild(bands);
+    // the layer names go on top of everything (added last), each with a halo in its own band's
+    // color, so a fibre or a cell passing under a name never makes it hard to read
+    const bandLabels = svg('g', { class: 'band-labels', style: 'pointer-events:none' });
     const band = (key, d, labelAt, label) => {
       bands.appendChild(part(h, { type: 'lamina', key }, { class: 'band', 'data-layer': key }, [
         svg('path', { d, style: 'fill:' + (LC[key] || '#999') }),
-        label ? svg('text', { class: 'blabel', x: labelAt[0], y: labelAt[1] + 4, 'text-anchor': 'middle', text: label }) : null,
       ]));
+      if (label) bandLabels.appendChild(svg('text', { class: 'blabel', 'data-layer': key, x: labelAt[0], y: labelAt[1] + 4, 'text-anchor': 'middle', text: label, style: 'stroke:' + (LC[key] || '#999') }));
     };
     // the dentate: hilus, then each ring as an upper (1) and lower (2) blade
     band('hil', sector(0, 62, DG.a0, DG.a1), P(40, 140), 'HIL');
     L.hil = P(34, 180);
     for (const [k, r0, r1] of DG.rings.slice(1)) {
       const rm = (r0 + r1) / 2;
-      band(k + '1', sector(r0, r1, DG.a0, 180), P(rm, 65), k.toUpperCase() + '1');
+      band(k + '1', sector(r0, r1, DG.a0, 180), P(rm, k === 'gcl' ? 160 : 65), k.toUpperCase() + '1');
       band(k + '2', sector(r0, r1, 180, DG.a1), P(rm, 295), k.toUpperCase() + '2');
       L[k + '1'] = P(rm, 150); L[k + '2'] = P(rm, 210);
     }
@@ -424,6 +427,7 @@ BARRY.shSchem = (function () {
     conns.appendChild(conn('sub_ec5', `M1050,${STRATA.slm[1]} C1050,600 400,640 168,638`, ''));
     tags.appendChild(svg('text', { class: 'elabel', x: 720, y: 628, text: 'the loop closes in deep EC' }));
 
+    out.appendChild(bandLabels);
     out.addEventListener('click', () => h.select(null));
     out._anchor = (sel) => {
       if (!sel) return null;

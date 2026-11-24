@@ -46,7 +46,7 @@ BARRY.views.seahorse = (function () {
     play: null, tour: null, stage: null, three: null, loading: null, volumesUp: false, crowdMade: false,
     lab: { notes: {}, views: {}, me: '' }, quiz: null, rec: null, railW: null, railSplit: 0.46,
     times: {}, paths: true, labels: true, hist: { list: [], i: -1 }, evSpeed: null, evLoop: true, folds: {},
-    tilt: false,
+    tilt: false, rideAuto: false,
     compose: { lec: { on: true, amp: 1, t: 24 }, mec: { on: false, amp: 1, t: 30 }, ca3: { on: false, amp: 1, t: 72 }, ec3: { on: false, amp: 0.8, t: 40 }, ripple: false, theta: false },
   };
   let root = null;
@@ -299,7 +299,7 @@ BARRY.views.seahorse = (function () {
       for (const n of want) {
         win.start(n);
         if (n === 'three') {
-          S.three = await import('./seahorse3d.js?v=4');
+          S.three = await import('./seahorse3d.js?v=5');
           win.bytes(n, 700000, 700000);
         } else if (n === 'rides.json') {
           S.rides = await getJSON('rides.json');
@@ -363,7 +363,7 @@ BARRY.views.seahorse = (function () {
     const st = S.stage;
     if (!st || S.pathsMade || !S.rides || !st.has('cells') || !st.setPath) return;
     S.pathsMade = true;
-    Object.keys(DRAWN).forEach((k) => { const p = drawnPath(k); if (p) st.setPath(k, p, DRAWN[k].color(), S.paths); });
+    syncPaths();
   }
   function showPaths(on) {
     S.paths = !!on;
@@ -371,7 +371,9 @@ BARRY.views.seahorse = (function () {
     syncPaths();
   }
   function syncPaths() {
-    if (S.stage && S.pathsMade) Object.keys(DRAWN).forEach((k) => { const p = drawnPath(k); if (p) S.stage.setPath(k, p, DRAWN[k].color(), S.paths && !isRide()); });
+    // shown at the hippocampus and the slab (and in sections), not over the whole brain, and not during a ride (it draws its own)
+    const on = S.paths && !isRide() && !(S.mode === '3d' && S.level === 'brain');
+    if (S.stage && S.pathsMade) Object.keys(DRAWN).forEach((k) => { const p = drawnPath(k); if (p) S.stage.setPath(k, p, DRAWN[k].color(), on); });
   }
   /* The second LEC cell (AA1002: 230 mm of axon) only joins in when it has
      something to show: the DS1 volley, or when LEC cells are selected. */
@@ -441,7 +443,7 @@ BARRY.views.seahorse = (function () {
   function build() {
     root = document.getElementById('view-seahorse');
     const saved = store.get();
-    ['mode', 'level', 'schemPick', 'schemFullPick', 'follow', 'story', 'crowd', 'railW', 'railSplit', 'paths', 'labels', 'evSpeed', 'evLoop', 'folds', 'tilt']
+    ['mode', 'level', 'schemPick', 'schemFullPick', 'follow', 'story', 'crowd', 'railW', 'railSplit', 'paths', 'labels', 'evSpeed', 'evLoop', 'folds', 'tilt', 'rideAuto']
       .forEach((k) => { if (saved[k] != null) S[k] = saved[k]; });
     if (saved.slice) Object.assign(S.slice, saved.slice);
     if (saved.probe) Object.assign(S.probe, saved.probe);
@@ -455,7 +457,7 @@ BARRY.views.seahorse = (function () {
       ['schematic', 'Schematic', 'The circuit, and the hippocampus by layer']], S.mode, (k) => setMode(k), { aria: 'View' })]));
     const search = el('div', { class: 'sh-search' }, [
       el('label', { class: 'sh-search-box' }, [UI.icon('search'),
-        el('input', { type: 'search', placeholder: 'Search cells, layers, pathways…', 'aria-label': 'Search Seahorse', spellcheck: 'false' }),
+        el('input', { type: 'search', placeholder: 'Search the atlas', title: 'Cells, layers, regions, pathways, rides, events, tours, saved views', 'aria-label': 'Search Seahorse', spellcheck: 'false' }),
         el('span', { class: 'sh-kbd', text: '/', title: 'Press / to search' })]),
       el('div', { class: 'sh-search-res', role: 'listbox' }),
     ]);
@@ -667,6 +669,7 @@ BARRY.views.seahorse = (function () {
   async function setMode(m) {
     if (isRide() && m !== '3d') stopPlay();
     UI.closeAll();
+    const changed = S.mode !== m;
     S.mode = m;
     store.set({ mode: m });
     root.classList.toggle('sh-mode-schem', m === 'schematic');
@@ -678,6 +681,9 @@ BARRY.views.seahorse = (function () {
     const ok = await ensureStage();
     if (!ok) return;
     S.stage.resume();
+    // the stage arrives rather than snaps: a short fade as the view changes
+    const host = $('.sh-host');
+    if (host && changed && !reducedMotion()) { host.classList.remove('sh-swap'); void host.offsetWidth; host.classList.add('sh-swap'); }
     if (m === '3d') {
       S.stage.setView('3d');
       await setLevel(S.level, true);
@@ -692,6 +698,7 @@ BARRY.views.seahorse = (function () {
       ensureCrowd();
     }
     placeMini();
+    syncPaths();
     syncProbe();
     applyFocusAll();
     renderRail();
@@ -706,11 +713,22 @@ BARRY.views.seahorse = (function () {
     host.innerHTML = '';
     S.stage = S.three.create(host, {
       colors: stageColors(), onPick: onStagePick, onHover: onStageHover, onCamera: onStageCamera, onProbe: onProbeDrag,
-      onFrame: onStageFrame, onDark: (on) => { const s = $('.sh-stage'); if (s) s.classList.toggle('night', !!on); },
+      onFrame: onStageFrame, onDark: (on) => setNight(on),
     });
     await afterLoad();
     S.stage.setLevel('brain', { keepCam: true });
     return true;
+  }
+  /* The stage goes dark for a ride: the panels on it go night-glass with it, and the
+     theme's accent is lifted so it still reads on the dark (a light theme's accent is dark). */
+  function setNight(on) {
+    const s = $('.sh-stage');
+    if (!s) return;
+    const a = hexRgb(tok('--accent', '#e5a823'));
+    const lum = (0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]) / 255;
+    const k = lum < 0.5 ? 0.55 : 0;
+    s.style.setProperty('--sh-night-accent', 'rgb(' + a.map((x) => Math.round(x + (255 - x) * k)).join(',') + ')');
+    s.classList.toggle('night', !!on);
   }
   function stageColors() {
     return { shell: tok('--text-2', '#9aa'), hpf: REGION_COLORS.DG, bg: tok('--bg', '#111'), bg2: tok('--bg-2', '#181818'),
@@ -736,6 +754,7 @@ BARRY.views.seahorse = (function () {
     }
     S.stage.setLevel(lv, quiet && S.stage.level === lv ? { keepCam: true } : {});
     applyCut();
+    syncPaths();
     if (lv !== 'brain') ensureCrowd();
     syncProbe();
     applyFocusAll();
@@ -1348,7 +1367,7 @@ BARRY.views.seahorse = (function () {
       // the event's current source density at this moment, painted into its layers
       const sink = hexRgb(SINK), src = hexRgb(SOURCE);
       const live = liveCsd(P);
-      for (const [k, v] of live) { const c = codeOf(k); if (c && Math.abs(v) > 0.04) pulse.set(c, (v < 0 ? sink : src).concat(Math.min(0.9, 0.25 + Math.abs(v) * 0.7))); }
+      for (const [k, v] of live) { const c = codeOf(k); if (c && Math.abs(v) > 0.04) pulse.set(c, (v < 0 ? sink : src).concat(Math.min(0.92, 0.4 + Math.abs(v) * 0.8))); }
       // the layers' own colors step back, so red and blue mean sink and source only
       dimRest = true;
     } else if (P && P.kind === 'ride' && P.sink) {
@@ -1487,6 +1506,12 @@ BARRY.views.seahorse = (function () {
     card.classList.remove('scrolled');
     routeCard(card, sel);
     if (!sel || !['quiz', 'event', 'compose', 'pspike'].includes(sel.type)) foldCard(card);
+    // rows that open something are reachable from the keyboard too
+    card.querySelectorAll('.sh-check.link').forEach((n) => {
+      n.tabIndex = 0;
+      n.setAttribute('role', 'button');
+      n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); n.click(); } });
+    });
   }
   function routeCard(card, sel) {
     if (!sel) return renderAbout(card);
@@ -2177,6 +2202,8 @@ BARRY.views.seahorse = (function () {
     showTip(null);
     syncPaths();
     S.stage.ride(ride.steps, {
+      auto: !!S.rideAuto,
+      onHold: () => { if (isRide()) renderDock(); },
       onStep: (i, st) => onRideStep(i, st),
       onSynapse: (i, st) => showInset(st),
       onDone: () => onRideDone(),
@@ -2561,8 +2588,8 @@ BARRY.views.seahorse = (function () {
   function resumeTour() { if (S.tour) renderDock(); }
   function endTour() { if (S.tour) { S.tour = null; renderDock(); } }
   async function doAction([op, arg]) {
-    if (op === 'mode') await setMode(arg);
-    else if (op === 'level') await setLevel(arg);
+    if (op === 'mode') { if (S.mode !== arg) await setMode(arg); }
+    else if (op === 'level') { if (S.level !== arg || S.mode !== '3d') await setLevel(arg); }
     else if (op === 'slice') { S.slice.plane = arg.plane || 'coronal'; S.slice.pos = arg.pos || S.slice.pos; S.slice.tiltA = 0; S.slice.tiltB = 0; if (S.mode !== 'slice') await setMode('slice'); sliceZoom(arg.zoom || 'hippocampus'); renderNav(); }
     else if (op === 'layers') { S.focus = { cells: new Set(), regionKeys: new Set(), conns: new Set(), layers: new Set(arg) }; applyFocusAll(); }
     else if (op === 'schem') { S.schemPick = arg; renderRail(); }
@@ -2679,15 +2706,30 @@ BARRY.views.seahorse = (function () {
     if (st.velocity) box.appendChild(el('div', { class: 'sh-small', text: '+' + st.ms[1].toFixed(1) + ' ms: ' + (st.len_um / 1000).toFixed(2) + ' mm at ' + st.velocity.m_per_s + ' m/s (' + st.velocity.source + ')' }));
     if (st.lab) box.appendChild(el('div', { class: 'sh-tr-lab', text: st.lab }));
     box.appendChild(el('div', { class: 'sh-tr-dots', 'aria-hidden': 'true' }, P.ride.steps.map((s, i) => el('i', { class: (i < P.i ? 'done' : i === P.i ? 'now' : '') + ' ' + s.kind, title: s.title }))));
-    box.appendChild(el('div', { class: 'sh-tr-ctl' }, [
-      UI.button({ icon: 'prev', cls: 'icon quiet', aria: 'Back a step', title: 'Back a step (←)', onclick: () => S.stage.stepRide(-1) }),
-      playBtn(!(rs && rs.paused) && !P.done, () => { S.stage.pauseRide(); renderDock(); }),
-      UI.button({ icon: 'next', cls: 'icon quiet', aria: 'Next step', title: 'Next step (→)', onclick: () => S.stage.stepRide(1) }),
+    box.appendChild(el('div', { class: 'sh-tr-ctl' }, rideButtons(P, rs).concat([
       rs && rs.manual ? UI.button({ icon: 'frame', text: 'Follow', cls: 'sm', title: 'Let the camera follow the signal again (F)', onclick: () => { S.stage.reframe(); renderDock(); } }) : null,
       el('span', { class: 'grow' }),
       UI.button({ icon: 'record', text: S.rec ? 'Stop recording' : 'Record the ride', cls: 'sm' + (S.rec ? ' sh-rec-on' : ''), onclick: () => (S.rec ? stopRecord() : recordRide()) }),
-      UI.button({ text: P.done ? 'Done' : 'End', cls: 'sm solid', onclick: () => stopPlay() }),
+      UI.button({ text: P.done ? 'Done' : 'End', cls: 'sm', onclick: () => stopPlay() }),
+    ])));
+    box.appendChild(el('div', { class: 'sh-tr-ctl' }, [
+      UI.seg('Advance', [[false, 'Step by step', 'Each step waits for your click'], [true, 'Play through', 'The steps follow one another on their own']], !!S.rideAuto,
+        (v) => { S.rideAuto = v; store.set({ rideAuto: v }); if (S.stage) S.stage.setRideAuto(v); renderDock(); }, { small: true }),
+      rs && rs.hold && !P.done ? el('span', { class: 'sh-small', text: 'Waiting for you: Next step, or the → key.' }) : null,
     ]));
+  }
+  /* Back, pause and Next step for a ride; Next step lights up while the ride waits for you. */
+  function rideButtons(P, rs) {
+    const n = P.ride.steps.length;
+    const holding = !!(rs && rs.hold) && !P.done;
+    const last = P.i >= n - 1;
+    return [
+      UI.button({ icon: 'prev', cls: 'icon quiet', aria: 'Back a step', title: 'Back a step (←)', disabled: P.i <= 0 || P.done, onclick: () => S.stage.stepRide(-1) }),
+      UI.button({ icon: rs && rs.paused ? 'play' : 'pause', cls: 'icon quiet', aria: rs && rs.paused ? 'Play' : 'Pause', title: (rs && rs.paused ? 'Play' : 'Pause') + ' this step',
+        disabled: holding || P.done, onclick: () => { S.stage.pauseRide(); renderDock(); } }),
+      UI.button({ icon: 'next', text: last ? 'Finish' : 'Next step', cls: 'sm sh-next' + (holding ? ' solid sh-ready' : ''), title: (last ? 'Finish the ride' : 'Next step') + ' (→ or Space)',
+        disabled: P.done, onclick: () => S.stage.stepRide(1) }),
+    ];
   }
   function fillEvent(box) {
     const P = S.play;
@@ -2726,10 +2768,10 @@ BARRY.views.seahorse = (function () {
     if (P && P.kind === 'event') box.appendChild(el('div', { class: 'sh-tr-lab' }, [el('b', { text: P.ev.label + ', a model: ' }), 'the layers light red where the current sinks and blue where it returns.']));
     box.appendChild(el('div', { class: 'sh-tr-dots', 'aria-hidden': 'true' }, T.beats.map((x, i) => el('i', { class: i < T.i ? 'done' : i === T.i ? 'now' : '', title: x.title }))));
     const ctl = el('div', { class: 'sh-tr-ctl' });
-    if (P && P.kind === 'ride') { const rs = S.stage && S.stage.rideState; ctl.appendChild(playBtn(!(rs && rs.paused) && !P.done, () => { S.stage.pauseRide(); renderDock(); })); }
+    if (P && P.kind === 'ride') { rideButtons(P, S.stage && S.stage.rideState).forEach((b) => ctl.appendChild(b)); ctl.appendChild(el('span', { class: 'sep-v' })); }
     if (P && P.kind === 'event') ctl.appendChild(playBtn(!P.paused, toggleEventPause));
-    ctl.appendChild(UI.button({ icon: 'left', text: 'Back', cls: 'sm', disabled: T.i <= 0, onclick: () => { T.i--; runBeat(); } }));
-    ctl.appendChild(UI.button({ text: T.i >= T.beats.length - 1 ? 'Finish' : 'Next', cls: 'sm solid', onclick: () => { if (T.i >= T.beats.length - 1) { endTour(); stopPlay(); } else { T.i++; runBeat(); } } }));
+    ctl.appendChild(UI.button({ icon: 'left', text: 'Back a stop', cls: 'sm', disabled: T.i <= 0, onclick: () => { T.i--; runBeat(); } }));
+    ctl.appendChild(UI.button({ text: T.i >= T.beats.length - 1 ? 'Finish the tour' : 'Next stop', cls: 'sm' + (P && P.kind === 'ride' && !P.done ? '' : ' solid'), onclick: () => { if (T.i >= T.beats.length - 1) { endTour(); stopPlay(); } else { T.i++; runBeat(); } } }));
     ctl.appendChild(el('span', { class: 'grow' }));
     ctl.appendChild(UI.button({ text: 'End tour', cls: 'sm quiet', onclick: () => { endTour(); stopPlay(); } }));
     box.appendChild(ctl);
@@ -2978,7 +3020,7 @@ BARRY.views.seahorse = (function () {
     const P = S.play;
     if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); histGo(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (P && P.kind === 'ride' && S.stage) {
-      if (e.key === ' ') { e.preventDefault(); S.stage.pauseRide(); renderDock(); return; }
+      if (e.key === ' ') { e.preventDefault(); const rs = S.stage.rideState; if (rs && rs.hold) S.stage.stepRide(1); else S.stage.pauseRide(); renderDock(); return; }
       if (e.key === 'ArrowRight') { S.stage.stepRide(1); return; }
       if (e.key === 'ArrowLeft') { S.stage.stepRide(-1); return; }
       if (e.key === 'f' || e.key === 'F') { S.stage.reframe(); renderDock(); return; }
@@ -3042,5 +3084,7 @@ BARRY.views.seahorse = (function () {
     if (isEvent()) { showEventPanel(); startEventClock(); }
   }
 
-  return { onShow, onHide, onReturn, _state: S };
+  // _do: the tab's own verbs, for the screenshot harnesses (tools/ui_shots.py --steps)
+  return { onShow, onHide, onReturn, _state: S,
+           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz } };
 })();

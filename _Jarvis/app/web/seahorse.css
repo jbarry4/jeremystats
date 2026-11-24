@@ -155,6 +155,8 @@
       light-dark(color-mix(in srgb, var(--bg-2) 60%, var(--bg-3)), color-mix(in srgb, var(--bg) 70%, #000)) 100%);
 }
 .sh-host { position: absolute; inset: 0; z-index: 1; }
+.sh-host.sh-swap { animation: sh-swap 0.45s var(--sh-ease); }
+@keyframes sh-swap { from { opacity: 0.15; } }
 .sh3-canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 .sh3-canvas:active { cursor: grabbing; }
 .sh-mode-schem .sh-host, .sh-mode-schem .sh-miniframe { display: none; }
@@ -163,6 +165,19 @@
   background: radial-gradient(130% 110% at 50% 45%, transparent 62%, light-dark(rgba(20, 40, 30, 0.07), rgba(0, 0, 0, 0.38)) 100%);
 }
 .sh-stage.night .sh-vignette { background: radial-gradient(120% 100% at 50% 45%, transparent 50%, rgba(0, 0, 0, 0.55) 100%); }
+/* the panels on the dark stage (a ride) are night glass, whatever the theme */
+.sh-stage.night :is(.sh-dock, .sh-inset, .sh-tip) {
+  color-scheme: dark;
+  --text: #eef3f0; --text-2: #bac7c1; --text-3: #8b9b94;
+  --sh-ink-1: rgba(255, 255, 255, 0.06); --sh-ink-2: rgba(255, 255, 255, 0.1); --sh-ink-3: rgba(255, 255, 255, 0.16);
+  --sh-glass: rgba(13, 18, 23, 0.74); --sh-glass-solid: #18212a; --sh-glass-line: rgba(255, 255, 255, 0.1);
+  --sh-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 36px -10px rgba(0, 0, 0, 0.7);
+  --accent: var(--sh-night-accent, #e5a823); --accent-soft: rgba(255, 255, 255, 0.1); --accent-line: rgba(255, 255, 255, 0.3);
+  --on-accent: #0d1217; --warn-soft: rgba(237, 139, 51, 0.18); --ok-soft: rgba(92, 201, 141, 0.16);
+  color: var(--text);
+}
+.sh-dock, .sh-inset { transition: color 0.6s; }
+.sh-tr, .sh-inset { transition: background-color 0.8s var(--sh-ease), border-color 0.8s, box-shadow 0.8s; }
 .sh-schem-full { position: absolute; inset: 0; z-index: 3; display: none; padding: 72px 24px 24px; }
 .sh-mode-schem .sh-schem-full { display: block; }
 .sh-recording .sh-stage::after { content: ''; position: absolute; inset: 0; z-index: 20; pointer-events: none; box-shadow: inset 0 0 0 2px var(--err); border-radius: 2px; }
@@ -248,6 +263,9 @@
 .sh-tr-dots i.now { background: var(--accent); }
 .sh-tr-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sh-tr-ctl .grow { flex: 1; }
+.sh-tr-ctl .sep-v { width: 1px; height: 20px; background: var(--sh-glass-line); margin: 0 2px; }
+.sh-btn.sh-ready { animation: sh-ready 1.6s ease-in-out infinite; }
+@keyframes sh-ready { 50% { box-shadow: 0 0 0 5px var(--accent-soft); } }
 .sh-tr-ctl .sh-btn.icon { width: 32px; }
 .sh-tr-play { width: 38px !important; height: 38px; min-height: 38px !important; border-radius: 50% !important; padding: 0 !important; }
 .sh-tr-play .sh-ico { width: 17px; height: 17px; }
@@ -340,6 +358,9 @@
 .sh-chip:hover { border-color: var(--sh-ink-3); background: var(--sh-ink-1); }
 .sh-chip:active { transform: translateY(1px); }
 .sh-chip.active { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.sh-chip:focus-visible, .sh-tile:focus-visible, .sh-quiz-opt:focus-visible, .sh-cite:focus-visible, .sh-check.link:focus-visible {
+  outline: var(--focus-ring, 2px solid var(--accent-line)); outline-offset: 2px;
+}
 .sh-chip.ev-ds .sh-sw { background: var(--call-ds); }
 .sh-chip.ev-swr .sh-sw, .sh-chip.ev-theta .sh-sw { background: var(--accent); }
 .sh-chip.ev-pspike .sh-sw { background: var(--call-p); }
@@ -526,7 +547,10 @@
 .sh-set .sh-btn { justify-self: start; }
 
 /* ------------------------------------------------------------------ schematics */
-.sh-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+/* the app strokes every svg with currentColor by default: the drawings stroke only what they mean to */
+.sh-svg { width: 100%; height: 100%; display: block; overflow: visible; stroke: none; }
+.sh-svg .glyph circle, .sh-svg .glyph ellipse, .sh-svg .glyph path:not(.dend) { stroke: var(--bg); stroke-width: calc(var(--u, 1) * 1.2px); }
+.sh-inset-art svg { stroke: none; }
 .sh-svg text { fill: var(--text); font-family: var(--sans); stroke: none; }
 .sh-fade-in { animation: sh-fade 0.4s var(--sh-ease); }
 .sh-svg .bt { font-weight: 650; letter-spacing: -0.005em; }
@@ -544,7 +568,7 @@
 .sh-map .sh-svg .box .sub { display: none; }
 /* the circuit drawn small: short names, no fine print (the hover card has it all) */
 .sh-circuit:not(.sh-tiny) .bt.short { display: none; }
-.sh-circuit.sh-tiny .bt.full, .sh-circuit.sh-tiny .sub, .sh-circuit.sh-tiny .elabel, .sh-circuit.sh-tiny .ec-label { display: none; }
+.sh-circuit.sh-tiny .bt.full, .sh-circuit.sh-tiny .sub, .sh-circuit.sh-tiny .elabel, .sh-circuit.sh-tiny .ec-label, .sh-circuit.sh-tiny .glyph text { display: none; }
 /* a box is a soft card in its region's color, with the color itself as a bar */
 .sh-svg .box .body {
   fill: color-mix(in srgb, var(--rc, var(--text-3)) 9%, var(--bg)); stroke: color-mix(in srgb, var(--rc, var(--text-3)) 38%, transparent);
@@ -589,7 +613,7 @@
 /* the plate */
 .sh-plate .band path { stroke: var(--bg); stroke-width: 1.4; opacity: 0.78; transition: opacity 0.18s; }
 .sh-plate .band.hover path, .sh-plate .band.sel path { opacity: 1; }
-.sh-plate .band .blabel { fill: var(--text); opacity: 0.78; }
+.sh-plate .band-labels .blabel { fill: var(--text); paint-order: stroke; stroke-width: calc(var(--u, 1) * 3.2px); stroke-linejoin: round; }
 .sh-plate .dend { fill: none; stroke-width: 1.6; stroke-linecap: round; opacity: 0.9; }
 .sh-plate .ecbox { fill: var(--sh-glass-solid, var(--bg)); stroke-width: 1.6; }
 .sh-plate .fieldname text { cursor: pointer; }
@@ -636,7 +660,7 @@
 @keyframes sh-rise { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .sh-load-head svg, .sh-svg .flow, .sh-svg .sinkrect.sink, .sh-load-steps li.now .mark, .sh-pop-in, .sh-fade-in, .sh-svg .here-ring,
-  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico { animation: none !important; }
+  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready { animation: none !important; }
   .sh-svg .flow { stroke-dasharray: none; }
 }
 [data-motion="calm"] #view-seahorse .sh-card > *, [data-motion="calm"] #view-seahorse .sh-word { animation: none; }

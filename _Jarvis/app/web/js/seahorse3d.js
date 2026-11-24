@@ -1682,19 +1682,26 @@ export function create(host, opts) {
   }
 
   /* ---------- camera ---------- */
+  let camAnim = null;
+  function stopFlight() { if (camAnim) { anims.delete(camAnim); camAnim = null; } }
   function fly(pos, target, ms) {
+    // one flight at a time: a new one takes over from wherever the camera is now (two
+    // overlapping flights made it arrive and then snap back toward the older goal: 11-24)
+    stopFlight();
     const p0 = camera.position.clone(), t0 = controls.target.clone();
     const p1 = new THREE.Vector3(...pos), t1 = new THREE.Vector3(...target);
     if (reduced() || !ms) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); dirty = true; camMoved(); return; }
     const s = performance.now();
-    anims.add((now) => {
+    const a = (now) => {
       const k = Math.min(1, (now - s) / ms);
       const e = ease(k);
       camera.position.lerpVectors(p0, p1, e);
       controls.target.lerpVectors(t0, t1, e);
-      if (k >= 1) camMoved();
+      if (k >= 1) { camMoved(); if (camAnim === a) camAnim = null; }
       return k < 1;
-    });
+    };
+    camAnim = a;
+    anims.add(a);
     start();
   }
   /* fill: how much of the view the points should take (0.4 = honed in, with context) */
@@ -1931,6 +1938,7 @@ export function create(host, opts) {
   function ride(steps, o) {
     stopRide(true);
     for (const c of Object.values(byKey.cells)) { const u = c.mesh.material.uniforms; u.mark.value = 0; u.hot.value = 0; u.dim.value = 1; u.axonAlpha.value = 0.22; }
+    stopFlight();
     const R = { steps: steps.map((s) => prepStep(s)), i: -1, t0: 0, paused: !!(o && o.paused), o: o || {}, pauseAt: 0, tmp: [] };
     S.ride = R;
     S.manual = false;
@@ -2119,7 +2127,7 @@ export function create(host, opts) {
       driveCamera(head, st, k);
     }
     if (t >= st.dur && !R.hold) {
-      if (R.o.auto === false) { R.hold = true; return; }
+      if (R.o.auto === false) { R.hold = true; if (R.o.onHold) R.o.onHold(R.i); return; }
       gotoStep(R.i + 1);
     }
   }
@@ -2145,7 +2153,9 @@ export function create(host, opts) {
     applyClippingFast();
     if (S.manual) { camVel.set(0, 0, 0); tgtVel.set(0, 0, 0); return; }
     const still = st.kind === 'synapse' || st.kind === 'fire';
-    const near = still ? 0.2 : st.kind === 'dend' ? 0.26 : 0.44;
+    // how far back the camera rides (mm): far enough to see the layers and where the signal is
+    // going (0.2 to 0.44 was a few dendrites filling the screen: "WAYYY too zoomed in", 11-24)
+    const near = still ? 0.65 : st.kind === 'dend' ? 0.8 : clamp((st.len || 1) * 0.4, 0.9, 2.0);
     const focusPt = S.ride && S.ride.smooth ? S.ride.smooth : head;
     if (still) {
       // ease in toward the point along the current line of sight, then hold
@@ -2187,7 +2197,9 @@ export function create(host, opts) {
     }
   }
   function pauseRide(p) { if (S.ride) { S.ride.paused = p == null ? !S.ride.paused : !!p; dirty = true; } return S.ride ? S.ride.paused : false; }
-  function stepRide(d) { if (S.ride) { S.ride.hold = false; gotoStep(clamp(S.ride.i + d, 0, S.ride.steps.length)); } }
+  function stepRide(d) { if (S.ride) { S.ride.hold = false; S.ride.paused = false; gotoStep(clamp(S.ride.i + d, 0, S.ride.steps.length)); } }
+  /* Step by step (false: each step waits for a click) or play through (true). */
+  function setRideAuto(v) { if (S.ride) { S.ride.o.auto = !!v; if (v && S.ride.hold) stepRide(1); } }
   function reframe() { S.manual = false; }
   function finishRide() {
     const R = S.ride;
@@ -2279,12 +2291,13 @@ export function create(host, opts) {
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
     focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
-    ride, pauseRide, stepRide, stopRide, settle, reframe, setDark,
+    ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
     snapshot, record, theme, dispose,
     pause: stop, resume: () => { dirty = true; start(); },
     has: (k) => Object.keys(byKey[k] || {}).length > 0,
     get level() { return S.level; }, get view() { return S.view; }, get slice() { return S.slice; },
-    get rideState() { return S.ride ? { i: S.ride.i, n: S.ride.steps.length, paused: S.ride.paused, manual: S.manual, head: S.ride.head } : null; },
+    get rideState() { return S.ride ? { i: S.ride.i, n: S.ride.steps.length, paused: S.ride.paused, manual: S.manual, head: S.ride.head,
+      hold: !!S.ride.hold, done: !!S.ride.done, auto: S.ride.o.auto !== false } : null; },
     poke: () => { dirty = true; },
     diag: () => ({ shaderErrors: shaderErrors.slice(), programs: renderer.info.programs.length, calls: renderer.info.render.calls,
                    tris: renderer.info.render.triangles, view: S.view, quad: !!(sliceQuad && sliceQuad.parent), caps: G.caps.children.length,
