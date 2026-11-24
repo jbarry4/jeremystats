@@ -879,8 +879,51 @@ BARRY.incisor = (function () {
           + '— a set goes to the bank under your name or not at all. A '
           + 'recording that is only on the cluster opens off the cluster.' }));
     if (!reviews) { loadReviews(); }
-    box.appendChild(reviewRows());
+    /* A search, and Not banked / Everything (2026-11-24, Rain: "you have to
+       look through the list Incisor gives you, but it has no search bar").
+       Typing redraws only the list, so the box keeps its caret. */
+    const listHost = el('div');
+    const fill = () => listHost.replaceChildren(reviewRows());
+    const had = document.activeElement
+      && document.activeElement.classList.contains('inc-review-find');
+    const find = el('input', {
+      type: 'search', class: 'inc-review-find', value: reviewQ.text,
+      placeholder: 'Find a recording: a mouse, a session, a project, a hilus…',
+      'aria-label': 'Find a scan',
+      oninput: (e) => { reviewQ.text = e.target.value; fill(); },
+    });
+    const nNot = (reviews || []).filter((r) => !r.banked).length;
+    box.appendChild(el('div', { class: 'inc-review-bar' }, [
+      find,
+      BARRY.ui.seg([
+        ['all', 'Everything (' + ((reviews || []).length) + ')',
+         'Every scan, banked or not'],
+        ['open', 'Not banked (' + nNot + ')', 'Only the scans still to bank'],
+      ], reviewQ.show, (v) => { reviewQ.show = v; fill(); }),
+    ]));
+    fill();
+    box.appendChild(listHost);
+    if (had) {
+      setTimeout(() => {
+        find.focus();
+        const n = find.value.length;
+        try { find.setSelectionRange(n, n); } catch (e) { /* search box */ }
+      }, 0);
+    }
     return box;
+  }
+
+  /* What the list is narrowed to; kept across repaints. */
+  const reviewQ = { text: '', show: 'all' };
+  function reviewWanted(r) {
+    if (reviewQ.show === 'open' && r.banked) return false;
+    const row = r.row || {};
+    return BARRY.ui.searchMatch(
+      [r.label, r.gid, reviewProject(r), reviewScan(r),
+       ((r.picked || {}).hilus || {}).label ? 'hilus '
+         + ((r.picked || {}).hilus || {}).label : '',
+       r.banked ? 'banked' : 'not banked', r.ran_on === 'vacc' ? 'vacc' : ''],
+      reviewQ.text.trim(), { mouse: row.mouse, session: row.session });
   }
 
   /* §6d's states, one row per recording, the Slurm id on it. Queued is
@@ -1020,10 +1063,16 @@ BARRY.incisor = (function () {
     }
     /* This batch first: it is what somebody came back for. Everything else
        on request, the way a picker lists the usable first (§6e). */
+    const shown = reviews.filter(reviewWanted);
+    if (!shown.length) {
+      wrap.appendChild(el('p', { class: 'hint quiet',
+        text: 'Nothing matches that. Clear the search, or pick Everything.' }));
+      return wrap;
+    }
     const mine = batchGids
-      ? reviews.filter((r) => batchGids.has(r.gid)) : [];
+      ? shown.filter((r) => batchGids.has(r.gid)) : [];
     const rest = batchGids
-      ? reviews.filter((r) => !batchGids.has(r.gid)) : reviews;
+      ? shown.filter((r) => !batchGids.has(r.gid)) : shown;
     if (mine.length) {
       wrap.appendChild(el('div', { class: 'hint quiet',
                                    text: 'From this batch' }));

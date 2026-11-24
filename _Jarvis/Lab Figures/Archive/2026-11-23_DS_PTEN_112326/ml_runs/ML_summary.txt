@@ -1,0 +1,120 @@
+Machine-learning runs (Extraction Room 2.0), 2026-11-23
+
+Every score is on mice the model never saw. Bar: AUC 0.80 (rho 0.70 for knockout %).
+DS1 vs DS2 score = mean AUC within each held-out mouse.
+
+== r006  Halo, all events (16 mice)
+   ied3                               at bar   3/52  best 0.84 (filters / mlp; top input f_none__sink_post|sd)
+   iedpos_vs_iedneg                   at bar  14/52  best 0.95 (context / deepsets; top input type_ds1)
+   ko_pct                             at bar   0/52  best 0.70 (filters / attention; top input f_none__sink_fwhm)
+   low_vs_high                        at bar   2/52  best 0.83 (context / deepsets; top input blade_balance)
+   pten_vs_ctl                        at bar   3/52  best 0.83 (filters / lasso; top input f_none__blade_balance|p10)
+
+== r007  Strict, all events
+   ied3                               at bar   0/52  best 0.79 (filters / deepsets; top input f_none__source_amp)
+   iedpos_vs_iedneg                   at bar  12/52  best 0.95 (context / deepsets; top input type_ds1)
+   ko_pct                             at bar   0/52  best 0.70 (filters / attention; top input f_none__sink_fwhm)
+   low_vs_high                        at bar   4/52  best 0.89 (mouse / mlp; top input around|locked_15-30_pre_near_u-0.5_+0.0|ds2x)
+   pten_vs_ctl                        at bar   4/52  best 0.83 (events_all / mlp; top input f_1_100__blade_balance|p10)
+
+== r008  Halo, DS1 vs DS2
+   ds1_vs_ds2                         at bar   0/35  best 0.79 (everything / forest; top input raw_csd__u+0.1_t-3)
+
+== r009  Halo, DS1 minus DS2 per mouse
+   ied3                               at bar   0/30  best 0.47 (contrast:context / lasso; top input source_fwhm|ds1-ds2)
+   iedpos_vs_iedneg                   at bar   0/30  best 0.50 (contrast:context / linear; top input source_over_sink|ds1-ds2)
+   ko_pct                             at bar   0/30  best 0.14 (contrast:filters / lasso; top input f_1_100__lfp_pre|ds1-ds2)
+   low_vs_high                        at bar   0/30  best 0.78 (contrast:filters / mlp; top input f_10_40__lat_source_minus_sink|ds1-ds2)
+   pten_vs_ctl                        at bar   2/30  best 0.81 (contrast:core / lasso; top input cen_um|ds1-ds2)
+
+== r010  Halo, one DS type at a time
+   ied3  [ds1]                        at bar   0/49  best 0.69 (everything@ds1 / lasso; top input raw_spec__60-100_u+1.0_t+200|iqr)
+   ied3  [ds2]                        at bar   3/49  best 0.84 (raw@ds2 / forest; top input raw_csd__u+0.3_t+30|sd)
+   ied3  [ds3]                        at bar   0/49  best 0.67 (filters@ds3 / attention; top input f_5_50__sink_area)
+   iedpos_vs_iedneg  [ds1]            at bar   1/49  best 0.85 (context@ds1 / mlp; top input t_frac|median)
+   iedpos_vs_iedneg  [ds2]            at bar   5/49  best 0.85 (events_all@ds2 / lasso; top input lfp_fwhm|p90)
+   iedpos_vs_iedneg  [ds3]            at bar   2/14  best 1.00 (events_all@ds3 / attention; top input raw_lfp__u+0.0_t+0)
+   ko_pct  [ds1]                      at bar   0/49  best 0.28 (core@ds1 / deepsets; top input source_amp)
+   ko_pct  [ds2]                      at bar   0/49  best 0.57 (context@ds2 / boosting; top input lat_sink_minus_lfp|p90)
+   ko_pct  [ds3]                      at bar   0/49  best 0.38 (core@ds3 / deepsets; top input blade_balance)
+   low_vs_high  [ds1]                 at bar   0/49  best 0.78 (core@ds1 / mlp; top input net_between|p90)
+   low_vs_high  [ds2]                 at bar   0/49  best 0.78 (filters@ds2 / deepsets; top input f_none__cen_um)
+   low_vs_high  [ds3]                 at bar   2/14  best 1.00 (events_all@ds3 / attention; top input raw_lfp__u+0.0_t+0)
+   pten_vs_ctl  [ds1]                 at bar   0/49  best 0.72 (raw@ds1 / lasso; top input raw_spec__1-4_u-0.4_t+450|p10)
+   pten_vs_ctl  [ds2]                 at bar  11/49  best 0.87 (raw@ds2 / boosting; top input raw_spec__1-4_u+1.0_t-150|p90)
+   pten_vs_ctl  [ds3]                 at bar   4/49  best 0.85 (raw@ds3 / deepsets; top input raw_spec__1-4_u+0.0_t+0)
+
+== r011  Halo, random twins (same event count, random events)
+   ied3  [twin1]                      at bar   3/49  best 0.91 (filters@twin1 / deepsets; top input None)
+   ied3  [twin2]                      at bar  13/49  best 0.93 (everything@twin2 / mlp; top input None)
+   ied3  [twin3]                      at bar   0/49  best 0.73 (filters@twin3 / deepsets; top input None)
+   iedpos_vs_iedneg  [twin1]          at bar  11/49  best 0.95 (context@twin1 / deepsets; top input None)
+   iedpos_vs_iedneg  [twin2]          at bar  13/49  best 0.95 (before_after@twin2 / mlp; top input None)
+   iedpos_vs_iedneg  [twin3]          at bar   0/14  best 0.75 (context@twin3 / deepsets; top input None)
+   ko_pct  [twin1]                    at bar   1/49  best 0.71 (core@twin1 / lasso; top input None)
+   ko_pct  [twin2]                    at bar  12/49  best 0.89 (core@twin2 / lasso; top input None)
+   ko_pct  [twin3]                    at bar   0/49  best 0.49 (filters@twin3 / deepsets; top input None)
+   low_vs_high  [twin1]               at bar   5/49  best 0.94 (filters@twin1 / deepsets; top input None)
+   low_vs_high  [twin2]               at bar   3/49  best 0.83 (filters@twin2 / deepsets; top input None)
+   low_vs_high  [twin3]               at bar   0/14  best 0.75 (context@twin3 / deepsets; top input None)
+   pten_vs_ctl  [twin1]               at bar  11/49  best 0.94 (raw@twin1 / lasso; top input None)
+   pten_vs_ctl  [twin2]               at bar  25/49  best 0.98 (filters@twin2 / lasso; top input None)
+   pten_vs_ctl  [twin3]               at bar   8/49  best 0.95 (events_all@twin3 / deepsets; top input None)
+
+== r012  Strict, DS1 vs DS2
+   ds1_vs_ds2                         at bar   1/35  best 0.80 (raw_wave / mlp; top input raw_csd__u+0.1_t-3)
+
+== r013  Strict, DS1 minus DS2 per mouse
+   ied3                               at bar   0/30  best 0.64 (contrast:raw / boosting; top input raw_spec__30-60_u-0.2_t-200|ds1-ds2)
+   iedpos_vs_iedneg                   at bar   0/30  best 0.75 (contrast:events_all / mlp; top input raw_spec__30-60_u-0.6_t-150|ds1-ds2)
+   ko_pct                             at bar   0/30  best 0.39 (contrast:filters / lasso; top input f_1_100__lfp_pre|ds1-ds2)
+   low_vs_high                        at bar   0/30  best 0.78 (contrast:filters / mlp; top input f_1_300__lat_source_minus_sink|ds1-ds2)
+   pten_vs_ctl                        at bar   0/30  best 0.63 (contrast:raw / lasso; top input raw_spec__15-30_u+1.4_t+350|ds1-ds2)
+
+== r014  Strict, one DS type at a time
+   ied3  [ds1]                        at bar   0/49  best 0.62 (raw@ds1 / mlp; top input raw_spec__1-4_u-0.6_t+250|median)
+   ied3  [ds2]                        at bar   6/49  best 0.85 (raw@ds2 / linear; top input raw_spec__30-60_u+1.0_t+500|sd)
+   ied3  [ds3]                        at bar   0/49  best 0.63 (filters@ds3 / deepsets; top input f_1_100__blade_balance)
+   iedpos_vs_iedneg  [ds1]            at bar   4/49  best 0.85 (core@ds1 / mlp; top input lat_lower_minus_upper|iqr)
+   iedpos_vs_iedneg  [ds2]            at bar   2/49  best 0.80 (filters@ds2 / mlp; top input f_5_300__sink_pre|p10)
+   iedpos_vs_iedneg  [ds3]            at bar   0/14  best 0.75 (before_after@ds3 / attention; top input ba_pow_1-4_post_far_shank)
+   ko_pct  [ds1]                      at bar   0/49  best 0.46 (before_after@ds1 / boosting; top input ba_pp_60-100_near_u-0.5_+0.0|sd)
+   ko_pct  [ds2]                      at bar   0/49  best 0.40 (core@ds2 / lasso; top input source_fwhm|iqr)
+   ko_pct  [ds3]                      at bar   0/49  best 0.49 (filters@ds3 / deepsets; top input f_none__cen_um)
+   low_vs_high  [ds1]                 at bar   0/49  best 0.78 (core@ds1 / mlp; top input sink_pre|p10)
+   low_vs_high  [ds2]                 at bar   0/49  best 0.78 (core@ds2 / lasso; top input lfp_fwhm|p90)
+   low_vs_high  [ds3]                 at bar   0/14  best 0.75 (before_after@ds3 / attention; top input ba_pow_1-4_post_far_shank)
+   pten_vs_ctl  [ds1]                 at bar   0/49  best 0.67 (core@ds1 / lasso; top input sink_fwhm|p90)
+   pten_vs_ctl  [ds2]                 at bar  16/49  best 0.87 (before_after@ds2 / linear; top input ba_pp_15-30_far_u+0.0_+0.5|median)
+   pten_vs_ctl  [ds3]                 at bar   6/49  best 0.95 (raw@ds3 / deepsets; top input raw_spec__1-4_u+0.0_t+0)
+
+== r015  Strict, random twins
+   ied3  [twin1]                      at bar   3/49  best 0.88 (events_all@twin1 / mlp; top input None)
+   ied3  [twin2]                      at bar   0/49  best 0.77 (filters@twin2 / deepsets; top input None)
+   ied3  [twin3]                      at bar   0/49  best 0.73 (events_all@twin3 / attention; top input None)
+   iedpos_vs_iedneg  [twin1]          at bar   9/49  best 0.90 (context@twin1 / deepsets; top input None)
+   iedpos_vs_iedneg  [twin2]          at bar   7/49  best 0.95 (context@twin2 / deepsets; top input None)
+   iedpos_vs_iedneg  [twin3]          at bar   0/14  best 0.75 (before_after@twin3 / attention; top input None)
+   ko_pct  [twin1]                    at bar   0/49  best 0.68 (everything@twin1 / mlp; top input None)
+   ko_pct  [twin2]                    at bar   0/49  best 0.68 (filters@twin2 / forest; top input None)
+   ko_pct  [twin3]                    at bar   0/49  best 0.47 (filters@twin3 / deepsets; top input None)
+   low_vs_high  [twin1]               at bar   0/49  best 0.78 (context@twin1 / deepsets; top input None)
+   low_vs_high  [twin2]               at bar   2/49  best 0.83 (context@twin2 / deepsets; top input None)
+   low_vs_high  [twin3]               at bar   0/14  best 0.75 (before_after@twin3 / attention; top input None)
+   pten_vs_ctl  [twin1]               at bar  10/49  best 0.93 (raw@twin1 / lasso; top input None)
+   pten_vs_ctl  [twin2]               at bar   5/49  best 0.93 (before_after@twin2 / lasso; top input None)
+   pten_vs_ctl  [twin3]               at bar  10/49  best 0.95 (events_all@twin3 / deepsets; top input None)
+
+== r016  Halo, all events with the raw event
+   ied3                               at bar   3/59  best 0.84 (filters / mlp; top input f_none__sink_post|sd)
+   iedpos_vs_iedneg                   at bar  14/59  best 0.95 (context / deepsets; top input type_ds1)
+   ko_pct                             at bar   0/59  best 0.70 (filters / attention; top input f_none__sink_fwhm)
+   low_vs_high                        at bar   2/59  best 0.83 (context / deepsets; top input blade_balance)
+   pten_vs_ctl                        at bar   9/59  best 0.83 (filters / lasso; top input f_none__blade_balance|p10)
+
+== r017  Strict, all events with the raw event
+   ied3                               at bar   1/59  best 0.80 (raw / mlp; top input raw_spec__60-100_u+0.2_t+100|mean)
+   iedpos_vs_iedneg                   at bar  14/59  best 0.95 (context / deepsets; top input type_ds1)
+   ko_pct                             at bar   0/59  best 0.70 (filters / attention; top input f_none__sink_fwhm)
+   low_vs_high                        at bar   4/59  best 0.89 (mouse / mlp; top input around|locked_15-30_pre_near_u-0.5_+0.0|ds2x)
+   pten_vs_ctl                        at bar   9/59  best 0.86 (events_all / boosting; top input raw_spec__4-12_u-0.6_t-400|p90)

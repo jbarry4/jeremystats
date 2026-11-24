@@ -1,0 +1,4 @@
+group,p_direction,diff_deg,test
+Het_vs_WT,0.022998850057497126,16.574518240103473,permutation within speed bands
+Hom_vs_WT,0.7686615669216539,2.6515191437695083,permutation within speed bands
+Hom_vs_Het,0.05489725513724314,19.22603738387298,permutation within speed bands

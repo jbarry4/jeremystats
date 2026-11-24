@@ -1,0 +1,245 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Dentate spikes: what we found</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400..700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>:root {
+  --ink: #16213A;
+  --paper: #F6F4EE;
+  --paper2: #ECE8DE;
+  --soft: #4A5568;
+  --orange: #C8661E;
+  --slate: #5B6B7F;
+  --blue: #2F6DB5;
+  --line: #CFC8B8;
+}
+body { font-family: 'IBM Plex Sans', Arial, sans-serif; color: var(--ink); }
+section { padding: 128px; background: var(--paper); display: flex; flex-direction: column; gap: 40px; counter-increment: page; }
+section.alt { background: var(--paper2); }
+section.dark { background: var(--ink); color: #F6F4EE; }
+h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif; }
+h1 { font-size: 112px; font-weight: 600; line-height: 1.05; }
+h2 { font-size: 64px; font-weight: 600; line-height: 1.1; }
+h3 { font-size: 36px; font-weight: 600; line-height: 1.2; }
+p { font-size: 32px; line-height: 1.4; }
+.eyebrow { font-size: 26px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--orange); }
+.dark .eyebrow { color: #E8A15F; }
+.lede { font-size: 36px; color: var(--soft); line-height: 1.4; }
+.dark .lede { color: #C9D3E0; }
+.small { font-size: 26px; color: var(--soft); line-height: 1.4; }
+.dark .small { color: #C9D3E0; }
+.row { display: flex; gap: 48px; }
+.col { display: flex; flex-direction: column; gap: 20px; flex: 1; }
+.card { background: #FBFAF6; border: 2px solid var(--line); border-radius: 12px; padding: 32px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.alt .card { background: #F8F6F0; }
+.card p { font-size: 28px; }
+.card .big { font-family: 'Source Serif 4', Georgia, serif; font-size: 72px; font-weight: 600; line-height: 1; color: var(--orange); }
+.card .bigslate { font-family: 'Source Serif 4', Georgia, serif; font-size: 72px; font-weight: 600; line-height: 1; color: var(--slate); }
+.card .lab { font-size: 26px; color: var(--soft); }
+.caveat { border-left: 6px solid var(--orange); padding-left: 28px; }
+.caveat p { font-size: 28px; color: var(--soft); }
+.bars { display: flex; flex-direction: column; gap: 14px; }
+.bar { display: flex; align-items: center; gap: 24px; }
+.bar .name { width: 520px; font-size: 26px; }
+.bar .track { flex: 1; height: 40px; background: #E4DFD2; border-radius: 6px; display: flex; }
+.bar .fill { height: 40px; background: var(--blue); border-radius: 6px; }
+.bar .fillo { height: 40px; background: var(--orange); border-radius: 6px; }
+.bar .val { width: 110px; font-size: 28px; font-weight: 600; text-align: right; }
+table { font-size: 28px; width: 100%; }
+.tag { font-size: 24px; font-weight: 600; color: var(--orange); }
+.foot { position: absolute; left: 128px; bottom: 56px; width: 1664px; font-size: 24px; color: var(--soft); }
+.dark .foot { color: #9FB0C6; }
+.rise { animation: rise 600ms ease-out both; }
+.d1 { animation-delay: 150ms; }
+.d2 { animation-delay: 300ms; }
+.d3 { animation-delay: 450ms; }
+@keyframes rise { from { opacity: 0; transform: translate(0px, 24px); } to { opacity: 1; transform: translate(0px, 0px); } }
+
+html,body{margin:0;background:#2a2f3a;}
+section{width:1920px;height:1080px;box-sizing:border-box;position:relative;margin:40px auto;overflow:hidden;}
+.notes{position:absolute;left:0;right:0;bottom:0;font-size:20px;padding:8px 128px;color:#555;background:rgba(255,255,255,.6);display:none;}
+body.shownotes .notes{display:block;}
+</style></head><body ondblclick="document.body.classList.toggle('shownotes')">
+<section id="cover" class="dark" style="justify-content:center;" data-transition="fade">
+<p class="eyebrow">DS / PTEN pilot · everything so far · November 21, 2026</p>
+<h1 style="width:1500px;">Dentate spikes in sparse PTEN knockout mice: what we found</h1>
+<p class="lede" style="width:1400px;">7 controls and 9 PTEN mice (4 IED−, 5 IED+), one recording a mouse. Two event sets, Halo and Strict. A test battery of 121,000+ tests and about 4,500 held-out machine-learning fits.</p>
+<p class="small">m6 excluded. m51 too few events for statistics. m21 in the ML with no DS type.</p>
+<div class="notes">Notes: Everything DS-related since the first deep round on 11-16: the classifier and DS3 work, battery runs 1 to 5, ML runs r005 to r017. Exploratory pilot; P values are per test.</div>
+</section>
+
+<section id="bottomline">
+<p class="eyebrow">The short version</p>
+<h2>Four main findings</h2>
+<div class="row" style="flex:1;">
+<div class="card rise"><p class="big">1</p><h3>DS1 and DS2 are real and classical</h3><p>Models trained on other mice tell them apart at 0.77 to 0.80, from where the sink sits: DS1 farther out in the molecular layer.</p></div>
+<div class="card rise d1"><p class="big">2</p><h3>PTEN spikes leave the control shape</h3><p>A border drawn around control events keeps fewer PTEN events as knockout rises (ρ −0.75, P 0.001).</p></div>
+<div class="card rise d2"><p class="big">3</p><h3>IED+ spikes are uniform and learnable</h3><p>Models tell IED+ from IED− mice at 0.95 in both sets. IED+ spikes vary less in size and lean on the lower blade.</p></div>
+<div class="card rise d3"><p class="big">4</p><h3>The sink profile tracks knockout</h3><p>Within PTEN, the CSD just inside the main sink follows knockout at ρ 0.98 (P 0.00005).</p></div>
+</div>
+<div class="notes">Notes: Exploratory pilot: 7 controls, 9 PTEN mice, one recording a mouse. P values are per test.</div>
+</section>
+
+<section id="types" class="alt">
+<p class="eyebrow">DS1 vs DS2 · ML runs r008 (Halo) and r012 (Strict)</p>
+<h2>Held-out models find DS1 and DS2 by where the sink sits</h2>
+<div class="row">
+<div class="col">
+<p class="small">Mean AUC within each mouse the model never saw (15 mice; 0.5 = chance). Best model per input, Halo. Strict: the same (best 0.80).</p>
+<div class="bars">
+<div class="bar"><p class="name" style="width:400px;">Everything + raw event</p><div class="track"><div class="fill" style="width:79%;"></div></div><p class="val">0.79</p></div>
+<div class="bar"><p class="name" style="width:400px;">Raw CSD and LFP only</p><div class="track"><div class="fill" style="width:77%;"></div></div><p class="val">0.77</p></div>
+<div class="bar"><p class="name" style="width:400px;">Sink shape measures</p><div class="track"><div class="fill" style="width:77%;"></div></div><p class="val">0.77</p></div>
+<div class="bar"><p class="name" style="width:400px;">Size, theta and timing</p><div class="track"><div class="fillo" style="width:71%;"></div></div><p class="val">0.71</p></div>
+<div class="bar"><p class="name" style="width:400px;">Spectrogram only</p><div class="track"><div class="fillo" style="width:65%;"></div></div><p class="val">0.65</p></div>
+<div class="bar"><p class="name" style="width:400px;">Power before and after</p><div class="track"><div class="fillo" style="width:63%;"></div></div><p class="val">0.63</p></div>
+</div>
+<div class="caveat"><p>The types were named from sink position, so the blue bars partly read the labels back. The orange bars are the independent part.</p></div>
+</div>
+<div class="col">
+<div class="card"><h3>What the models use</h3><p>DS1 has more sink above the upper main sink (12 of 15 mice) and less just below it (13 of 15). Its share of sink at the outer contacts is higher in 13 of 15.</p><p>Without shape: DS1 comes when theta is lower (12 of 15 mice), with less gamma at the peak.</p></div>
+</div>
+</div>
+<div class="notes">Notes: Depth axis: 0 = the upper blade's main sink, 1 = the lower blade's. Negative is above the upper blade, toward the outer molecular layer. Earlier hand work agreed: where the split is clean (high separation index: m26, m61, m33, m1, m28, m7), DS1 is 7 to 16% of events, its sink 0.3 to 0.5 times DS2's and 98 to 329 µm farther out, in both blades. That is the classical DS1 (lateral perforant path, outer layer). Elsewhere the events form one continuous cloud.</div>
+</section>
+
+<section id="ds3">
+<p class="eyebrow">DS3 · the Tarcsay et al. 2025 score</p>
+<h2>On our probe, DS3 mostly measures how far apart two contacts are</h2>
+<div class="row">
+<div class="card"><p class="big">58–90%</p><p class="lab">of events score DS3 on our 50 µm probe, when the outer and middle contacts sit inside one sink</p></div>
+<div class="card"><p class="bigslate">16–28%</p><p class="lab">DS3 in Tarcsay et al., recorded with 20–25 µm probes</p></div>
+<div class="card"><p class="big">≈ 0%</p><p class="lab">DS3 when the two contacts are 200 µm or more apart</p></div>
+</div>
+<div class="caveat"><p>Where DS1 is a small far-out group, its events are under the noise floor (too small to tell from baseline), so DS3 only ever comes from DS2 here. The DS3 share does not differ by group (PTEN vs control P 0.95), but DS3 events lean on the lower blade in every PTEN mouse (P 0.016, both sets).</p></div>
+<div class="notes">Notes: The noise floor is the 99th percentile of the same measure taken in quiet stretches at least 30 ms from any DS. Events under it are "unscorable", counted apart, never DS3. IED− mice have many unscorable events (IED+ vs IED− P 0.029), which is why they show almost no DS3.</div>
+</section>
+
+<section id="cloud" class="dark">
+<p class="eyebrow">The border check</p>
+<h2 style="width:1500px;">PTEN dentate spikes more often fall outside the control-shaped cloud</h2>
+<div class="row">
+<div class="col"><p class="big" style="font-family:'Source Serif 4', Georgia, serif; font-size:120px; font-weight:600; color:#E8A15F; line-height:1;">ρ −0.75</p><p class="lede">Share of events the Strict border keeps, against knockout. Every high-knockout mouse is below every control (P 0.001).</p></div>
+<div class="col"><p class="lede">The events the border drops are the lower-blade-heavy ones in IED+ mice (P 0.010), and they carry the weaker source with knockout too.</p><p class="lede">The P-spike border removes events almost only in IED+ mice: 4 of 5 lose 0.8–3.4%, against 1 of 7 controls (P 0.030).</p></div>
+</div>
+<p class="small">The Strict border (10% grace) was drawn around control events, so PTEN events differ in shape from control events.</p>
+<div class="notes">Notes: Results hold on both Halo and Strict, even though Strict removes some of exactly the events that carry the blade-balance and source findings.</div>
+</section>
+
+<section id="survivor" class="alt">
+<p class="eyebrow">Battery run 5 · PTEN mice, against knockout %</p>
+<h2>The sink profile tracks knockout almost perfectly</h2>
+<div class="row">
+<div class="card" style="flex:1.2;"><h3>The CSD just inside each blade’s main sink, relative to that sink</h3><p class="big">ρ 0.98</p><p>Strict set P 0.00005; Halo set ρ 0.95, P 0.0004. Nine PTEN mice. The strongest knockout relation of the 1,145 measures tested against knockout within PTEN.</p></div>
+<div class="col">
+<div class="card"><h3>Where it is measured</h3><p>95% of the way from the cell-layer source to the main sink, both blades averaged, at the DS peak.</p></div>
+<div class="card"><h3>What it means</h3><p>The shape of the sink’s inner edge changes steadily with the share of knockout granule cells.</p></div>
+</div>
+</div>
+<div class="notes">Notes: Measure id laminar profile_v_+0.95, in units of the blade's main sink.</div>
+</section>
+
+<section id="blades">
+<p class="eyebrow">Seen by the battery and by the models</p>
+<h2>In high-knockout and IED+ mice, the lower blade’s sink is the larger one</h2>
+<div class="row">
+<div class="card"><p class="big">P 0.005</p><p class="lab">High knockout vs control, blade balance (upper − lower) / (upper + lower). Same on Strict. IED+ vs control P 0.005.</p></div>
+<div class="card"><p class="big">ρ −0.64</p><p class="lab">Blade balance against knockout over all mice (P 0.008). Averaged curves agree: IED+ vs IED− cluster P 0.007 at the upper sink.</p></div>
+<div class="card"><p class="big">0.83</p><p class="lab">Best held-out models for PTEN vs control and for low vs high knockout put blade balance first (r006).</p></div>
+</div>
+<div class="caveat"><p>A change in one blade points at where the knockout cells are, or at one input being hit harder. Worth checking with histology: probe position in each blade, and knockout cells per blade.</p></div>
+<div class="notes">Notes: Not every way of saying it holds: the absolute lower sink was not larger, only its share. In the controls the two blades are about equal; in all five IED+ mice the lower blade is the larger.</div>
+</section>
+
+<section id="stereotyped" class="alt">
+<p class="eyebrow">IED+ against IED−</p>
+<h2>IED+ dentate spikes are more uniform, and models tell IED+ from IED− mice</h2>
+<div class="row">
+<div class="col">
+<div class="card"><h3>The battery</h3><p>Sink size varies less from event to event: every IED+ mouse below every control (P 0.0025; Strict 0.030) and below IED− (P 0.016).</p><p>Within PTEN, events split less cleanly into two kinds as knockout rises (ρ −0.83, P 0.015). IED+ mice fire at a steadier pace (P 0.032).</p></div>
+</div>
+<div class="col">
+<div class="card"><h3>The models</h3><p class="big">0.95</p><p>Held-out AUC on the 20 IED+/IED− pairs, in Halo, Strict and Strict with the raw event (12 to 14 models at the bar each time). Nuisance features alone: 0.40.</p><p>They use the share of DS1, the lower-blade sink and the sink before a DS2.</p></div>
+</div>
+</div>
+<p class="small">Five IED+ and four IED− mice. Uniform, stereotyped events fit a hypersynchronous dentate.</p>
+<div class="notes">Notes: Uniform, stereotyped events are what a hypersynchronous dentate would produce.Against the sink-size result: only events inside each recording's detection border are in the set, and a tighter border gives a narrower spread of sizes. Recompute on all detected DS with one fixed threshold.</div>
+</section>
+
+<section id="dose">
+<p class="eyebrow">Within the 9 PTEN mice, against knockout %</p>
+<h2>The strongest dose relations</h2>
+<table>
+<tr><th style="width:62%;">What changes as knockout rises</th><th style="width:13%;">ρ</th><th style="width:25%;">P (Halo · Strict)</th></tr>
+<tr><td>DS2’s source is briefer (DS3 removed)</td><td>−0.99</td><td>0.000004 · 0.00007</td></tr>
+<tr><td>Low gamma lines up more after a DS1</td><td>+0.93</td><td>0.0008 · 0.017</td></tr>
+<tr><td>DS2 events are farther apart</td><td>+0.85</td><td>0.006 · 0.003</td></tr>
+<tr><td>Net source between the blades falls (1–100 Hz)</td><td>−0.85</td><td>0.006</td></tr>
+<tr><td>Before a DS2, the LFP at the source is smaller</td><td>−0.82</td><td>0.011 · 0.0045</td></tr>
+</table>
+<div class="caveat"><p>The net-source result is the one the first pass found, and every rerun kept it. A weaker source at the granule cell layer for the same sink fits a loss of perisomatic return current or a change in inhibition at the cell bodies.</p></div>
+<div class="notes">Notes: The briefer-source result holds under 15 of 20 classifiers. No mice between 5% and 19% knockout yet, so new mice in that range would fill in the curves.</div>
+</section>
+
+<section id="mlgroup" class="alt">
+<p class="eyebrow">ML · telling groups of mice apart, tested on mice left out</p>
+<h2>IED status and knockout level are learnable from the spikes</h2>
+<table style="font-size:26px;">
+<tr><th style="width:28%;">Question</th><th style="width:18%;">Halo</th><th style="width:18%;">Strict</th><th style="width:18%;">Halo + raw</th><th style="width:18%;">Strict + raw</th></tr>
+<tr><td>IED+ vs IED−</td><td>14 · 0.95</td><td>12 · 0.95</td><td>14 · 0.95</td><td>14 · 0.95</td></tr>
+<tr><td>Low vs high knockout</td><td>2 · 0.83</td><td>4 · 0.89</td><td>2 · 0.83</td><td>4 · 0.89</td></tr>
+<tr><td>PTEN vs control</td><td>3 · 0.83</td><td>4 · 0.83</td><td>9 · 0.83</td><td>9 · 0.86</td></tr>
+<tr><td>Control / IED− / IED+</td><td>3 · 0.84</td><td>0 · 0.79</td><td>3 · 0.84</td><td>1 · 0.80</td></tr>
+<tr><td>Knockout % (ρ)</td><td>0 · 0.70</td><td>0 · 0.70</td><td>0 · 0.70</td><td>0 · 0.70</td></tr>
+</table>
+<div class="row">
+<div class="caveat" style="flex:1;"><p>Each cell: models at the bar (AUC 0.80 or ρ 0.70), and the best score. Runs r006, r007, r016, r017.</p></div>
+<div class="caveat" style="flex:1;"><p>PTEN vs control is led by blade balance and, with the raw event, by theta power above the upper blade about 400 ms before the spike. Recording year alone gives 0.82.</p></div>
+</div>
+<div class="notes">Notes: 52 models per question without the raw event, 59 with it. For IED+ vs IED−, recording-year and other nuisance features alone score 0.40.</div>
+</section>
+
+<section id="bytype">
+<p class="eyebrow">ML · new runs r010 to r015 · one DS type at a time</p>
+<h2>No single DS type carries the group differences</h2>
+<div class="row">
+<div class="col" style="flex:1.1;">
+<p class="small">Best held-out score given only one type’s events, against a “twin” given the same number of random events from each mouse (Halo).</p>
+<table>
+<tr><th style="width:40%;">Question · type</th><th style="width:30%;">That type only</th><th style="width:30%;">Random twin</th></tr>
+<tr><td>PTEN vs control · DS1</td><td>0.72</td><td>0.94</td></tr>
+<tr><td>PTEN vs control · DS2</td><td>0.87</td><td>0.98</td></tr>
+<tr><td>IED+ vs IED− · DS1</td><td>0.85</td><td>0.95</td></tr>
+<tr><td>IED+ vs IED− · DS2</td><td>0.85</td><td>0.95</td></tr>
+<tr><td>Knockout % · DS2</td><td>0.57</td><td>0.89</td></tr>
+</table>
+</div>
+<div class="col">
+<div class="card"><h3>Read it as</h3><p>A random handful of events does as well or better than one type. Whatever differs between groups is spread over all events, not held by DS1, DS2 or DS3.</p></div>
+<div class="card"><h3>DS1 minus DS2, per mouse</h3><p>2 of 150 models reach the bar on Halo (PTEN vs control 0.81, from the distance between the DS1 and DS2 sinks), 0 of 150 on Strict. The relation between the types does not differ by group.</p></div>
+</div>
+</div>
+<div class="notes">Notes: The one exception: on Strict, DS2-only models reach the bar for PTEN vs control 16 times against the twin's 5, but on Halo it is 11 against 25, so it does not replicate. DS3-only fits for IED+ vs IED− and low vs high knockout failed on the VACC (too few mice with DS3 events).</div>
+</section>
+
+<section id="next" class="dark">
+<p class="eyebrow">Where to take it</p>
+<h2>Next steps</h2>
+<div class="row">
+<div class="col">
+<h3>With the data we have</h3>
+<ul style="font-size:30px; line-height:1.5; color:#C9D3E0;">
+<li>Figures for the main findings: blade balance, sink-size spread, border share, net source against knockout</li>
+<li>Sink-size spread on all detected spikes with one fixed threshold</li>
+<li>Draw what the raw-event models use (theta before the spike)</li>
+</ul>
+</div>
+<div class="col">
+<h3>In new mice</h3>
+<ul style="font-size:30px; line-height:1.5; color:#C9D3E0;">
+<li>Histology of probe position in both blades, and knockout cells per blade</li>
+<li>Mice between 5% and 19% knockout</li>
+<li>A 20–25 µm probe if DS3 matters</li>
+</ul>
+</div>
+</div>
+</section>
+
+</body></html>

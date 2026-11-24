@@ -5033,7 +5033,13 @@ def _file_batch_answer(tool, t, out):
         # Prepared without a copy here, so filed without one: the key comes
         # from the answer, exactly as the live batch files it.
         filer = _doppler_file_vacc if tool == "doppler" else _incisor_file_vacc
-        filer(t.get("gid"), t.get("label"), t.get("spec_local") or {}, out)
+        key = filer(t.get("gid"), t.get("label"), t.get("spec_local") or {},
+                    out)
+        # And banked, as the live batch banks it. A batch picked up after a
+        # restart filed its answers and never banked them, so they sat as
+        # "Not banked" with no way to bank them (2026-11-24).
+        if tool == "doppler":
+            _doppler_autobank(t.get("gid"), key, out, label=t.get("label"))
         return
     key = (t.get("resume") or {}).get("key") or t.get("key")
     spec = t.get("spec_local") or {}
@@ -5046,6 +5052,8 @@ def _file_batch_answer(tool, t, out):
     if tool == "doppler":
         dopplermod.cache_put(key, out)
         _doppler_remember(sess, spec, key, out)
+        _doppler_autobank(t.get("gid"), key, out, sess=sess,
+                          label=t.get("label"))
     else:
         incisormod.cache_put(key, out)
         rh = (t.get("resume") or {}).get("request")
@@ -5548,7 +5556,20 @@ def _doppler_banked_for(gid, key, run=None):
     return None
 
 
-def _doppler_autobank(gid, key, out, sess=None, label=None):
+#: The preference that says whether a Doppler run banks itself as it lands
+#: on this computer (2026-11-24, Rain: "At least let auto-banking be
+#: selectable"). Anything but "off" is on, which is how it always was.
+DOPPLER_AUTOBANK_PREF = "doppler_autobank"
+
+
+def _doppler_autobank_on():
+    try:
+        return (STORE.get_prefs() or {}).get(DOPPLER_AUTOBANK_PREF) != "off"
+    except Exception:                                    # noqa: BLE001
+        return True
+
+
+def _doppler_autobank(gid, key, out, sess=None, label=None, by_hand=False):
     """Bank a run the moment it lands (asked for 2026-10-19: "when Doppler
     is done, auto bank them").
 
@@ -5561,6 +5582,9 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
     the panel's Bank button is still there.
 
     Returns {id, name, n, auto} or None.
+
+    `by_hand` is the panel's Bank it: it banks whatever the switch says.
+    Without it, a run lands unbanked while the switch is off.
     """
     try:
         events = (out or {}).get("events") or []
@@ -5570,6 +5594,8 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
         if done:
             return {"id": done["id"], "name": done.get("name"),
                     "n": done.get("n"), "auto": False}
+        if not by_hand and not _doppler_autobank_on():
+            return None
         reg = _session_by_gid(gid) or {}
         ident = (sess or {}).get("identity") or {}
         lab = reg.get("label") or ident.get("label") or label or gid
@@ -5604,8 +5630,10 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
             "time_basis": "recording",
             "parameters": p,
             "added_by": (STORE.provenance() or {}).get("user"),
-            "version_note": "The detector\u2019s own list, nothing decided "
-                            "about it yet. Banked when the run landed.",
+            "version_note": ("The detector\u2019s own list, nothing "
+                             "decided about it yet. "
+                             + ("Banked by hand from Doppler." if by_hand
+                                else "Banked when the run landed.")),
         })
         STORE.record_activity([{"action": "doppler.autobank",
                                 "detail": {"gid": gid, "key": key,
@@ -5613,10 +5641,12 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
                                            "n": entry.get("n")}}])
         mirror_bank_soon()
         return {"id": entry["id"], "name": entry.get("name"),
-                "n": entry.get("n"), "auto": True}
+                "n": entry.get("n"), "auto": not by_hand}
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("doppler.autobank", str(exc), None,
                            {"gid": gid, "key": key})
+        if by_hand:
+            raise
         return None
 
 
@@ -6481,6 +6511,45 @@ def api_doppler_run():
         "computed": rec.get("computed"),
         "before_fix": _doppler_before_fix(rec),
     })
+
+
+@app.route("/api/doppler/bank", methods=["POST"])
+def api_doppler_bank():
+    """Bank one landed run, by recording and key (2026-11-24).
+
+    For a run that landed unbanked -- before runs banked themselves, while
+    banking as they land is switched off, or picked up after a restart -- so
+    the only way forward is not "run it again", which a job still on the
+    cluster refuses. Banks it once: a run already in the bank is answered
+    with that entry.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gid = (body.get("gid") or "").strip()
+    key = (body.get("key") or "").strip()
+    if not gid or not key:
+        return jsonify({"ok": False, "error": "Which run?"}), 400
+    rec = DOPPLER_VAULT.get(gid, key)
+    if not rec:
+        return jsonify({"ok": False, "error": "That run is not on record."}), 404
+    if _doppler_before_fix(rec):
+        return jsonify({"ok": False,
+                        "error": "This run was made before the gap fix, so "
+                                 "it is not for the bank. Run it again."}), 400
+    try:
+        full = _doppler_full(gid, key)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    try:
+        banked = _doppler_autobank(gid, key, full,
+                                   label=rec.get("session_label"),
+                                   by_hand=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/bank", exc, 400, {"gid": gid})
+    if not banked:
+        return jsonify({"ok": False,
+                        "error": "That run found no events, so there is "
+                                 "nothing to bank."}), 400
+    return jsonify({"ok": True, "banked": banked})
 
 
 @app.route("/api/doppler/reviews")
