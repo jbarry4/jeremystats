@@ -16,7 +16,7 @@
     "schema": "2026-11-04T21:25:44.302942+00:00",
     "session_label": "2026-11-04T21:25:44.302942+00:00",
     "source": "2026-11-04T21:25:44.302942+00:00",
-    "updated": "2026-11-24T17:00:45.724454+00:00"
+    "updated": "2026-11-24T19:50:07.568778+00:00"
   },
   "_keys": {
     "events": {
@@ -194,7 +194,7 @@
       ],
       "e0964103aed": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e0984c7095e": [
         "set",
@@ -382,7 +382,7 @@
       ],
       "e1080bee04f": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:11.910710+00:00"
       ],
       "e10950b2167": [
         "set",
@@ -430,7 +430,7 @@
       ],
       "e13edc3083a": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:50:07.568778+00:00"
       ],
       "e142d42a4fd": [
         "set",
@@ -694,7 +694,7 @@
       ],
       "e21894bc13b": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "e21b7938e61": [
         "set",
@@ -754,7 +754,7 @@
       ],
       "e247bb9a7c1": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e247f93cb61": [
         "set",
@@ -1198,7 +1198,7 @@
       ],
       "e351d836755": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "e3599a594b6": [
         "set",
@@ -1226,7 +1226,7 @@
       ],
       "e368529ddbd": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e3699a13cbf": [
         "set",
@@ -1314,7 +1314,7 @@
       ],
       "e3b8bb81116": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:11.910710+00:00"
       ],
       "e3bdf333395": [
         "set",
@@ -1354,7 +1354,7 @@
       ],
       "e3c842910d9": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "e3ca98ccc26": [
         "set",
@@ -1538,7 +1538,7 @@
       ],
       "e441588b2e6": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:50:07.568778+00:00"
       ],
       "e443696e0cd": [
         "set",
@@ -1718,7 +1718,7 @@
       ],
       "e4bfb431bd0": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e4c7892a921": [
         "set",
@@ -1790,7 +1790,7 @@
       ],
       "e4fbc6fb36b": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e4ff835b848": [
         "set",
@@ -1842,7 +1842,7 @@
       ],
       "e529e14766d": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e52c89e89b3": [
         "set",
@@ -1946,7 +1946,7 @@
       ],
       "e573c260210": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e5773800272": [
         "set",
@@ -2014,7 +2014,7 @@
       ],
       "e5a2391a5c9": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:50:07.568778+00:00"
       ],
       "e5aa2990672": [
         "set",
@@ -2070,7 +2070,7 @@
       ],
       "e5cafc4d4c7": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:47:08.405354+00:00"
       ],
       "e5d0d93b050": [
         "set",
@@ -2186,7 +2186,7 @@
       ],
       "e6235bc301d": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:47:08.405354+00:00"
       ],
       "e623cac82a3": [
         "set",
@@ -2266,7 +2266,7 @@
       ],
       "e669e2a4f0e": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e66c85e8254": [
         "set",
@@ -2610,7 +2610,7 @@
       ],
       "e762e8f0437": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e763fced6cb": [
         "set",
@@ -2782,7 +2782,7 @@
       ],
       "e7c8a573b99": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:11.910710+00:00"
       ],
       "e7c9d97983a": [
         "set",
@@ -2814,7 +2814,7 @@
       ],
       "e7d1b6c2f36": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:47:34.812796+00:00"
       ],
       "e7df717f61d": [
         "set",
@@ -2930,7 +2930,7 @@
       ],
       "e8316164603": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e843086a500": [
         "set",
@@ -2998,7 +2998,7 @@
       ],
       "e87b42ca99e": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e87e67345ee": [
         "set",
@@ -3486,7 +3486,7 @@
       ],
       "e9ceb817637": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "e9d5fddd292": [
         "set",
@@ -3546,7 +3546,7 @@
       ],
       "ea024c1165a": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "ea02a843395": [
         "set",
@@ -3790,7 +3790,7 @@
       ],
       "eacb5155d67": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:11.910710+00:00"
       ],
       "ead4af273c8": [
         "set",
@@ -3814,7 +3814,7 @@
       ],
       "eaee69181ca": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:50:07.568778+00:00"
       ],
       "eaf24d31e0d": [
         "set",
@@ -3914,7 +3914,7 @@
       ],
       "eb2a1a959f8": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:47:34.812796+00:00"
       ],
       "eb2d0b45e79": [
         "set",
@@ -3962,7 +3962,7 @@
       ],
       "eb4f19c23cb": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "eb5104a66cf": [
         "set",
@@ -4054,7 +4054,7 @@
       ],
       "eb9c0432be0": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "eb9c8b5a94e": [
         "set",
@@ -4190,7 +4190,7 @@
       ],
       "ec2d9967955": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:49:36.148354+00:00"
       ],
       "ec2ddde2189": [
         "set",
@@ -4210,7 +4210,7 @@
       ],
       "ec36133ae4d": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "ec3b6a2c6d5": [
         "set",
@@ -4254,7 +4254,7 @@
       ],
       "ec6a7c076f0": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:49:10.788428+00:00"
       ],
       "ec6c63d8d57": [
         "set",
@@ -4354,7 +4354,7 @@
       ],
       "ecb12b24985": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:48:45.551304+00:00"
       ],
       "ecb5f597315": [
         "set",
@@ -4410,7 +4410,7 @@
       ],
       "ece1d42c1e1": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "ece37ab2c5a": [
         "set",
@@ -4498,7 +4498,7 @@
       ],
       "ed2877324e2": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "ed288e3e409": [
         "set",
@@ -4730,7 +4730,7 @@
       ],
       "eddad6670ca": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:43:19.308132+00:00"
       ],
       "eddcd56ce54": [
         "set",
@@ -4802,7 +4802,7 @@
       ],
       "edfe8e502c7": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "ee0104e6769": [
         "set",
@@ -4826,7 +4826,7 @@
       ],
       "ee1b4b04cd4": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:46:37.247204+00:00"
       ],
       "ee1b76c49a5": [
         "set",
@@ -5014,7 +5014,7 @@
       ],
       "eea74136153": [
         "set",
-        "2026-11-04T22:11:53.299462+00:00"
+        "2026-11-24T19:49:10.788428+00:00"
       ],
       "eea88c8131d": [
         "set",
@@ -5511,7 +5511,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-24T17:00:45.724454+00:00",
+    "at": "2026-11-24T19:50:07.568778+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -19494,11 +19494,11 @@
     },
     {
       "amplitude": 360.7788,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:36:17+00:00",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "e8316164603",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19511,11 +19511,11 @@
     },
     {
       "amplitude": 342.132,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:39:09+00:00",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "ece1d42c1e1",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19528,11 +19528,11 @@
     },
     {
       "amplitude": 976.7718,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:39:20+00:00",
+      "by": "Rain Younger",
       "channel": 47,
       "id": "eb9c0432be0",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19545,11 +19545,11 @@
     },
     {
       "amplitude": 334.4187,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:39:36+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e529e14766d",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19562,11 +19562,11 @@
     },
     {
       "amplitude": 319.6682,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:39:51+00:00",
+      "by": "Rain Younger",
       "channel": 6,
       "id": "ed2877324e2",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19579,11 +19579,11 @@
     },
     {
       "amplitude": 372.4446,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:04+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e762e8f0437",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19596,11 +19596,11 @@
     },
     {
       "amplitude": 962.3622,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:13+00:00",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "e87b42ca99e",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19613,11 +19613,11 @@
     },
     {
       "amplitude": 385.5993,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:14+00:00",
+      "by": "Rain Younger",
       "channel": 10,
       "id": "e368529ddbd",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19630,11 +19630,11 @@
     },
     {
       "amplitude": 313.306,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:41+00:00",
+      "by": "Rain Younger",
       "channel": 4,
       "id": "ea024c1165a",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19647,11 +19647,11 @@
     },
     {
       "amplitude": 763.8988,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:54+00:00",
+      "by": "Rain Younger",
       "channel": 52,
       "id": "e669e2a4f0e",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19664,11 +19664,11 @@
     },
     {
       "amplitude": 393.5626,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:40:54+00:00",
+      "by": "Rain Younger",
       "channel": 11,
       "id": "e573c260210",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19681,11 +19681,11 @@
     },
     {
       "amplitude": 346.5091,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:41:14+00:00",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "e9ceb817637",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19698,11 +19698,11 @@
     },
     {
       "amplitude": 358.3005,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:41:21+00:00",
+      "by": "Rain Younger",
       "channel": 8,
       "id": "eddad6670ca",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19715,11 +19715,11 @@
     },
     {
       "amplitude": 462.229,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:41:38+00:00",
+      "by": "Rain Younger",
       "channel": 19,
       "id": "e0964103aed",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19732,11 +19732,11 @@
     },
     {
       "amplitude": 356.4061,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:41:59+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e4fbc6fb36b",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19749,11 +19749,11 @@
     },
     {
       "amplitude": 321.7445,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:42:05+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e4bfb431bd0",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19766,11 +19766,11 @@
     },
     {
       "amplitude": 344.1091,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:42:39+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e247bb9a7c1",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19783,11 +19783,11 @@
     },
     {
       "amplitude": 375.882,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:42:55+00:00",
+      "by": "Rain Younger",
       "channel": 9,
       "id": "eb4f19c23cb",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19800,11 +19800,11 @@
     },
     {
       "amplitude": 331.2704,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:30+00:00",
+      "by": "Rain Younger",
       "channel": 1,
       "id": "e7c8a573b99",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19817,11 +19817,11 @@
     },
     {
       "amplitude": 869.3085,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:30+00:00",
+      "by": "Rain Younger",
       "channel": 28,
       "id": "e3b8bb81116",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19834,11 +19834,11 @@
     },
     {
       "amplitude": 385.5292,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:30+00:00",
+      "by": "Rain Younger",
       "channel": 2,
       "id": "e1080bee04f",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19851,11 +19851,11 @@
     },
     {
       "amplitude": 968.0931,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:35+00:00",
+      "by": "Rain Younger",
       "channel": 47,
       "id": "eacb5155d67",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19885,11 +19885,11 @@
     },
     {
       "amplitude": 1083.8403,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:40+00:00",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "edfe8e502c7",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1429.169455,
       "reviews": [
@@ -19903,11 +19903,11 @@
     },
     {
       "amplitude": 922.8195,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:45:44+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "e21894bc13b",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19938,11 +19938,11 @@
     },
     {
       "amplitude": 658.9516,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:00+00:00",
+      "by": "Rain Younger",
       "channel": 54,
       "id": "ee1b4b04cd4",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -19955,11 +19955,11 @@
     },
     {
       "amplitude": 567.119,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:00+00:00",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "e3c842910d9",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -19972,11 +19972,11 @@
     },
     {
       "amplitude": 381.8537,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:05+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "ec36133ae4d",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20006,11 +20006,11 @@
     },
     {
       "amplitude": 1287.9243,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:13+00:00",
+      "by": "Rain Younger",
       "channel": 47,
       "id": "e351d836755",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 1445.547431,
       "reviews": [
@@ -20042,11 +20042,11 @@
     },
     {
       "amplitude": 810.0412,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:38+00:00",
+      "by": "Rain Younger",
       "channel": 28,
       "id": "e6235bc301d",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20059,11 +20059,11 @@
     },
     {
       "amplitude": 577.1889,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:38+00:00",
+      "by": "Rain Younger",
       "channel": 10,
       "id": "e5cafc4d4c7",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20076,11 +20076,11 @@
     },
     {
       "amplitude": 424.9239,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:46:55+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "eb2a1a959f8",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20093,11 +20093,11 @@
     },
     {
       "amplitude": 939.6405,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:47:02+00:00",
+      "by": "Rain Younger",
       "channel": 45,
       "id": "e7d1b6c2f36",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20110,11 +20110,11 @@
     },
     {
       "amplitude": 1070.471,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:48:24+00:00",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "ecb12b24985",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20127,11 +20127,11 @@
     },
     {
       "amplitude": 334.884,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:48:27+00:00",
+      "by": "Rain Younger",
       "channel": 5,
       "id": "eea74136153",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20144,11 +20144,11 @@
     },
     {
       "amplitude": 1037.2477,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:48:49+00:00",
+      "by": "Rain Younger",
       "channel": 46,
       "id": "ec6a7c076f0",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -20161,11 +20161,11 @@
     },
     {
       "amplitude": 339.0336,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:49:04+00:00",
+      "by": "Rain Younger",
       "channel": 7,
       "id": "ec2d9967955",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -20178,11 +20178,11 @@
     },
     {
       "amplitude": 1189.6655,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:49:21+00:00",
+      "by": "Rain Younger",
       "channel": 45,
       "id": "e13edc3083a",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20195,11 +20195,11 @@
     },
     {
       "amplitude": 350.0567,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:49:31+00:00",
+      "by": "Rain Younger",
       "channel": 3,
       "id": "e441588b2e6",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -20212,11 +20212,11 @@
     },
     {
       "amplitude": 446.2881,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:49:37+00:00",
+      "by": "Rain Younger",
       "channel": 16,
       "id": "eaee69181ca",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -20229,11 +20229,11 @@
     },
     {
       "amplitude": 362.4003,
-      "at": "2026-11-04T17:11:53-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-24T19:49:38+00:00",
+      "by": "Rain Younger",
       "channel": 9,
       "id": "e5a2391a5c9",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -29083,7 +29083,7 @@
   },
   "updated": {
     "app_version": "2026.11.23.1",
-    "at": "2026-11-24T12:00:45-05:00",
+    "at": "2026-11-24T14:50:07-05:00",
     "commit": "4a5c9e3b",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
