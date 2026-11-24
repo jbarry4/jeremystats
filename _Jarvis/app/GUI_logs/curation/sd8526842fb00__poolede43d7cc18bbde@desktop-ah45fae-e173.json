@@ -10,12 +10,12 @@
     "labels": "2026-11-04T21:25:30.335530+00:00",
     "name": "2026-11-04T21:25:30.335530+00:00",
     "open": "2026-11-19T21:18:09.757374+00:00",
-    "opened_at": "2026-11-24T14:27:34.327344+00:00",
+    "opened_at": "2026-11-24T14:33:04.597256+00:00",
     "opened_by": "2026-11-23T14:28:41.221176+00:00",
     "schema": "2026-11-04T21:25:30.335530+00:00",
     "session_label": "2026-11-04T21:25:30.335530+00:00",
     "source": "2026-11-04T21:25:30.335530+00:00",
-    "updated": "2026-11-24T14:27:34.327344+00:00"
+    "updated": "2026-11-24T14:51:19.978239+00:00"
   },
   "_keys": {
     "events": {
@@ -401,7 +401,7 @@
       ],
       "e093f745d62": [
         "set",
-        "2026-11-20T17:31:46.906042+00:00"
+        "2026-11-24T14:51:19.978239+00:00"
       ],
       "e09672ca5b0": [
         "set",
@@ -2685,7 +2685,7 @@
       ],
       "e4109afae5b": [
         "set",
-        "2026-11-20T17:31:46.906042+00:00"
+        "2026-11-24T14:50:18.864714+00:00"
       ],
       "e411aa7c050": [
         "set",
@@ -5057,7 +5057,7 @@
       ],
       "e7889dfab46": [
         "set",
-        "2026-11-20T17:31:46.906042+00:00"
+        "2026-11-24T14:50:52.308232+00:00"
       ],
       "e78b0c8c1a1": [
         "set",
@@ -10590,7 +10590,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-24T14:27:34.327344+00:00",
+    "at": "2026-11-24T14:51:19.978239+00:00",
     "machine": "desktop-ah45fae-e173",
     "schema": 1
   },
@@ -10678,17 +10678,27 @@
     },
     {
       "amplitude": 1468.3547,
-      "at": "2026-11-20T17:01:40+00:00",
-      "by": "Aggie Krempasky",
+      "at": "2026-11-24T09:50:18-0500",
+      "by": "Rain Younger",
       "channel": 41,
       "id": "e4109afae5b",
-      "label": "flag",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T17:01:40+00:00",
+          "by": "Aggie Krempasky",
+          "label": "flag"
+        },
+        {
+          "at": "2026-11-24T09:50:18-0500",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
       "start": 3.34598
@@ -10814,17 +10824,27 @@
     },
     {
       "amplitude": 768.0063,
-      "at": "2026-11-20T17:02:36+00:00",
-      "by": "Aggie Krempasky",
+      "at": "2026-11-24T09:50:52-0500",
+      "by": "Rain Younger",
       "channel": 20,
       "id": "e7889dfab46",
-      "label": "flag",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T17:02:36+00:00",
+          "by": "Aggie Krempasky",
+          "label": "flag"
+        },
+        {
+          "at": "2026-11-24T09:50:52-0500",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
       "start": 10.206939
@@ -10848,17 +10868,27 @@
     },
     {
       "amplitude": 763.3307,
-      "at": "2026-11-20T17:03:46+00:00",
-      "by": "Aggie Krempasky",
+      "at": "2026-11-24T09:51:19-0500",
+      "by": "Rain Younger",
       "channel": 50,
       "id": "e093f745d62",
-      "label": "flag",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:17-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T17:03:46+00:00",
+          "by": "Aggie Krempasky",
+          "label": "flag"
+        },
+        {
+          "at": "2026-11-24T09:51:19-0500",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
       "start": 11.188933
@@ -56006,7 +56036,7 @@
   ],
   "name": "KCNT1 m588 s1 2026-07-27 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "open": true,
-  "opened_at": "2026-11-24T09:27:34-0500",
+  "opened_at": "2026-11-24T09:33:04-0500",
   "opened_by": "Rain Younger",
   "schema": 1,
   "session_label": "KCNT1 m588 s1 2026-07-27",
@@ -56020,7 +56050,7 @@
   },
   "updated": {
     "app_version": "2026.11.23.1",
-    "at": "2026-11-24T09:27:34-05:00",
+    "at": "2026-11-24T09:51:19-05:00",
     "commit": "b1fd83fd",
     "email": "rain.younger@uvm.edu",
     "host": "DESKTOP-AH45FAE",
