@@ -282,6 +282,37 @@ def main():
 
         check("W is reserved for notes", "w" in C.RESERVED_KEYS)
 
+        # ---- Doppler: banked by hand, and the switch (2026-11-24) ----
+        saved_d = (A.DOPPLER_VAULT.get, A._doppler_full, A._doppler_before_fix,
+                   A.STORE.get_prefs)
+        try:
+            out = {"events": [{"start": 3.0, "end": 3.2, "peak_channel": 5,
+                               "peak_uv": 400.0}], "params": {"method": "storm"},
+                   "n": 1}
+            A.DOPPLER_VAULT.get = lambda g, k: {"gid": g, "params_hash": k,
+                                                "session_label": "g1 label"}
+            A._doppler_full = lambda g, k: out
+            A._doppler_before_fix = lambda rec: False
+            A.STORE.get_prefs = lambda: {"doppler_autobank": "off"}
+            check("with the switch off, a landing run is not banked",
+                  A._doppler_autobank("g1", "dkey1", out) is None)
+            b = cli.post("/api/doppler/bank", json={"gid": "g1", "key": "dkey1"})
+            bj = b.get_json() or {}
+            check("Bank it banks it, by hand", b.status_code == 200
+                  and (bj.get("banked") or {}).get("id")
+                  and (bj.get("banked") or {}).get("auto") is False, bj)
+            b2 = cli.post("/api/doppler/bank", json={"gid": "g1", "key": "dkey1"})
+            check("and a second press answers with the same entry, not a copy",
+                  (b2.get_json() or {}).get("banked", {}).get("id")
+                  == bj.get("banked", {}).get("id"))
+            A.STORE.get_prefs = lambda: {}
+            got = A._doppler_autobank("g1", "dkey2", out)
+            check("with the switch on (the default), a landing run banks itself",
+                  bool(got and got.get("auto")), got)
+        finally:
+            (A.DOPPLER_VAULT.get, A._doppler_full, A._doppler_before_fix,
+             A.STORE.get_prefs) = saved_d
+
         # ---- a merge pairs one detector's event with the other's ----
         evs = A.CURATE.get("g1", r2["kind"])["events"]
         inc = [e for e in evs if e.get("origin") == "incisor"]

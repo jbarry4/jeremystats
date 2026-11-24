@@ -41,7 +41,7 @@ const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 /* ------------------------------------------------------------------------
    Materials
    ------------------------------------------------------------------------ */
-function rimMaterial(color, opacity) {
+function rimMaterial(color, opacity, side) {
   return new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) }, opacity: { value: opacity }, dim: { value: 1.0 } },
     vertexShader: `
@@ -59,17 +59,26 @@ function rimMaterial(color, opacity) {
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
-        float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
-        gl_FragColor = vec4(color * (0.55 + 0.6 * rim), (opacity * 0.35 + opacity * 1.6 * rim) * dim);
+        float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.4);
+        gl_FragColor = vec4(color * (0.6 + 0.5 * rim), (opacity * 0.16 + opacity * 2.1 * rim) * dim);
       }`,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, clipping: true,
+    transparent: true, depthWrite: false, side: side || THREE.DoubleSide, clipping: true,
   });
 }
 
 /* Opaque clay: soft matte shading, a touch of rim, a hover/selection glow. */
 function clayMaterial(color) {
-  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.0, side: THREE.DoubleSide });
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide });
   m.userData.base = new THREE.Color(color);
+  m.userData.rimK = { value: 0.2 };
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.rimK = m.userData.rimK;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float rimK;')
+      .replace('#include <dithering_fragment>', '#include <dithering_fragment>\n'
+        + '  { float rf = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));\n'
+        + '    gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), pow(rf, 3.0) * rimK); }');
+  };
   return m;
 }
 
@@ -78,7 +87,7 @@ function clayMaterial(color) {
 function outlineMaterial(color, px) {
   return new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) }, px: { value: px || 1.4 }, res: { value: new THREE.Vector2(1000, 800) },
-                alpha: { value: 0.75 } },
+                alpha: { value: 0.38 } },
     vertexShader: `
       uniform float px; uniform vec2 res;
       #include <clipping_planes_pars_vertex>
@@ -193,7 +202,7 @@ const SLICE_FS = `
     vec3 col = mix(paper, ink, clamp(n * 0.9, 0.0, 0.88));
     if (mode == 0) {
       if (lam > 0u) col = mix(col, lut(lamLut, lam, 256.0).rgb, 0.62);
-      else col = mix(col, ac.rgb, 0.11);
+      else col = mix(mix(paper, ink, clamp(n * 0.42, 0.0, 0.36)), ac.rgb, 0.05);
     } else if (mode == 1) {
       col = mix(col, ac.rgb, 0.7);
     }
@@ -212,7 +221,7 @@ const SLICE_FS = `
     // the Allen labels are 50 um: close up their outlines are coarse, so they step back
     float closeA = 1.0 - 0.6 * smoothstep(8.0, 20.0, 50.0 / max(pxum, 1e-3));
     if (lam == 0u) lineA = (1.0 - smoothstep(0.0, max(wa * lineK, 1e-4), am)) * fadeA * closeA;
-    col = mix(col, ink * 0.55, max(lineL * 0.62, lineA * (mode == 1 ? 0.45 : 0.22)));
+    col = mix(col, ink * 0.55, max(lineL * 0.62, lineA * (mode == 1 ? 0.45 : 0.16)));
     gl_FragColor = vec4(col, alpha);
   }`;
 
@@ -293,12 +302,12 @@ function crowdMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 400 }, uOrtho: { value: 0 }, uPx: { value: 1 }, alpha: { value: 0.85 } },
     vertexShader: `
-      attribute float size; attribute vec3 col;
+      attribute float size; attribute vec3 col; attribute float a;
       uniform float uScale; uniform float uOrtho; uniform float uPx;
-      varying vec3 vC; varying float vFade;
+      varying vec3 vC; varying float vFade; varying float vA;
       #include <clipping_planes_pars_vertex>
       void main() {
-        vC = col;
+        vC = col; vA = a;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         float s = uOrtho > 0.5 ? size / uPx : size * uScale / max(1e-4, -mvPosition.z);
         // dots smaller than a couple of pixels are noise, not cells: let them go
@@ -308,7 +317,7 @@ function crowdMaterial() {
         #include <clipping_planes_vertex>
       }`,
     fragmentShader: `
-      uniform float alpha; varying vec3 vC; varying float vFade;
+      uniform float alpha; varying vec3 vC; varying float vFade; varying float vA;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
@@ -317,7 +326,7 @@ function crowdMaterial() {
         float r = dot(d, d);
         if (r > 1.0) discard;
         float shade = 0.75 + 0.25 * (1.0 - r);
-        gl_FragColor = vec4(vC * shade, alpha * vFade * smoothstep(1.0, 0.7, r));
+        gl_FragColor = vec4(vC * shade, alpha * vA * vFade * smoothstep(1.0, 0.7, r));
       }`,
     transparent: true, depthWrite: false, clipping: true,
   });
@@ -556,7 +565,7 @@ function cumLen(pts) {
    The stage
    ========================================================================== */
 export function create(host, opts) {
-  const cb = Object.assign({ onPick() {}, onHover() {}, onCamera() {}, onFrame: null, onRide() {}, onProbe() {}, sample: null }, opts || {});
+  const cb = Object.assign({ onPick() {}, onHover() {}, onCamera() {}, onFrame: null, onRide() {}, onProbe() {}, onDark() {}, sample: null }, opts || {});
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
   const shaderErrors = [];
   renderer.debug.onShaderError = (gl, program, vs, fs) => {
@@ -790,7 +799,7 @@ export function create(host, opts) {
         }
         m.material.emissive.copy(isH ? acc : isS ? acc : new THREE.Color(0, 0, 0)).multiplyScalar(isH ? 0.42 : isS ? 0.18 : 0);
         const o = m.children.find((c) => c.userData.outlineOf);
-        if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.75; }
+        if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.38; }
       }
     }
     for (const [k, c] of Object.entries(byKey.cells)) {
@@ -929,7 +938,7 @@ export function create(host, opts) {
       const isRoot = m.key === 'root';
       let mesh;
       if (isRoot || m.key !== 'HPF') {
-        mesh = new THREE.Mesh(g, rimMaterial(isRoot ? S.colors.shell : m.color, isRoot ? 0.16 : 0.28));
+        mesh = new THREE.Mesh(g, rimMaterial(isRoot ? S.colors.shell : m.color, isRoot ? 0.2 : 0.28, isRoot ? THREE.FrontSide : THREE.DoubleSide));
         mesh.renderOrder = isRoot ? 50 : 49;
       } else {
         mesh = new THREE.Mesh(g, clayMaterial(S.colors.hpf || '#e5a823'));
@@ -955,6 +964,7 @@ export function create(host, opts) {
       G.hpf.add(mesh);
       byKey.hpf[m.key] = mesh;
     }
+    if (S.level === 'brain' && S.view === '3d') { G.hpf.visible = true; if (byKey.brain.HPF) byKey.brain.HPF.visible = false; }
     applyClipping();
     dirty = true;
   }
@@ -1001,8 +1011,9 @@ export function create(host, opts) {
     if (lv === 'brain') {
       G.brain.visible = true;
       Object.values(B).forEach((m) => { if (m.material.uniforms) m.material.uniforms.dim.value = 1; });
-      if (B.HPF) B.HPF.visible = true;
-      G.hpf.visible = false; G.lamina.visible = false; G.cells.visible = false; G.crowd.visible = false;
+      const hasHpf = Object.keys(byKey.hpf).length > 0;
+      if (B.HPF) B.HPF.visible = !hasHpf;
+      G.hpf.visible = hasHpf; G.lamina.visible = false; G.cells.visible = false; G.crowd.visible = false;
     } else {
       G.brain.visible = true;
       Object.values(B).forEach((m) => { if (m.material.uniforms) m.material.uniforms.dim.value = 0.32; });
@@ -1146,7 +1157,7 @@ export function create(host, opts) {
     }
     planeMark.position.copy(c);
     planeMark.quaternion.copy(ortho.quaternion);
-    planeMark.scale.set(9, 7, 1);
+    planeMark.scale.set(7.4, 5.6, 1);
     dirty = true;
   }
   function sliceToCcf(px, py) {
@@ -1162,9 +1173,14 @@ export function create(host, opts) {
     const dn = d[0] * s.N[0] + d[1] * s.N[1] + d[2] * s.N[2];
     return [Wpx / 2 + du / s.k, Hpx / 2 + dv / s.k, dn];
   }
+  /* where the mini 3D sits, in CSS pixels from the stage's top left */
+  function miniRect() {
+    const w = Math.round(Math.min(210, Math.max(150, Wpx * 0.2))), h = Math.round(w * 0.78);
+    return { x: Math.round(Wpx - w - 16), y: 64, w, h };
+  }
   function drawMini() {
-    const w = Math.round(Math.min(220, Wpx * 0.24)), h = Math.round(w * 0.78);
-    const x = 12, y = 12;
+    const r = miniRect();
+    const w = r.w, h = r.h, x = r.x, y = Math.round(Hpx - r.y - r.h);     // GL counts from the bottom
     miniCam.aspect = w / h;
     const c = wv(S.slice.C);
     const n = dirW(S.slice.N);
@@ -1175,14 +1191,14 @@ export function create(host, opts) {
     if (side.lengthSq() < 0.01) side.set(1, 0, 0);
     side.normalize();
     const dirv = n.clone().multiplyScalar(0.6).add(side.multiplyScalar(0.7)).add(up.clone().multiplyScalar(0.5)).normalize();
-    miniCam.position.copy(c0).addScaledVector(dirv, 17);
+    miniCam.position.copy(c0).addScaledVector(dirv, 23);
     miniCam.up.set(0, 1, 0);
     miniCam.lookAt(c0);
     miniCam.updateProjectionMatrix();
     renderer.setScissorTest(true);
     renderer.setScissor(x, y, w, h);
     renderer.setViewport(x, y, w, h);
-    renderer.setClearColor(clearCol.set(S.colors.bg2 || S.colors.bg || '#000'), 1);
+    renderer.setClearColor(0x000000, 0);          // see-through: the page's frame shows behind the brain
     renderer.clear();
     const vis = { cells: G.cells.visible, crowd: G.crowd.visible, probe: G.probe.visible, quad: sliceQuad && sliceQuad.visible };
     if (sliceQuad) sliceQuad.visible = false;
@@ -1311,6 +1327,7 @@ export function create(host, opts) {
     g.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
     g.setAttribute('col', new THREE.BufferAttribute(data.col, 3));
     g.setAttribute('size', new THREE.BufferAttribute(data.size, 1));
+    g.setAttribute('a', new THREE.BufferAttribute(data.alpha || new Float32Array(data.size.length).fill(1), 1));
     g.computeBoundingSphere();
     crowd = new THREE.Points(g, crowdMaterial());
     crowd.renderOrder = 20;
@@ -1897,6 +1914,7 @@ export function create(host, opts) {
   let darkAnim = null;
   function setDark(on) {
     S.darkTarget = on ? 1 : 0;
+    try { cb.onDark(!!on); } catch (e) { /* the page's business */ }
     if (darkAnim) { anims.delete(darkAnim); darkAnim = null; }     // one fade at a time
     const d0 = S.dark, d1 = S.darkTarget, t0 = performance.now();
     if (reduced() || d0 === d1) { S.dark = d1; dirty = true; return; }
@@ -2273,6 +2291,7 @@ export function create(host, opts) {
                    volumes: volumesReady, cut: S.cut.kind, gl2: renderer.capabilities.isWebGL2,
                    frameMs: +quality.ema.toFixed(1), maxDraw: quality.maxDraw, maxAt: quality.maxAt, glyphMs, glyphSegs: glyphN, lowQuality: quality.low, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }),
     set mini(v) { S.mini = !!v; dirty = true; },
+    miniRect,
     toCcf, W,
   };
 }
