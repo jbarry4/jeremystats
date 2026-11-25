@@ -1,8 +1,8 @@
 {
   "_at": {
     "assignee": "2026-11-04T21:28:33.047427+00:00",
-    "based_on": "2026-11-04T21:28:33.129066+00:00",
-    "based_on_at": "2026-11-04T21:28:33.129066+00:00",
+    "based_on": "2026-11-20T16:14:24.622675+00:00",
+    "based_on_at": "2026-11-20T16:14:24.622675+00:00",
     "closed_at": "2026-11-04T22:20:56.405895+00:00",
     "created": "2026-11-04T21:28:32.972602+00:00",
     "gid": "2026-11-04T21:28:32.972602+00:00",
@@ -10,13 +10,13 @@
     "kind": "2026-11-04T21:28:32.972602+00:00",
     "labels": "2026-11-04T21:28:32.972602+00:00",
     "name": "2026-11-04T21:28:32.972602+00:00",
-    "open": "2026-11-04T22:20:56.405895+00:00",
-    "opened_at": "2026-11-04T21:28:33.047427+00:00",
-    "opened_by": "2026-11-04T21:28:33.047427+00:00",
+    "open": "2026-11-20T16:14:24.622675+00:00",
+    "opened_at": "2026-11-20T16:16:21.895712+00:00",
+    "opened_by": "2026-11-20T16:14:24.622675+00:00",
     "schema": "2026-11-04T21:28:32.972602+00:00",
     "session_label": "2026-11-04T21:28:32.972602+00:00",
     "source": "2026-11-04T21:28:32.972602+00:00",
-    "updated": "2026-11-04T22:20:56.405895+00:00"
+    "updated": "2026-11-20T16:42:24.595377+00:00"
   },
   "_keys": {
     "events": {
@@ -310,7 +310,7 @@
       ],
       "e1a86a9a3bc": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "e1aaec91469": [
         "set",
@@ -610,7 +610,7 @@
       ],
       "e33228a6adf": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "e33696d446c": [
         "set",
@@ -1394,7 +1394,7 @@
       ],
       "e6e55a22142": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "e6e84adf201": [
         "set",
@@ -3142,7 +3142,7 @@
       ],
       "edad84d95bf": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "edafe9be68c": [
         "set",
@@ -3170,7 +3170,7 @@
       ],
       "edb9d38bcff": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "edbcba98578": [
         "set",
@@ -3610,7 +3610,7 @@
       ],
       "ef82b6932e0": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:42:24.595377+00:00"
       ],
       "ef85101bcdf": [
         "set",
@@ -3763,13 +3763,13 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T22:20:56.405895+00:00",
+    "at": "2026-11-20T16:42:24.595377+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "assignee": "Rain Younger",
-  "based_on": "f8bf19bb86c8",
-  "based_on_at": "2026-11-04T16:28:33-0500",
+  "based_on": "ada1627665c8",
+  "based_on_at": "2026-11-20T11:14:23-0500",
   "closed_at": "2026-11-04T17:20:56-0500",
   "created": {
     "app_version": "2026.11.04.3",
@@ -3802,28 +3802,33 @@
     },
     {
       "amplitude": 494.875,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:28:21+00:00",
+      "by": "Avery Sullenberger",
       "channel": 38,
       "id": "edb9d38bcff",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T11:17:55-0500",
+          "by": "Avery Sullenberger",
+          "label": "flag"
         }
       ],
       "start": 16.02964
     },
     {
       "amplitude": 473.9424,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:28:47+00:00",
+      "by": "Avery Sullenberger",
       "channel": 51,
       "id": "ef82b6932e0",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -3836,11 +3841,11 @@
     },
     {
       "amplitude": 371.8494,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:29:38+00:00",
+      "by": "Avery Sullenberger",
       "channel": 53,
       "id": "e33228a6adf",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -3870,11 +3875,11 @@
     },
     {
       "amplitude": 438.6609,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:30:20+00:00",
+      "by": "Avery Sullenberger",
       "channel": 52,
       "id": "e6e55a22142",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -3922,11 +3927,11 @@
     },
     {
       "amplitude": 444.0847,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:30:50+00:00",
+      "by": "Avery Sullenberger",
       "channel": 51,
       "id": "edad84d95bf",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "both",
       "pair_t": 74.783153,
       "reviews": [
@@ -3992,11 +3997,11 @@
     },
     {
       "amplitude": 452.4217,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:36:28+00:00",
+      "by": "Avery Sullenberger",
       "channel": 49,
       "id": "e1a86a9a3bc",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -19842,9 +19847,9 @@
     }
   ],
   "name": "KCNT1 m521 s1 2026-05-04 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "open": false,
-  "opened_at": "2026-11-04T16:28:33-0500",
-  "opened_by": "Rain Younger",
+  "open": true,
+  "opened_at": "2026-11-20T11:16:16-0500",
+  "opened_by": "Avery Sullenberger",
   "schema": 1,
   "session_label": "KCNT1 m521 s1 2026-05-04",
   "source": {
@@ -19856,13 +19861,13 @@
     "version": 0
   },
   "updated": {
-    "app_version": "2026.11.04.3",
-    "at": "2026-11-04T17:20:56-05:00",
-    "commit": "ab65b008",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.11.19.3",
+    "at": "2026-11-20T11:42:24-05:00",
+    "commit": "75399c6e",
+    "email": "mmassad@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Maddie Massad"
   }
 }

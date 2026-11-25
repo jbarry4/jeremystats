@@ -1,0 +1,78 @@
+{
+  "_at": {
+    "created": "2026-10-11T06:13:35.372394+00:00",
+    "duration_s": "2026-10-11T06:13:35.372394+00:00",
+    "first_seen_by": "2026-10-11T06:13:35.372394+00:00",
+    "found_on": "2026-10-11T06:13:35.372394+00:00",
+    "fs": "2026-10-11T06:13:35.372394+00:00",
+    "gid": "2026-10-11T06:13:35.372394+00:00",
+    "group": "2026-10-11T06:13:35.372394+00:00",
+    "key": "2026-10-11T06:13:35.372394+00:00",
+    "label": "2026-10-11T06:13:35.372394+00:00",
+    "loose_key": "2026-10-11T06:13:35.372394+00:00",
+    "mouse": "2026-10-11T06:13:35.372394+00:00",
+    "n_channels": "2026-10-11T06:13:35.372394+00:00",
+    "project": "2026-10-11T06:13:35.372394+00:00",
+    "project_source": "2026-10-11T06:13:35.372394+00:00",
+    "retired": "2026-10-12T01:05:35.307185+00:00",
+    "schema": "2026-10-11T06:13:35.372394+00:00",
+    "session": "2026-10-11T06:13:35.372394+00:00",
+    "start": "2026-10-11T06:13:35.372394+00:00",
+    "updated": "2026-10-12T01:05:35.307185+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s12jul14\\2025-07-14_16-09-37": [
+        "set",
+        "2026-10-11T06:13:35.372394+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T01:05:35.307185+00:00",
+    "machine": "turty-wurty-e455",
+    "schema": 1
+  },
+  "channel_banks": [],
+  "created": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T02:13:34-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  },
+  "duration_s": 1800.567,
+  "first_seen_by": "vacc",
+  "found_on": {
+    "at": "2026-10-09T11:59:02-04:00",
+    "by": "angelinawoychosky@gmail.com",
+    "via": "vacc",
+    "where": "netfiles"
+  },
+  "fs": 30000.0,
+  "gid": "s52d22e29c21b",
+  "group": "PTEN_DKO",
+  "key": "m060_s012_2025-07-14_16-09-37",
+  "label": "PTEN_DKO m60 s12 2025-07-14",
+  "loose_key": "m060_s012",
+  "mouse": 60,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s12jul14\\2025-07-14_16-09-37"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "session": 12,
+  "start": "2025-07-14T16:09:37",
+  "updated": {
+    "app_version": "2026.10.09.2",
+    "at": "2026-10-11T21:05:35-04:00",
+    "commit": "1ef25a80",
+    "machine": "Turty-wurty",
+    "os": "Windows",
+    "user": "angelinawoychosky@gmail.com"
+  }
+}

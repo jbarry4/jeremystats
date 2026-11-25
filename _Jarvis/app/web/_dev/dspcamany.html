@@ -110,11 +110,14 @@ const FIX = {
   vers: { 'harness-xa': [1, 2], 'harness-xb': [1], 'harness-xc': [1], 'harness-xd': [1] },
   wfs: [
     { artifact_id: 'harness-wDS', nickname: 'Verified DS 7% · harness', name: 'Verified DS', kind: 'ds',
-      ran: true, version: 5, run_version: 4, kept: 900, n: 1200, updated: '2026-11-06T10:00:00Z' },
+      ran: true, version: 5, run_version: 4, kept: 900, n: 1200, updated: '2026-11-06T10:00:00Z',
+      counts: { inside: 900, outside: 300 } },
     { artifact_id: 'harness-wP', nickname: 'Verified P · harness', name: 'Verified P', kind: 'pspike',
-      ran: true, version: 2, run_version: 2, kept: 300, n: 410, updated: '2026-11-06T09:00:00Z' },
+      ran: true, version: 2, run_version: 2, kept: 300, n: 410, updated: '2026-11-06T09:00:00Z',
+      counts: { inside: 300, outside: 110 } },
     { artifact_id: 'harness-wAmb', nickname: 'Ambiguous · harness', name: 'Ambiguous', kind: 'ambiguous',
-      ran: true, version: 1, run_version: 1, kept: 20, n: 40, updated: '2026-11-06T08:00:00Z' },
+      ran: true, version: 1, run_version: 1, kept: 20, n: 40, updated: '2026-11-06T08:00:00Z',
+      counts: { ds: 20, halo_ds: 4, both: 5, halo_amb: 2, pspike: 6, neither: 3 } },
     { artifact_id: 'harness-wNo', nickname: 'Never run · harness', name: 'Never run', kind: 'ds',
       ran: false, version: 1, run_version: null, updated: '2026-11-06T07:00:00Z' },
   ],
@@ -301,6 +304,20 @@ const RASTER = { ok: true, what: 'shank', title: 'mean of 120', image: IMG, exte
         sinks: sinks(-2, -3), box: null, novocaine: { ready: true, extracted: false } } });
     }
     if (p === '/api/rootcanal/workflows') { hit('wfs'); return json({ ok: true, workflows: FIX.wfs }); }
+    if (p === '/api/bank' && method === 'GET') {
+      hit('bank');
+      return json({ ok: true, entries: [
+        { id: 'harness-bundle', name: 'Halo · harness bundle', type: 'rcbundle', archived: false,
+          added: { at: '2026-11-21T10:00:00Z' },
+          source: { parameters: { tool: 'rootcanal_workflow',
+            workflow: { artifact_id: 'harness-wAmb', version: 1, kind: 'ambiguous' },
+            labels: [{ id: 'ds', label: 'DS', n: 24 }, { id: 'pspike', label: 'P-spike', n: 6 },
+                     { id: 'twilight', label: 'Twilight Zone', n: 7 },
+                     { id: 'outside', label: 'Outside both borders', n: 3 }] } } },
+        { id: 'harness-plain', name: 'not a bundle', type: 'ds', archived: false,
+          source: { parameters: { tool: 'rootcanal_workflow', workflow: { artifact_id: 'harness-wDS' } } } },
+      ] });
+    }
     if (p === '/api/prefs' && method !== 'GET') { hit('refused'); return json({ ok: false, error: 'harness: no writes' }, 400); }
     if (method !== 'GET' && /^\/api\/(dspca|bank|artifacts|rootcanal|session|prefs)/.test(p)) {
       hit('refused'); return json({ ok: false, error: 'harness: no writes' }, 400);
@@ -381,7 +398,8 @@ const RASTER = { ok: true, what: 'shank', title: 'mean of 120', image: IMG, exte
     ok('the archived one is a button away', /^Show archived · 1$/.test(txt(D(), '.xm-show-arch') || ''),
        txt(D(), '.xm-show-arch'));
     ok('every folder has Archive', folders().every((n) => txt(n, '.xm-folder-arch') === 'Archive'));
-    ok('and New folder from a workflow…', !!btn(/^New folder from a workflow…$/, D().querySelector('.xm-bar')));
+    ok('and New folder…', !!btn(/^New folder…$/, D().querySelector('.xm-bar')));
+    ok('a DS folder carries no label warning', !D().querySelector('.xm-lwarn'));
 
     head('THE GLOBAL PARAMETERS');
     const pc = () => D().querySelector('.xm-params');
@@ -655,20 +673,52 @@ const RASTER = { ok: true, what: 'shank', title: 'mean of 120', image: IMG, exte
     D().querySelector('.xm-show-arch').click();
     ok('and it is with the others again', !!f10() && !f10().classList.contains('archived'));
 
-    btn(/^New folder from a workflow…$/, D().querySelector('.xm-bar')).click();
+    btn(/^New folder…$/, D().querySelector('.xm-bar')).click();
     await until(() => D().querySelector('#bigModal:not(.hidden) .xm-new'), 5000, 'the new folder');
-    const wfb = Array.from(D().querySelectorAll('#bigModal:not(.hidden) .xm-wf'));
-    ok('only the verified DS and P-spike workflows that have run',
-       J(wfb.map((n) => n.dataset.wf)) === J(['harness-wDS', 'harness-wP']), J(wfb.map((n) => n.dataset.wf)));
+    const wfb = Array.from(D().querySelectorAll('#bigModal:not(.hidden) .xm-wf[data-wf]'));
+    ok('every workflow that has run, of a kind with labels',
+       J(wfb.map((n) => n.dataset.wf)) === J(['harness-wDS', 'harness-wP', 'harness-wAmb']), J(wfb.map((n) => n.dataset.wf)));
+    const bun = Array.from(D().querySelectorAll('#bigModal:not(.hidden) .xm-wf[data-entry]'));
+    ok('and the Root Canal bundles, not plain entries', J(bun.map((n) => n.dataset.entry)) === J(['harness-bundle']),
+       J(bun.map((n) => n.dataset.entry)));
     const make = btn(/^Make the folder$/, D().querySelector('#bigModal'));
     ok('nothing to make until one is picked', make && make.disabled);
     wfb[0].click();
+    const pills = () => Array.from(D().querySelectorAll('#bigModal .xm-new-labels .wf-bank-l'));
+    ok('a verified DS run offers DS and outside, DS pressed',
+       J(pills().map((b) => [b.dataset.label, b.getAttribute('aria-pressed')])) === J([['ds', 'true'], ['outside', 'false']]),
+       J(pills().map((b) => [b.dataset.label, b.getAttribute('aria-pressed')])));
+    ok('with no warning for DS', D().querySelector('#bigModal .xm-new-warn').classList.contains('hidden'));
     ok('picking one names the folder after it',
        D().querySelector('.xm-new-name').value === 'Verified DS 7% · harness' && !make.disabled);
+    wfb[1].click();
+    ok('a P-spike run reads P-spikes, and warns', pills()[0].dataset.label === 'pspike'
+       && pills()[0].getAttribute('aria-pressed') === 'true'
+       && !D().querySelector('#bigModal .xm-new-warn').classList.contains('hidden')
+       && /P-spike 1 and P-spike 2/.test(txt(D(), '#bigModal .xm-new-warn')), txt(D(), '#bigModal .xm-new-warn'));
+    bun[0].click();
+    ok('the bundle offers its four labels with its counts',
+       J(pills().map((b) => [b.dataset.label, b.querySelector('b').textContent])) === J([['ds', '24'], ['pspike', '6'], ['twilight', '7'], ['outside', '3']]),
+       J(pills().map((b) => [b.dataset.label, b.querySelector('b').textContent])));
+    pills()[2].click();
+    ok('Twilight Zone pressed alone, with the warning',
+       J(pills().map((b) => b.getAttribute('aria-pressed'))) === J(['false', 'false', 'true', 'false'])
+       && /built for dentate spikes/.test(txt(D(), '#bigModal .xm-new-warn')));
+    ok('the name follows the label', D().querySelector('.xm-new-name').value === 'Twilight Zone · Halo · harness bundle',
+       D().querySelector('.xm-new-name').value);
+    wfb[0].click();
+    ok('back on the DS run, the name is its own again', D().querySelector('.xm-new-name').value === 'Verified DS 7% · harness',
+       D().querySelector('.xm-new-name').value);
+    const carrySel = D().querySelector('#bigModal .xm-new-carry');
+    ok('carry over offers every folder, nothing by default', carrySel && carrySel.value === ''
+       && carrySel.options.length === 1 + FIX.folders.length, carrySel && carrySel.options.length);
+    carrySel.value = F5;
+    carrySel.dispatchEvent(new (W.Event)('change'));
     make.click();
     await until(() => of('folder').length === 1, 5000, 'the folder');
-    ok('it is made from that workflow’s run',
-       J(of('folder')[0][1]) === J({ name: 'Verified DS 7% · harness', source: { artifact_id: 'harness-wDS', version: 4 } }),
+    ok('it is made from that workflow’s run, DS, carrying from the folder picked',
+       J(of('folder')[0][1]) === J({ name: 'Verified DS 7% · harness', labels: ['ds'],
+                                     source: { artifact_id: 'harness-wDS', version: 4 }, carry_from: F5 }),
        J(of('folder')[0] && of('folder')[0][1]));
     await until(() => XM._state().cur === FN && D().querySelector('.xm-tile[data-gid="' + G('n') + '"]'), 8000, 'it opens');
     ok('and it opens, with its recordings', XM._state().cur === FN && D().querySelectorAll('.xm-tile').length === 1);

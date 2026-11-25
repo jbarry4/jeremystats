@@ -61,6 +61,11 @@ BARRY.spotter = (function () {
      shows (setpicker.js). */
   let banked = null;
   let bankDirty = false;
+  /* View only, and changes not yet confirmed by a Save (curkit.js,
+     2026-11-20) -- as in Panning. */
+  let viewOnly = false;
+  let dirty = 0;
+  const ro = () => (viewOnly ? BARRY.curKit.refuse() || true : false);
 
   /* How strongly the channels an event was found on are tinted: 'lit',
      'faint' or 'off'. Remembered per person, because it is about how
@@ -135,6 +140,38 @@ BARRY.spotter = (function () {
     if (set_) exit();
 
     let want = (opts && opts.kind) || 'ied';
+    const looking = !!(opts && opts.viewOnly);
+    if (entryId && looking) {
+      // Looking never makes a set, or splits a run into two.
+      const has = await BARRY.ui.setForEntry(gid, 'ied', entryId)
+        .catch(() => null);
+      if (!has) {
+        toast('Nobody has started a Spotter set from that run yet, so there '
+              + 'is nothing to look at. Its versions are in the Event Bank.',
+              'warn', 8000);
+        return false;
+      }
+      want = has; entry = entryId; entryId = null;
+    }
+    /* A KCNT1 dual recording, and an entry that covers both arrays
+       (stormregion.js): which array -- or both, as two entries. Not asked
+       of an entry that already has a set: that work is going on as it is,
+       and its unbanked decisions are not in the bank to split. */
+    if (entryId && BARRY.stormRegion) {
+      let has = null;
+      try { has = await BARRY.ui.setForEntry(gid, 'ied', entryId); }
+      catch (e) { /* none is the ordinary case */ }
+      if (!has) {
+        const got = await BARRY.stormRegion.choose(gid, entryId, 'Spotter');
+        if (!got) return false;
+        entryId = got.entry;
+        if (got.others.length) {
+          toast(got.others.map((m) => '“' + m.name + '”').join(', ')
+                + ' is waiting in Spotter’s list for its own pass.',
+                null, 9000);
+        }
+      }
+    }
     if (entryId) {
       const made = await ensureSet(gid, entryId);
       if (!made) return false;
@@ -182,15 +219,19 @@ BARRY.spotter = (function () {
     index = 0;
     history = [];
     review = 'left';
+    viewOnly = looking;
+    dirty = 0;
 
     /* Opening it is what puts it on the bench. Nothing else does: banking a
        run leaves the set closed, because a set nobody has opened is not
        work in progress, it is a list that exists. */
-    apiPost(BARRY.ui.setUrl(gid, setKind, 'open'), { open: true })
-      .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
-      .catch(() => {});
+    if (!viewOnly) {
+      apiPost(BARRY.ui.setUrl(gid, setKind, 'open'), { open: true })
+        .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
+        .catch(() => {});
+    }
 
-    setMode('spotter', exit);
+    setMode('spotter', leave);
     chanRows = ((sess.info || {}).channels || []).slice();
     useIedBand();
     layout();
@@ -339,6 +380,61 @@ BARRY.spotter = (function () {
     return ok ? pick : null;
   }
 
+  /* Leave as a person does it: Save & leave first when the shared
+     database has not confirmed the work (curkit.js). */
+  async function leave() {
+    if (!set_) return;
+    const go = await BARRY.curKit.leaveAsk({
+      dirty: !viewOnly && dirty > 0, tool: 'Spotter', save: saveNow });
+    if (go) exit();
+  }
+
+  async function saveNow() {
+    if (!set_) return null;
+    if (viewOnly) { ro(); return null; }
+    const r = await BARRY.curKit.save({
+      url: BARRY.ui.setUrl(set_.gid, setKind, 'save'),
+      settle: async () => {
+        for (let i = 0; i < 60 && saving > 0; i++) {
+          await new Promise((res) => setTimeout(res, 100));
+        }
+      },
+    });
+    if (r && r.confirmed) { dirty = 0; if (set_) render(); }
+    return r;
+  }
+
+  async function workOnIt() {
+    if (!set_) return;
+    if (!(await BARRY.curKit.askToWork(set_.name))) return;
+    const gid = set_.gid, k = setKind;
+    exit();
+    enter(gid, null, { kind: k });
+  }
+
+  async function writeNote() {
+    const ev = current();
+    if (!ev) return;
+    if (ro()) return;
+    const own = set_;
+    const lab = ev.label ? ((kind.labels || []).find((l) => l.id === ev.label)
+                            || {}).name || ev.label : null;
+    const got = await BARRY.curKit.editNote({
+      title: 'Note on the discharge at ' + clock(ev.start),
+      about: lab ? 'Decided: ' + lab + '.' : 'Not decided yet.',
+      text: ev.note || '',
+      onSave: (text) => apiPost(BARRY.ui.setUrl(own.gid, setKind, 'note'),
+                                { event: ev.id, note: text }),
+    });
+    if (got === null || set_ !== own) return;
+    if (got) { ev.note = got; ev.note_by = (BARRY.profile && BARRY.profile.who
+                                            && BARRY.profile.who()) || ev.note_by; }
+    else { delete ev.note; delete ev.note_by; }
+    dirty += 1; BARRY.curKit.saveState(true);
+    bankDirty = true;
+    render();
+  }
+
   function exit() {
     if (!set_) return;
     /* Leaving with decisions the bank does not have: banked on the way out,
@@ -379,6 +475,7 @@ BARRY.spotter = (function () {
     }
     set_ = null; kind = null; sess = null; entry = null;
     history = []; part = null; partIdx = null; chanRows = [];
+    viewOnly = false; dirty = 0;
     const bar = $('#spotBar');
     if (bar) bar.remove();
     const ras = $('#spotRaster');
@@ -633,6 +730,7 @@ BARRY.spotter = (function () {
   async function assign(labelId) {
     const ev = current();
     if (!ev) return;
+    if (ro()) return;
     const was = ev.label || null;
 
     /* Optimistic. The key press has to feel instant and the write follows;
@@ -656,6 +754,7 @@ BARRY.spotter = (function () {
       const res = await apiPost(
         BARRY.ui.setUrl(set_.gid, setKind, 'label'),
         { event: ev.id, label: labelId });
+      dirty += 1; BARRY.curKit.saveState(true);
       if (res.progress) set_._progress = res.progress;
       // The last one decided: bank it, if banking without asking is on.
       if (set_ && autoOn() && !left()) {
@@ -692,6 +791,7 @@ BARRY.spotter = (function () {
   async function clearLabel() {
     const ev = current();
     if (!ev || !ev.label) return;
+    if (ro()) return;
     await assignRaw(ev, null);
   }
 
@@ -707,6 +807,7 @@ BARRY.spotter = (function () {
     try {
       await apiPost(BARRY.ui.setUrl(set_.gid, setKind, 'label'),
                     { event: ev.id, label: labelId });
+      dirty += 1; BARRY.curKit.saveState(true);
     } catch (e) {
       ev.label = was;
       history.pop();
@@ -718,6 +819,7 @@ BARRY.spotter = (function () {
   /* Undo goes back a decision AND back to the one it was about. Undoing
      something you can no longer see is not undoing it. */
   async function undo() {
+    if (ro()) return;
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
     const at = events().findIndex((e) => e.id === last.id);
@@ -732,6 +834,7 @@ BARRY.spotter = (function () {
     try {
       await apiPost(BARRY.ui.setUrl(set_.gid, setKind, 'label'),
                     { event: last.id, label: last.from });
+      dirty += 1; BARRY.curKit.saveState(true);
     } catch (e) {
       events()[at].label = was;
       history.push(last);
@@ -768,7 +871,8 @@ BARRY.spotter = (function () {
       n: () => step(1), p: () => step(-1),
       z: undo, u: undo, backspace: undo,
       c: clearLabel,
-      escape: exit,
+      w: writeNote,
+      escape: leave,
     };
     if (nav[k]) {
       e.preventDefault(); e.stopPropagation();
@@ -804,6 +908,8 @@ BARRY.spotter = (function () {
     const ev = current();
     const n = events().length;
     const at = events().slice(0, index + 1).filter(wanted).length;
+    bar.classList.toggle('ck-viewing', viewOnly);
+    if (viewOnly) bar.appendChild(BARRY.curKit.viewBadge(workOnIt));
 
     bar.appendChild(el('div', { class: 'cur-where' }, [
       el('strong', { text: set_.name || 'P-spikes' }),
@@ -821,6 +927,8 @@ BARRY.spotter = (function () {
       beatOthers.length
         ? BARRY.ui.chip(beatOthers.length + ' also here', { kind: 'warn' })
         : null,
+      ev ? BARRY.curKit.noteLine(ev.note, ev.note_by,
+                                 viewOnly ? null : writeNote) : null,
     ].filter(Boolean)));
 
     const tally = {};
@@ -871,6 +979,7 @@ BARRY.spotter = (function () {
         onclick: clearLabel }),
       el('button', { class: 'mini', text: '↶', title: 'Undo  [Z]',
         disabled: history.length ? null : 'disabled', onclick: undo }),
+      BARRY.curKit.noteButton(!!(ev && ev.note), writeNote, !ev || viewOnly),
       BARRY.ui.seg([
         ['left', 'Undecided', 'The ones nobody has decided yet'],
         ['flag', 'Flagged (' + flagged() + ')', 'The ones put aside'],
@@ -914,8 +1023,15 @@ BARRY.spotter = (function () {
          will hold before anything is written. Every decision is already
          saved the moment it is made -- this is what turns them into a
          version of the entry Doppler banked. */
-      bank: { text: 'Bank the results\u2026', onclick: bank,
+      bank: viewOnly ? null : { text: 'Bank the results\u2026', onclick: bank,
               title: 'Write these decisions as a new version of the banked run' },
+      save: viewOnly ? null : {
+        onclick: saveNow,
+        text: dirty ? 'Save' : 'Saved',
+        state: dirty ? 'dirty' : 'clean',
+        title: 'Upload this set to the shared database now and check it '
+             + 'arrived. Every decision is already saved on this computer as '
+             + 'you make it; this makes sure everyone else has it too.' },
     }));
     updateSaving();
     ensureRaster();
@@ -937,6 +1053,7 @@ BARRY.spotter = (function () {
   function autoOn() { return !BARRY.testNoAutobank; }
 
   async function quietBank(gid, why, k) {
+    if (viewOnly) return;
     // Its own kind, passed in: on leaving it runs after the set is let go,
     // and another set may be open by the time it asks.
     const sk = k || setKind;
@@ -983,6 +1100,7 @@ BARRY.spotter = (function () {
 
   async function bank() {
     if (!set_ || !BARRY.curate || !BARRY.curate.bankAt) return;
+    if (ro()) return;
     // Every decision on the server first, or the version is one short.
     for (let i = 0; i < 60 && saving > 0; i++) {
       await new Promise((r) => setTimeout(r, 100));
@@ -1030,6 +1148,7 @@ BARRY.spotter = (function () {
      which vocabulary it is, and how to add to it. */
   async function newCategory() {
     if (!set_ || forging || !BARRY.chipForge) return;
+    if (ro()) return;
     const lab = await BARRY.chipForge.ask({
       labels: (kind && kind.labels) || [],
       create: (body) => apiPost('/api/curation/categories/'
@@ -1277,7 +1396,7 @@ BARRY.spotter = (function () {
     let res;
     try {
       res = await apiPost('/api/presence/beat', {
-        gid: set_.gid, kind: setKind, first: !!first, doing: 'spotting',
+        gid: set_.gid, kind: setKind, first: !!first, doing: viewOnly ? 'viewing' : 'spotting',
         n_total: events().length,
         n_decided: events().filter((e) => e.label).length,
         n_this_visit: events().filter((e) => e.label).length - decidedAtEntry,
@@ -1446,6 +1565,8 @@ BARRY.spotter = (function () {
 
   return {
     enter, exit, draw, rebind, recentre, receipt,
+    leave, save: saveNow, note: writeNote,
+    viewOnly: () => viewOnly, dirty: () => dirty,
     step: (d) => step(d),
     goTo: (i) => goTo(i),
     assign: (id) => assign(id),

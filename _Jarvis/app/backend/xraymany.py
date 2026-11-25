@@ -103,29 +103,98 @@ def new_folder_id():
     return "xm-" + uuid.uuid4().hex[:10]
 
 
-def folder_record(name, wf, version, run, prov=None):
-    """What `dspca_many_folders[fid]` holds for one workflow run."""
+def folder_record(name, wf, version, run, prov=None, labels=None,
+                  entry=None):
+    """What `dspca_many_folders[fid]` holds for one workflow run.
+
+    `labels` (PROJECT EVOLVE phase 3, 2026-11-21): the Root Canal labels
+    the folder reads -- DS, P-spike, Twilight Zone, outside -- as ids; left
+    out, the run's DS side, as every folder before them read. `entry` is
+    the bank bundle the run was banked as, {entry_id, version}, for the
+    family tree."""
     prov = prov or {}
+    src = {"artifact_id": wf.get("id"), "version": int(version),
+           "nickname": wf.get("nickname") or wf.get("name"),
+           "grace": run.get("grace"), "kind": run.get("kind")}
+    labs = clean_labels(run.get("kind"), labels)
+    if labs:
+        src["labels"] = labs
+        src["label_words"] = label_words(run.get("kind"), labs)
+    if entry and entry.get("entry_id"):
+        src["entry_id"] = entry["entry_id"]
+        if entry.get("version") is not None:
+            src["entry_version"] = entry["version"]
     return {
         "name": str(name or wf.get("nickname") or wf.get("name")
                     or wf.get("id")).strip(),
         "at": prov.get("at") or time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "by": prov.get("user"),
-        "source": {"artifact_id": wf.get("id"), "version": int(version),
-                   "nickname": wf.get("nickname") or wf.get("name"),
-                   "grace": run.get("grace"), "kind": run.get("kind")},
+        "source": src,
     }
 
 
-def inside_by_gid(run):
+# --------------------------------------------------------------------------
+# Labels (PROJECT EVOLVE phase 3, 2026-11-21: "X-ray on P-spike / Twilight
+# Zone labels, with a clear warning")
+# --------------------------------------------------------------------------
+def clean_labels(kind, labels):
+    """The label ids of `kind` asked for, in its own order; [] for none."""
+    from . import rcworkflow
+    if not labels or kind not in rcworkflow.BANK_LABELS:
+        return []
+    want = {str(x.get("id") if isinstance(x, dict) else x) for x in labels}
+    return [i for i, _w, _c in rcworkflow.BANK_LABELS[kind] if i in want]
+
+
+def label_words(kind, labels):
+    from . import rcworkflow
+    names = {i: w for i, w, _c in rcworkflow.BANK_LABELS.get(kind, ())}
+    return " + ".join(names.get(x, x) for x in labels or [])
+
+
+def labels_of(src):
+    """The label ids a folder's source reads; [] means its DS side."""
+    return list((src or {}).get("labels") or [])
+
+
+def is_ds_only(src):
+    labs = labels_of(src)
+    return not labs or labs == ["ds"]
+
+
+def type_prefix(src):
+    """What X-ray calls its two types in this folder: DS1 / DS2, or for a
+    folder of P-spikes, Rain's "P-spike 1 / P-spike 2"."""
+    return "P-spike " if labels_of(src) == ["pspike"] else "DS"
+
+
+def warning(src):
+    """The warning a folder of anything but dentate spikes carries."""
+    if is_ds_only(src):
+        return None
+    return ("X-ray was built for dentate spikes: its box, its sink rule and "
+            "its DS1/DS2 naming assume a dentate spike's current sinks. "
+            "This folder reads %s, so read every answer here as a "
+            "description, not as two kinds of %s."
+            % (src.get("label_words") or "other labels",
+               "P-spike" if labels_of(src) == ["pspike"] else "event"))
+
+
+def inside_by_gid(run, labels=None):
     """{gid: [t, ...]} -- each recording's events the run kept inside the
-    border, sorted. Times as the run rounded them (6 decimals)."""
+    border, sorted. Times as the run rounded them (6 decimals). With
+    `labels`, the events in those Root Canal labels instead."""
+    from . import rcworkflow
     cols = run.get("cols") or {}
     gids = cols.get("gids") or []
     # An Ambiguous run with a Halo (2026-11-12) gives its DS side: inside
     # the DS border only, and what the DS halo captured.
     keep = ({"ds", "halo_ds"} if run.get("kind") == "ambiguous"
             else {"inside"})
+    labs = clean_labels(run.get("kind"), labels)
+    if labs:
+        keep = {c for i, _w, cs in rcworkflow.BANK_LABELS[run["kind"]]
+                if i in labs for c in cs}
     out = {}
     for cls, g, t in zip(cols.get("cls") or [], cols.get("g") or [],
                          cols.get("t") or []):
@@ -146,17 +215,19 @@ def inside_by_gid(run):
 _MEMBERS = {}
 
 
-def members_of(aid, version, run):
+def members_of(aid, version, run, labels=None):
     """One row per recording of a run, with its kept stamps and their name.
 
-    `n` is how many events the run kept inside the border for it;
-    `stamps_hash` names that list (rootcanal.stamps_hash), and is what tells
-    this folder's read of the recording from another folder's."""
-    key = (aid, int(version), run.get("at"))
+    `n` is how many events the run kept inside the border for it (or in
+    the `labels` asked for); `stamps_hash` names that list
+    (rootcanal.stamps_hash), and is what tells this folder's read of the
+    recording from another folder's."""
+    labs = tuple(clean_labels(run.get("kind"), labels))
+    key = (aid, int(version), run.get("at"), labs)
     hit = _MEMBERS.get(key)
     if hit is not None:
         return [dict(m) for m in hit]
-    inside = inside_by_gid(run)
+    inside = inside_by_gid(run, list(labs))
     out, seen = [], set()
     rows = list(run.get("members") or [])
     rows += [{"gid": g} for g in inside if g not in

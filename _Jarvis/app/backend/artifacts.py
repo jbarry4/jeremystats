@@ -738,6 +738,33 @@ register_kind("extraction_impression", _impression_key,
               lambda s: list(s.get("gids") or []), "Impression")
 
 
+# CELLS (PROJECT EVOLVE phase 7, 2026-11-21): which cells one recording's
+# Kilosort sort holds, as one curator left them. One artifact per recording
+# and sort; each read of a source that differs -- Isabella's export, Phy's
+# labels, a later re-curation -- is a version. The cells' spike times stay in
+# the sort folder; a version names each cell's spikes by digest, so two
+# versions can be compared and a read can tell its folder has moved on.
+def _cellcur_key(subject):
+    _need(subject, ("gid", "run"), "cell curation")
+    return "cell_curation|%s|%s" % (subject["gid"], subject["run"])
+
+
+def _cellcur_summary(payload):
+    p = payload or {}
+    cells = p.get("cells") or []
+    return {"cells": len(cells),
+            "spikes": sum(int(c.get("n") or 0) for c in cells),
+            "source": (p.get("source") or {}).get("kind"),
+            "source_name": (p.get("source") or {}).get("name")}
+
+
+register_kind("cell_curation", _cellcur_key,
+              lambda s: "Cells · %s · %s" % (s.get("session_label")
+                                             or s.get("gid"), s.get("run")),
+              _cellcur_summary,
+              lambda s: [s["gid"]] if s.get("gid") else [], "cell curation")
+
+
 def subject_key(kind, subject):
     if kind not in KINDS:
         raise ArtifactError(

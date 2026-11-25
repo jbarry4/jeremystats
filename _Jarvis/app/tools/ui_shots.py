@@ -253,6 +253,9 @@ def main():
     ap.add_argument("--query", default="", help="extra ?query for the page")
     ap.add_argument("--menu", action="store_true",
                     help="let the start menu show (and shoot it); off by default")
+    ap.add_argument("--gpu", action="store_true",
+                    help="draw on the graphics card (ANGLE/D3D11) instead of "
+                         "the software rasterizer: for timing WebGL frames")
     ap.add_argument("--steps", default="",
                     help='JSON [[js, wait, settle], ...] run in order, then '
                          'one shot named --name')
@@ -274,7 +277,8 @@ def main():
     dbg = free_port()
     profile = tempfile.mkdtemp(prefix="jarvis-shots-")
     edge = subprocess.Popen([
-        EDGE, "--headless=new", "--disable-gpu", "--no-first-run",
+        EDGE, "--headless=new"] + (["--use-angle=d3d11", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader"]
+                                    if a.gpu else ["--disable-gpu"]) + ["--no-first-run",
         "--no-default-browser-check", "--hide-scrollbars",
         "--remote-allow-origins=*",
         "--remote-debugging-port=%d" % dbg, "--user-data-dir=" + profile,
@@ -331,14 +335,27 @@ def main():
                 # argument on its way to a native program.
                 with open(raw[1:], "r", encoding="utf-8") as fh:
                     raw = fh.read()
-            for js_, wait_, settle_ in json.loads(raw):
+            for step in json.loads(raw):
+                # [js, wait-for, settle] and, optionally, a 4th element: the
+                # name of a picture to take once the step has settled.
+                js_, wait_, settle_ = step[:3]
                 try:
-                    cdp.js(js_)
+                    got_ = cdp.js(js_)
+                    # A step can report: return a string that starts with
+                    # "@print" and the rest is printed whole (failures are
+                    # cut at 400 characters).
+                    if isinstance(got_, str) and got_.startswith("@print"):
+                        print("  " + got_[6:].strip())
                 except RuntimeError as exc:
                     print("  step failed: %s" % exc)
                 if not cdp.until(wait_ or "1", limit=30):
                     print("  step waited out: %s" % (wait_ or "")[:80])
                 cdp.pump(float(settle_ or 0.5))
+                if len(step) > 3 and step[3]:
+                    mid = os.path.join(out, "%s@%dx%d%s.png" % (
+                        step[3], w, h, ("-" + a.theme) if a.theme else ""))
+                    cdp.shot(mid)
+                    print("  %-22s %s" % (step[3], mid))
             path = os.path.join(out, "%s@%dx%d%s.png" % (
                 a.name, w, h, ("-" + a.theme) if a.theme else ""))
             cdp.shot(path)

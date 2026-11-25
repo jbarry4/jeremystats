@@ -1,0 +1,68 @@
+{
+ "cells": [
+  {
+   "binary_down": false,
+   "ch_index": 24,
+   "csc": 26,
+   "depth_um": 500.0,
+   "digest": "915bf3a034aa7231",
+   "first_s": 307.26014,
+   "id": 14,
+   "last_s": 1912.472365,
+   "layer": "dg_mml1",
+   "layer_color": "#33FFF6",
+   "layer_name": "DG MML1",
+   "n": 223,
+   "rate_hz": 0.112
+  },
+  {
+   "binary_down": true,
+   "ch_index": 52,
+   "csc": 55,
+   "depth_um": 1080.0,
+   "digest": "0ed1fc589494b678",
+   "first_s": 0.307398,
+   "id": 40,
+   "last_s": 1991.495685,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 2138,
+   "rate_hz": 1.074
+  },
+  {
+   "binary_down": false,
+   "ch_index": 54,
+   "csc": 57,
+   "depth_um": 1120.0,
+   "digest": "0585d3a71a1a2262",
+   "first_s": 4.235404,
+   "id": 44,
+   "last_s": 1988.080508,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 521,
+   "rate_hz": 0.262
+  }
+ ],
+ "exact_clusters": 3,
+ "layers_from": "the layer sheet (feeder sheet import)",
+ "polarity": {
+  "binary_down": 1,
+  "input_inverted": true,
+  "of": 3,
+  "ok": true,
+  "true_down": 2,
+  "words": "2 of 3 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage, as a spike should. The sort read is the non-inverted run, made on the binary as written."
+ },
+ "run": "kilosort_tl6_tu7_fs30000.0",
+ "run_dir": "D:\\PTEN\\PTEN\\m30_ptenblind\\m30s1jul1\\2024-07-01_13-58-59\\binary\\kilosort_tl6_tu7_fs30000.0",
+ "session_label": "PTEN m30 s1 2024-07-01",
+ "source": {
+  "kind": "export",
+  "name": "Isabella's export",
+  "path": "D:\\PTEN\\PTEN\\m30_ptenblind\\m30s1jul1\\2024-07-01_13-58-59\\timestamps"
+ },
+ "source_digest": "22e343c2aa857af8"
+}

@@ -89,6 +89,9 @@ class Data(object):
             m = base | np.char.startswith(fam.astype(str), "before/after")
         elif view in ("events_all", "everything"):
             m = np.ones(fam.size, bool)
+        elif view == "raw":
+            # the raw event only (2026-11-20): CSD, LFP, spectrogram, + the frozen type
+            m = np.isin(fam, ["raw CSD", "raw LFP", "raw spectrogram", "ds type"])
         else:
             m = np.zeros(fam.size, bool)
         return np.where(m)[0]
@@ -107,49 +110,52 @@ class Data(object):
         """Every event feature summarized per mouse: (matrix mice x columns, names, families, base event column)."""
         if self._pooled is not None:
             return self._pooled
-        nm = len(self.mice)
+        # Vectorized over features (2026-11-20, for the raw-event bundles with
+        # thousands of columns); the same numbers, in the same column order, as
+        # the loop it replaced: each statistic over a mouse's finite values,
+        # NaN with fewer than 5.
+        nm, F = len(self.mice), len(self.efeat)
         types = {k: self.X[:, self.efeat.index("type_" + k)] > 0.5 for k in ("ds1", "ds2", "ds3")}
+        is_type = np.array([f.startswith("type_") for f in self.efeat])
+        S = {s: np.full((nm, F), np.nan) for s in STATS}
+        T = {k: np.full((nm, F), np.nan) for k in types}
+        share = np.full((nm, F), np.nan)
+        for i in range(nm):
+            sel = self.bag == i
+            xi = self.X[sel]
+            if xi.shape[0] == 0:
+                continue
+            share[i] = np.nanmean(xi, axis=0)
+            n = np.isfinite(xi).sum(axis=0)
+            okc = n >= 5
+            if okc.any():
+                xo = xi[:, okc]
+                q10, q25, q50, q75, q90 = np.nanpercentile(xo, [10, 25, 50, 75, 90], axis=0)
+                S["median"][i, okc], S["iqr"][i, okc], S["p10"][i, okc], S["p90"][i, okc] = q50, q75 - q25, q10, q90
+                S["mean"][i, okc] = np.nanmean(xo, axis=0)
+                S["sd"][i, okc] = np.nanstd(xo, axis=0)
+            for k, tm in types.items():
+                xt = self.X[sel & tm]
+                if xt.shape[0] < 5:
+                    continue
+                nt = np.isfinite(xt).sum(axis=0) >= 5
+                if nt.any():
+                    T[k][i, nt] = np.nanmedian(xt[:, nt], axis=0)
         cols, names, fams, base = [], [], [], []
         for j, f in enumerate(self.efeat):
-            x = self.X[:, j]
-            if f.startswith("type_"):
-                v = np.array([np.nanmean(x[self.bag == i]) for i in range(nm)])
-                cols.append(v)
+            if is_type[j]:
+                cols.append(share[:, j])
                 names.append("share|" + f[5:])
                 fams.append("ds type")
                 base.append(j)
                 continue
             for s in STATS:
-                v = np.full(nm, np.nan)
-                for i in range(nm):
-                    xi = x[self.bag == i]
-                    xi = xi[np.isfinite(xi)]
-                    if xi.size < 5:
-                        continue
-                    if s == "median":
-                        v[i] = np.median(xi)
-                    elif s == "iqr":
-                        v[i] = np.subtract(*np.percentile(xi, [75, 25]))
-                    elif s == "mean":
-                        v[i] = xi.mean()
-                    elif s == "sd":
-                        v[i] = xi.std()
-                    elif s == "p10":
-                        v[i] = np.percentile(xi, 10)
-                    else:
-                        v[i] = np.percentile(xi, 90)
-                cols.append(v)
+                cols.append(S[s][:, j])
                 names.append("%s|%s" % (f, s))
                 fams.append(self.efam[j])
                 base.append(j)
-            for k, tm in types.items():
-                v = np.full(nm, np.nan)
-                for i in range(nm):
-                    xi = x[(self.bag == i) & tm]
-                    xi = xi[np.isfinite(xi)]
-                    if xi.size >= 5:
-                        v[i] = np.median(xi)
-                cols.append(v)
+            for k in types:
+                cols.append(T[k][:, j])
                 names.append("%s|%s_median" % (f, k))
                 fams.append(self.efam[j])
                 base.append(j)
@@ -169,7 +175,19 @@ class Data(object):
 
 
 def target(data, name):
-    """(mice used, y, task kind, cv scheme, class names)."""
+    """(mice used, y, task kind, cv scheme, class names).
+
+    A bundle cut down to one DS type (typed.restrict / typed.contrast) marks
+    in data.keep the mice with enough events; the others sit the target out."""
+    m_, y_, task_, scheme_, cls_ = _target(data, name)
+    keep = getattr(data, "keep", None)
+    if keep is not None:
+        ok = keep[m_]
+        m_, y_ = m_[ok], y_[ok]
+    return m_, y_, task_, scheme_, cls_
+
+
+def _target(data, name):
     g, s, ko = data.group, data.sub, data.ko
     allm = np.arange(len(data.mice))
     if name == "pten_vs_ctl":
@@ -401,21 +419,29 @@ def run_task(spec, log=print):
     """One leaderboard entry: target x view x model, with its explanation.
     spec: {target, view, model, amber_version, seed, n_shuffle, explain, out}."""
     from . import explain as EX
+    from . import typed as TY
     t0 = time.time()
+    if spec["target"] == "ds1_vs_ds2":
+        return TY.run_type12(spec, Data, log=log)
     data = Data(spec.get("amber_version"), spec.get("amber_root"))
-    tgt, view, model = spec["target"], spec["view"], spec["model"]
-    if model in SETNETS and view in ("mouse", "nuisance"):
+    tgt, full_view, model = spec["target"], spec["view"], spec["model"]
+    view, subset, is_contrast = TY.parse_view(full_view)
+    if model in SETNETS and (view in ("mouse", "nuisance") or is_contrast):
         return {"skipped": "the set networks read events; this view has none"}
+    if is_contrast:
+        data = TY.contrast(data)
+    elif subset:
+        data = TY.restrict(data, subset, seed=int(spec.get("seed", 0)))
     res = run_cv(data, tgt, view, model, seed=int(spec.get("seed", 0)), keep_models=True)
-    out = {"target": tgt, "view": view, "model": model, "amber_version": data.man["version"], "task": res["task"], "scheme": res["scheme"],
+    out = {"target": tgt, "view": full_view, "model": model, "amber_version": data.man["version"], "task": res["task"], "scheme": res["scheme"],
            "score": res["score"], "passes": passes(res["task"], res["score"]), "bar": BAR[res["task"]], "n_folds": len(res["folds"]),
-           "calls": [], "classes": res["classes"]}
+           "calls": [], "classes": res["classes"], "n_mice": int(len(res["mice"]))}
     for f, held in enumerate(res["folds"]):
         for k, i in enumerate(held):
             p = res["pred"][f][k]
             out["calls"].append({"fold": f, "lab": data.labs[res["mice"][i]], "truth": float(res["y"][i]),
                                  "call": p.tolist() if hasattr(p, "tolist") else float(p)})
-    log("%s %s %s: %s" % (tgt, view, model, json.dumps({k: round(v, 3) for k, v in res["score"].items()})))
+    log("%s %s %s: %s" % (tgt, full_view, model, json.dumps({k: round(v, 3) for k, v in res["score"].items()})))
     ns = int(spec.get("n_shuffle", 0))
     if ns:
         rng = np.random.default_rng(1000 + int(spec.get("seed", 0)))

@@ -1,0 +1,98 @@
+{
+ "cells": [
+  {
+   "binary_down": false,
+   "ch_index": 40,
+   "csc": 43,
+   "depth_um": 840.0,
+   "digest": "d431caf47e062978",
+   "first_s": 17.424573,
+   "id": 21,
+   "last_s": 946.429617,
+   "layer": null,
+   "layer_color": null,
+   "layer_name": null,
+   "n": 400,
+   "rate_hz": 0.419
+  },
+  {
+   "binary_down": false,
+   "ch_index": 43,
+   "csc": 46,
+   "depth_um": 900.0,
+   "digest": "2258a912d3d1b689",
+   "first_s": 0.035967,
+   "id": 22,
+   "last_s": 954.025372,
+   "layer": null,
+   "layer_color": null,
+   "layer_name": null,
+   "n": 3330,
+   "rate_hz": 3.49
+  },
+  {
+   "binary_down": false,
+   "ch_index": 47,
+   "csc": 50,
+   "depth_um": 980.0,
+   "digest": "b963ee20381b5f3d",
+   "first_s": 0.893432,
+   "id": 26,
+   "last_s": 937.010532,
+   "layer": null,
+   "layer_color": null,
+   "layer_name": null,
+   "n": 239,
+   "rate_hz": 0.25
+  },
+  {
+   "binary_down": false,
+   "ch_index": 51,
+   "csc": 54,
+   "depth_um": 1060.0,
+   "digest": "ae160b640e4d525a",
+   "first_s": 0.007733,
+   "id": 29,
+   "last_s": 954.010005,
+   "layer": null,
+   "layer_color": null,
+   "layer_name": null,
+   "n": 6059,
+   "rate_hz": 6.35
+  },
+  {
+   "binary_down": false,
+   "ch_index": 49,
+   "csc": 52,
+   "depth_um": 1020.0,
+   "digest": "f3bd97079f21a9a5",
+   "first_s": 0.673932,
+   "id": 31,
+   "last_s": 953.891205,
+   "layer": null,
+   "layer_color": null,
+   "layer_name": null,
+   "n": 7944,
+   "rate_hz": 8.326
+  }
+ ],
+ "exact_clusters": 5,
+ "layers_from": null,
+ "polarity": {
+  "binary_down": 0,
+  "input_inverted": true,
+  "of": 5,
+  "ok": true,
+  "true_down": 5,
+  "words": "5 of 5 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage, as a spike should. The sort read is the non-inverted run, made on the binary as written."
+ },
+ "run": "kilosort_tl6_tu7_fs30000.0",
+ "run_dir": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m22_ptenblind\\m22s7jul15\\2024-07-15_18-22-17\\binary\\kilosort_tl6_tu7_fs30000.0",
+ "session_label": "PTEN m22 s7",
+ "source": {
+  "kind": "export",
+  "name": "Isabella's export",
+  "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m22_ptenblind\\m22s7jul15\\2024-07-15_18-22-17\\timestamps"
+ },
+ "source_digest": "dc3b9995f55cb9be"
+}

@@ -1,0 +1,53 @@
+{
+ "cells": [
+  {
+   "binary_down": false,
+   "ch_index": 55,
+   "csc": 58,
+   "depth_um": 1140.0,
+   "digest": "a1cbbe37bb26caf9",
+   "first_s": 237.840038,
+   "id": 45,
+   "last_s": 1190.732823,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 285,
+   "rate_hz": 0.237
+  },
+  {
+   "binary_down": false,
+   "ch_index": 56,
+   "csc": 60,
+   "depth_um": 1180.0,
+   "digest": "cac55c02acd5af19",
+   "first_s": 0.898966,
+   "id": 51,
+   "last_s": 1201.130819,
+   "layer": "dg_oml2",
+   "layer_color": "#8B4513",
+   "layer_name": "DG OML2",
+   "n": 14946,
+   "rate_hz": 12.438
+  }
+ ],
+ "exact_clusters": 2,
+ "layers_from": "the layer sheet (feeder sheet import)",
+ "polarity": {
+  "binary_down": 0,
+  "input_inverted": true,
+  "of": 2,
+  "ok": true,
+  "true_down": 2,
+  "words": "2 of 2 cells swing up in the binary (Neuralynx recorded it with its input inverted), so they swing down in true voltage, as a spike should. The sort read is the non-inverted run, made on the binary as written."
+ },
+ "run": "kilosort_tl6_tu7_fs30000.0",
+ "run_dir": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23\\binary\\kilosort_tl6_tu7_fs30000.0",
+ "session_label": "PTEN m3 s7 2023-09-22",
+ "source": {
+  "kind": "export",
+  "name": "Isabella's export",
+  "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23\\timestamps"
+ },
+ "source_digest": "7f6acb1268bba2d7"
+}

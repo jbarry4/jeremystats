@@ -1,0 +1,1283 @@
+{
+ "ran": "2026-11-20",
+ "connections": {
+  "ctx_per": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "5 Allen experiments injected in TEa; median projection density in PERI 0.0015 (cerebellum control 0.0000); 1 of 5 at or above 0.002.",
+   "median": 0.00147,
+   "control": 0.0,
+   "n": 5,
+   "top": [
+    {
+     "id": 521617657,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0048
+    },
+    {
+     "id": 569623967,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0015
+    },
+    {
+     "id": 529428776,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0015
+    },
+    {
+     "id": 292208876,
+     "line": "Chrna2-Cre_OE25",
+     "density": 0.0007
+    },
+    {
+     "id": 603890605,
+     "line": "Ntsr1-Cre_GN220",
+     "density": 0.0001
+    }
+   ],
+   "spec": [
+    "TEa",
+    "PERI"
+   ]
+  },
+  "ctx_por": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "283 Allen experiments injected in VISp; median projection density in VISpor 0.0022 (cerebellum control 0.0000); 145 of 283 at or above 0.002.",
+   "median": 0.00217,
+   "control": 2e-05,
+   "n": 283,
+   "top": [
+    {
+     "id": 180296424,
+     "line": "wild type",
+     "density": 0.4683
+    },
+    {
+     "id": 309004492,
+     "line": "wild type",
+     "density": 0.3456
+    },
+    {
+     "id": 127138787,
+     "line": "wild type",
+     "density": 0.2238
+    },
+    {
+     "id": 307743253,
+     "line": "wild type",
+     "density": 0.2158
+    },
+    {
+     "id": 512315551,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.2016
+    }
+   ],
+   "spec": [
+    "VISp",
+    "VISpor"
+   ]
+  },
+  "per_lec": {
+   "status": "untested",
+   "evidence": "allen",
+   "detail": "No Allen experiment has its primary injection in PERI.",
+   "spec": [
+    "PERI",
+    "ENTl"
+   ]
+  },
+  "por_mec": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "36 Allen experiments injected in VISpor; median projection density in ENTm 0.0011 (cerebellum control 0.0000); 16 of 36 at or above 0.002.",
+   "median": 0.0011,
+   "control": 5e-05,
+   "n": 36,
+   "top": [
+    {
+     "id": 657172447,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.0309
+    },
+    {
+     "id": 127089669,
+     "line": "wild type",
+     "density": 0.0201
+    },
+    {
+     "id": 298178204,
+     "line": "Rbp4-Cre_KL100",
+     "density": 0.0167
+    },
+    {
+     "id": 293470216,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0152
+    },
+    {
+     "id": 661987195,
+     "line": "Rbp4-Cre_KL100",
+     "density": 0.0134
+    }
+   ],
+   "spec": [
+    "VISpor",
+    "ENTm"
+   ]
+  },
+  "lpp": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in DG-mo 0.0062 (cerebellum control 0.0000); 28 of 47 at or above 0.002.",
+   "median": 0.00625,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 146553971,
+     "line": "wild type",
+     "density": 0.1315
+    },
+    {
+     "id": 263974698,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.1122
+    },
+    {
+     "id": 301264977,
+     "line": "Gpr26-Cre_KO250",
+     "density": 0.1101
+    },
+    {
+     "id": 126116848,
+     "line": "wild type",
+     "density": 0.0941
+    },
+    {
+     "id": 287769992,
+     "line": "Scnn1a-Tg3-Cre",
+     "density": 0.0776
+    }
+   ],
+   "spec": [
+    "ENTl",
+    "DG-mo"
+   ]
+  },
+  "mpp": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in DG-mo 0.0226 (cerebellum control 0.0000); 35 of 45 at or above 0.002.",
+   "median": 0.02256,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 603468246,
+     "line": "Emx1-IRES-Cre",
+     "density": 0.1592
+    },
+    {
+     "id": 181859467,
+     "line": "Cux2-CreERT2",
+     "density": 0.1449
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.1337
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.0997
+    },
+    {
+     "id": 287953223,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0977
+    }
+   ],
+   "spec": [
+    "ENTm",
+    "DG-mo"
+   ]
+  },
+  "pp_ca3": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in CA3 0.0055 (cerebellum control 0.0000); 25 of 45 at or above 0.002.",
+   "median": 0.00553,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.058
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.0455
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.0393
+    },
+    {
+     "id": 112672974,
+     "line": "wild type",
+     "density": 0.0383
+    },
+    {
+     "id": 518745840,
+     "line": "Grp-Cre_KH288",
+     "density": 0.0268
+    }
+   ],
+   "spec": [
+    "ENTm",
+    "CA3"
+   ]
+  },
+  "pp_ca2": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in CA2 0.0129 (cerebellum control 0.0000); 33 of 45 at or above 0.002.",
+   "median": 0.0129,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.1059
+    },
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.0977
+    },
+    {
+     "id": 518745840,
+     "line": "Grp-Cre_KH288",
+     "density": 0.0758
+    },
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.0621
+    },
+    {
+     "id": 626107114,
+     "line": "wild type",
+     "density": 0.0599
+    }
+   ],
+   "spec": [
+    "ENTm",
+    "CA2"
+   ]
+  },
+  "ta": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in CA1 0.0109 (cerebellum control 0.0000); 33 of 47 at or above 0.002.",
+   "median": 0.01088,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 114472145,
+     "line": "wild type",
+     "density": 0.0864
+    },
+    {
+     "id": 272414403,
+     "line": "wild type",
+     "density": 0.0625
+    },
+    {
+     "id": 142654100,
+     "line": "wild type",
+     "density": 0.0594
+    },
+    {
+     "id": 263974698,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.0568
+    },
+    {
+     "id": 126116848,
+     "line": "wild type",
+     "density": 0.0546
+    }
+   ],
+   "spec": [
+    "ENTl",
+    "CA1"
+   ]
+  },
+  "ec3_sub": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "45 Allen experiments injected in ENTm; median projection density in SUB 0.0275 (cerebellum control 0.0000); 38 of 45 at or above 0.002.",
+   "median": 0.02753,
+   "control": 1e-05,
+   "n": 45,
+   "top": [
+    {
+     "id": 113226232,
+     "line": "wild type",
+     "density": 0.1735
+    },
+    {
+     "id": 640282128,
+     "line": "wild type",
+     "density": 0.1616
+    },
+    {
+     "id": 127139568,
+     "line": "wild type",
+     "density": 0.1541
+    },
+    {
+     "id": 287953223,
+     "line": "Cux2-IRES-Cre",
+     "density": 0.1082
+    },
+    {
+     "id": 178488859,
+     "line": "Satb2-Cre_MO23",
+     "density": 0.1009
+    }
+   ],
+   "spec": [
+    "ENTm",
+    "SUB"
+   ]
+  },
+  "pp_pv": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mf_ca3": {
+   "status": "supported",
+   "evidence": "tracings",
+   "n": 21,
+   "k": 21,
+   "median": 0.484,
+   "detail": "21 of 21 registered MouseLight gc tracings put at least 25% of their axon in ca3so, ca3sp, ca3slu, ca3sr, CA3 (median 48%). The exemplar shown (AA0573): 34%."
+  },
+  "mf_mc": {
+   "status": "supported",
+   "evidence": "tracings",
+   "n": 21,
+   "k": 13,
+   "median": 0.118,
+   "detail": "13 of 21 registered MouseLight gc tracings put at least 10% of their axon in hil (median 12%). The exemplar shown (AA0573): 44%."
+  },
+  "mf_int": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "gc_pv": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mc_gc": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "mc_int": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "hipp_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.406,
+   "detail": "41% of 14.9 mm of axon in oml1, mml1, oml2, mml2 (needs 30%); placement only: HIPP1 was traced in a slice and placed here by fit."
+  },
+  "pv_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.878,
+   "detail": "88% of 20.4 mm of axon in gcl1, gcl2 (needs 50%); placement only: class-BC1 was traced in a slice and placed here by fit."
+  },
+  "aac_gc": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.987,
+   "detail": "99% of 24.1 mm of axon in gcl1, gcl2, hil (needs 50%); placement only: 082113-1COMAACscale was traced in a slice and placed here by fit."
+  },
+  "sgc_hil": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.376,
+   "detail": "38% of 3.7 mm of axon in hil, ca3slu, ca3sp (needs 20%); placement only: Anstoetz_Toolbox-SL1 was traced in a slice and placed here by fit."
+  },
+  "rc": {
+   "status": "supported",
+   "evidence": "tracings",
+   "n": 6,
+   "k": 6,
+   "median": 0.107,
+   "detail": "6 of 6 registered MouseLight ca3 tracings put at least 5% of their axon in ca3so, ca3sr, ca3sp, ca3slu, CA3 (median 11%). The exemplar shown (AA0307): 59%."
+  },
+  "sc": {
+   "status": "supported",
+   "evidence": "tracings",
+   "n": 6,
+   "k": 4,
+   "median": 0.551,
+   "detail": "4 of 6 registered MouseLight ca3 tracings put at least 30% of their axon in ca1so, ca1sr, ca1sp, ca1slm, CA1 (median 55%). The exemplar shown (AA0307): 10%."
+  },
+  "sc_allen": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "29 Allen experiments injected in CA3; median projection density in CA1 0.0791 (cerebellum control 0.0000); 26 of 29 at or above 0.002.",
+   "median": 0.07909,
+   "control": 3e-05,
+   "n": 29,
+   "top": [
+    {
+     "id": 177606858,
+     "line": "Grik4-Cre",
+     "density": 0.3473
+    },
+    {
+     "id": 113935285,
+     "line": "wild type",
+     "density": 0.3359
+    },
+    {
+     "id": 114429338,
+     "line": "wild type",
+     "density": 0.3118
+    },
+    {
+     "id": 177780284,
+     "line": "Grik4-Cre",
+     "density": 0.3026
+    },
+    {
+     "id": 112745073,
+     "line": "wild type",
+     "density": 0.2954
+    }
+   ],
+   "spec": [
+    "CA3",
+    "CA1"
+   ]
+  },
+  "back": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "ca2_ca1": {
+   "status": "untested",
+   "evidence": "allen",
+   "detail": "No Allen experiment has its primary injection in CA2.",
+   "spec": [
+    "CA2",
+    "CA1"
+   ]
+  },
+  "ca1_olm": {
+   "status": "supported",
+   "evidence": "tracings",
+   "n": 12,
+   "k": 9,
+   "median": 0.157,
+   "detail": "9 of 12 registered MouseLight ca1 tracings put at least 10% of their axon in ca1so, alv (median 16%). The exemplar shown (AA0306): 7%."
+  },
+  "olm_ca1": {
+   "status": "consistent",
+   "evidence": "slice",
+   "fraction": 0.54,
+   "detail": "54% of 13.1 mm of axon in ca1slm (needs 40%); placement only: cell-pair-02-12-10-A_file2 was traced in a slice and placed here by fit."
+  },
+  "ca1_sub": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "33 Allen experiments injected in CA1; median projection density in SUB 0.0234 (cerebellum control 0.0000); 30 of 33 at or above 0.002.",
+   "median": 0.02339,
+   "control": 1e-05,
+   "n": 33,
+   "top": [
+    {
+     "id": 120436274,
+     "line": "wild type",
+     "density": 0.1027
+    },
+    {
+     "id": 267104205,
+     "line": "Slc17a7-IRES2-Cre",
+     "density": 0.0889
+    },
+    {
+     "id": 116900714,
+     "line": "wild type",
+     "density": 0.0803
+    },
+    {
+     "id": 301130077,
+     "line": "Drd3-Cre_KI198",
+     "density": 0.0792
+    },
+    {
+     "id": 516526160,
+     "line": "Chrnb4-Cre_OL57",
+     "density": 0.0747
+    }
+   ],
+   "spec": [
+    "CA1",
+    "SUB"
+   ]
+  },
+  "ca1_ec5": {
+   "status": "weak",
+   "evidence": "allen",
+   "detail": "33 Allen experiments injected in CA1; median projection density in ENTl 0.0016 (cerebellum control 0.0000); 16 of 33 at or above 0.002.",
+   "median": 0.00164,
+   "control": 1e-05,
+   "n": 33,
+   "top": [
+    {
+     "id": 286610923,
+     "line": "Syt17-Cre_NO14",
+     "density": 0.0673
+    },
+    {
+     "id": 182226839,
+     "line": "Vipr2-Cre_KE2",
+     "density": 0.0374
+    },
+    {
+     "id": 286610216,
+     "line": "Syt17-Cre_NO14",
+     "density": 0.033
+    },
+    {
+     "id": 516526160,
+     "line": "Chrnb4-Cre_OL57",
+     "density": 0.0211
+    },
+    {
+     "id": 181093729,
+     "line": "Etv1-CreERT2",
+     "density": 0.0135
+    }
+   ],
+   "spec": [
+    "CA1",
+    "ENTl"
+   ]
+  },
+  "sub_ec5": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in ENTm 0.0101 (cerebellum control 0.0000); 25 of 30 at or above 0.002.",
+   "median": 0.0101,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 159374329,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.113
+    },
+    {
+     "id": 267747690,
+     "line": "Grm2-Cre_MR90",
+     "density": 0.0768
+    },
+    {
+     "id": 506426778,
+     "line": "Gpr26-Cre_KO250",
+     "density": 0.0686
+    },
+    {
+     "id": 485929089,
+     "line": "Ai75(RCL-nT)",
+     "density": 0.0673
+    },
+    {
+     "id": 550155867,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.0568
+    }
+   ],
+   "spec": [
+    "SUB",
+    "ENTm"
+   ]
+  },
+  "sub_pre": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in PRE 0.0221 (cerebellum control 0.0000); 26 of 30 at or above 0.002.",
+   "median": 0.02213,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 556343427,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.4194
+    },
+    {
+     "id": 152994878,
+     "line": "wild type",
+     "density": 0.3474
+    },
+    {
+     "id": 127222723,
+     "line": "wild type",
+     "density": 0.3128
+    },
+    {
+     "id": 550155867,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.2435
+    },
+    {
+     "id": 550892495,
+     "line": "Trib2-F2A-CreERT2",
+     "density": 0.2339
+    }
+   ],
+   "spec": [
+    "SUB",
+    "PRE"
+   ]
+  },
+  "sub_subc": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "30 Allen experiments injected in SUB; median projection density in MBO 0.0211 (cerebellum control 0.0000); 22 of 30 at or above 0.002.",
+   "median": 0.02114,
+   "control": 2e-05,
+   "n": 30,
+   "top": [
+    {
+     "id": 127795906,
+     "line": "wild type",
+     "density": 0.2741
+    },
+    {
+     "id": 556343427,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.2651
+    },
+    {
+     "id": 152994878,
+     "line": "wild type",
+     "density": 0.2088
+    },
+    {
+     "id": 127222723,
+     "line": "wild type",
+     "density": 0.1565
+    },
+    {
+     "id": 159374329,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.1477
+    }
+   ],
+   "spec": [
+    "SUB",
+    "MBO"
+   ]
+  },
+  "pre_mec": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "7 Allen experiments injected in PRE; median projection density in ENTm 0.0803 (cerebellum control 0.0000); 5 of 7 at or above 0.002.",
+   "median": 0.08034,
+   "control": 0.0,
+   "n": 7,
+   "top": [
+    {
+     "id": 146984915,
+     "line": "wild type",
+     "density": 0.1117
+    },
+    {
+     "id": 287172689,
+     "line": "Grm2-Cre_MR90",
+     "density": 0.0921
+    },
+    {
+     "id": 292530653,
+     "line": "Wfs1-Tg2-CreERT2",
+     "density": 0.0822
+    },
+    {
+     "id": 302084009,
+     "line": "Slc17a6-IRES-Cre",
+     "density": 0.0803
+    },
+    {
+     "id": 287772112,
+     "line": "Scnn1a-Tg3-Cre",
+     "density": 0.0666
+    }
+   ],
+   "spec": [
+    "PRE",
+    "ENTm"
+   ]
+  },
+  "ec5_ec2": {
+   "status": "cited",
+   "evidence": "literature",
+   "detail": "Cited, not tested: no public dataset here can test this one."
+  },
+  "ec5_ctx": {
+   "status": "supported",
+   "evidence": "allen",
+   "detail": "47 Allen experiments injected in ENTl; median projection density in PERI 0.0265 (cerebellum control 0.0000); 39 of 47 at or above 0.002.",
+   "median": 0.02648,
+   "control": 2e-05,
+   "n": 47,
+   "top": [
+    {
+     "id": 114472145,
+     "line": "wild type",
+     "density": 0.4114
+    },
+    {
+     "id": 146553971,
+     "line": "wild type",
+     "density": 0.375
+    },
+    {
+     "id": 127397469,
+     "line": "wild type",
+     "density": 0.3101
+    },
+    {
+     "id": 142654100,
+     "line": "wild type",
+     "density": 0.2185
+    },
+    {
+     "id": 180297139,
+     "line": "wild type",
+     "density": 0.2003
+    }
+   ],
+   "spec": [
+    "ENTl",
+    "PERI"
+   ]
+  }
+ },
+ "cells": {
+  "fan": {
+   "type": "fan",
+   "soma": "ENTl2",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ENTl2 (CCF 9985, 4044, 10149 um), as expected.",
+    "Dendrites reach layer I (41%), as fan cells do."
+   ],
+   "identity": "consistent",
+   "story": {}
+  },
+  "gc": {
+   "type": "gc",
+   "soma": "gcl2",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in gcl2 (CCF 8498, 2779, 7902 um), as expected.",
+    "Its dendrite meets fan's axon in mml2: 6.6 um apart where traced; moved 6.6 um to touch (registration between brains is good to about 50-100 um)."
+   ],
+   "story": {
+    "meets": "fan",
+    "gap_um": 6.6,
+    "shift_um": [
+     5.26,
+     -3.04,
+     2.49
+    ],
+    "moved": true,
+    "up_node": 2143,
+    "node": 127,
+    "at_um": [
+     8463.4,
+     2880.6,
+     7793.7
+    ],
+    "layer": "mml2"
+   }
+  },
+  "ca3": {
+   "type": "ca3",
+   "soma": "ca3sp",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ca3sp (CCF 7625, 3218, 8661 um), as expected.",
+    "Its dendrite meets gc's axon in ca3slu: 12.6 um apart where traced; moved 12.6 um to touch (registration between brains is good to about 50-100 um)."
+   ],
+   "story": {
+    "meets": "gc",
+    "gap_um": 12.6,
+    "shift_um": [
+     5.12,
+     -10.48,
+     -4.67
+    ],
+    "moved": true,
+    "up_node": 87,
+    "node": 278,
+    "at_um": [
+     7735.2,
+     3151.0,
+     8603.3
+    ],
+    "layer": "ca3slu"
+   }
+  },
+  "ca1": {
+   "type": "ca1",
+   "soma": "ca1sp",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ca1sp (CCF 7818, 2658, 9087 um), as expected.",
+    "Its dendrite meets ca3's axon in ca1so: 53.4 um apart where traced; moved 53.4 um to touch (registration between brains is good to about 50-100 um)."
+   ],
+   "story": {
+    "meets": "ca3",
+    "gap_um": 53.4,
+    "shift_um": [
+     -24.31,
+     -47.39,
+     3.88
+    ],
+    "moved": true,
+    "up_node": 2313,
+    "node": 285,
+    "at_um": [
+     7761.2,
+     2545.1,
+     9058.7
+    ],
+    "layer": "ca1so"
+   }
+  },
+  "ca3_b": {
+   "type": "ca3",
+   "soma": "ca3slu",
+   "soma_ok": false,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ca3slu (CCF 8128, 3288, 8613 um), NOT where this type lives.",
+    "Its dendrite meets ca3's axon in ca3sr: 4.6 um apart where traced; moved 4.6 um to touch (registration between brains is good to about 50-100 um)."
+   ],
+   "story": {
+    "meets": "ca3",
+    "gap_um": 4.6,
+    "shift_um": [
+     0.9,
+     4.51,
+     0.51
+    ],
+    "moved": true,
+    "up_node": 2488,
+    "node": 156,
+    "at_um": [
+     7932.4,
+     3143.9,
+     8632.9
+    ],
+    "layer": "ca3sr"
+   }
+  },
+  "fan_b": {
+   "type": "fan",
+   "soma": "ENTl2",
+   "soma_ok": true,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in ENTl2 (CCF 9895, 3402, 10052 um), as expected.",
+    "Dendrites reach layer I (34%), as fan cells do."
+   ],
+   "identity": "consistent",
+   "story": {}
+  },
+  "gc_b": {
+   "type": "gc",
+   "soma": "iml2",
+   "soma_ok": false,
+   "kind": "ccf",
+   "notes": [
+    "Soma lands in iml2 (CCF 7629, 2514, 7116 um), NOT where this type lives."
+   ],
+   "story": {}
+  },
+  "mc": {
+   "type": "mc",
+   "soma": "hil",
+   "soma_ok": true,
+   "kind": "drawn",
+   "notes": [],
+   "identity": "drawn",
+   "story": {
+    "drawn": true,
+    "thorn_on": [
+     "gc",
+     40
+    ],
+    "reaches": [
+     "gc_b",
+     6
+    ],
+    "thorn_um": [
+     8429.9,
+     2708.3,
+     8017.1
+    ],
+    "reach_um": [
+     7858.2,
+     2402.4,
+     7130.3
+    ]
+   }
+  },
+  "hipp": {
+   "type": "hipp",
+   "soma": "hil",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.68 of 1.1): soma in hil.",
+    "Placed so its axon reaches gc's dendrite (moved 1.9 um after the layer fit)."
+   ],
+   "story": {
+    "reaches": "gc",
+    "what": "dend",
+    "gap_um": 1.9,
+    "shift_um": [
+     -0.1,
+     1.9,
+     0.36
+    ],
+    "moved": true,
+    "node": 1872,
+    "target_node": 116,
+    "at_um": [
+     8463.5,
+     2934.8,
+     7816.5
+    ]
+   }
+  },
+  "pvbc": {
+   "type": "pvbc",
+   "soma": "gcl2",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.94 of 1.1): soma in gcl2.",
+    "Placed so its axon reaches gc's soma (moved 5.4 um after the layer fit)."
+   ],
+   "story": {
+    "reaches": "gc",
+    "what": "soma",
+    "gap_um": 5.4,
+    "shift_um": [
+     -3.81,
+     3.69,
+     0.96
+    ],
+    "moved": true,
+    "node": 2813,
+    "target_node": 0,
+    "at_um": [
+     8494.1,
+     2783.2,
+     7902.8
+    ]
+   }
+  },
+  "aac": {
+   "type": "aac",
+   "soma": "gcl2",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.94 of 1.1): soma in gcl2.",
+    "Placed so its axon reaches gc's axon initial segment (moved 1.3 um after the layer fit)."
+   ],
+   "story": {
+    "reaches": "gc",
+    "what": "ais",
+    "gap_um": 1.3,
+    "shift_um": [
+     0.24,
+     -1.01,
+     0.72
+    ],
+    "moved": true,
+    "node": 3688,
+    "target_node": 1,
+    "at_um": [
+     8479.8,
+     2795.7,
+     7899.3
+    ]
+   }
+  },
+  "sgc": {
+   "type": "sgc",
+   "soma": "iml2",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.67 of 1.1): soma in iml2."
+   ],
+   "story": {}
+  },
+  "olm": {
+   "type": "olm",
+   "soma": "ca1so",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 0.89 of 1.1): soma in ca1so.",
+    "Placed so its axon reaches ca1's dendrite (moved 83.3 um after the layer fit)."
+   ],
+   "story": {
+    "reaches": "ca1",
+    "what": "dend",
+    "gap_um": 83.3,
+    "shift_um": [
+     -69.03,
+     34.51,
+     -31.46
+    ],
+    "moved": true,
+    "node": 1593,
+    "target_node": 154,
+    "at_um": [
+     8024.5,
+     2881.1,
+     8883.5
+    ]
+   }
+  },
+  "stel": {
+   "type": "stel",
+   "soma": "ENTm2",
+   "soma_ok": true,
+   "kind": "slice",
+   "notes": [
+    "Placed by fit (score 1.04 of 1.1): soma in ENTm2."
+   ],
+   "story": {}
+  }
+ },
+ "lamina": [
+  {
+   "layer": "gcl1",
+   "vs": [
+    "iml1",
+    "hil",
+    "mml1"
+   ],
+   "ratio": 1.28,
+   "ok": true,
+   "detail": "Mean Nissl in gcl1 is 1.28x the densest of iml1, hil, mml1."
+  },
+  {
+   "layer": "gcl2",
+   "vs": [
+    "iml2",
+    "hil",
+    "mml2"
+   ],
+   "ratio": 1.17,
+   "ok": true,
+   "detail": "Mean Nissl in gcl2 is 1.17x the densest of iml2, hil, mml2."
+  },
+  {
+   "layer": "ca1sp",
+   "vs": [
+    "ca1so",
+    "ca1sr"
+   ],
+   "ratio": 2.43,
+   "ok": true,
+   "detail": "Mean Nissl in ca1sp is 2.43x the densest of ca1so, ca1sr."
+  },
+  {
+   "layer": "ca3sp",
+   "vs": [
+    "ca3so",
+    "ca3slu",
+    "ca3sr"
+   ],
+   "ratio": 2.58,
+   "ok": true,
+   "detail": "Mean Nissl in ca3sp is 2.58x the densest of ca3so, ca3slu, ca3sr."
+  },
+  {
+   "layer": "ca2sp",
+   "vs": [
+    "ca2so",
+    "ca2sr"
+   ],
+   "ratio": 3.53,
+   "ok": true,
+   "detail": "Mean Nissl in ca2sp is 3.53x the densest of ca2so, ca2sr."
+  }
+ ],
+ "findings": [
+  {
+   "about": "nissl",
+   "text": "The real 10 um Allen Nissl agrees with the 25 um stain the layers were derived from (r = 0.98), and the derived pyramidal layers sit on its dense band: mean 185 in CA1 sp against a field median of 53, 219 against 63 in CA3."
+  },
+  {
+   "about": "chain",
+   "text": "Four MouseLight tracings from different mice touch where they are registered: LEC AA1047 to granule cell AA0573 to CA3 AA0307 to CA1, found by surveying 656 registered hippocampal and entorhinal tracings (tools/seahorse/survey.py). The rides run on them."
+  },
+  {
+   "about": "ca1",
+   "text": "MouseLight AA0621 touches CA3 AA0307 more closely (11 um) but 92% of its dendrites lie in the corpus callosum, not CA1; AA0306 (94% in CA1 strata) is used, moved 53 um."
+  },
+  {
+   "about": "ec",
+   "text": "The SEU-ALLEN entorhinal tracings on NeuroMorpho (Peng archive, 321 layer II/III cells) have dendrites only, despite their metadata; no public registered MEC layer II axon exists, so the medial perforant path is drawn along its atlas route."
+  },
+  {
+   "about": "fan",
+   "text": "The LEC cell AA1047 puts more of its axon in the derived middle third (MML) than the outer third; either the thirds (by depth) sit off the real lateral/medial boundary here, or this cell is near the LEC/MEC border (its dendrites reach MEC layer I)."
+  },
+  {
+   "about": "gc",
+   "text": "NeuroMorpho lists MouseLight AA0998 as a dentate granule cell, but its axon is 186 mm long and stays in the molecular layer; real MouseLight granule cells have 3-5 mm axons through the hilus into CA3. AA0998 is not used."
+  },
+  {
+   "about": "ccf",
+   "text": "MouseLight source files are (ML, DV, AP); SEU-ALLEN (Peng) files are (AP, DV, ML). Found by checking which order puts each soma in the region its authors named."
+  },
+  {
+   "about": "ca1",
+   "text": "MouseLight AA0960, listed as CA1, has its soma in CA3 by the CCFv3 annotation (near the border); AA0959 (soma in CA1 sp) is used instead."
+  },
+  {
+   "about": "mc",
+   "text": "No mouse or rat mossy-cell tracing is on NeuroMorpho.Org (searched 2026-11-20), and none of the 19 registered hilar cells surveyed has a mossy-cell axon (mostly to the inner molecular layer); the mossy cell is drawn from published descriptions."
+  },
+  {
+   "about": "ca",
+   "text": "CCFv3 does not annotate CA strata or the thirds of the molecular layer; Seahorse derives them (see each layer), and the Nissl test above is how they are checked."
+  }
+ ],
+ "method": "Seahorse auto cross-check: test what the schematic claims against data.\n\n    python tools/seahorse/crosscheck.py      -> web/seahorse/checks.json\n\nThree kinds of test, each with a verdict the tab shows beside the claim:\n\n  Allen connectivity   for a region-level connection A -> B: every Allen\n                       Mouse Connectivity experiment whose primary injection\n                       is in A; projection density in B (both hemispheres)\n                       against the same experiments' density in cerebellum\n                       (a structure none of these project to). supported if\n                       the median is >= 0.002 and >= 5x the control.\n  tracings             for a cell-level connection: the share of the\n                       exemplar's axon (or dendrite) length in the layers the\n                       claim names. 'evidence' when the tracing was registered\n                       to CCF by its authors; 'placement' when the cell was\n                       traced in a slice and placed here by fit -- then it only\n                       says the placement is sane.\n  laminae vs Nissl     each derived layer's mean Nissl density: granule and\n                       pyramidal layers must be denser than their neighbors.\n\nPlus findings: things the checks turned up about the sources themselves.",
+ "nissl_source": "Allen ARA Nissl at 10 um",
+ "nissl_means": {
+  "oml1": 52.5,
+  "mml1": 50.9,
+  "iml1": 83.4,
+  "gcl1": 192.2,
+  "hil": 150.5,
+  "gcl2": 176.1,
+  "iml2": 68.2,
+  "mml2": 54.2,
+  "oml2": 62.6,
+  "ca1so": 75.8,
+  "ca1sp": 184.5,
+  "ca1sr": 51.3,
+  "ca1slm": 47.5,
+  "ca2so": 54.4,
+  "ca2sp": 191.8,
+  "ca2sr": 49.5,
+  "ca2slm": 43.2,
+  "ca3so": 77.8,
+  "ca3sp": 218.8,
+  "ca3slu": 84.7,
+  "ca3sr": 46.7,
+  "ca3slm": 46.4,
+  "sub": 88.0,
+  "pros": 75.9,
+  "fc": 102.7,
+  "ig": 79.5,
+  "alv": 62.9,
+  "fi": 62.6
+ },
+ "contacts": [
+  {
+   "post": "gc",
+   "pre": "fan",
+   "gap_um": 6.6,
+   "moved_um": 6.6,
+   "layer": "mml2",
+   "expect": [
+    "oml1",
+    "oml2"
+   ],
+   "status": "weak",
+   "detail": "fan axon meets gc in mml2 (lateral perforant path: outer third). Gap 6.6 um where traced, closed by moving gc 6.6 um."
+  },
+  {
+   "post": "ca3",
+   "pre": "gc",
+   "gap_um": 12.6,
+   "moved_um": 12.6,
+   "layer": "ca3slu",
+   "expect": [
+    "ca3slu",
+    "ca3sp"
+   ],
+   "status": "consistent",
+   "detail": "gc axon meets ca3 in ca3slu (mossy fibres: stratum lucidum). Gap 12.6 um where traced, closed by moving ca3 12.6 um."
+  },
+  {
+   "post": "ca1",
+   "pre": "ca3",
+   "gap_um": 53.4,
+   "moved_um": 53.4,
+   "layer": "ca1so",
+   "expect": [
+    "ca1sr",
+    "ca1so"
+   ],
+   "status": "consistent",
+   "detail": "ca3 axon meets ca1 in ca1so (Schaffer collaterals: radiatum or oriens). Gap 53.4 um where traced, closed by moving ca1 53.4 um."
+  },
+  {
+   "post": "ca3_b",
+   "pre": "ca3",
+   "gap_um": 4.6,
+   "moved_um": 4.6,
+   "layer": "ca3sr",
+   "expect": [
+    "ca3sr",
+    "ca3so"
+   ],
+   "status": "consistent",
+   "detail": "ca3 axon meets ca3_b in ca3sr (recurrent collaterals: radiatum or oriens). Gap 4.6 um where traced, closed by moving ca3_b 4.6 um."
+  }
+ ]
+}

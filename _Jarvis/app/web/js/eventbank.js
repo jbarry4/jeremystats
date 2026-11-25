@@ -1258,6 +1258,7 @@ BARRY.views.eventbank = (function () {
         producer: (e.source || {}).pipeline, producerType: e.type,
         heading: 'Compare ' + BARRY.ui.versionLabel(v) + ' with which version',
         sub: e.name || '',
+        family: { entry: e.id },
         onpick: (o) => { if (o) { against = o; paint(); } },
       }),
     ]));
@@ -1286,8 +1287,11 @@ BARRY.views.eventbank = (function () {
       el('div', { class: 'detail-head-main' }, [
         el('h2', { text: e.name }),
         el('p', { class: 'detail-path',
-                  text: (e.project || 'Unfiled') + '  ·  m' + e.mouse
-                      + '  ·  s' + e.session
+                  /* A pool-wide entry (a Root Canal bundle) has no one
+                     mouse or session; it said "mundefined" (2026-11-21). */
+                  text: (e.project || 'Unfiled')
+                      + (e.mouse != null ? '  ·  m' + e.mouse : '')
+                      + (e.session != null ? '  ·  s' + e.session : '')
                       + (e.session_label ? '  ·  ' + e.session_label : '') }),
         el('div', { class: 'detail-tags' }, [
           el('span', { class: 'tag lang', text: typeName(e.type) }),
@@ -1306,9 +1310,15 @@ BARRY.views.eventbank = (function () {
       el('div', { class: 'head-actions' }, [
         el('button', { class: 'btn sm', text: 'Load onto a recording…',
                        onclick: () => importDialog(e) }),
+        branchable(e) ? el('button', {
+          class: 'btn ghost sm bank-branch-go', text: 'Branch out labels…',
+          title: 'Split some of this entry’s labels into a new entry of '
+               + 'their own, which names this one as its parent. This entry '
+               + 'is not changed.',
+          onclick: () => branchDialog(e) }) : null,
         el('button', { class: 'btn ghost sm', text: 'Edit…',
                        onclick: () => editDialog(e) }),
-      ]),
+      ].filter(Boolean)),
     ]));
 
     /* Provenance is the whole point of the bank, so it goes first and in
@@ -1343,6 +1353,12 @@ BARRY.views.eventbank = (function () {
     add('Session path', e.session_path);
     add('Entry id', e.id);
     box.appendChild(kv);
+    /* Its family (PROJECT EVOLVE phase 2, 2026-11-21): what it was made
+       from and what was made from it -- a workflow, its pool, the sets it
+       read; the entries branched out of it, the X-ray folders and room
+       sets that read it. */
+    const fam = BARRY.ui.familyBlock({ entry: e.id }, { extra: 'bank-family' });
+    if (fam) box.appendChild(fam);
     versionHistory(box, e);
 
     if ((e.history || []).length) {
@@ -1374,6 +1390,138 @@ BARRY.views.eventbank = (function () {
                        [loader('Loading events')]));
     loadEvents(e.id);
     return box;
+  }
+
+  /* ---------- branching labels out (PROJECT EVOLVE phase 2) ---------- */
+
+  /* An entry whose events carry two or more labels by id -- a Root Canal
+     bundle, a Cell entry -- can have some of them split out by hand into a
+     new entry that names it as its parent. The parent never changes. */
+  function branchable(e) {
+    return Object.keys(e.label_names || {}).length >= 2
+      || e.type === 'rcbundle' || e.type === 'cell';
+  }
+  const LABEL_INK = { ds: '--call-ds', pspike: '--call-p', twilight: '--call-amb' };
+  const labelInk = (id) => (LABEL_INK[id] ? 'var(' + LABEL_INK[id] + ')'
+                                          : 'var(--text-3)');
+  let branchedTo = null;
+
+  async function branchDialog(e) {
+    let full;
+    try { full = (await api('/api/bank/' + encodeURIComponent(e.id))).entry; }
+    catch (err) { toast('Could not read the entry: ' + err.message, 'err', 8000); return; }
+    const names = full.label_names || {};
+    const counts = {}, halo = {};
+    for (const ev of full.events || []) {
+      const id = ev.label_id || ev.label || 'unlabeled';
+      counts[id] = (counts[id] || 0) + 1;
+      if (ev.halo) halo[id] = (halo[id] || 0) + 1;
+    }
+    /* A bundle's labels in their own order (DS, P-spike, Twilight Zone,
+       outside); cells by number; anything else as it comes. */
+    const RANK = { ds: 0, pspike: 1, twilight: 2, outside: 3 };
+    const num = (id) => { const m = /(\d+)/.exec(id); return m ? +m[1] : 1e9; };
+    const order = Object.keys(names).filter((id) => counts[id])
+      .concat(Object.keys(counts).filter((id) => !(id in names)))
+      .sort((a, b) => ((RANK[a] != null ? RANK[a] : 9) - (RANK[b] != null ? RANK[b] : 9))
+                      || (num(a) - num(b)) || String(a).localeCompare(String(b)));
+    const on = new Set();
+    const vs = (full.versions || []);
+    const tip = vs.length ? vs[vs.length - 1] : null;
+    let from = tip ? (tip.id || tip.v) : null;
+    const say = el('p', { class: 'hint wf-bank-say' });
+    const nameOf = (id) => names[id] || id;
+    const words = () => order.filter((id) => on.has(id)).map(nameOf).join(' + ');
+    let follow = null;
+    const tell = () => {
+      const ids = order.filter((id) => on.has(id));
+      const n = ids.reduce((s2, id) => s2 + (counts[id] || 0), 0);
+      say.classList.toggle('wf-warn', !ids.length);
+      say.textContent = !ids.length ? 'Pick at least one label.'
+        : n.toLocaleString() + ' events into a new entry'
+          + (full.type === 'rcbundle'
+            ? (ids.length === 1
+              ? (ids[0] === 'ds' ? ' of type Dentate spike, which every DS tool reads.'
+                 : ids[0] === 'pspike' ? ' of type P-spike, which every P-spike tool reads.'
+                 : ' of its own type, ‘' + nameOf(ids[0]) + '’.')
+              : ': a Root Canal bundle again, each event keeping its label, class '
+                + 'and Halo mark.')
+            : '.')
+          + ' ‘' + (full.name || e.id) + '’ itself is not changed.';
+      if (follow) follow();
+    };
+    const pills = order.map((id) => {
+      const b = el('button', {
+        type: 'button', class: 'pill wf-bank-l', 'data-label': id,
+        'aria-pressed': 'false',
+        onclick: () => {
+          if (on.has(id)) on.delete(id); else on.add(id);
+          b.classList.toggle('active', on.has(id));
+          b.setAttribute('aria-pressed', on.has(id) ? 'true' : 'false');
+          tell();
+        } }, [
+        el('i', { class: 'wf-lg-dot', style: 'background:' + labelInk(id) }),
+        el('span', { text: nameOf(id) }),
+        el('b', { text: (counts[id] || 0).toLocaleString() }),
+        halo[id] ? el('span', { class: 'wf-bank-halo',
+          text: halo[id].toLocaleString() + ' by the Halo' }) : null,
+      ].filter(Boolean));
+      return b;
+    });
+    /* Which version to branch from: the newest unless another is picked.
+       An older one is rebuilt from its snapshot, each event matched back
+       to the entry's own for its recording and class. */
+    const vbtn = vs.length > 1 ? BARRY.ui.versionButton({
+      versions: vs, idOf: verKey, value: tip ? verKey(tip) : null,
+      producer: (full.source || {}).pipeline, producerType: full.type,
+      family: { entry: e.id },
+      heading: 'Branch from which version of ‘' + (full.name || e.id) + '’',
+      sub: 'The newest unless you pick another. An older version is rebuilt '
+         + 'from its snapshot.',
+      onpick: (v) => { from = v ? (v.id || v.v) : null; },
+    }) : null;
+    const pick = el('div', {}, [
+      BARRY.ui.field({ label: 'Labels', extra: 'wf-bank-pick bank-branch-pick',
+        control: el('div', {}, [el('div', { class: 'wf-bank-labels' }, pills), say]) }),
+      vbtn ? BARRY.ui.field({ label: 'From version', control: vbtn,
+        hint: 'Its events at that version; the parent records which.' }) : null,
+    ].filter(Boolean));
+    let auto = null;
+    follow = () => {
+      const dlg = pick.closest && pick.closest('.bank-dlg');
+      const box = dlg && dlg.querySelector('.bank-dlg-name');
+      const w = words();
+      const next = w ? w + ' · from ' + (full.name || e.id) : null;
+      if (box && next && (auto === null || box.value === auto)) box.value = next;
+      if (next) auto = next;
+    };
+    tell();
+    const done = await BARRY.ui.bankDialog({
+      title: 'Branch labels out of ‘' + (full.name || e.id) + '’',
+      name: '',
+      extra: pick,
+      okText: 'Branch out',
+      facts: ['The new entry names this one as its parent, the version it was '
+              + 'taken from and the labels picked. Its family tree shows both.'],
+      onBank: async ({ name, note }) => {
+        const ids = order.filter((id) => on.has(id));
+        if (!ids.length) throw new Error('Pick at least one label.');
+        const got = await apiPost('/api/bank/' + encodeURIComponent(e.id)
+                                  + '/branch',
+                                  { labels: ids, version: from, name, note });
+        toast('Branched: ‘' + (got.name || got.entry_id) + '’, '
+              + Number(got.n || 0).toLocaleString() + ' events.', 'ok', 6000);
+        branchedTo = got.entry_id;
+        if (BARRY.ui.familyForget) BARRY.ui.familyForget();
+      },
+    });
+    if (done && branchedTo) {
+      const id = branchedTo;
+      branchedTo = null;
+      selected = id;
+      await load();
+      selectEntry(id);
+    }
   }
 
   async function loadEvents(id) {
@@ -2478,5 +2626,7 @@ BARRY.views.eventbank = (function () {
        web/_dev/bankshot.html uses this, to photograph the dialog with
        recordings open that deliberately do not match. */
     debugImportDialog: (e) => importDialog(e),
+    /* PROJECT EVOLVE phase 2: the branch dialog, for _dev/familytree.html. */
+    branchDialog: (e) => branchDialog(e),
   };
 })();

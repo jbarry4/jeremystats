@@ -14,7 +14,8 @@ Nothing here talks to Supabase and nothing is written under GUI_logs.
    nothing is asked while a sync holds the lock -- that write came from a
    pull.
 3. `cloud_sync_once`: a pull that fails no longer stops the push behind it,
-   and the failure is still what is reported.
+   and the failure is still what is reported. A sync held back by one
+   dropped request (CloudAway, nothing sent) is not filed as a fault.
 4. `/api/cloud/items` answers on the real app, shaped as the page reads it.
 5. `cloud._call`: a 522 is asked once and then held (CloudAway, no
    request) until the wait is over; any answer, even a refusal, clears it.
@@ -241,6 +242,49 @@ def part3_and_4():
                                    '{"code":"PGRST303"}') or ""
         check("and the hint does not blame this machine's clock",
               "Set the clock" not in str(hint), hint)
+        # A sync that was never sent (2026-11-22, Isabella's Mac, five
+        # times): one request dropped at start-up held the database for
+        # 15 s, the next sync landed inside the hold and was filed as a
+        # fault, though nothing had been asked a second time.
+        cm = A.cloudmod
+
+        def drop(**k):
+            cm._went_away("no connection")
+            raise cm.CloudError("cannot reach https://example.invalid: "
+                                "[Errno 8] nodename nor servname provided")
+
+        def held(**k):
+            h = cm.away()
+            raise cm.CloudAway("The shared database is not answering (%s)"
+                               % h["why"], failures=h["failures"])
+        try:
+            cm._came_back()
+            A._cloud_last.clear()
+            del logged[:]
+            A.CLOUD.pull = drop
+            A.cloud_sync_once(pull=True, push=False, files=False)
+            A.CLOUD.pull = held
+            A.cloud_sync_once(pull=True, push=False, files=False)
+            check("one dropped request, then a sync held by it: quiet",
+                  logged == [], logged)
+            A.CLOUD.pull = drop
+            A.cloud_sync_once(pull=True, push=False, files=False)
+            check("the next sync that is sent and fails is logged, once",
+                  logged == ["cloud.sync"], logged)
+            cm._came_back()
+            A._cloud_last.clear()
+            del logged[:]
+            A.CLOUD.pull = held
+            cm._went_away("no connection")      # the presence beat, say
+            A.cloud_sync_once(pull=True, push=False, files=False)
+            check("a first sync held by another call's lone failure: quiet",
+                  logged == [], logged)
+            cm._went_away("no connection")
+            A.cloud_sync_once(pull=True, push=False, files=False)
+            check("held after two failures in a row: logged",
+                  logged == ["cloud.sync"], logged)
+        finally:
+            cm._came_back()
         A.CLOUD.pull = pull
         A._cloud_last.clear()
         del logged[:]

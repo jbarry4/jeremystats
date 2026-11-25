@@ -51,7 +51,74 @@ def _fingerprint(paths):
     return h.hexdigest()[:16]
 
 
+RAW_U = np.round(np.arange(-0.6, 1.61, 0.1), 2)        # blade-to-blade depth (0 upper main sink, 1 lower)
+RAW_T = np.arange(-30, 31, 3)                          # ms around the DS peak
+SPEC_U = np.round(np.arange(-0.6, 1.61, 0.2), 2)
+SPEC_T = np.arange(-500, 501, 50)                      # ms; 50 ms bins centered here
+
+
+def _on_u(A, r, grid):
+    """A: events x rows x time -> events x len(grid) x time, by linear
+    interpolation between contacts on the recording's own blade-to-blade axis;
+    bad contacts are NaN (so a grid point next to one is NaN)."""
+    k = r.landmarks
+    pos = k["U"] + grid * (k["L"] - k["U"])
+    A = np.asarray(A, float).copy()
+    if len(r.bad_rows):
+        A[:, list(r.bad_rows), :] = np.nan
+    lo = np.floor(pos).astype(int)
+    fr = pos - lo
+    out = np.full((A.shape[0], grid.size, A.shape[2]), np.nan)
+    for g in range(grid.size):
+        a, b = lo[g], lo[g] + 1
+        if 0 <= a and b < A.shape[1]:
+            out[:, g, :] = A[:, a, :] * (1 - fr[g]) + A[:, b, :] * fr[g]
+    return out
+
+
+def raw_columns(r, AM, D):
+    """The raw event (2026-11-20, asked: "feed in the raw waveform and CSD and
+    power spectrogram"), on axes every recording shares:
+      raw_csd__u{u}_t{ms}   CSD on the blade-to-blade axis x -30..+30 ms
+                            (3 ms), in units of the recording's own mean main
+                            sink (so sizes compare across mice)
+      raw_lfp__u{u}_t{ms}   the LFP (uV, each contact's baseline off) the same way
+      raw_spec__{band}_u{u}_t{ms}  power, log2 over random moments of the
+                            same recording, 7 bands x depth x -500..+500 ms (50 ms)
+    """
+    cols = {}
+    it = np.array([int(np.argmin(np.abs(r.t_ms - t))) for t in RAW_T])
+    prof = np.asarray(r.mean_csd_peak, float)
+    k = r.landmarks
+    ref = np.nanmax(np.abs([prof[int(round(k["U"]))], prof[int(round(k["L"]))]]))
+    ref = ref if np.isfinite(ref) and ref > 0 else 1.0
+    for nm, A, sc in (("csd", r.csd, ref), ("lfp", r.lfp, 1.0)):
+        G = _on_u(np.asarray(A)[:, :, it], r, RAW_U) / sc
+        for gi, u in enumerate(RAW_U):
+            for ti, t in enumerate(RAW_T):
+                cols["raw_%s__u%+.1f_t%+d" % (nm, u or 0.0, t)] = G[:, gi, ti]
+    if D is not None:
+        mrd = D["rdE"].mean(axis=0)
+        mrd[mrd <= 0] = np.nan
+        for bi, band in enumerate(AM.BANDS):
+            lr = np.log2(np.maximum(D["evE"][:, bi], 1e-12) / mrd[bi][None])     # events x rows x 101 bins
+            G = _on_u(lr, r, SPEC_U)
+            for ti, t in enumerate(SPEC_T):
+                tm = np.abs(AM.TB - t) <= 25
+                v = np.nanmean(G[:, :, tm], axis=2)
+                v = np.where(D["evok"][:, None], v, np.nan)
+                for gi, u in enumerate(SPEC_U):
+                    cols["raw_spec__%s_u%+.1f_t%+d" % (band, u or 0.0, t)] = v[:, gi]
+    return cols
+
+
 def _family_of_event(name):
+    if name.startswith("raw_csd__"):
+        return "raw CSD"
+    if name.startswith("raw_lfp__"):
+        return "raw LFP"
+    if name.startswith("raw_spec__"):
+        return "raw spectrogram"
     if name.startswith("type_"):
         return "ds type"
     if name.startswith("f_"):
@@ -79,7 +146,7 @@ def _rows_by_time(t_want, t_have, tol=0.005):
     return np.where(np.abs(s[pick] - t_want) <= tol, o[pick], -1)
 
 
-def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
+def build(battery_dir, out_root=AMBER, log=print, event_set="v6", raw=False):
     """Freeze the bundle; returns its manifest.
 
     event_set (2026-11-19): "v6" the Halo set (the default, as before) or
@@ -93,7 +160,12 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
     import around_measures as AM
     import pandas as pd
 
-    recs = [r for r in dsdata.load(event_set) if r.ok and r.landmarks is not None and r.winner]
+    # A recording without a winner is IN (user, 2026-11-20: "I don't see any
+    # reason not to include m21"): its events carry no DS type (all four type
+    # columns 0 but "too small", which is 1), and its winner-only per-mouse
+    # numbers are simply missing. m21 lost its winner when its duplicate
+    # stamps went: no classifier keeps 5 events of each type after DS3.
+    recs = [r for r in dsdata.load(event_set) if r.ok and r.landmarks is not None]
     labs = [r.lab for r in recs]
     filt = {es: {r.lab: r for r in dsdata.load(es)} for es in FILTERS}
     halo = {r.lab: r for r in dsdata.load("v6")} if event_set != "v6" else None
@@ -105,8 +177,12 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
             v = np.asarray(v, float)
             if v.shape == (r.n,):
                 cols[k] = v
-        t = r.types("winner")
-        s = np.asarray((r.ds3w.get("winner") or {}).get("score", np.full(r.n, np.nan)), float)
+        if r.winner:
+            t = r.types("winner")
+            s = np.asarray((r.ds3w.get("winner") or {}).get("score", np.full(r.n, np.nan)), float)
+        else:
+            t = np.zeros(r.n, int)
+            s = np.full(r.n, np.nan)
         d3 = np.isfinite(s) & (np.abs(s) <= 0.5)
         cols["type_ds1"] = ((t == 1) & ~d3).astype(float)
         cols["type_ds2"] = ((t == 2) & ~d3).astype(float)
@@ -144,6 +220,8 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
                         cols["ba_pow_%s_%s_%s" % (band, wn, dn)] = np.where(D["evok"], per[wn], np.nan)
                     for nm, (a, b) in (("near", ("pre_near", "post_near")), ("far", ("pre_far", "post_far"))):
                         cols["ba_pp_%s_%s_%s" % (band, nm, dn)] = np.where(D["evok"], per[b] - per[a], np.nan)
+        if raw:
+            cols.update(raw_columns(r, AM, D))
         if names is None:
             names = sorted(cols)
         else:
@@ -182,8 +260,9 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
     srcs = [os.path.join(battery_dir, "data", "ds_v6.pkl"), os.path.join(battery_dir, "data", "ds_%s.pkl" % event_set)] + [os.path.join(battery_dir, "data", "ds_%s.pkl" % es) for es in FILTERS] + \
         [os.path.join(battery_dir, "merged", "measures.pkl"), os.path.join(battery_dir, "merged_around", "measures.pkl")]
     fp = _fingerprint(sorted(set(p for p in srcs if os.path.isfile(p))) + [os.path.join(AM.SRC, f) for f in os.listdir(AM.SRC)])
-    if event_set != "v6":
-        fp = hashlib.sha256((fp + "|" + event_set).encode()).hexdigest()[:16]
+    # The event set and the recordings in it are part of what is frozen
+    # (2026-11-20: m21 came in with the same files).
+    fp = hashlib.sha256((fp + "|" + event_set + "|" + ",".join(labs) + ("|raw" if raw else "")).encode()).hexdigest()[:16]
     os.makedirs(out_root, exist_ok=True)
     have = sorted(int(d[1:]) for d in os.listdir(out_root) if d.startswith("v") and d[1:].isdigit())
     for v in have:
@@ -197,7 +276,7 @@ def build(battery_dir, out_root=AMBER, log=print, event_set="v6"):
     np.savez_compressed(os.path.join(d, "amber.part.npz"), X=X, ev_mouse=ev_mouse, XM=XM)
     os.replace(os.path.join(d, "amber.part.npz"), os.path.join(d, "amber.npz"))
     man = {"version": ver, "made": datetime.datetime.now().isoformat(timespec="seconds"), "fingerprint": fp, "source": battery_dir,
-           "event_set": SET_NAMES.get(event_set, event_set), "classifier": "winner (round 11 FINAL OPTIMIZED SEPARATION), frozen",
+           "event_set": SET_NAMES.get(event_set, event_set), "raw": bool(raw), "classifier": "winner (round 11 FINAL OPTIMIZED SEPARATION), frozen",
            "mice": [{"lab": r.lab, "group": r.group, "subgroup": r.subgroup, "ko": r.ko, "year": r.year, "n": r.n,
                      "winner": r.winner} for r in recs],
            "event_features": names, "event_families": [_family_of_event(n) for n in names],
@@ -221,4 +300,4 @@ def load(version=None, root=AMBER):
 
 if __name__ == "__main__":
     build(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Z390\Desktop\DS_PTEN_figures_2026-11-16\battery",
-          event_set=sys.argv[2] if len(sys.argv) > 2 else "v6")
+          event_set=sys.argv[2] if len(sys.argv) > 2 else "v6", raw="raw" in sys.argv[3:])

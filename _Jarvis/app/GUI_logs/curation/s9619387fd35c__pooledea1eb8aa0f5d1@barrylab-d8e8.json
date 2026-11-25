@@ -1,22 +1,22 @@
 {
   "_at": {
     "assignee": "2026-11-04T21:29:52.813839+00:00",
-    "based_on": "2026-11-04T21:29:52.909818+00:00",
-    "based_on_at": "2026-11-04T21:29:52.909818+00:00",
-    "closed_at": "2026-11-04T22:18:18.663548+00:00",
+    "based_on": "2026-11-20T20:30:20.397279+00:00",
+    "based_on_at": "2026-11-20T20:30:20.397279+00:00",
+    "closed_at": "2026-11-20T20:30:20.397279+00:00",
     "created": "2026-11-04T21:29:52.717732+00:00",
     "gid": "2026-11-04T21:29:52.717732+00:00",
     "imports": "2026-11-04T21:29:52.717732+00:00",
     "kind": "2026-11-04T21:29:52.717732+00:00",
     "labels": "2026-11-04T21:29:52.717732+00:00",
     "name": "2026-11-04T21:29:52.717732+00:00",
-    "open": "2026-11-04T22:18:18.663548+00:00",
-    "opened_at": "2026-11-04T21:29:52.813839+00:00",
-    "opened_by": "2026-11-04T21:29:52.813839+00:00",
+    "open": "2026-11-20T20:30:20.397279+00:00",
+    "opened_at": "2026-11-20T20:31:17.086297+00:00",
+    "opened_by": "2026-11-20T20:31:17.086297+00:00",
     "schema": "2026-11-04T21:29:52.717732+00:00",
     "session_label": "2026-11-04T21:29:52.717732+00:00",
     "source": "2026-11-04T21:29:52.717732+00:00",
-    "updated": "2026-11-04T22:18:18.663548+00:00"
+    "updated": "2026-11-20T21:26:48.989948+00:00"
   },
   "_keys": {
     "events": {
@@ -70,7 +70,7 @@
       ],
       "e02457199c8": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:14:52.010754+00:00"
       ],
       "e02af8ca872": [
         "set",
@@ -978,7 +978,7 @@
       ],
       "e27bc500261": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:26:48.989948+00:00"
       ],
       "e27cbfa2444": [
         "set",
@@ -1277,8 +1277,8 @@
         "2026-11-04T22:11:36.619725+00:00"
       ],
       "e367c643971": [
-        "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "gone",
+        "2026-11-20T21:17:52.091142+00:00"
       ],
       "e36b7ff42a1": [
         "set",
@@ -1294,7 +1294,7 @@
       ],
       "e37f804186e": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:24:42.684174+00:00"
       ],
       "e383ff38eb8": [
         "set",
@@ -1458,7 +1458,7 @@
       ],
       "e3e22e15541": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:07:06.096911+00:00"
       ],
       "e3e2f96917b": [
         "set",
@@ -1894,7 +1894,7 @@
       ],
       "e535afa53c3": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:09:46.733438+00:00"
       ],
       "e53ced4afa6": [
         "set",
@@ -2110,7 +2110,7 @@
       ],
       "e5f1cc65b7c": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T20:50:22.096245+00:00"
       ],
       "e5f86089ca1": [
         "set",
@@ -2222,7 +2222,7 @@
       ],
       "e636d953dd4": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:21:43.898705+00:00"
       ],
       "e63828e4666": [
         "set",
@@ -2718,7 +2718,7 @@
       ],
       "e76f77cbef8": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:17:52.091142+00:00"
       ],
       "e772c7a1065": [
         "set",
@@ -3050,7 +3050,7 @@
       ],
       "e866d19dd13": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:15:37.500309+00:00"
       ],
       "e866df4dfc2": [
         "set",
@@ -3158,7 +3158,7 @@
       ],
       "e8c43298fdb": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:12:35.408268+00:00"
       ],
       "e8c858f63ac": [
         "set",
@@ -3886,7 +3886,7 @@
       ],
       "eab7d1615e9": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T20:39:23.246598+00:00"
       ],
       "eab7dbf1eb3": [
         "set",
@@ -4338,7 +4338,7 @@
       ],
       "ec0ad81602b": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:04:27.480021+00:00"
       ],
       "ec0ed4dfee1": [
         "set",
@@ -4406,7 +4406,7 @@
       ],
       "ec538a12cdd": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:25:13.279454+00:00"
       ],
       "ec5445eb33e": [
         "set",
@@ -5242,7 +5242,7 @@
       ],
       "ee8cc2f162c": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T20:59:00.634061+00:00"
       ],
       "ee91fbce8ff": [
         "set",
@@ -5746,7 +5746,7 @@
       ],
       "efc23dc07ed": [
         "set",
-        "2026-11-04T22:11:36.619725+00:00"
+        "2026-11-20T21:23:00.072244+00:00"
       ],
       "efc4aeb3b4f": [
         "set",
@@ -5835,14 +5835,14 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T22:18:18.663548+00:00",
+    "at": "2026-11-20T21:26:48.989948+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "assignee": "Rain Younger",
-  "based_on": "ac975e46fa6a",
-  "based_on_at": "2026-11-04T16:29:52-0500",
-  "closed_at": "2026-11-04T17:18:18-0500",
+  "based_on": "4082d093b54f",
+  "based_on_at": "2026-11-20T15:30:20-0500",
+  "closed_at": null,
   "created": {
     "app_version": "2026.11.04.3",
     "at": "2026-11-04T16:29:52-05:00",
@@ -5874,28 +5874,33 @@
     },
     {
       "amplitude": 1441.4023,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T15:39:23-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "eab7d1615e9",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T15:39:23-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 6.972096
     },
     {
       "amplitude": 1672.7211,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T15:50:22-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "e5f1cc65b7c",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 11.221654,
       "reviews": [
@@ -5903,40 +5908,55 @@
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T15:50:22-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 11.222154
     },
     {
       "amplitude": 511.9194,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T15:59:00-0500",
+      "by": "Daphne Lyons",
       "channel": 9,
       "id": "ee8cc2f162c",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T15:59:00-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 11.296155
     },
     {
       "amplitude": 403.2294,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:04:27-0500",
+      "by": "Daphne Lyons",
       "channel": 8,
       "id": "ec0ad81602b",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T16:04:27-0500",
+          "by": "Daphne Lyons",
+          "label": "garbage"
         }
       ],
       "start": 16.629229
@@ -5961,34 +5981,44 @@
     },
     {
       "amplitude": 438.2737,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:07:06-0500",
+      "by": "Daphne Lyons",
       "channel": 7,
       "id": "e3e22e15541",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T16:07:06-0500",
+          "by": "Daphne Lyons",
+          "label": "garbage"
         }
       ],
       "start": 39.379542
     },
     {
       "amplitude": 679.3434,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:09:46-0500",
+      "by": "Daphne Lyons",
       "channel": 49,
       "id": "e535afa53c3",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:09:46-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 43.483598
@@ -6013,34 +6043,44 @@
     },
     {
       "amplitude": 425.1453,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:12:35-0500",
+      "by": "Daphne Lyons",
       "channel": 9,
       "id": "e8c43298fdb",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T16:12:35-0500",
+          "by": "Daphne Lyons",
+          "label": "garbage"
         }
       ],
       "start": 43.777602
     },
     {
       "amplitude": 619.052,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:14:52-0500",
+      "by": "Daphne Lyons",
       "channel": 52,
       "id": "e02457199c8",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T16:14:52-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 51.906714
@@ -6064,17 +6104,22 @@
     },
     {
       "amplitude": 1001.9147,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:15:37-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "e866d19dd13",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:15:37-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 56.586778
@@ -6098,68 +6143,70 @@
     },
     {
       "amplitude": 1106.0761,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:16:20-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "e76f77cbef8",
-      "label": "likely_spike",
-      "origin": "incisor",
+      "label": "spike",
+      "merged_at": "2026-11-20T16:17:52-0500",
+      "merged_by": "Daphne Lyons",
+      "origin": "both",
+      "pair_t": 72.265994,
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:16:20-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
+      "stamp": "incisor",
       "start": 72.237994
     },
     {
-      "amplitude": 1004.779,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
-      "channel": 44,
-      "id": "e367c643971",
-      "label": "likely_spike",
-      "origin": "doppler",
-      "reviews": [
-        {
-          "at": "2026-11-04T17:11:36-0500",
-          "by": "Prospector (AI)",
-          "label": "likely_spike"
-        }
-      ],
-      "start": 72.265994
-    },
-    {
       "amplitude": 689.3803,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:21:43-0500",
+      "by": "Daphne Lyons",
       "channel": 49,
       "id": "e636d953dd4",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:21:43-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 74.592026
     },
     {
       "amplitude": 917.4964,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:23:00-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "efc23dc07ed",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:23:00-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 97.015335
@@ -6183,17 +6230,22 @@
     },
     {
       "amplitude": 442.2567,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:24:42-0500",
+      "by": "Daphne Lyons",
       "channel": 13,
       "id": "e37f804186e",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T16:24:42-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 98.557356
@@ -6218,17 +6270,22 @@
     },
     {
       "amplitude": 667.9058,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:25:13-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "ec538a12cdd",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:25:13-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 102.014403
@@ -6270,17 +6327,22 @@
     },
     {
       "amplitude": 1005.359,
-      "at": "2026-11-04T17:11:36-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T16:26:48-0500",
+      "by": "Daphne Lyons",
       "channel": 50,
       "id": "e27bc500261",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:11:36-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T16:26:48-0500",
+          "by": "Daphne Lyons",
+          "label": "spike"
         }
       ],
       "start": 120.429657
@@ -30813,9 +30875,9 @@
     }
   ],
   "name": "KCNT1 m306 s1 2026-02-24 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "open": false,
-  "opened_at": "2026-11-04T16:29:52-0500",
-  "opened_by": "Rain Younger",
+  "open": true,
+  "opened_at": "2026-11-20T15:31:17-0500",
+  "opened_by": "Daphne Lyons",
   "schema": 1,
   "session_label": "KCNT1 m306 s1 2026-02-24",
   "source": {
@@ -30827,13 +30889,13 @@
     "version": 0
   },
   "updated": {
-    "app_version": "2026.11.04.3",
-    "at": "2026-11-04T17:18:18-05:00",
-    "commit": "ab65b008",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.11.19.3",
+    "at": "2026-11-20T16:26:48-05:00",
+    "commit": "d160a81c",
+    "email": "dlyons1@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Daphne Lyons"
   }
 }

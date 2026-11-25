@@ -15,6 +15,176 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.24.1 - A pause says so; Doppler runs can be banked by hand; Incisor's list has a search
+
+Needs a restart and a reload.
+
+- **A recording that paused shows the pause.** KCNT1 m529 s1 stopped at 6:15
+  for 33 minutes. Since 2026.11.20.1 the recording is its full 74:57, but the
+  overview strip drew those 33 minutes as a flat line -- each empty bin
+  repeated the last one before it -- which read as the old fault still being
+  there. The strip now leaves a pause empty, hatched, and labelled "paused 33
+  min — nothing recorded".
+- **Doppler: Bank it.** A run that landed unbanked could only be run again,
+  and a run still on the cluster refuses a second copy ("This exact job is
+  already running on the VACC"), so there was no way forward. "4. Not banked"
+  now has **Bank it**, which banks the run as it is and sends it to Spotter;
+  Run it again is still there beside it.
+- **Doppler: banking as runs land is a choice.** Under the bank card,
+  "Runs landing on this computer: **Banked as they land** / **Banked by
+  hand**". On by default, as it has been.
+- **Doppler runs picked up after a restart are banked.** A batch that landed
+  after Jarvis restarted was filed and never banked; that is where the "Not
+  banked" runs came from.
+- **Incisor's "Look at them, then bank" list has a search** (a mouse, a
+  session, a project, a hilus channel) and **Everything / Not banked**.
+
+## 2026.11.23.1 - Sync: a request dropped at start-up is no longer filed as a fault
+
+Needs a restart (backend change). A page reload is not enough.
+
+- When one request to the shared database fails, Jarvis stops asking for
+  15 seconds. A sync that started inside those 15 seconds was never sent,
+  but it was filed in the Errors view as "The shared database is not
+  answering (no connection)". This happened on Isabella's Mac at every start
+  on 11-22 (five times). It went against the rule that one dropped
+  connection is logged only if the next sync that is sent fails too. A
+  held sync now waits for that next attempt. Two failures in a row are still
+  logged, as before.
+- `tools/check_syncitems.py` covers it: two checks fail on the old code and
+  all pass with the fix.
+
+## 2026.11.21.2 - Project Evolve, phases 2, 3 and 7: family trees, bundles everywhere, and the Cells
+
+Needs a restart (backend changes) and a reload.
+
+**Family trees and branching (phase 2).**
+- Every bank entry shows its **family**: what it was made from (a workflow and
+  its version, the pool, the sets it read, the entry it was branched from)
+  and what was made from it (branches, Root Canal entries, X-ray folders and
+  the room sets taken from them). The same family sits at the top of the
+  version pickers that know what they are a version of: bank entries, Root
+  Canal pools, X-ray bundles, Drift, the Cells' curations.
+- **Branch out labels…** on a Root Canal bundle or a Cell entry splits some of
+  its labels into a new entry that names its parent, the version and the
+  labels. The parent is never changed. DS alone or P-spike alone comes out as
+  the plain entry every DS or P-spike tool reads.
+
+**Every set as a bundle (phase 3).**
+- The five workflows behind the current sets were run again: each fresh run
+  put every event in the same class at the same time as the saved run. Each
+  was banked as a Root Canal bundle: DS 5%, DS 10%, Halo, Strict and P-spike.
+- X-ray Many's **New folder…** reads a Root Canal bundle or a workflow run by
+  **label**. DS by default; P-spike, the Twilight Zone or outside are read with
+  a warning that X-ray was built for dentate spikes, and a P-spike folder
+  calls its two types P-spike 1 and P-spike 2. **Carry over from** copies an
+  older folder's boxes, parameters and Extraction Room calls onto each
+  recording whose events are the same.
+- Halo and Strict were re-made from their bundles with every call carried:
+  room **v11** equals v9 and **v12** equals v10, recording for recording. The
+  folders they replace are archived. Twilight Zone and P-spike folders were
+  made from the Halo bundle and read.
+
+**The Cells (phase 7).** Kilosort opens on **Cells**: the sorts already made,
+read back.
+- Cells are the curated units: Isabella's export beside a recording, or Phy's
+  labels once somebody curates there. Each source read is a **curation
+  version**; two versions are compared cell by cell through the spikes they
+  share (kept, changed, merged, split, removed, added).
+- A strip shows each recording's steps (binary, sorted, curated, exported,
+  banked, viewed), and a polarity check. Bank… makes one **Cell** entry per
+  recording, with a row per cell. Its spikes stay in the sort folder.
+- **Open in Xplorefinder**: every cell's spikes are ticked on its own
+  contact, in its layer's color; ← → step cells. A second window shows the
+  cell's waveform, intervals, autocorrelogram, rate, amplitude, and its firing
+  around each label of a banked set.
+- `tools/test_cells.py`: all 519 exported cells on the 32 curated recordings
+  on D:\PTEN are exactly clusters of the non-inverted sort.
+
+## 2026.11.21.1 - Extraction Room 2.0: pressing "bring answers home" twice no longer fails
+
+Needs a restart (a backend change); a page reload is not enough.
+
+- **"Ask the VACC and bring answers home" pressed again while it was still
+  working** (it takes a few minutes, one answer at a time) ran a second fetch
+  beside the first. The two brought home the same answers in step and wrote
+  each one through the same temporary file, so one moved the other's
+  half-written file away and failed: "The process cannot access the file
+  because it is being used by another process" (Bluebarry, 11-20 09:21, run
+  r005). Nothing was lost, since the second fetch finished the job. Now a
+  run's answers are brought home by one fetch at a time: a second press waits
+  for the first and then brings home only what is still missing. Each answer
+  is also written through a temporary file of its own.
+  `tools/check_er2_fetch_race.py` runs four fetches of a throwaway run at once.
+
+## 2026.11.20.2 - Curation: notes, a Save you can see, View only, and fewer stray copies
+
+Needs a restart and a reload. Notes reach other computers once
+`supabase/25_curation_notes.sql` has been run in the SQL editor; until then
+they stay on the computer that wrote them, and the Sync panel names the file.
+
+Across Panning, Checkup, Spotter, Lock, Braces and Eye:
+
+- **Notes.** Anything that can be flagged can carry a note: press **W** (or
+  **+ Note** in the bar) on the event in front of you, or on a row of a Lock,
+  Braces or Eye review. The note shows in the bar beside the event, with whose
+  it is, and in the review table. It changes nothing else about the event,
+  and it goes into the Event Bank with the event when the set is banked, so
+  the next step sees why something was flagged. A set started again from that
+  version has the notes back.
+- **Save.** Every decision was already saved on the computer the moment it
+  was made, and uploaded with the next sync, so "does it save? do I just
+  leave it?" had no answer anybody could check. **Save**, at the end of the
+  bar, uploads the set now and asks the shared database what it holds:
+  "Saved. 412 of 1,476 decided, uploaded, and the shared database confirms it
+  (3:04 PM). Safe to leave." Leaving with work that has not been confirmed
+  asks **Save & leave**, **Leave** (the next sync uploads it) or **Stay**.
+- **View only.** Beside every Open on the bench and the shelf, and beside
+  every alignment in Lock, Braces and Eye: opens the set to look at. Nothing is
+  decided, noted or banked, and nobody's name goes on it; the bar says View
+  only, and **Work on it…** opens it properly, after asking.
+- **Opening a set no longer puts your name on it.** The first decision does.
+  A look at PTEN m34 s5's pool on 11-12 left Eshal's name on it.
+- **An old finished version picked up again never banks itself.** A set
+  started from (or put back to) a version where everything is decided is
+  marked as already banked. Changing one call in it used to bank a new version
+  on the spot.
+- **Hiding extra copies.** "Keep only this one…" (under More on a bench card)
+  hides the other sets of the same step on the same recording; nothing is
+  deleted, and they come back from the archived fold. In a version picker,
+  hidden versions are left out and counted under the tree ("Show 2 hidden
+  versions"), and Lock, Braces and Eye's pickers have **Hide versions…**:
+  hide one, or keep only one. Deleting a version for good stays in the Event
+  Bank.
+
+Panning:
+
+- **Merge looks for the other detector's event, not the nearest event.** An
+  Incisor event 19 ms from another Incisor event and 37 ms from a Doppler one
+  was paired with the Incisor one, so Merge to Doppler said "neither of these
+  two carries Doppler's time" (KCNT1 m526 s1, 31:22.231). A merge makes one
+  event of Incisor's and Doppler's, so an Incisor event's partner is now the
+  nearest Doppler one and the other way round; shift-clicking one of the same
+  detector says why it cannot be picked, and the server refuses the pair too.
+
+## 2026.11.20.1 - A recording that paused is as long as its clock says
+
+Needs a restart.
+
+- **KCNT1 m529 s1 ended 33 minutes early.** Acquisition paused at 6:15 for
+  33 minutes and then ran on until 74:57. The viewer took the recording's
+  length from its record count (41:34), which leaves the pause out, while
+  every window, event, mark and video frame is on the recording's own clock,
+  which keeps it in. So the whole-recording strip drew 6:15 of signal, a flat
+  line, and then two minutes of the second half before it hit the end, and
+  everything after 41:34 -- the last 33 minutes, and 1,377 of the pooled
+  set's 1,476 events -- was past the end of the strip in Panning and
+  unreachable by scrolling. A session's length is now first record to last
+  on its own clock (two reads), falling back to the record count only if the
+  clock cannot be read or is nonsense. The pause itself still shows as the
+  flat stretch it is: nothing was recorded there.
+- Recordings without a pause are unchanged to the millisecond.
+
 ## 2026.11.19.3 - Support panels: a lab default, and a copy shows at once
 
 Needs a restart and a reload.

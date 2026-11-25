@@ -71,6 +71,14 @@ BARRY.panning = (function () {
   let decidedAtEntry = 0;
   let lastWin = null;   // the trace window as last drawn: {t0, t1}
   let fuse = null;      // a merge being drawn on the window strip
+  /* View only (curkit.js, 2026-11-20): opened to look at. Nothing is
+     written, banked or claimed, and every key that would change something
+     says so instead. */
+  let viewOnly = false;
+  /* Changes made since the shared database last confirmed a Save: what
+     decides whether leaving asks Save & leave. */
+  let dirty = 0;
+  const ro = () => (viewOnly ? BARRY.curKit.refuse() || true : false);
 
   const PRESENCE_BEAT = 60000;
   const FUSE_MS = 280;
@@ -181,9 +189,21 @@ BARRY.panning = (function () {
     BARRY.modes.leaveAllBut('panning');
     if (set_) exit();
     let want = (opts && opts.kind) || KIND;
+    const looking = !!(opts && opts.viewOnly);
     if (entryId) {
-      const made = await ensureSet(gid, entryId);
-      if (!made) return false;
+      // Looking never makes a set: there would be nothing to look at but a
+      // set somebody had just been made to start.
+      const made = looking
+        ? await BARRY.ui.setForEntry(gid, KIND, entryId).catch(() => null)
+        : await ensureSet(gid, entryId);
+      if (!made) {
+        if (looking) {
+          toast('Nobody has started a Panning set from that pool yet, so '
+                + 'there is nothing to look at. Its versions are in the '
+                + 'Event Bank.', 'warn', 8000);
+        }
+        return false;
+      }
       want = made;
     }
     let data;
@@ -224,12 +244,17 @@ BARRY.panning = (function () {
     lastWin = null;
     banked = data.banked || null;
     bankDirty = false;
+    viewOnly = looking;
+    dirty = 0;
 
-    apiPost(url('open'), { open: true })
-      .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
-      .catch(() => {});
+    // On the bench -- unless only looking, which touches nothing.
+    if (!viewOnly) {
+      apiPost(url('open'), { open: true })
+        .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
+        .catch(() => {});
+    }
 
-    setMode('panning', exit);
+    setMode('panning', leave);
     useBand();
     layout();
     sess.curation = { kind: set_.kind, set: set_, index: 0 };
@@ -348,6 +373,55 @@ BARRY.panning = (function () {
     return ok ? pick : null;
   }
 
+  /* Leave, as a person does it (the bar's Leave, Esc): with work the shared
+     database has not confirmed, offer Save & leave first (curkit.js). */
+  async function leave() {
+    if (!set_) return;
+    const go = await BARRY.curKit.leaveAsk({
+      dirty: !viewOnly && dirty > 0, tool: 'Panning', save: saveNow });
+    if (go) exit();
+  }
+
+  /* Save: everything on the server, then this set up to the shared
+     database and read back (curkit.js). */
+  async function saveNow() {
+    if (!set_) return null;
+    if (viewOnly) { ro(); return null; }
+    const r = await BARRY.curKit.save({ url: url('save'), settle: settled });
+    if (r && r.confirmed) { dirty = 0; if (set_) render(); }
+    return r;
+  }
+
+  /* View only, then asked, then working: entered again the ordinary way. */
+  async function workOnIt() {
+    if (!set_) return;
+    if (!(await BARRY.curKit.askToWork(set_.name))) return;
+    const gid = set_.gid, k = setKind;
+    exit();
+    enter(gid, null, { kind: k });
+  }
+
+  /* A note on the event on screen (2026-11-20). */
+  async function writeNote() {
+    const ev = current();
+    if (!ev) return;
+    if (ro()) return;
+    const own = set_;
+    const got = await BARRY.curKit.editNote({
+      title: 'Note on the event at ' + clock(ev.start),
+      about: ev.label ? 'Decided: ' + labelName(ev.label) + '.' : 'Not decided yet.',
+      text: ev.note || '',
+      onSave: (text) => apiPost(url('note'), { event: ev.id, note: text }),
+    });
+    if (got === null || set_ !== own) return;
+    if (got) { ev.note = got; ev.note_by = (BARRY.profile && BARRY.profile.who
+                                            && BARRY.profile.who()) || ev.note_by; }
+    else { delete ev.note; delete ev.note_by; }
+    dirty += 1; BARRY.curKit.saveState(true);
+    bankDirty = true;
+    render();
+  }
+
   function exit() {
     if (!set_) return;
     /* Leaving with decisions or merges the bank does not have: banked on
@@ -381,6 +455,7 @@ BARRY.panning = (function () {
     }
     set_ = null; kind = null; sess = null;
     history = []; mark = null; lastWin = null; fuse = null;
+    viewOnly = false; dirty = 0;
     for (const id of ['#panBar', '#panWin', '#panAll']) {
       const n = $(id);
       if (n) n.remove();
@@ -563,6 +638,7 @@ BARRY.panning = (function () {
   async function assign(labelId) {
     const ev = current();
     if (!ev) return;
+    if (ro()) return;
     const was = ev.label || null;
     const wasBy = ev.by;
     ev.label = labelId;
@@ -581,6 +657,7 @@ BARRY.panning = (function () {
     saving += 1; updateSaving();
     try {
       const res = await apiPost(url('label'), { event: ev.id, label: labelId });
+      dirty += 1; BARRY.curKit.saveState(true);
       if (res.progress) set_._progress = res.progress;
       // The last one decided: bank it, if banking without asking is on.
       if (set_ && autoOn() && !pending()) {
@@ -612,6 +689,7 @@ BARRY.panning = (function () {
   async function clearLabel() {
     const ev = current();
     if (!ev || !ev.label) return;
+    if (ro()) return;
     const was = ev.label;
     ev.label = null;
     bankDirty = true;
@@ -621,6 +699,7 @@ BARRY.panning = (function () {
     publishMarks(); render();
     try {
       await apiPost(url('label'), { event: ev.id, label: null });
+      dirty += 1; BARRY.curKit.saveState(true);
     } catch (e) {
       ev.label = was;
       history.splice(history.indexOf(h), 1);
@@ -654,12 +733,37 @@ BARRY.panning = (function () {
     return stampOf(a) === 'doppler' || stampOf(b) === 'doppler';
   }
 
+  /* Which detectors found an event: Incisor, Doppler, both, or not known. */
+  const srcsOf = (e) => (!e || !e.origin ? null
+    : e.origin === 'both' ? ['incisor', 'doppler'] : [e.origin]);
+  /* Whether two events can be one: a merge makes one event of Incisor's and
+     Doppler's, so two of the same detector's never can (2026-11-23: "it
+     should not be looking to see if any other Incisor events are nearby").
+     An event of no known origin is allowed with anything, as it always was. */
+  function canPair(a, b) {
+    const x = srcsOf(a), y = srcsOf(b);
+    if (!x || !y) return true;
+    return !x.some((o) => y.indexOf(o) >= 0);
+  }
+
+  /* The nearest event FROM THE OTHER DETECTOR -- not the nearest event.
+     Two Incisor stamps 19 ms apart beside a Doppler one 37 ms away paired
+     the two Incisor ones, so Merge to Doppler said "neither carries
+     Doppler's time" about a spike Doppler had plainly found. */
   function nearestOther(a) {
     const evs = events();
     const i = evs.indexOf(a);
-    const cand = [evs[i - 1], evs[i + 1]].filter(Boolean);
-    cand.sort((x, y) => Math.abs(x.start - a.start) - Math.abs(y.start - a.start));
-    return cand[0] || null;
+    let best = null, bestD = Infinity;
+    // Outward from it in both directions, stopping a side once it is past
+    // the best so far: the events are in time order.
+    for (const dir of [-1, 1]) {
+      for (let j = i + dir; j >= 0 && j < evs.length; j += dir) {
+        const d = Math.abs(evs[j].start - a.start);
+        if (d >= bestD) break;
+        if (canPair(a, evs[j])) { best = evs[j]; bestD = d; break; }
+      }
+    }
+    return best;
   }
 
   function partner() {
@@ -667,7 +771,7 @@ BARRY.panning = (function () {
     if (!a) return null;
     if (mark) {
       const b = events().find((e) => e.id === mark);
-      if (b && b !== a) return b;
+      if (b && b !== a && canPair(a, b)) return b;
     }
     return nearestOther(a);
   }
@@ -683,11 +787,14 @@ BARRY.panning = (function () {
   };
 
   async function merge(want) {
+    if (ro()) return;
     const keepT = want === 'doppler' ? 'doppler' : 'incisor';
     const a = current();
     const b = partner();
     if (!a || !b) {
-      toast('There is nothing next to this one to merge it with.', null, 4000);
+      toast(a && a.origin === 'both'
+        ? 'This one is already Incisor’s and Doppler’s together, so there is nothing to merge it with.'
+        : 'The other detector found nothing in this pool to merge this one with.', null, 4000);
       return;
     }
     if (!canKeep(a, b, keepT)) {
@@ -765,6 +872,7 @@ BARRY.panning = (function () {
     try {
       const res = await apiPost(url('merge'), { keep: a.id, drop: b.id,
                                                 stamp: keepT });
+      dirty += 1; BARRY.curKit.saveState(true);
       if (res.event) Object.assign(lead, res.event);
       if (res.progress) set_._progress = res.progress;
       if (res.dropped && res.dropped !== other.id) {
@@ -815,6 +923,7 @@ BARRY.panning = (function () {
      was about. A merge undone puts the other event back (under a new id;
      see curation.unmerge) and the survivor as it was. */
   async function undo() {
+    if (ro()) return;
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
     bankDirty = true;
@@ -830,6 +939,7 @@ BARRY.panning = (function () {
     goTo(at);
     try {
       await apiPost(url('label'), { event: last.id, label: last.from });
+      dirty += 1; BARRY.curKit.saveState(true);
     } catch (e) {
       events()[at].label = was;
       history.push(last);
@@ -862,6 +972,7 @@ BARRY.panning = (function () {
     goTo(evs.indexOf(back));
     saving += 1; updateSaving();
     try {
+      dirty += 1; BARRY.curKit.saveState(true);
       const res = await apiPost(url('unmerge'), {
         keep: last.keep, before: last.before, dropped: last.dropped });
       if (res.restored) Object.assign(back, res.restored);
@@ -906,6 +1017,7 @@ BARRY.panning = (function () {
   async function labelMany(evs, labelId) {
     const own = set_;
     if (!own) return false;
+    if (ro()) return false;
     const want = labelId || null;
     const change = (evs || []).filter((e) => (e.label || null) !== want);
     if (!change.length) {
@@ -931,6 +1043,7 @@ BARRY.panning = (function () {
     saving += 1; updateSaving();
     try {
       const res = await apiPost(url('label'), { labels: pairs });
+      dirty += 1; BARRY.curKit.saveState(true);
       if (res.progress) own._progress = res.progress;
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
@@ -988,6 +1101,7 @@ BARRY.panning = (function () {
     saving += 1; updateSaving();
     try {
       await apiPost(url('label'), { labels: pairs });
+      dirty += 1; BARRY.curKit.saveState(true);
       toast(plural(Object.keys(pairs).length, 'event') + ' put back the way '
             + (Object.keys(pairs).length === 1 ? 'it was.' : 'they were.'),
             'ok', 4000);
@@ -1014,6 +1128,7 @@ BARRY.panning = (function () {
 
   function bulkDialog() {
     if (!set_) return;
+    if (ro()) return;
     const labs = ((kind && kind.labels) || []).filter((l) => !l.computed);
     const nO = (o) => events().filter((e) => originKey(e) === o).length;
     const nF = (f) => events().filter((e) => (e.label || '') === f).length;
@@ -1404,7 +1519,8 @@ BARRY.panning = (function () {
       m: () => merge('incisor'),
       d: () => merge('doppler'),
       l: listAll,
-      escape: () => { if (mark) { mark = null; render(); drawStrips(); } else exit(); },
+      w: writeNote,
+      escape: () => { if (mark) { mark = null; render(); drawStrips(); } else leave(); },
     };
     if (nav[k]) {
       e.preventDefault(); e.stopPropagation();
@@ -1445,6 +1561,8 @@ BARRY.panning = (function () {
     const at = events().slice(0, index + 1).filter(wanted).length;
     const pair = ev && ev.pair_t != null
       ? ((ev.pair_t - ev.start) * 1000) : null;
+    bar.classList.toggle('ck-viewing', viewOnly);
+    if (viewOnly) bar.appendChild(BARRY.curKit.viewBadge(workOnIt));
 
     bar.appendChild(el('div', { class: 'cur-where' }, [
       el('strong', { text: set_.name || 'Pooled spikes' }),
@@ -1481,6 +1599,8 @@ BARRY.panning = (function () {
       beatOthers.length
         ? BARRY.ui.chip(beatOthers.length + ' also here', { kind: 'warn' })
         : null,
+      ev ? BARRY.curKit.noteLine(ev.note, ev.note_by,
+                                 viewOnly ? null : writeNote) : null,
     ].filter(Boolean)));
 
     /* Prospector's flags are still to do (curation.progress): "195 decided
@@ -1570,7 +1690,7 @@ BARRY.panning = (function () {
         class: 'cur-cat pan-merge ' + want + (mark ? ' armed' : ''),
         disabled: ok ? null : 'disabled',
         'data-merge': want,
-        title: !b ? 'Nothing next to this one'
+        title: !b ? 'Nothing from the other detector to merge it with'
           : !ok ? 'Neither this one nor the ' + (mark ? 'picked' : 'nearest')
                   + ' one carries Doppler’s time, so there is no Doppler stamp '
                   + 'to keep. Merge to Incisor instead.'
@@ -1606,6 +1726,7 @@ BARRY.panning = (function () {
       el('button', { class: 'mini', text: '↶',
         title: 'Undo the last decision or merge  [Z]',
         disabled: history.length ? null : 'disabled', onclick: undo }),
+      BARRY.curKit.noteButton(!!(ev && ev.note), writeNote, !ev || viewOnly),
       BARRY.ui.seg([
         ['left', 'Undecided', 'The ones nobody has decided yet'],
         ['flag', 'Flagged (' + flagged() + ')', 'The ones put aside'],
@@ -1663,9 +1784,16 @@ BARRY.panning = (function () {
              + 'peaks.',
         onclick: () => toTool('lock'),
       },
-      bank: { text: 'Bank the results\u2026', onclick: bank,
+      bank: viewOnly ? null : { text: 'Bank the results\u2026', onclick: bank,
               title: 'Write these decisions and merges as a new version of '
                    + 'the pool' },
+      save: viewOnly ? null : {
+        onclick: saveNow,
+        text: dirty ? 'Save' : 'Saved',
+        state: dirty ? 'dirty' : 'clean',
+        title: 'Upload this set to the shared database now and check it '
+             + 'arrived. Every decision is already saved on this computer as '
+             + 'you make it; this makes sure everyone else has it too.' },
     }));
     updateSaving();
     ensureStrips();
@@ -1676,6 +1804,7 @@ BARRY.panning = (function () {
      work it leaves. */
   function prospectorSweep() {
     if (!set_ || !BARRY.prospector) return;
+    if (ro()) return;
     BARRY.prospector.open({
       gid: set_.gid, kind: setKind,
       name: set_.name || set_.session_label || '',
@@ -1702,6 +1831,7 @@ BARRY.panning = (function () {
 
   function bank() {
     if (!set_ || !BARRY.curate || !BARRY.curate.bankAt) return;
+    if (ro()) return;
     const t = {};
     for (const e of events()) if (e.label) t[e.label] = (t[e.label] || 0) + 1;
     const gid = set_.gid;
@@ -1724,6 +1854,7 @@ BARRY.panning = (function () {
   function autoOn() { return !BARRY.testNoAutobank; }
 
   async function quietBank(gid, why, k) {
+    if (viewOnly) return;
     // Its own kind, passed in: on leaving it runs after the set is let go.
     const sk = k || setKind;
     await settled();
@@ -1994,6 +2125,12 @@ BARRY.panning = (function () {
     if (!ev) return;
     if (e.shiftKey) {
       if (ev === current()) return;
+      if (mark !== ev.id && !canPair(current(), ev)) {
+        toast('Those two were found by the same detector. A merge makes one '
+              + 'event of Incisor\u2019s and Doppler\u2019s, so pick one '
+              + 'the other detector found.', 'warn', 6000);
+        return;
+      }
       mark = mark === ev.id ? null : ev.id;
       render(); drawWin();
       return;
@@ -2102,7 +2239,8 @@ BARRY.panning = (function () {
     let res;
     try {
       res = await apiPost('/api/presence/beat', {
-        gid: set_.gid, kind: setKind, first: !!first, doing: 'panning',
+        gid: set_.gid, kind: setKind, first: !!first,
+        doing: viewOnly ? 'viewing' : 'panning',
         n_total: events().length,
         n_decided: events().filter((e) => e.label).length,
         n_this_visit: events().filter((e) => e.label).length - decidedAtEntry,
@@ -2327,6 +2465,10 @@ BARRY.panning = (function () {
 
   return {
     enter, exit, draw, rebind, recentre, receipt,
+    // 2026-11-20: Leave as a person does it, Save, a note, and whether
+    // this sitting is View only (curkit.js).
+    leave, save: saveNow, note: writeNote,
+    viewOnly: () => viewOnly, dirty: () => dirty,
     step: (d) => step(d),
     goTo: (i) => goTo(i),
     assign: (id) => assign(id),

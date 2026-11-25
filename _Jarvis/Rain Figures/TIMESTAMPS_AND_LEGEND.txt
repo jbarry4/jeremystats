@@ -1,4 +1,4 @@
-RAIN FIGURE: time stamps, windows and a draft legend (2026-11-19)
+RAIN FIGURE: time stamps, windows and a draft legend (2026-11-19; v1.1/v2.1 2026-11-20)
 =================================================================
 
 Times are seconds from the start of each recording (the first Neuralynx record),
@@ -32,17 +32,33 @@ c  PTEN IED
    Window shown: 1197.2157-1197.5157 s  (-150 to +150 ms; 300 ms)
    This recording has no clock breaks, so sample-count time and timestamp time agree to the millisecond.
 
-Spectrogram contacts
-   Both versions: b: Ch 10, 34, 46, 54     c: Ch 6, 28, 42, 56
-   Version 2 = version 1 with the jet color map. Both label depth with even channel numbers
-   (2, 16, 32, 48, 64) on the theta and CSD panels; no micron scale bar.
-   Each panel alone (PDF + 600 dpi PNG): Individual panels\Rain_Figure\ and Individual panels\Rain_Figure_v2\
+Spectrogram contacts (with the layer each sits in)
+   b: Ch 10 SR, 34 GCL (upper blade), 46 HIL, 54 GCL (lower blade)
+   c: Ch 6 SO, 28 SLM, 42 HIL, 56 ML (lower blade)
+
+Versions (2026-11-20, Rain's feedback)
+   Rain_Figure_v1.1.pdf  blue-white-red      Rain_Figure_v2.1.pdf  jet (green at zero)
+   Both: cell layers beside every depth axis, tighter layout (180 x 193 mm), spectrogram title says
+   "log scale", images embedded at 600 dpi. Each panel alone (PDF + 600 dpi PNG):
+   Individual panels\Rain_Figure_v1.1\ and Individual panels\Rain_Figure_v2.1\
+   CORRECTION: the probe is an H3 (20 um pitch), so even contacts are 40 um apart, not 100 um as the
+   v1/v2 legend said. CSD values in v1.1/v2.1 are 6.25x those on the v1/v2 color bars.
+
+Cell layers (channels; SO/SP/SR/SLM = CA1, ML/GCL/HIL = DG)
+   CTL m6 s4    SO 1-12, SP 13-17, SR 18-23, SLM 24-27, ML 28-41, GCL 42-49, HIL 50-55, GCL 56-60, ML 61-64  (Jarvis record, StrataScope)
+   PTEN m13 s1  SO 1-11, SP 12-16, SR 17-25, SLM 26-30, ML 31-40, GCL 41-44, HIL 45-48, GCL 49-54, ML 55-64  (ESTIMATE: m13 s2 labels + 11 ch, from the theta profile)
+   DKO m41 s1   SO 1-3, SP 4-8, SR 9-17, SLM 18-22, ML 23-29, GCL 30-35, HIL 36-49, GCL 50-53, ML 54-64  (lab sheet)
+   CTL m59 s4   SO 1, SP 2-7, SR 8-20, SLM 21-25, ML 26-32, GCL 33-38, HIL 39-52, GCL 53-56, ML 57-64  (lab sheet)
+   PTEN m34 s5  SO 1-7, SP 8-12, SR 13-21, SLM 22-28, ML 29-33, GCL 34-40, HIL 41-44, GCL 45-51, ML 52-64  (Jarvis record, StrataScope)
+
+Is the spectrogram logarithmic?  Yes: log frequency axis (1-800 Hz, 90 log-spaced frequencies) and
+power in dB (a log scale).
 
 Draft legend
 ------------
 (a) Representative theta-band (4-12 Hz) current source density (CSD) from a control (CTL), a PTEN
 knockout (PTEN) and a PTEN/Raptor double knockout (DKO) mouse, 6 s each. Every even contact of the
-64-contact linear probe (100 um apart) is shown, top = dorsal; black traces are the 4-12 Hz LFP on the
+64-contact linear probe (H3; even contacts 40 um apart) is shown, top = dorsal; black traces are the 4-12 Hz LFP on the
 same contacts (same scale in all three). Sinks blue, sources red; one color scale for all three panels.
 (b) Representative control dentate spike (300 ms window centered on the spike): LFP (5-100 Hz, 60 Hz
 notch), CSD from the same filtered signals, and wavelet spectrograms (1-800 Hz, broadband with 60 Hz
@@ -53,6 +69,9 @@ as in (b). CSD = -d2V/dz2 over the even contacts (conductivity omitted), end con
 c: Ch 8). Spectrograms: complex Morlet wavelets, 3 cycles at 1 Hz rising to 10 cycles at 800 Hz, power in
 dB relative to each frequency's median over the surrounding 8 s. Data were downsampled from 30 kHz to
 2.5 kHz with a zero-phase anti-alias filter; all filters are zero-phase (Butterworth, order 3; notch Q 30).
-Scale bars: 50 ms; 1 mV (b), 2 mV (c). Even channel numbers mark depth (contacts 100 um apart).
+Scale bars: 50 ms; 1 mV (b), 2 mV (c). Even channel numbers and estimated cell layers mark depth
+(SO, stratum oriens; SP, stratum pyramidale; SR, stratum radiatum; SLM, stratum lacunosum-moleculare;
+ML, molecular layer; GCL, granule cell layer; HIL, hilus). Spectrogram frequency axes are logarithmic.
 
-Rebuild: python make_rain_figure.py  (needs D: and the netfiles share for m13 s1)
+Rebuild: python make_rain_figure_v1_1.py / make_rain_figure_v2_1.py, then make_info_pdf.py
+(needs D: and the netfiles share for m13 s1)

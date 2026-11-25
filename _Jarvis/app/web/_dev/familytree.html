@@ -1,0 +1,166 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — family tree and branching</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+ .ok{color:#7fe3b0}.bad{color:#ff8a7a}.dim{color:#7a8794}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0#eventbank"></iframe>
+<script>
+/* PROJECT EVOLVE phase 2 (2026-11-21): every thing's family, and branching
+   labels out of a bank entry by hand.
+
+   Reads the real bank and the real family route (both read-only) and finds
+   its own preconditions: a Root Canal bundle and a plain DS entry, whatever
+   this machine holds. The one write -- the branch -- is answered here, so
+   nothing reaches the bank. */
+const out = document.getElementById('out');
+const say = (m, c) => { const s = document.createElement('div'); s.textContent = m; if (c) s.className = c; out.appendChild(s); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const J = (x) => JSON.stringify(x);
+let pass = 0, fail = 0;
+const ok = (what, cond, more) => {
+  if (cond) { pass++; say('  ok   ' + what, 'ok'); }
+  else { fail++; say('  FAIL ' + what + (more !== undefined ? '   [' + more + ']' : ''), 'bad'); }
+};
+const head = (t) => say('\n== ' + t + ' ==');
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  for (;;) {
+    try { if (fn()) return true; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > (ms || 8000)) throw new Error('timed out waiting for ' + (what || 'it'));
+    await sleep(80);
+  }
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const ev = (c) => W.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!(BARRY.ui && BARRY.views && BARRY.views.eventbank)'),
+              25000, 'the app to boot');
+  const B = ev('BARRY');
+  const was = { fetch: W.fetch };
+  const sent = [];
+  try {
+    head('PRECONDITIONS');
+    const bank = await (await W.fetch('/api/bank')).json();
+    const entries = bank.entries || [];
+    const bundle = entries.find((e) => e.type === 'rcbundle' && !e.archived
+      && Object.keys(e.label_names || {}).length >= 3);
+    const plain = entries.find((e) => e.type === 'ds' && Object.keys(e.label_names || {}).length < 2);
+    ok('the bank holds a Root Canal bundle with three or more labels', !!bundle, entries.length + ' entries');
+    ok('and a plain DS entry', !!plain);
+    if (!bundle) throw new Error('nothing to check against');
+
+    head('THE FAMILY ROUTE');
+    const fam = await (await W.fetch('/api/family?entry=' + bundle.id)).json();
+    ok('it answers', fam.ok === true, fam.error);
+    ok('its self is the bundle', fam.self && fam.self.id === bundle.id && fam.self.type === 'rcbundle');
+    const pk = (fam.parents || []).map((n) => n.kind);
+    ok('made from: its workflow, its target pool and the sets it read', pk.indexOf('workflow') >= 0
+       && pk.indexOf('pool') >= 0 && pk.indexOf('sources') >= 0, J(pk));
+    const wf = (fam.parents || []).find((n) => n.kind === 'workflow');
+    ok('the workflow says which version', wf && wf.version != null, J(wf));
+    const nf = await (await W.fetch('/api/family?entry=nope-not-here')).json();
+    ok('an unknown entry is said, not thrown', nf.ok === false && /no bank entry/i.test(nf.error || ''), nf.error);
+
+    head('DRAWN');
+    const tree = B.ui.familyTree(fam);
+    D().body.appendChild(tree);
+    ok('one row for itself, highlighted', tree.querySelectorAll('.fam-self').length === 1);
+    ok('a row for each parent', tree.querySelectorAll('.fam-parent').length === (fam.parents || []).length);
+    ok('a row for each child', tree.querySelectorAll('.fam-child').length === (fam.children || []).length);
+    ok('the generations are named', J(Array.from(tree.querySelectorAll('.fam-gen-head')).map((n) => n.textContent))
+       === J([].concat(fam.parents.length ? ['Made from'] : [], fam.children.length ? ['Went into'] : [])));
+    ok('every row says what kind of thing it is', Array.from(tree.querySelectorAll('.fam-row'))
+       .every((r) => r.querySelector('.fam-kind') && r.querySelector('.fam-kind').textContent));
+    const entryRows = Array.from(tree.querySelectorAll('.fam-row.go[data-kind="entry"]'));
+    ok('a bank entry in it opens (a button), the pool does not',
+       !tree.querySelector('.fam-row.go[data-kind="pool"]')
+       && (entryRows.length === (fam.parents.concat(fam.children)).filter((n) => n.kind === 'entry').length));
+    tree.remove();
+    const none = B.ui.familyTree({ self: { kind: 'entry', name: 'x' }, parents: [], children: [] });
+    ok('nothing either way is said, not left blank', /Nothing recorded made this/.test(none.textContent));
+
+    head('IN EVERY VERSION PICKER');
+    B.ui.versionPop({ versions: bundle.versions || [], heading: 'harness', readonly: true,
+                      family: { entry: bundle.id } });
+    await until(() => D().querySelector('#bigModal:not(.hidden) .vpop-family[data-ready="1"]'), 8000, 'the family in the picker');
+    const vf = D().querySelector('#bigModal .vpop-family');
+    ok('the picker shows the family above the versions',
+       vf && vf.compareDocumentPosition(D().querySelector('#bigModal .vtree')) & 4);
+    ok('with the same rows', vf.querySelectorAll('.fam-row').length === 1 + fam.parents.length + fam.children.length
+       + fam.children.reduce((s, c) => s + (c.children || []).length, 0));
+    ev('closeModal()');
+    B.ui.versionPop({ versions: [], heading: 'harness', readonly: true });
+    ok('a picker that names nothing draws no family', !D().querySelector('#bigModal:not(.hidden) .vpop-family'));
+    ev('closeModal()');
+
+    head('THE EVENT BANK');
+    await B.views.eventbank.openEntry(bundle.id);
+    await until(() => D().querySelector('.bank-detail .bank-family[data-ready="1"]'), 10000, 'the family in the entry');
+    ok('the entry shows its family', D().querySelectorAll('.bank-detail .bank-family .fam-row').length > 1);
+    ok('a bundle offers Branch out labels…', !!D().querySelector('.bank-detail .bank-branch-go'));
+    if (plain) {
+      await B.views.eventbank.openEntry(plain.id);
+      await until(() => D().querySelector('.bank-detail h2') && D().querySelector('.bank-detail h2').textContent === plain.name, 8000, 'the plain entry');
+      ok('a plain DS entry does not', !D().querySelector('.bank-detail .bank-branch-go'));
+    }
+
+    head('BRANCHING, ANSWERED HERE');
+    W.fetch = function (url, opts) {
+      const u = String(url);
+      if (/\/branch$/.test(u) && opts && opts.method === 'POST') {
+        sent.push([u, JSON.parse(opts.body || '{}')]);
+        return Promise.resolve(new W.Response(J({ ok: true, entry_id: 'harness-branch', name: 'harness branch', n: 7 }),
+                                              { headers: { 'Content-Type': 'application/json' } }));
+      }
+      return was.fetch.apply(this, arguments);
+    };
+    const p = B.views.eventbank.branchDialog({ id: bundle.id });
+    await until(() => D().querySelector('#bigModal:not(.hidden) .bank-branch-pick'), 8000, 'the branch dialog');
+    const pills = () => Array.from(D().querySelectorAll('#bigModal .bank-branch-pick .wf-bank-l'));
+    ok('one pill per label, none pressed', pills().length === Object.keys(bundle.label_names).length
+       && pills().every((b) => b.getAttribute('aria-pressed') === 'false'), pills().length);
+    ok('each says how many it holds', pills().every((b) => /^\d[\d,]*$/.test(b.querySelector('b').textContent)));
+    const okBtn = () => Array.from(D().querySelectorAll('#bigModal .mf button')).find((b) => /^Branch out$/.test(b.textContent));
+    ok('the dialog’s own button says Branch out', !!okBtn());
+    const tz = pills().find((b) => b.dataset.label === 'twilight');
+    ok('Twilight Zone is one of them', !!tz);
+    tz.click();
+    const name = D().querySelector('#bigModal .bank-dlg-name');
+    ok('the name follows the label', name.value === 'Twilight Zone · from ' + bundle.name, name.value);
+    ok('the line says what it makes, and that the parent is unchanged',
+       /of its own type, ‘Twilight Zone’/.test(D().querySelector('#bigModal .wf-bank-say').textContent)
+       && /itself is not changed/.test(D().querySelector('#bigModal .wf-bank-say').textContent),
+       D().querySelector('#bigModal .wf-bank-say').textContent);
+    pills().find((b) => b.dataset.label === 'ds').click();
+    ok('two labels make a bundle again', /Root Canal bundle again/.test(D().querySelector('#bigModal .wf-bank-say').textContent));
+    ok('and the name follows', name.value === 'DS + Twilight Zone · from ' + bundle.name, name.value);
+    pills().find((b) => b.dataset.label === 'ds').click();
+    okBtn().click();
+    await until(() => sent.length === 1, 8000, 'the branch request');
+    const body = sent[0][1];
+    ok('it asks for that label, from the newest version, under that name',
+       J(body.labels) === J(['twilight']) && body.name === 'Twilight Zone · from ' + bundle.name
+       && body.version != null, J(body));
+    await p;
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here: ' + (err && err.message ? err.message : String(err)), 'bad');
+    say('       ' + String((err && err.stack) || '').split('\n').slice(0, 4).join(' | '), 'dim');
+  } finally {
+    try { W.fetch = was.fetch; ev('closeModal()'); } catch (e) { /* gone */ }
+    await sleep(200);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'familytree: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script>
