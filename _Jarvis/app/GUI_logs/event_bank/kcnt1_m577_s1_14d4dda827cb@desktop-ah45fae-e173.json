@@ -30,6 +30,10 @@
   },
   "_keys": {
     "versions": {
+      "a498d0217826": [
+        "set",
+        "2026-11-24T17:58:32.237343+00:00"
+      ],
       "cacc7e1fd0da": [
         "set",
         "2026-11-24T04:04:13.405277+00:00"
@@ -41,7 +45,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-24T04:04:13.405277+00:00",
+    "at": "2026-11-24T17:58:32.237343+00:00",
     "machine": "desktop-ah45fae-e173",
     "schema": 1
   },
@@ -15281,6 +15285,20 @@
           null
         ]
       ],
+      "v": 0
+    },
+    {
+      "at": "2026-11-24T11:58:57-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 1659
+      },
+      "id": "a498d0217826",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 1659,
+      "note": "Imported from Incisor (dentate spike). 1659 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]
