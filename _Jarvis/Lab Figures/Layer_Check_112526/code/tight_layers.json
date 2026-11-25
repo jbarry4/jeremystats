@@ -1,0 +1,1662 @@
+{
+ "made": "2026-11-25",
+ "um_per_contact": 20.0,
+ "half_width_contacts": 2.0,
+ "median_gap_contacts": {
+  "upper": 2.6505266884406993,
+  "lower": 2.846182389296658
+ },
+ "rule": "Layer check (2026-11-25): tight MML / OML contacts per recording, from each DS type's own sink.\n\nRules (the user's answers, 2026-11-25):\n  anchors     per blade, MML is centered on the DS2 sink and OML on the DS1 sink (the battery's winner split; its\n              names are positional: DS1 is the type whose sink sits farther from the cell layer, checked and swapped by\n              the battery), each sink found on that type's own mean CSD at the DS peak (+-3 ms), on the molecular-layer\n              side of the blade's cell-layer source, as the centroid of the sink lobe above half its depth\n  fallback    a mouse whose types do not separate (question 2's rule: separation index >= 0.45 and each type >= 5% and\n              >= 5 events), or a blade where DS1's sink is not farther out than DS2's, uses the all-DS sink as the MML\n              and puts the OML the median DS1-to-DS2 distance (from the separating blades) farther out\n  width       +-2 contacts (+-40 um at 20 um per contact); where the two anchors are under 4 contacts apart, every\n              contact goes to the nearer anchor only (split at the midpoint), so no contact is in both layers\n  contacts    good contacts only, never the probe's first or last (no CSD there), and only on the molecular-layer side\n              of that blade's cell-layer source\nThe old rule is kept beside it for the figures: v = 0 at the cell-layer source, 1 at the all-DS sink, MML v 0.7-1.3,\nOML v 1.3-2.0. Writes tight_layers.json.\n",
+ "mice": {
+  "m2": {
+   "lab": "m2",
+   "n": 110,
+   "n1": 104,
+   "n2": 6,
+   "si": 0.3237655552705143,
+   "separable": false,
+   "landmarks": {
+    "U": 27.50290967065797,
+    "L": 37.407899942738815,
+    "GU": 32.30584224958299,
+    "GL": 32.30584224958299
+   },
+   "blades": {
+    "upper": {
+     "source_row": 32.30584224958299,
+     "all_sink_row": 27.50290967065797,
+     "ds1_sink_row": 27.49047618908698,
+     "ds1_sink_depth": 0.6246092319488525,
+     "ds2_sink_row": 29.389694477817827,
+     "ds2_sink_depth": 0.40875065326690674,
+     "method": "median gap",
+     "out": -1.0,
+     "mml_row": 27.50290967065797,
+     "oml_row": 24.85238298221727,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 96.05865157850033,
+     "oml_um_from_source": 149.06918534731432
+    },
+    "lower": {
+     "source_row": 32.30584224958299,
+     "all_sink_row": 37.407899942738815,
+     "ds1_sink_row": 37.414115231781985,
+     "ds1_sink_depth": 0.4987504780292511,
+     "ds2_sink_row": 37.13852137697862,
+     "ds2_sink_depth": 0.13144560158252716,
+     "method": "median gap",
+     "out": 1.0,
+     "mml_row": 37.407899942738815,
+     "oml_row": 40.25408233203547,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 102.04115386311656,
+     "oml_um_from_source": 158.96480164904972
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      27,
+      28,
+      29
+     ],
+     "OML": [
+      23,
+      24,
+      25,
+      26
+     ]
+    },
+    "lower": {
+     "MML": [
+      36,
+      37,
+      38
+     ],
+     "OML": [
+      39,
+      40,
+      41,
+      42
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      27,
+      28
+     ],
+     "OML": [
+      23,
+      24,
+      25,
+      26
+     ]
+    },
+    "lower": {
+     "MML": [
+      36,
+      37,
+      38
+     ],
+     "OML": [
+      39,
+      40,
+      41,
+      42
+     ]
+    }
+   }
+  },
+  "m21": {
+   "lab": "m21",
+   "n": 70,
+   "n1": 0,
+   "n2": 0,
+   "si": null,
+   "separable": false,
+   "landmarks": {
+    "U": 34.02813997131513,
+    "L": 56.08946924721688,
+    "GU": 39.731492870164175,
+    "GL": 50.34532873296135
+   },
+   "blades": {
+    "upper": {
+     "source_row": 39.731492870164175,
+     "all_sink_row": 34.02813997131513,
+     "method": "median gap",
+     "out": -1.0,
+     "mml_row": 34.02813997131513,
+     "oml_row": 31.377613282874428,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 114.06705797698095,
+     "oml_um_from_source": 167.07759174579493
+    },
+    "lower": {
+     "source_row": 50.34532873296135,
+     "all_sink_row": 56.08946924721688,
+     "method": "median gap",
+     "out": 1.0,
+     "mml_row": 56.08946924721688,
+     "oml_row": 58.93565163651354,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 114.88281028511068,
+     "oml_um_from_source": 171.80645807104383
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      33,
+      34,
+      35,
+      36
+     ],
+     "OML": [
+      30,
+      31,
+      32
+     ]
+    },
+    "lower": {
+     "MML": [
+      55,
+      56,
+      57
+     ],
+     "OML": [
+      59,
+      60
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      33,
+      34,
+      35
+     ],
+     "OML": [
+      29,
+      30,
+      31,
+      32
+     ]
+    },
+    "lower": {
+     "MML": [
+      55,
+      56,
+      57
+     ],
+     "OML": [
+      59,
+      60,
+      61
+     ]
+    }
+   }
+  },
+  "m22": {
+   "lab": "m22",
+   "n": 226,
+   "n1": 207,
+   "n2": 19,
+   "si": 0.4983058071066765,
+   "separable": true,
+   "landmarks": {
+    "U": 31.542229799869276,
+    "L": 56.5616574394755,
+    "GU": 37.98133843611692,
+    "GL": 51.99999999999999
+   },
+   "blades": {
+    "upper": {
+     "source_row": 37.98133843611692,
+     "all_sink_row": 31.542229799869276,
+     "ds1_sink_row": 31.427266390972385,
+     "ds1_sink_depth": 0.1570565551519394,
+     "ds2_sink_row": 33.464005211615344,
+     "ds2_sink_depth": 0.1666048765182495,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 33.464005211615344,
+     "oml_row": 31.427266390972385,
+     "anchor_gap_um": 40.73477641285919,
+     "mml_um_from_source": 90.34666449003154,
+     "oml_um_from_source": 131.08144090289073
+    },
+    "lower": {
+     "source_row": 51.99999999999999,
+     "all_sink_row": 56.5616574394755,
+     "ds1_sink_row": 56.85791237534916,
+     "ds1_sink_depth": 0.1403936743736267,
+     "ds2_sink_row": 55.22083048737767,
+     "ds2_sink_depth": 0.30764445662498474,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 55.22083048737767,
+     "oml_row": 56.85791237534916,
+     "anchor_gap_um": 32.74163775942981,
+     "mml_um_from_source": 64.41660974755351,
+     "oml_um_from_source": 97.15824750698332
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      33,
+      34,
+      35
+     ],
+     "OML": [
+      30,
+      31,
+      32
+     ]
+    },
+    "lower": {
+     "MML": [
+      54,
+      55,
+      56
+     ],
+     "OML": [
+      57
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      30,
+      31,
+      32,
+      33
+     ],
+     "OML": [
+      26,
+      27,
+      28,
+      29
+     ]
+    },
+    "lower": {
+     "MML": [
+      56,
+      57
+     ],
+     "OML": [
+      59,
+      60,
+      61
+     ]
+    }
+   }
+  },
+  "m26": {
+   "lab": "m26",
+   "n": 273,
+   "n1": 14,
+   "n2": 259,
+   "si": 0.7205505833016457,
+   "separable": true,
+   "landmarks": {
+    "U": 35.768208262960236,
+    "L": 48.6160064712762,
+    "GU": 41.72883985447323,
+    "GL": 41.72883985447323
+   },
+   "blades": {
+    "upper": {
+     "source_row": 41.72883985447323,
+     "all_sink_row": 35.768208262960236,
+     "ds1_sink_row": 31.381969833680227,
+     "ds1_sink_depth": 0.08530505746603012,
+     "ds2_sink_row": 35.770390166928394,
+     "ds2_sink_depth": 0.32344356179237366,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 35.770390166928394,
+     "oml_row": 31.381969833680227,
+     "anchor_gap_um": 87.76840666496334,
+     "mml_um_from_source": 119.1689937508967,
+     "oml_um_from_source": 206.93740041586005
+    },
+    "lower": {
+     "source_row": 41.72883985447323,
+     "all_sink_row": 48.6160064712762,
+     "ds1_sink_row": 51.781571128922586,
+     "ds1_sink_depth": 0.09787540882825851,
+     "ds2_sink_row": 48.589112716426165,
+     "ds2_sink_depth": 0.29716745018959045,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 48.589112716426165,
+     "oml_row": 51.781571128922586,
+     "anchor_gap_um": 63.849168249928425,
+     "mml_um_from_source": 137.20545723905872,
+     "oml_um_from_source": 201.05462548898714
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      34,
+      35,
+      36,
+      37
+     ],
+     "OML": [
+      30,
+      31,
+      32,
+      33
+     ]
+    },
+    "lower": {
+     "MML": [
+      47,
+      48,
+      49,
+      50
+     ],
+     "OML": [
+      51,
+      52,
+      53
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      34,
+      35,
+      36,
+      37
+     ],
+     "OML": [
+      30,
+      31,
+      32,
+      33
+     ]
+    },
+    "lower": {
+     "MML": [
+      47,
+      48,
+      49,
+      50
+     ],
+     "OML": [
+      51,
+      52,
+      53,
+      54,
+      55
+     ]
+    }
+   }
+  },
+  "m59": {
+   "lab": "m59",
+   "n": 492,
+   "n1": 25,
+   "n2": 467,
+   "si": 0.5420313601412479,
+   "separable": true,
+   "landmarks": {
+    "U": 32.55398564821989,
+    "L": 54.26368769987567,
+    "GU": 37.87534170559246,
+    "GL": 50.497268831100705
+   },
+   "blades": {
+    "upper": {
+     "source_row": 37.87534170559246,
+     "all_sink_row": 32.55398564821989,
+     "ds1_sink_row": 30.135036018756324,
+     "ds1_sink_depth": 0.1142706573009491,
+     "ds2_sink_row": 32.56851242882483,
+     "ds2_sink_depth": 0.30227723717689514,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 32.56851242882483,
+     "oml_row": 30.135036018756324,
+     "anchor_gap_um": 48.669528201370156,
+     "mml_um_from_source": 106.1365855353526,
+     "oml_um_from_source": 154.80611373672275
+    },
+    "lower": {
+     "source_row": 50.497268831100705,
+     "all_sink_row": 54.26368769987567,
+     "ds1_sink_row": 55.96208299784636,
+     "ds1_sink_depth": 0.10318663716316223,
+     "ds2_sink_row": 54.24676671775862,
+     "ds2_sink_depth": 0.2787770926952362,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 54.24676671775862,
+     "oml_row": 55.96208299784636,
+     "anchor_gap_um": 34.30632560175482,
+     "mml_um_from_source": 74.98995773315826,
+     "oml_um_from_source": 109.29628333491308
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      32,
+      33,
+      34
+     ],
+     "OML": [
+      29,
+      30,
+      31
+     ]
+    },
+    "lower": {
+     "MML": [
+      53,
+      54,
+      55
+     ],
+     "OML": [
+      56,
+      57
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      31,
+      32,
+      33,
+      34
+     ],
+     "OML": [
+      28,
+      29,
+      30
+     ]
+    },
+    "lower": {
+     "MML": [
+      54,
+      55
+     ],
+     "OML": [
+      56,
+      57
+     ]
+    }
+   }
+  },
+  "m60": {
+   "lab": "m60",
+   "n": 562,
+   "n1": 522,
+   "n2": 40,
+   "si": 0.5123986555180079,
+   "separable": true,
+   "landmarks": {
+    "U": 30.802237066658883,
+    "L": 52.317004906365405,
+    "GU": 37.70409389489642,
+    "GL": 46.611547555802794
+   },
+   "blades": {
+    "upper": {
+     "source_row": 37.70409389489642,
+     "all_sink_row": 30.802237066658883,
+     "ds1_sink_row": 30.734205924153372,
+     "ds1_sink_depth": 0.5364184975624084,
+     "ds2_sink_row": 32.22139169228539,
+     "ds2_sink_depth": 0.2472241371870041,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 32.22139169228539,
+     "oml_row": 30.734205924153372,
+     "anchor_gap_um": 29.7437153626403,
+     "mml_um_from_source": 109.6540440522206,
+     "oml_um_from_source": 139.3977594148609
+    },
+    "lower": {
+     "source_row": 46.611547555802794,
+     "all_sink_row": 52.317004906365405,
+     "ds1_sink_row": 52.39462445406379,
+     "ds1_sink_depth": 0.4703177809715271,
+     "ds2_sink_row": 50.711014788874444,
+     "ds2_sink_depth": 0.23465557396411896,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 50.711014788874444,
+     "oml_row": 52.39462445406379,
+     "anchor_gap_um": 33.672193303786884,
+     "mml_um_from_source": 81.989344661433,
+     "oml_um_from_source": 115.66153796521988
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      32,
+      33,
+      34
+     ],
+     "OML": [
+      29,
+      30,
+      31
+     ]
+    },
+    "lower": {
+     "MML": [
+      49,
+      50,
+      51
+     ],
+     "OML": [
+      52,
+      53,
+      54
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      29,
+      30,
+      31,
+      32
+     ],
+     "OML": [
+      24,
+      25,
+      26,
+      27,
+      28
+     ]
+    },
+    "lower": {
+     "MML": [
+      51,
+      52,
+      53,
+      54
+     ],
+     "OML": [
+      55,
+      56,
+      57
+     ]
+    }
+   }
+  },
+  "m61": {
+   "lab": "m61",
+   "n": 189,
+   "n1": 16,
+   "n2": 173,
+   "si": 0.9225672260366415,
+   "separable": true,
+   "landmarks": {
+    "U": 31.04042078293886,
+    "L": 44.063119014137364,
+    "GU": 38.57748602953405,
+    "GL": 38.57748602953405
+   },
+   "blades": {
+    "upper": {
+     "source_row": 38.57748602953405,
+     "all_sink_row": 31.04042078293886,
+     "ds1_sink_row": 26.455069672465967,
+     "ds1_sink_depth": 0.086149200797081,
+     "ds2_sink_row": 31.060509987645506,
+     "ds2_sink_depth": 0.24057534337043762,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 31.060509987645506,
+     "oml_row": 26.455069672465967,
+     "anchor_gap_um": 92.10880630359078,
+     "mml_um_from_source": 150.33952083777086,
+     "oml_um_from_source": 242.44832714136166
+    },
+    "lower": {
+     "source_row": 38.57748602953405,
+     "all_sink_row": 44.063119014137364,
+     "ds1_sink_row": 48.22640777784024,
+     "ds1_sink_depth": 0.18575561046600342,
+     "ds2_sink_row": 44.04708861335651,
+     "ds2_sink_depth": 0.34015607833862305,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 44.04708861335651,
+     "oml_row": 48.22640777784024,
+     "anchor_gap_um": 83.58638328967459,
+     "mml_um_from_source": 109.39205167644914,
+     "oml_um_from_source": 192.97843496612373
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      30,
+      31,
+      32,
+      33
+     ],
+     "OML": [
+      25,
+      26,
+      27,
+      28
+     ]
+    },
+    "lower": {
+     "MML": [
+      43,
+      44,
+      45,
+      46
+     ],
+     "OML": [
+      47,
+      48,
+      49,
+      50
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      29,
+      30,
+      31,
+      32,
+      33
+     ],
+     "OML": [
+      24,
+      25,
+      26,
+      27,
+      28
+     ]
+    },
+    "lower": {
+     "MML": [
+      43,
+      44,
+      45
+     ],
+     "OML": [
+      46,
+      47,
+      48,
+      49
+     ]
+    }
+   }
+  },
+  "m8": {
+   "lab": "m8",
+   "n": 363,
+   "n1": 52,
+   "n2": 311,
+   "si": 0.4329366444728835,
+   "separable": false,
+   "landmarks": {
+    "U": 37.887467152135535,
+    "L": 55.40694231665945,
+    "GU": 48.292226090983476,
+    "GL": 48.461526257440035
+   },
+   "blades": {
+    "upper": {
+     "source_row": 48.292226090983476,
+     "all_sink_row": 37.887467152135535,
+     "ds1_sink_row": 35.68512270180829,
+     "ds1_sink_depth": 0.14831902086734772,
+     "ds2_sink_row": 38.19669564597266,
+     "ds2_sink_depth": 0.15616080164909363,
+     "method": "median gap",
+     "out": -1.0,
+     "mml_row": 37.887467152135535,
+     "oml_row": 35.236940463694836,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 208.09517877695882,
+     "oml_um_from_source": 261.1057125457728
+    },
+    "lower": {
+     "source_row": 48.461526257440035,
+     "all_sink_row": 55.40694231665945,
+     "ds1_sink_row": 57.01565132373616,
+     "ds1_sink_depth": 0.20266519486904144,
+     "ds2_sink_row": 55.25530566493322,
+     "ds2_sink_depth": 0.27374032139778137,
+     "method": "median gap",
+     "out": 1.0,
+     "mml_row": 55.40694231665945,
+     "oml_row": 58.25312470595611,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 138.90832118438837,
+     "oml_um_from_source": 195.83196897032153
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      37,
+      38,
+      39
+     ],
+     "OML": [
+      34,
+      35,
+      36
+     ]
+    },
+    "lower": {
+     "MML": [
+      54,
+      55
+     ],
+     "OML": [
+      57,
+      59,
+      60
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41
+     ],
+     "OML": [
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+     ]
+    },
+    "lower": {
+     "MML": [
+      54,
+      55,
+      57
+     ],
+     "OML": [
+      59,
+      60,
+      61,
+      62
+     ]
+    }
+   }
+  },
+  "m33": {
+   "lab": "m33",
+   "n": 217,
+   "n1": 34,
+   "n2": 183,
+   "si": 0.7543923912628809,
+   "separable": true,
+   "landmarks": {
+    "U": 26.1757314853276,
+    "L": 49.51368731838944,
+    "GU": 30.108912656137818,
+    "GL": 43.558363136302766
+   },
+   "blades": {
+    "upper": {
+     "source_row": 30.108912656137818,
+     "all_sink_row": 26.1757314853276,
+     "ds1_sink_row": 19.675497751558797,
+     "ds1_sink_depth": 0.09246402978897095,
+     "ds2_sink_row": 26.069571823455192,
+     "ds2_sink_depth": 0.12387516349554062,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 26.069571823455192,
+     "oml_row": 19.675497751558797,
+     "anchor_gap_um": 127.88148143792789,
+     "mml_um_from_source": 80.78681665365252,
+     "oml_um_from_source": 208.66829809158043
+    },
+    "lower": {
+     "source_row": 43.558363136302766,
+     "all_sink_row": 49.51368731838944,
+     "ds1_sink_row": 56.61473163411758,
+     "ds1_sink_depth": 0.03374210745096207,
+     "ds2_sink_row": 49.79824105699186,
+     "ds2_sink_depth": 0.05863291397690773,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 49.79824105699186,
+     "oml_row": 56.61473163411758,
+     "anchor_gap_um": 136.3298115425144,
+     "mml_um_from_source": 124.79755841378193,
+     "oml_um_from_source": 261.1273699562963
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      25,
+      26,
+      27,
+      28
+     ],
+     "OML": [
+      18,
+      19,
+      20,
+      21
+     ]
+    },
+    "lower": {
+     "MML": [
+      48,
+      49,
+      50,
+      51
+     ],
+     "OML": [
+      55,
+      56,
+      57
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      25,
+      26,
+      27
+     ],
+     "OML": [
+      23,
+      24
+     ]
+    },
+    "lower": {
+     "MML": [
+      48,
+      49,
+      50,
+      51
+     ],
+     "OML": [
+      52,
+      53,
+      54,
+      55
+     ]
+    }
+   }
+  },
+  "m1": {
+   "lab": "m1",
+   "n": 188,
+   "n1": 12,
+   "n2": 176,
+   "si": 0.82917113694911,
+   "separable": true,
+   "landmarks": {
+    "U": 32.47981699252419,
+    "L": 48.42831044023518,
+    "GU": 40.24110469416842,
+    "GL": 40.25897106179388
+   },
+   "blades": {
+    "upper": {
+     "source_row": 40.24110469416842,
+     "all_sink_row": 32.47981699252419,
+     "ds1_sink_row": 27.895118427626556,
+     "ds1_sink_depth": 0.06020727753639221,
+     "ds2_sink_row": 32.48717502887062,
+     "ds2_sink_depth": 0.1800571233034134,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 32.48717502887062,
+     "oml_row": 27.895118427626556,
+     "anchor_gap_um": 91.8411320248812,
+     "mml_um_from_source": 155.07859330595608,
+     "oml_um_from_source": 246.91972533083728
+    },
+    "lower": {
+     "source_row": 40.25897106179388,
+     "all_sink_row": 48.42831044023518,
+     "ds1_sink_row": 52.168922168032076,
+     "ds1_sink_depth": 0.08216597884893417,
+     "ds2_sink_row": 48.41168492385901,
+     "ds2_sink_depth": 0.1839013248682022,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 48.41168492385901,
+     "oml_row": 52.168922168032076,
+     "anchor_gap_um": 75.14474488346124,
+     "mml_um_from_source": 163.05427724130269,
+     "oml_um_from_source": 238.19902212476393
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      31,
+      32,
+      33,
+      34
+     ],
+     "OML": [
+      26,
+      27,
+      28,
+      29
+     ]
+    },
+    "lower": {
+     "MML": [
+      47,
+      48,
+      49,
+      50
+     ],
+     "OML": [
+      51,
+      52,
+      53,
+      54
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      31,
+      32,
+      33,
+      34
+     ],
+     "OML": [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+     ]
+    },
+    "lower": {
+     "MML": [
+      46,
+      47,
+      48,
+      49,
+      50
+     ],
+     "OML": [
+      51,
+      52,
+      53,
+      54,
+      55,
+      56
+     ]
+    }
+   }
+  },
+  "m7": {
+   "lab": "m7",
+   "n": 125,
+   "n1": 15,
+   "n2": 110,
+   "si": 0.7909373216556609,
+   "separable": true,
+   "landmarks": {
+    "U": 33.97949710507196,
+    "L": 46.19310883247401,
+    "GU": 39.76884523564515,
+    "GL": 39.76884523564515
+   },
+   "blades": {
+    "upper": {
+     "source_row": 39.76884523564515,
+     "all_sink_row": 33.97949710507196,
+     "ds1_sink_row": 29.49604175022913,
+     "ds1_sink_depth": 0.05320914462208748,
+     "ds2_sink_row": 33.99746652718237,
+     "ds2_sink_depth": 0.11536268144845963,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 33.99746652718237,
+     "oml_row": 29.49604175022913,
+     "anchor_gap_um": 90.02849553906479,
+     "mml_um_from_source": 115.42757416925568,
+     "oml_um_from_source": 205.45606970832046
+    },
+    "lower": {
+     "source_row": 39.76884523564515,
+     "all_sink_row": 46.19310883247401,
+     "ds1_sink_row": 52.29161046902308,
+     "ds1_sink_depth": 0.1010703295469284,
+     "ds2_sink_row": 46.19979282074374,
+     "ds2_sink_depth": 0.13800153136253357,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 46.19979282074374,
+     "oml_row": 52.29161046902308,
+     "anchor_gap_um": 121.83635296558677,
+     "mml_um_from_source": 128.61895170197172,
+     "oml_um_from_source": 250.4553046675585
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      32,
+      33,
+      34,
+      35
+     ],
+     "OML": [
+      28,
+      29,
+      30,
+      31
+     ]
+    },
+    "lower": {
+     "MML": [
+      45,
+      46,
+      47,
+      48
+     ],
+     "OML": [
+      51,
+      52,
+      53
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      33,
+      34,
+      35
+     ],
+     "OML": [
+      29,
+      30,
+      31,
+      32
+     ]
+    },
+    "lower": {
+     "MML": [
+      45,
+      46,
+      47,
+      48
+     ],
+     "OML": [
+      49,
+      50,
+      51,
+      52
+     ]
+    }
+   }
+  },
+  "m13": {
+   "lab": "m13",
+   "n": 353,
+   "n1": 18,
+   "n2": 335,
+   "si": 0.6852046837531123,
+   "separable": true,
+   "landmarks": {
+    "U": 24.36090167922513,
+    "L": 40.30248696603227,
+    "GU": 34.432105897342225,
+    "GL": 34.432105897342225
+   },
+   "blades": {
+    "upper": {
+     "source_row": 34.432105897342225,
+     "all_sink_row": 24.36090167922513,
+     "ds1_sink_row": 22.846665218454163,
+     "ds1_sink_depth": 0.09458907693624496,
+     "ds2_sink_row": 24.408624026614746,
+     "ds2_sink_depth": 0.17119552195072174,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 24.408624026614746,
+     "oml_row": 22.846665218454163,
+     "anchor_gap_um": 31.239176163211653,
+     "mml_um_from_source": 200.4696374145496,
+     "oml_um_from_source": 231.70881357776125
+    },
+    "lower": {
+     "source_row": 34.432105897342225,
+     "all_sink_row": 40.30248696603227,
+     "ds1_sink_row": 42.20967052953003,
+     "ds1_sink_depth": 0.4034382700920105,
+     "ds2_sink_row": 40.214808823530205,
+     "ds2_sink_depth": 0.8062278628349304,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 40.214808823530205,
+     "oml_row": 42.20967052953003,
+     "anchor_gap_um": 39.89723411999648,
+     "mml_um_from_source": 115.6540585237596,
+     "oml_um_from_source": 155.55129264375608
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      24,
+      25,
+      26
+     ],
+     "OML": [
+      21,
+      22,
+      23
+     ]
+    },
+    "lower": {
+     "MML": [
+      39,
+      40,
+      41
+     ],
+     "OML": [
+      42,
+      43,
+      44
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+     ],
+     "OML": [
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+     ]
+    },
+    "lower": {
+     "MML": [
+      39,
+      40,
+      41,
+      42
+     ],
+     "OML": [
+      43,
+      44,
+      45,
+      46
+     ]
+    }
+   }
+  },
+  "m28": {
+   "lab": "m28",
+   "n": 335,
+   "n1": 33,
+   "n2": 302,
+   "si": 0.8583196776371971,
+   "separable": true,
+   "landmarks": {
+    "U": 26.739621108523096,
+    "L": 45.947625270218644,
+    "GU": 36.6047955970607,
+    "GL": 42.37317223933301
+   },
+   "blades": {
+    "upper": {
+     "source_row": 36.6047955970607,
+     "all_sink_row": 26.739621108523096,
+     "ds1_sink_row": 25.42358933311931,
+     "ds1_sink_depth": 0.21465158462524414,
+     "ds2_sink_row": 26.848304046308915,
+     "ds2_sink_depth": 0.35477620363235474,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 26.848304046308915,
+     "oml_row": 25.42358933311931,
+     "anchor_gap_um": 28.4942942637921,
+     "mml_um_from_source": 195.12983101503573,
+     "oml_um_from_source": 223.62412527882782
+    },
+    "lower": {
+     "source_row": 42.37317223933301,
+     "all_sink_row": 45.947625270218644,
+     "ds1_sink_row": 47.81893347714749,
+     "ds1_sink_depth": 0.18364660441875458,
+     "ds2_sink_row": 45.92508521646164,
+     "ds2_sink_depth": 0.4631417989730835,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 45.92508521646164,
+     "oml_row": 47.81893347714749,
+     "anchor_gap_um": 37.876965213717,
+     "mml_um_from_source": 71.0382595425726,
+     "oml_um_from_source": 108.9152247562896
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      27,
+      28
+     ],
+     "OML": [
+      24,
+      25,
+      26
+     ]
+    },
+    "lower": {
+     "MML": [
+      44,
+      45,
+      46
+     ],
+     "OML": [
+      47,
+      48,
+      49
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+     ],
+     "OML": [
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+     ]
+    },
+    "lower": {
+     "MML": [
+      45,
+      46,
+      47
+     ],
+     "OML": [
+      48,
+      49
+     ]
+    }
+   }
+  },
+  "m3": {
+   "lab": "m3",
+   "n": 151,
+   "n1": 141,
+   "n2": 10,
+   "si": 0.11559344425748885,
+   "separable": false,
+   "landmarks": {
+    "U": 17.013442838862236,
+    "L": 43.973098489139865,
+    "GU": 27.948886793934133,
+    "GL": 37.89178300710633
+   },
+   "blades": {
+    "upper": {
+     "source_row": 27.948886793934133,
+     "all_sink_row": 17.013442838862236,
+     "ds1_sink_row": 17.024865332969505,
+     "ds1_sink_depth": 0.03863957151770592,
+     "ds2_sink_row": 16.97684661829295,
+     "ds2_sink_depth": 0.012326638214290142,
+     "method": "median gap",
+     "out": -1.0,
+     "mml_row": 17.013442838862236,
+     "oml_row": 14.362916150421537,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 218.70887910143793,
+     "oml_um_from_source": 271.7194128702519
+    },
+    "lower": {
+     "source_row": 37.89178300710633,
+     "all_sink_row": 43.973098489139865,
+     "ds1_sink_row": 43.97792775058464,
+     "ds1_sink_depth": 0.15402016043663025,
+     "ds2_sink_row": 43.861680303211664,
+     "ds2_sink_depth": 0.09810692816972733,
+     "method": "median gap",
+     "out": 1.0,
+     "mml_row": 43.973098489139865,
+     "oml_row": 46.81928087843652,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 121.62630964067063,
+     "oml_um_from_source": 178.54995742660378
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      16,
+      17,
+      18,
+      19
+     ],
+     "OML": [
+      13,
+      14,
+      15
+     ]
+    },
+    "lower": {
+     "MML": [
+      42,
+      43,
+      44,
+      45
+     ],
+     "OML": [
+      46,
+      47,
+      48
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+     ],
+     "OML": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+     ]
+    },
+    "lower": {
+     "MML": [
+      43,
+      44,
+      45
+     ],
+     "OML": [
+      46,
+      47,
+      48,
+      49,
+      50
+     ]
+    }
+   }
+  },
+  "m5": {
+   "lab": "m5",
+   "n": 689,
+   "n1": 628,
+   "n2": 61,
+   "si": 0.21575360861361814,
+   "separable": false,
+   "landmarks": {
+    "U": 29.18530759897111,
+    "L": 56.73192666956574,
+    "GU": 34.08381377059999,
+    "GL": 49.25083602506728
+   },
+   "blades": {
+    "upper": {
+     "source_row": 34.08381377059999,
+     "all_sink_row": 29.18530759897111,
+     "ds1_sink_row": 28.719991378925208,
+     "ds1_sink_depth": 0.2644151449203491,
+     "ds2_sink_row": 30.50064647373165,
+     "ds2_sink_depth": 0.638195276260376,
+     "method": "median gap",
+     "out": -1.0,
+     "mml_row": 29.18530759897111,
+     "oml_row": 26.53478091053041,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 97.97012343257755,
+     "oml_um_from_source": 150.98065720139152
+    },
+    "lower": {
+     "source_row": 49.25083602506728,
+     "all_sink_row": 56.73192666956574,
+     "ds1_sink_row": 56.90466631263939,
+     "ds1_sink_depth": 0.47181153297424316,
+     "ds2_sink_row": 54.16191722393011,
+     "ds2_sink_depth": 0.5579548478126526,
+     "method": "median gap",
+     "out": 1.0,
+     "mml_row": 56.73192666956574,
+     "oml_row": 59.578109058862395,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 149.62181288996916,
+     "oml_um_from_source": 206.54546067590232
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      28,
+      29,
+      30,
+      31
+     ],
+     "OML": [
+      25,
+      26,
+      27
+     ]
+    },
+    "lower": {
+     "MML": [
+      55,
+      56,
+      57
+     ],
+     "OML": [
+      59,
+      60,
+      61
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      28,
+      29,
+      30
+     ],
+     "OML": [
+      25,
+      26,
+      27
+     ]
+    },
+    "lower": {
+     "MML": [
+      55,
+      56,
+      57
+     ],
+     "OML": [
+      59,
+      60,
+      61,
+      62
+     ]
+    }
+   }
+  },
+  "m34": {
+   "lab": "m34",
+   "n": 182,
+   "n1": 157,
+   "n2": 25,
+   "si": 0.4569569754799584,
+   "separable": true,
+   "landmarks": {
+    "U": 31.356038734513632,
+    "L": 52.750195260738685,
+    "GU": 38.217101902596106,
+    "GL": 42.898424323304795
+   },
+   "blades": {
+    "upper": {
+     "source_row": 38.217101902596106,
+     "all_sink_row": 31.356038734513632,
+     "ds1_sink_row": 31.017257739795916,
+     "ds1_sink_depth": 0.20039653778076172,
+     "ds2_sink_row": 33.667784428236615,
+     "ds2_sink_depth": 0.23363424837589264,
+     "method": "own types",
+     "out": -1.0,
+     "mml_row": 33.667784428236615,
+     "oml_row": 31.017257739795916,
+     "anchor_gap_um": 53.010533768813985,
+     "mml_um_from_source": 90.98634948718981,
+     "oml_um_from_source": 143.9968832560038
+    },
+    "lower": {
+     "source_row": 42.898424323304795,
+     "all_sink_row": 52.750195260738685,
+     "ds1_sink_row": 52.86282085014808,
+     "ds1_sink_depth": 0.314681738615036,
+     "ds2_sink_row": 50.016638460851425,
+     "ds2_sink_depth": 0.2569600045681,
+     "method": "own types",
+     "out": 1.0,
+     "mml_row": 50.016638460851425,
+     "oml_row": 52.86282085014808,
+     "anchor_gap_um": 56.923647785933156,
+     "mml_um_from_source": 142.3642827509326,
+     "oml_um_from_source": 199.28793053686576
+    }
+   },
+   "rows": {
+    "upper": {
+     "MML": [
+      33,
+      34,
+      35
+     ],
+     "OML": [
+      30,
+      31,
+      32
+     ]
+    },
+    "lower": {
+     "MML": [
+      49,
+      50,
+      51
+     ],
+     "OML": [
+      52,
+      53,
+      54
+     ]
+    }
+   },
+   "rows_old": {
+    "upper": {
+     "MML": [
+      30,
+      31,
+      32,
+      33
+     ],
+     "OML": [
+      25,
+      26,
+      27,
+      28,
+      29
+     ]
+    },
+    "lower": {
+     "MML": [
+      50,
+      51,
+      52,
+      53,
+      54,
+      55
+     ],
+     "OML": [
+      56,
+      57,
+      59,
+      60,
+      61,
+      62
+     ]
+    }
+   }
+  }
+ }
+}

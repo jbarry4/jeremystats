@@ -47,8 +47,8 @@ BARRY.shStory = (function () {
   const ACTS = [
     { key: 'open', label: 'Mouse 459' },
     { key: 'before', label: 'Tripping over its own skis' },
-    { key: 'probe', label: 'On the probe' },
-    { key: 'beyond', label: 'Beyond the probe' },
+    { key: 'probe', label: 'From the hilus to CA1' },
+    { key: 'beyond', label: 'Around the loop, then the brain' },
     { key: 'after', label: 'After' },
     { key: 'leaves', label: 'What it leaves' },
   ];
@@ -182,7 +182,7 @@ BARRY.shStory = (function () {
       more: ['Why it stops, the recording can\'t say: exhausted, blocked by its own depolarization, or held down by its overactive KCNT1 channels, which open further as sodium builds up inside a hard-firing cell. That is a question we can test.'],
       refs: ['ziburkus2006'] },
 
-    { key: 'damage', act: 'leaves', tag: 'literature', view: 'hpf-cells', map: 'dentate', fx: 'damage',
+    { key: 'damage', act: 'leaves', tag: 'literature', view: 'dentate', probe: false, map: 'dentate', fx: 'damage',
       focus: { conns: ['hipp_gc'], cells: ['hipp'] },
       title: 'Lasting damage',
       say: 'Seizures leave the network changed: hilar somatostatin interneurons are among the first cells to die, and new granule cells wire in wrong. The damage becomes the network\'s.',
@@ -190,7 +190,7 @@ BARRY.shStory = (function () {
       more: ['Our question for KCNT1: do these mice keep fewer somatostatin cells in the hilus? Counting them is the test.'],
       refs: ['sloviter1987', 'pun2012'] },
 
-    { key: 'opto', act: 'leaves', tag: 'next', view: 'hpf-cells', map: 'dentate', fx: 'opto',
+    { key: 'opto', act: 'leaves', tag: 'next', view: 'dentate', probe: false, map: 'dentate', fx: 'opto',
       focus: { conns: ['hipp_gc'], cells: ['hipp'] },
       title: 'Keep them happy',
       say: 'If the hilar interneurons trip over their own skis, help them keep their footing: drive them with light at a rhythm they like to burst at, and a stumble may never become a fall.',
@@ -223,11 +223,13 @@ BARRY.shStory = (function () {
     const f = x - i;
     return series[i] * (1 - f) + series[i + 1] * f;
   }
-  /* how lit a zone is, 0..1: current density from 2 to 90 times its quiet
-     level, or firing from 1.4 to 16 times, on a log scale */
+  /* how lit a zone is, 0..1: current density from 4 to 110 times its quiet
+     level, or firing from 1.6 to 18 times, on a log scale (below that, dark:
+     the dentate hums at a few times its quiet level all through the run-up) */
+  const SCALE = { absx: [4, 110], mua: [1.6, 18] };
   function level(v, measure) {
-    if (measure === 'mua') return v <= 1.4 ? 0 : clamp(Math.log(v / 1.4) / Math.log(16 / 1.4), 0, 1);
-    return v <= 2 ? 0 : clamp(Math.log(v / 2) / Math.log(90 / 2), 0, 1);
+    const [lo, hi] = SCALE[measure === 'mua' ? 'mua' : 'absx'];
+    return v <= lo ? 0 : clamp(Math.log(v / lo) / Math.log(hi / lo), 0, 1);
   }
   function zoneLevels(D, t, measure) {
     const src = measure === 'mua' ? D.mua : D.absx;
@@ -255,7 +257,7 @@ BARRY.shStory = (function () {
     }
     return RAMP[RAMP.length - 1][1].slice();
   }
-  const alphaOf = (lv) => (lv < 0.03 ? 0 : Math.min(0.94, 0.16 + lv * 1.05));
+  const alphaOf = (lv) => (lv < 0.03 ? 0 : Math.min(0.94, 0.12 + 0.86 * Math.pow(lv, 1.15)));
   const rgba = (c, a) => 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a.toFixed(3) + ')';
   const rampCss = () => 'linear-gradient(90deg,' + RAMP.map(([x, c]) => rgba(c, alphaOf(Math.max(0.06, x))) + ' ' + Math.round(x * 100) + '%').join(',') + ')';
 
@@ -393,6 +395,6 @@ BARRY.shStory = (function () {
     if (o.cursor != null && o.cursor >= t0 && o.cursor <= t1) { ctx.fillStyle = o.accent; ctx.fillRect(Math.round(X(o.cursor)) - 1, top - 2, 2, rows * rowH + 4); }
   }
 
-  return { REFS, TAGS, ACTS, ZONE_WORDS, stories, at, level, zoneLevels, unitRate, ramp, alphaOf, rgba, rampCss,
+  return { REFS, TAGS, ACTS, ZONE_WORDS, SCALE, stories, at, level, zoneLevels, unitRate, ramp, alphaOf, rgba, rampCss,
            drawTimeline, drawUnit, drawRaster, drawOffs };
 })();
