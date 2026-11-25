@@ -1,0 +1,277 @@
+rat,day,phase,region,power,day_name,phase_name,region_name
+3,1,1,1,1.67277205,Precon1,Baseline (20 s),R ACC
+3,1,1,2,1.572861471,Precon1,Baseline (20 s),R OFC
+3,1,1,3,1.692194817,Precon1,Baseline (20 s),R DHC
+3,1,1,5,1.357926857,Precon1,Baseline (20 s),R PER
+3,1,1,8,2.051413249,Precon1,Baseline (20 s),L DHC
+3,1,1,9,1.65632604,Precon1,Baseline (20 s),L OFC
+3,1,1,10,1.745489348,Precon1,Baseline (20 s),L ACC
+3,1,2,1,1.675463259,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+3,1,2,2,1.607863219,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+3,1,2,3,1.687298058,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+3,1,2,5,1.294904109,Precon1,Cue 1 + Cue 2 (20 s),R PER
+3,1,2,8,2.003245464,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+3,1,2,9,1.657098289,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+3,1,2,10,1.736450663,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+3,4,1,1,2.148522967,Precon4,Baseline (20 s),R ACC
+3,4,1,2,1.981929341,Precon4,Baseline (20 s),R OFC
+3,4,1,3,2.191079823,Precon4,Baseline (20 s),R DHC
+3,4,1,5,2.086513229,Precon4,Baseline (20 s),R PER
+3,4,1,8,2.34930193,Precon4,Baseline (20 s),L DHC
+3,4,1,9,2.137940549,Precon4,Baseline (20 s),L OFC
+3,4,1,10,2.165097511,Precon4,Baseline (20 s),L ACC
+3,4,2,1,2.14075761,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+3,4,2,2,2.002183231,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+3,4,2,3,2.149276894,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+3,4,2,5,2.075383427,Precon4,Cue 1 + Cue 2 (20 s),R PER
+3,4,2,8,2.348482323,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+3,4,2,9,2.13027539,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+3,4,2,10,2.150963193,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+4,1,1,1,1.288396833,Precon1,Baseline (20 s),R ACC
+4,1,1,2,1.037412987,Precon1,Baseline (20 s),R OFC
+4,1,1,3,1.538951842,Precon1,Baseline (20 s),R DHC
+4,1,1,4,1.127099651,Precon1,Baseline (20 s),R RSC
+4,1,1,6,1.346035921,Precon1,Baseline (20 s),L POR-SUB
+4,1,1,7,1.320211375,Precon1,Baseline (20 s),L RSC
+4,1,1,8,1.708513803,Precon1,Baseline (20 s),L DHC
+4,1,1,9,1.315430031,Precon1,Baseline (20 s),L OFC
+4,1,1,10,1.100907773,Precon1,Baseline (20 s),L ACC
+4,1,2,1,1.34058941,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+4,1,2,2,1.07598737,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+4,1,2,3,1.507794601,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+4,1,2,4,1.163987989,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+4,1,2,6,1.334898703,Precon1,Cue 1 + Cue 2 (20 s),L POR-SUB
+4,1,2,7,1.396303777,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+4,1,2,8,1.619150575,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+4,1,2,9,1.350532178,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+4,1,2,10,1.212254196,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+4,4,1,1,1.234333043,Precon4,Baseline (20 s),R ACC
+4,4,1,2,0.9284442715,Precon4,Baseline (20 s),R OFC
+4,4,1,3,1.653163029,Precon4,Baseline (20 s),R DHC
+4,4,1,4,1.180508561,Precon4,Baseline (20 s),R RSC
+4,4,1,6,1.28443412,Precon4,Baseline (20 s),L POR-SUB
+4,4,1,7,1.369973511,Precon4,Baseline (20 s),L RSC
+4,4,1,8,1.802946796,Precon4,Baseline (20 s),L DHC
+4,4,1,9,1.215618349,Precon4,Baseline (20 s),L OFC
+4,4,1,10,1.230612215,Precon4,Baseline (20 s),L ACC
+4,4,2,1,1.266124364,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+4,4,2,2,0.9231215994,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+4,4,2,3,1.654000212,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+4,4,2,4,1.187309892,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+4,4,2,6,1.305580998,Precon4,Cue 1 + Cue 2 (20 s),L POR-SUB
+4,4,2,7,1.529156167,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+4,4,2,8,1.655018049,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+4,4,2,9,1.235930413,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+4,4,2,10,1.250465299,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+6,1,1,1,0.708955564,Precon1,Baseline (20 s),R ACC
+6,1,1,2,1.29996187,Precon1,Baseline (20 s),R OFC
+6,1,1,3,1.157944291,Precon1,Baseline (20 s),R DHC
+6,1,1,4,1.154562204,Precon1,Baseline (20 s),R RSC
+6,1,1,5,1.082684424,Precon1,Baseline (20 s),R PER
+6,1,1,6,1.677823329,Precon1,Baseline (20 s),L POR-SUB
+6,1,1,7,1.29381574,Precon1,Baseline (20 s),L RSC
+6,1,1,8,1.326737163,Precon1,Baseline (20 s),L DHC
+6,1,1,9,1.717841884,Precon1,Baseline (20 s),L OFC
+6,1,1,10,0.5118152284,Precon1,Baseline (20 s),L ACC
+6,1,2,1,0.7604681635,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+6,1,2,2,1.32632021,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+6,1,2,3,1.217208412,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+6,1,2,4,1.26942572,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+6,1,2,5,1.146021835,Precon1,Cue 1 + Cue 2 (20 s),R PER
+6,1,2,6,1.677193935,Precon1,Cue 1 + Cue 2 (20 s),L POR-SUB
+6,1,2,7,1.425204287,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+6,1,2,8,1.318198842,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+6,1,2,9,1.801787869,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+6,1,2,10,0.5791730311,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+6,4,1,1,1.283104023,Precon4,Baseline (20 s),R ACC
+6,4,1,2,0.9555441659,Precon4,Baseline (20 s),R OFC
+6,4,1,3,1.052724723,Precon4,Baseline (20 s),R DHC
+6,4,1,4,1.075279385,Precon4,Baseline (20 s),R RSC
+6,4,1,5,1.274731112,Precon4,Baseline (20 s),R PER
+6,4,1,6,1.823423509,Precon4,Baseline (20 s),L POR-SUB
+6,4,1,7,1.143614365,Precon4,Baseline (20 s),L RSC
+6,4,1,8,1.495801492,Precon4,Baseline (20 s),L DHC
+6,4,1,9,1.837158622,Precon4,Baseline (20 s),L OFC
+6,4,1,10,0.8528565016,Precon4,Baseline (20 s),L ACC
+6,4,2,1,1.291259893,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+6,4,2,2,0.9000990522,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+6,4,2,3,1.120600896,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+6,4,2,4,1.037488362,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+6,4,2,5,1.29369555,Precon4,Cue 1 + Cue 2 (20 s),R PER
+6,4,2,6,1.854822921,Precon4,Cue 1 + Cue 2 (20 s),L POR-SUB
+6,4,2,7,1.120582143,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+6,4,2,8,1.548526503,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+6,4,2,9,1.8783481,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+6,4,2,10,0.8699851664,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+7,1,1,1,1.311688346,Precon1,Baseline (20 s),R ACC
+7,1,1,2,1.041234538,Precon1,Baseline (20 s),R OFC
+7,1,1,3,0.7524665869,Precon1,Baseline (20 s),R DHC
+7,1,1,4,1.244715486,Precon1,Baseline (20 s),R RSC
+7,1,1,5,1.222800389,Precon1,Baseline (20 s),R PER
+7,1,1,6,1.235593477,Precon1,Baseline (20 s),L POR-SUB
+7,1,1,7,2.082509332,Precon1,Baseline (20 s),L RSC
+7,1,1,8,1.573416335,Precon1,Baseline (20 s),L DHC
+7,1,1,9,1.397351651,Precon1,Baseline (20 s),L OFC
+7,1,1,10,1.035872261,Precon1,Baseline (20 s),L ACC
+7,1,2,1,1.256625525,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+7,1,2,2,1.089188655,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+7,1,2,3,0.7526367466,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+7,1,2,4,1.22933079,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+7,1,2,5,1.252082742,Precon1,Cue 1 + Cue 2 (20 s),R PER
+7,1,2,6,1.236614273,Precon1,Cue 1 + Cue 2 (20 s),L POR-SUB
+7,1,2,7,2.104055839,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+7,1,2,8,1.58186341,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+7,1,2,9,1.512693612,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+7,1,2,10,1.006852773,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+7,4,1,1,1.197485294,Precon4,Baseline (20 s),R ACC
+7,4,1,2,0.7661620625,Precon4,Baseline (20 s),R OFC
+7,4,1,3,0.6495585151,Precon4,Baseline (20 s),R DHC
+7,4,1,4,0.8557810899,Precon4,Baseline (20 s),R RSC
+7,4,1,5,1.18351332,Precon4,Baseline (20 s),R PER
+7,4,1,6,1.239853107,Precon4,Baseline (20 s),L POR-SUB
+7,4,1,7,1.76543999,Precon4,Baseline (20 s),L RSC
+7,4,1,8,1.804608158,Precon4,Baseline (20 s),L DHC
+7,4,1,9,1.395628586,Precon4,Baseline (20 s),L OFC
+7,4,1,10,0.6347573498,Precon4,Baseline (20 s),L ACC
+7,4,2,1,1.255674438,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+7,4,2,2,0.7838627847,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+7,4,2,3,0.5570911602,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+7,4,2,4,0.8706174424,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+7,4,2,5,1.218941171,Precon4,Cue 1 + Cue 2 (20 s),R PER
+7,4,2,6,1.281969885,Precon4,Cue 1 + Cue 2 (20 s),L POR-SUB
+7,4,2,7,1.801966551,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+7,4,2,8,1.894544233,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+7,4,2,9,1.505744911,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+7,4,2,10,0.7324546526,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+8,1,1,1,1.682890656,Precon1,Baseline (20 s),R ACC
+8,1,1,2,1.157906072,Precon1,Baseline (20 s),R OFC
+8,1,1,3,1.657679771,Precon1,Baseline (20 s),R DHC
+8,1,1,7,1.194447371,Precon1,Baseline (20 s),L RSC
+8,1,1,8,1.243258161,Precon1,Baseline (20 s),L DHC
+8,1,1,9,1.573127865,Precon1,Baseline (20 s),L OFC
+8,1,1,10,1.142503398,Precon1,Baseline (20 s),L ACC
+8,1,2,1,1.720666998,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+8,1,2,2,1.148971988,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+8,1,2,3,1.725243638,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+8,1,2,7,1.369901879,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+8,1,2,8,1.300503141,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+8,1,2,9,1.690995149,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+8,1,2,10,1.271079854,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+8,4,1,1,1.065614339,Precon4,Baseline (20 s),R ACC
+8,4,1,2,1.214076316,Precon4,Baseline (20 s),R OFC
+8,4,1,3,1.767305364,Precon4,Baseline (20 s),R DHC
+8,4,1,7,1.237883197,Precon4,Baseline (20 s),L RSC
+8,4,1,8,1.252690262,Precon4,Baseline (20 s),L DHC
+8,4,1,9,1.389406303,Precon4,Baseline (20 s),L OFC
+8,4,1,10,1.044911818,Precon4,Baseline (20 s),L ACC
+8,4,2,1,1.034904823,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+8,4,2,2,1.186734786,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+8,4,2,3,1.715915987,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+8,4,2,7,0.8815782868,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+8,4,2,8,1.259747214,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+8,4,2,9,1.403700341,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+8,4,2,10,1.008196928,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+9,1,1,1,1.534691503,Precon1,Baseline (20 s),R ACC
+9,1,1,2,0.9859978023,Precon1,Baseline (20 s),R OFC
+9,1,1,3,0.5771233823,Precon1,Baseline (20 s),R DHC
+9,1,1,4,1.074739842,Precon1,Baseline (20 s),R RSC
+9,1,1,5,1.395502754,Precon1,Baseline (20 s),R PER
+9,1,1,7,0.9098365852,Precon1,Baseline (20 s),L RSC
+9,1,1,9,1.189763859,Precon1,Baseline (20 s),L OFC
+9,1,1,10,1.231606178,Precon1,Baseline (20 s),L ACC
+9,1,2,1,1.50335485,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+9,1,2,2,0.9596555784,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+9,1,2,3,0.4861349668,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+9,1,2,4,1.032048119,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+9,1,2,5,1.373122093,Precon1,Cue 1 + Cue 2 (20 s),R PER
+9,1,2,7,0.933727481,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+9,1,2,9,1.16369734,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+9,1,2,10,1.17835081,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+9,4,1,1,1.101161114,Precon4,Baseline (20 s),R ACC
+9,4,1,2,1.023462596,Precon4,Baseline (20 s),R OFC
+9,4,1,3,1.796151253,Precon4,Baseline (20 s),R DHC
+9,4,1,4,0.9893566282,Precon4,Baseline (20 s),R RSC
+9,4,1,5,1.412410273,Precon4,Baseline (20 s),R PER
+9,4,1,7,1.314605863,Precon4,Baseline (20 s),L RSC
+9,4,1,9,1.180862932,Precon4,Baseline (20 s),L OFC
+9,4,1,10,1.046285035,Precon4,Baseline (20 s),L ACC
+9,4,2,1,1.071018031,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+9,4,2,2,0.9976822212,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+9,4,2,3,1.717204224,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+9,4,2,4,0.9519452301,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+9,4,2,5,1.386360988,Precon4,Cue 1 + Cue 2 (20 s),R PER
+9,4,2,7,1.302588831,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+9,4,2,9,1.183815397,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+9,4,2,10,1.028666718,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+10,1,1,1,1.429356866,Precon1,Baseline (20 s),R ACC
+10,1,1,2,0.8198870829,Precon1,Baseline (20 s),R OFC
+10,1,1,3,1.396663954,Precon1,Baseline (20 s),R DHC
+10,1,1,4,1.083903273,Precon1,Baseline (20 s),R RSC
+10,1,1,5,1.641189802,Precon1,Baseline (20 s),R PER
+10,1,1,6,2.382754229,Precon1,Baseline (20 s),L POR-SUB
+10,1,1,7,1.45397498,Precon1,Baseline (20 s),L RSC
+10,1,1,8,1.526562819,Precon1,Baseline (20 s),L DHC
+10,1,1,9,1.232293052,Precon1,Baseline (20 s),L OFC
+10,1,1,10,1.455855878,Precon1,Baseline (20 s),L ACC
+10,1,2,1,1.501322401,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+10,1,2,2,0.8129538669,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+10,1,2,3,1.362046998,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+10,1,2,4,1.080593372,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+10,1,2,5,1.628282695,Precon1,Cue 1 + Cue 2 (20 s),R PER
+10,1,2,6,2.368414293,Precon1,Cue 1 + Cue 2 (20 s),L POR-SUB
+10,1,2,7,1.414398526,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+10,1,2,8,1.453448233,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+10,1,2,9,1.241494921,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+10,1,2,10,1.465814476,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+10,4,1,1,1.396919395,Precon4,Baseline (20 s),R ACC
+10,4,1,2,1.569958603,Precon4,Baseline (20 s),R OFC
+10,4,1,3,2.056259522,Precon4,Baseline (20 s),R DHC
+10,4,1,4,0.9298939479,Precon4,Baseline (20 s),R RSC
+10,4,1,5,1.538805427,Precon4,Baseline (20 s),R PER
+10,4,1,6,2.425603909,Precon4,Baseline (20 s),L POR-SUB
+10,4,1,7,1.509463481,Precon4,Baseline (20 s),L RSC
+10,4,1,8,1.548597004,Precon4,Baseline (20 s),L DHC
+10,4,1,9,1.372765791,Precon4,Baseline (20 s),L OFC
+10,4,1,10,1.318361794,Precon4,Baseline (20 s),L ACC
+10,4,2,1,1.425613161,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+10,4,2,2,1.540038102,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+10,4,2,3,2.156383636,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+10,4,2,4,0.966120588,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+10,4,2,5,1.58228577,Precon4,Cue 1 + Cue 2 (20 s),R PER
+10,4,2,6,2.40752726,Precon4,Cue 1 + Cue 2 (20 s),L POR-SUB
+10,4,2,7,1.465218519,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+10,4,2,8,1.627674684,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+10,4,2,9,1.380172673,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+10,4,2,10,1.355658482,Precon4,Cue 1 + Cue 2 (20 s),L ACC
+11,1,1,1,1.371999794,Precon1,Baseline (20 s),R ACC
+11,1,1,2,0.9566782924,Precon1,Baseline (20 s),R OFC
+11,1,1,3,1.668601157,Precon1,Baseline (20 s),R DHC
+11,1,1,4,1.212633539,Precon1,Baseline (20 s),R RSC
+11,1,1,7,1.418720305,Precon1,Baseline (20 s),L RSC
+11,1,1,8,1.362806773,Precon1,Baseline (20 s),L DHC
+11,1,1,9,1.345124364,Precon1,Baseline (20 s),L OFC
+11,1,1,10,1.273805244,Precon1,Baseline (20 s),L ACC
+11,1,2,1,1.43838328,Precon1,Cue 1 + Cue 2 (20 s),R ACC
+11,1,2,2,0.9421170471,Precon1,Cue 1 + Cue 2 (20 s),R OFC
+11,1,2,3,1.646288223,Precon1,Cue 1 + Cue 2 (20 s),R DHC
+11,1,2,4,1.203016875,Precon1,Cue 1 + Cue 2 (20 s),R RSC
+11,1,2,7,1.451459536,Precon1,Cue 1 + Cue 2 (20 s),L RSC
+11,1,2,8,1.334990536,Precon1,Cue 1 + Cue 2 (20 s),L DHC
+11,1,2,9,1.331715803,Precon1,Cue 1 + Cue 2 (20 s),L OFC
+11,1,2,10,1.268799236,Precon1,Cue 1 + Cue 2 (20 s),L ACC
+11,4,1,1,1.074683621,Precon4,Baseline (20 s),R ACC
+11,4,1,2,1.441209411,Precon4,Baseline (20 s),R OFC
+11,4,1,3,1.596416478,Precon4,Baseline (20 s),R DHC
+11,4,1,4,1.175132804,Precon4,Baseline (20 s),R RSC
+11,4,1,7,1.203322115,Precon4,Baseline (20 s),L RSC
+11,4,1,8,1.249561698,Precon4,Baseline (20 s),L DHC
+11,4,1,9,2.289191287,Precon4,Baseline (20 s),L OFC
+11,4,1,10,1.239666163,Precon4,Baseline (20 s),L ACC
+11,4,2,1,1.111896645,Precon4,Cue 1 + Cue 2 (20 s),R ACC
+11,4,2,2,1.444435104,Precon4,Cue 1 + Cue 2 (20 s),R OFC
+11,4,2,3,1.60935749,Precon4,Cue 1 + Cue 2 (20 s),R DHC
+11,4,2,4,1.183528858,Precon4,Cue 1 + Cue 2 (20 s),R RSC
+11,4,2,7,1.222088718,Precon4,Cue 1 + Cue 2 (20 s),L RSC
+11,4,2,8,1.275101165,Precon4,Cue 1 + Cue 2 (20 s),L DHC
+11,4,2,9,2.344499552,Precon4,Cue 1 + Cue 2 (20 s),L OFC
+11,4,2,10,1.261274517,Precon4,Cue 1 + Cue 2 (20 s),L ACC

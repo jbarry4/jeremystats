@@ -2508,6 +2508,48 @@ BARRY.views.xplore = (function () {
      recording's own envelope behind them turns a position indicator into a
      map: a seizure, a cable knock or a flat stretch shows at a glance.
      ====================================================================== */
+  /* Where acquisition was paused, on the overview strip (2026-11-24). A
+     recording is drawn on its own clock, so a pause is a stretch of the
+     strip with nothing recorded in it -- KCNT1 m529 s1 has 33 minutes of it
+     at 6:15. Drawn as what it is, hatched and named, so it cannot be read as
+     a flat signal or as the recording having ended. */
+  function drawStripGaps(ctx, ov, dur, w, h, P) {
+    const gaps = (ov && ov.gaps) || [];
+    if (!gaps.length) return;
+    ctx.save();
+    for (const [t0, t1] of gaps) {
+      const x0 = (t0 / dur) * w, x1 = (t1 / dur) * w;
+      if (x1 - x0 < 1) continue;
+      ctx.fillStyle = P.bg;
+      ctx.fillRect(x0, 0, x1 - x0, h - 11);
+      const H = h - 11;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x0, 0, x1 - x0, H); ctx.clip();
+      ctx.strokeStyle = P.dim;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = x0 - H; x < x1; x += 7) {
+        ctx.moveTo(x, H); ctx.lineTo(x + H, 0);
+      }
+      ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = 0.9;
+      const mins = (t1 - t0) / 60;
+      const say = 'paused ' + (mins >= 1 ? Math.round(mins) + ' min'
+                                         : Math.round(t1 - t0) + ' s')
+                  + ' — nothing recorded';
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      if (ctx.measureText(say).width < x1 - x0 - 8) {
+        ctx.fillStyle = P.dim;
+        ctx.fillText(say, (x0 + x1) / 2, (h - 11) / 2);
+      }
+    }
+    ctx.restore();
+  }
+
   async function loadOverview(sess) {
     if (sess.overview || sess.overviewReq) return;
     sess.overviewReq = true;
@@ -10841,6 +10883,7 @@ BARRY.views.xplore = (function () {
         ctx.globalAlpha = 1;
       }
       drawStripBand(ctx, sess, w, top, bot);
+      drawStripGaps(ctx, ov, dur, w, h, P);
     } else {
       loadOverview(sess);
       // The amplitude probe is a fraction of a second per bin and the band

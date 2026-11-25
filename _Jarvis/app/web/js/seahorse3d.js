@@ -41,7 +41,7 @@ const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 /* ------------------------------------------------------------------------
    Materials
    ------------------------------------------------------------------------ */
-function rimMaterial(color, opacity) {
+function rimMaterial(color, opacity, side) {
   return new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) }, opacity: { value: opacity }, dim: { value: 1.0 } },
     vertexShader: `
@@ -59,17 +59,26 @@ function rimMaterial(color, opacity) {
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
-        float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
-        gl_FragColor = vec4(color * (0.55 + 0.6 * rim), (opacity * 0.35 + opacity * 1.6 * rim) * dim);
+        float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.4);
+        gl_FragColor = vec4(color * (0.6 + 0.5 * rim), (opacity * 0.16 + opacity * 2.1 * rim) * dim);
       }`,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, clipping: true,
+    transparent: true, depthWrite: false, side: side || THREE.DoubleSide, clipping: true,
   });
 }
 
 /* Opaque clay: soft matte shading, a touch of rim, a hover/selection glow. */
 function clayMaterial(color) {
-  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.0, side: THREE.DoubleSide });
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide });
   m.userData.base = new THREE.Color(color);
+  m.userData.rimK = { value: 0.2 };
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.rimK = m.userData.rimK;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float rimK;')
+      .replace('#include <dithering_fragment>', '#include <dithering_fragment>\n'
+        + '  { float rf = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));\n'
+        + '    gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), pow(rf, 3.0) * rimK); }');
+  };
   return m;
 }
 
@@ -78,7 +87,7 @@ function clayMaterial(color) {
 function outlineMaterial(color, px) {
   return new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) }, px: { value: px || 1.4 }, res: { value: new THREE.Vector2(1000, 800) },
-                alpha: { value: 0.75 } },
+                alpha: { value: 0.38 } },
     vertexShader: `
       uniform float px; uniform vec2 res;
       #include <clipping_planes_pars_vertex>
@@ -193,7 +202,7 @@ const SLICE_FS = `
     vec3 col = mix(paper, ink, clamp(n * 0.9, 0.0, 0.88));
     if (mode == 0) {
       if (lam > 0u) col = mix(col, lut(lamLut, lam, 256.0).rgb, 0.62);
-      else col = mix(col, ac.rgb, 0.11);
+      else col = mix(mix(paper, ink, clamp(n * 0.42, 0.0, 0.36)), ac.rgb, 0.05);
     } else if (mode == 1) {
       col = mix(col, ac.rgb, 0.7);
     }
@@ -212,7 +221,7 @@ const SLICE_FS = `
     // the Allen labels are 50 um: close up their outlines are coarse, so they step back
     float closeA = 1.0 - 0.6 * smoothstep(8.0, 20.0, 50.0 / max(pxum, 1e-3));
     if (lam == 0u) lineA = (1.0 - smoothstep(0.0, max(wa * lineK, 1e-4), am)) * fadeA * closeA;
-    col = mix(col, ink * 0.55, max(lineL * 0.62, lineA * (mode == 1 ? 0.45 : 0.22)));
+    col = mix(col, ink * 0.55, max(lineL * 0.62, lineA * (mode == 1 ? 0.45 : 0.16)));
     gl_FragColor = vec4(col, alpha);
   }`;
 
@@ -293,12 +302,12 @@ function crowdMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 400 }, uOrtho: { value: 0 }, uPx: { value: 1 }, alpha: { value: 0.85 } },
     vertexShader: `
-      attribute float size; attribute vec3 col;
+      attribute float size; attribute vec3 col; attribute float a;
       uniform float uScale; uniform float uOrtho; uniform float uPx;
-      varying vec3 vC; varying float vFade;
+      varying vec3 vC; varying float vFade; varying float vA;
       #include <clipping_planes_pars_vertex>
       void main() {
-        vC = col;
+        vC = col; vA = a;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         float s = uOrtho > 0.5 ? size / uPx : size * uScale / max(1e-4, -mvPosition.z);
         // dots smaller than a couple of pixels are noise, not cells: let them go
@@ -308,7 +317,7 @@ function crowdMaterial() {
         #include <clipping_planes_vertex>
       }`,
     fragmentShader: `
-      uniform float alpha; varying vec3 vC; varying float vFade;
+      uniform float alpha; varying vec3 vC; varying float vFade; varying float vA;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
@@ -317,7 +326,7 @@ function crowdMaterial() {
         float r = dot(d, d);
         if (r > 1.0) discard;
         float shade = 0.75 + 0.25 * (1.0 - r);
-        gl_FragColor = vec4(vC * shade, alpha * vFade * smoothstep(1.0, 0.7, r));
+        gl_FragColor = vec4(vC * shade, alpha * vA * vFade * smoothstep(1.0, 0.7, r));
       }`,
     transparent: true, depthWrite: false, clipping: true,
   });
@@ -556,7 +565,7 @@ function cumLen(pts) {
    The stage
    ========================================================================== */
 export function create(host, opts) {
-  const cb = Object.assign({ onPick() {}, onHover() {}, onCamera() {}, onFrame: null, onRide() {}, onProbe() {}, sample: null }, opts || {});
+  const cb = Object.assign({ onPick() {}, onHover() {}, onCamera() {}, onFrame: null, onRide() {}, onProbe() {}, onDark() {}, sample: null }, opts || {});
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
   const shaderErrors = [];
   renderer.debug.onShaderError = (gl, program, vs, fs) => {
@@ -768,6 +777,9 @@ export function create(host, opts) {
   /* Hover and selection on the 3D structures: the hovered one glows and
      the rest step back; the selected one keeps an accent outline. */
   const HL = { hover: null, sel: null };
+  // the seizure story's heat on the clay (setHeat): it sits under hover and selection
+  const heatCol = new THREE.Color('#ff7a2f');
+  let heat = {};
   function highlight(kind, t) {
     HL[kind] = t && ((t.regions && t.regions.size) || (t.layers && t.layers.size) || (t.cells && t.cells.size)) ? t : null;
     const acc = new THREE.Color(S.colors.accent || '#e5a823');
@@ -789,8 +801,9 @@ export function create(host, opts) {
           if (hov && !isH && !isS) m.material.color.lerp(bg, 0.6);
         }
         m.material.emissive.copy(isH ? acc : isS ? acc : new THREE.Color(0, 0, 0)).multiplyScalar(isH ? 0.42 : isS ? 0.18 : 0);
+        if (!isH && !isS && g === 'hpf' && heat[k]) m.material.emissive.copy(heatCol).multiplyScalar(0.8 * heat[k]);
         const o = m.children.find((c) => c.userData.outlineOf);
-        if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.75; }
+        if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.38; }
       }
     }
     for (const [k, c] of Object.entries(byKey.cells)) {
@@ -929,7 +942,7 @@ export function create(host, opts) {
       const isRoot = m.key === 'root';
       let mesh;
       if (isRoot || m.key !== 'HPF') {
-        mesh = new THREE.Mesh(g, rimMaterial(isRoot ? S.colors.shell : m.color, isRoot ? 0.16 : 0.28));
+        mesh = new THREE.Mesh(g, rimMaterial(isRoot ? S.colors.shell : m.color, isRoot ? 0.2 : 0.28, isRoot ? THREE.FrontSide : THREE.DoubleSide));
         mesh.renderOrder = isRoot ? 50 : 49;
       } else {
         mesh = new THREE.Mesh(g, clayMaterial(S.colors.hpf || '#e5a823'));
@@ -955,6 +968,7 @@ export function create(host, opts) {
       G.hpf.add(mesh);
       byKey.hpf[m.key] = mesh;
     }
+    if (S.level === 'brain' && S.view === '3d') { G.hpf.visible = true; if (byKey.brain.HPF) byKey.brain.HPF.visible = false; }
     applyClipping();
     dirty = true;
   }
@@ -1001,8 +1015,9 @@ export function create(host, opts) {
     if (lv === 'brain') {
       G.brain.visible = true;
       Object.values(B).forEach((m) => { if (m.material.uniforms) m.material.uniforms.dim.value = 1; });
-      if (B.HPF) B.HPF.visible = true;
-      G.hpf.visible = false; G.lamina.visible = false; G.cells.visible = false; G.crowd.visible = false;
+      const hasHpf = Object.keys(byKey.hpf).length > 0;
+      if (B.HPF) B.HPF.visible = !hasHpf;
+      G.hpf.visible = hasHpf; G.lamina.visible = false; G.cells.visible = false; G.crowd.visible = false;
     } else {
       G.brain.visible = true;
       Object.values(B).forEach((m) => { if (m.material.uniforms) m.material.uniforms.dim.value = 0.32; });
@@ -1146,7 +1161,7 @@ export function create(host, opts) {
     }
     planeMark.position.copy(c);
     planeMark.quaternion.copy(ortho.quaternion);
-    planeMark.scale.set(9, 7, 1);
+    planeMark.scale.set(7.4, 5.6, 1);
     dirty = true;
   }
   function sliceToCcf(px, py) {
@@ -1162,9 +1177,14 @@ export function create(host, opts) {
     const dn = d[0] * s.N[0] + d[1] * s.N[1] + d[2] * s.N[2];
     return [Wpx / 2 + du / s.k, Hpx / 2 + dv / s.k, dn];
   }
+  /* where the mini 3D sits, in CSS pixels from the stage's top left */
+  function miniRect() {
+    const w = Math.round(Math.min(210, Math.max(150, Wpx * 0.2))), h = Math.round(w * 0.78);
+    return { x: Math.round(Wpx - w - 16), y: 64, w, h };
+  }
   function drawMini() {
-    const w = Math.round(Math.min(220, Wpx * 0.24)), h = Math.round(w * 0.78);
-    const x = 12, y = 12;
+    const r = miniRect();
+    const w = r.w, h = r.h, x = r.x, y = Math.round(Hpx - r.y - r.h);     // GL counts from the bottom
     miniCam.aspect = w / h;
     const c = wv(S.slice.C);
     const n = dirW(S.slice.N);
@@ -1175,14 +1195,14 @@ export function create(host, opts) {
     if (side.lengthSq() < 0.01) side.set(1, 0, 0);
     side.normalize();
     const dirv = n.clone().multiplyScalar(0.6).add(side.multiplyScalar(0.7)).add(up.clone().multiplyScalar(0.5)).normalize();
-    miniCam.position.copy(c0).addScaledVector(dirv, 17);
+    miniCam.position.copy(c0).addScaledVector(dirv, 23);
     miniCam.up.set(0, 1, 0);
     miniCam.lookAt(c0);
     miniCam.updateProjectionMatrix();
     renderer.setScissorTest(true);
     renderer.setScissor(x, y, w, h);
     renderer.setViewport(x, y, w, h);
-    renderer.setClearColor(clearCol.set(S.colors.bg2 || S.colors.bg || '#000'), 1);
+    renderer.setClearColor(0x000000, 0);          // see-through: the page's frame shows behind the brain
     renderer.clear();
     const vis = { cells: G.cells.visible, crowd: G.crowd.visible, probe: G.probe.visible, quad: sliceQuad && sliceQuad.visible };
     if (sliceQuad) sliceQuad.visible = false;
@@ -1311,14 +1331,28 @@ export function create(host, opts) {
     g.setAttribute('position', new THREE.BufferAttribute(data.pos, 3));
     g.setAttribute('col', new THREE.BufferAttribute(data.col, 3));
     g.setAttribute('size', new THREE.BufferAttribute(data.size, 1));
+    g.setAttribute('a', new THREE.BufferAttribute(data.alpha || new Float32Array(data.size.length).fill(1), 1));
     g.computeBoundingSphere();
     crowd = new THREE.Points(g, crowdMaterial());
     crowd.renderOrder = 20;
     crowd.frustumCulled = false;
     G.crowd.add(crowd);
     crowdData = data;
+    crowdA0 = null;
     glyphSig = '';
     applyClipping();
+  }
+  /* One kind of soma fading out of the crowd (kind: its index in the crowd's
+     kinds; v 0..1); fadeCrowd(null) brings every dot back. */
+  let crowdA0 = null;
+  function fadeCrowd(kind, v) {
+    if (!crowd || !crowdData || !crowdData.kind) return;
+    const a = crowd.geometry.attributes.a;
+    if (!crowdA0) { if (kind == null) return; crowdA0 = Float32Array.from(a.array); }
+    const K = crowdData.kind;
+    for (let i = 0; i < K.length; i++) a.array[i] = kind != null && K[i] === kind ? crowdA0[i] * v : crowdA0[i];
+    a.needsUpdate = true;
+    dirty = true;
   }
   /* Up close the crowd's dots are drawn out as cells: each soma in the
      section's sheet gets its dendrites, laid in the plane of the section
@@ -1575,18 +1609,21 @@ export function create(host, opts) {
     glowTex = new THREE.CanvasTexture(c);
     return glowTex;
   }
-  function volley(from, to, color, ms) {
+  /* o: {size: spark scale, lift: how high the arc rises (1 = the usual), alpha, land: flare where it lands (default on)} */
+  function volley(from, to, color, ms, o) {
+    o = o || {};
     const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
     const mid = a.clone().add(b).multiplyScalar(0.5);
-    mid.y += a.distanceTo(b) * 0.35 + 0.2;
+    mid.y += (a.distanceTo(b) * 0.35 + 0.2) * (o.lift == null ? 1 : o.lift);
     const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
     const pts = curve.getPoints(80);
+    const la = 0.55 * (o.alpha == null ? 1 : o.alpha);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: false }));
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity: la, depthTest: false }));
     line.renderOrder = 20;
     G.fx.add(line);
     const N = 14;
-    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: Math.max(0.09, camera.position.distanceTo(controls.target) * 0.012), transparent: true, opacity: 0.95, depthTest: false }));
+    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: Math.max(0.09, camera.position.distanceTo(controls.target) * 0.012) * (o.size || 1), transparent: true, opacity: 0.95, depthTest: false }));
     sparks.geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
     G.fx.add(sparks);
     const s = performance.now(), dur = ms || 2200;
@@ -1596,14 +1633,91 @@ export function create(host, opts) {
     anims.add((now) => {
       const k = (now - s) / dur;
       if (k > 1.25) { done(); return false; }
-      if (k >= 0.83 && !landed) { landed = true; flare(b, color, 900); }
+      if (k >= 0.83 && !landed) { landed = true; if (o.land !== false) flare(b, color, 900); }
       const pos = sparks.geometry.attributes.position;
       for (let i = 0; i < N; i++) { const p = curve.getPoint(Math.min(1, Math.max(0, k * 1.2 - i * 0.035))); pos.setXYZ(i, p.x, p.y, p.z); }
       pos.needsUpdate = true;
-      line.material.opacity = 0.55 * Math.max(0, 1 - Math.max(0, k - 1) * 4);
+      line.material.opacity = la * Math.max(0, 1 - Math.max(0, k - 1) * 4);
       return true;
     });
     start();
+  }
+  /* ---------- a seizure's spread, drawn on the clay (the seizure story) ---------- */
+  /* Heat: hippocampal regions glow from inside, {key: 0..1}; null cools them all. */
+  function heatOf(m, k) {
+    const isH = HL.hover && HL.hover.regions && HL.hover.regions.has(k);
+    const isS = HL.sel && HL.sel.regions && HL.sel.regions.has(k);
+    if (isH || isS) return;
+    m.material.emissive.copy(heatCol).multiplyScalar(0.8 * (heat[k] || 0));
+  }
+  function setHeat(map, color) {
+    heat = map || {};
+    if (color) heatCol.set(color);
+    for (const [k, m] of Object.entries(byKey.hpf)) heatOf(m, k);
+    dirty = true;
+  }
+  /* The brain's divisions (Isocortex, TH, MB, P, MY, ...) as glowing ghosts:
+     {key: {color, a: 0..1}}; a division left out, or null, goes back as it was. */
+  function glowBrain(map) {
+    for (const [k, m] of Object.entries(byKey.brain)) {
+      if (k === 'root' || k === 'HPF' || !m.material.uniforms) continue;
+      const u = m.material.uniforms;
+      if (!m.userData.orig) m.userData.orig = { color: u.color.value.clone(), opacity: u.opacity.value, visible: m.visible };
+      const g = map && map[k];
+      if (g && g.a > 0.005) {
+        u.color.value.set(g.color || '#ff7a2f');
+        u.opacity.value = 0.1 + 0.62 * Math.min(1, g.a);
+        m.material.blending = S.dark > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
+        m.visible = true;
+      } else if (m.userData.glowing !== false) {
+        u.color.value.copy(m.userData.orig.color);
+        u.opacity.value = m.userData.orig.opacity;
+        m.material.blending = THREE.NormalBlending;
+        m.visible = m.userData.orig.visible;
+      }
+      m.userData.glowing = !!(g && g.a > 0.005);
+    }
+    dirty = true;
+  }
+  /* A light that stays and breathes where it is put (world mm): the medial
+     septum's pacing, the light on the hilus. at null takes it away. */
+  const beacons = {};
+  function beacon(key, at, color, o) {
+    const old = beacons[key];
+    if (old) { G.fx.remove(old.s); old.s.material.dispose(); anims.delete(old.a); delete beacons[key]; dirty = true; }
+    if (!at) return;
+    o = o || {};
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: color || '#fff4c2', map: glowTexture(), transparent: true, depthTest: false,
+      opacity: 0.9, blending: THREE.AdditiveBlending }));
+    s.position.set(at[0], at[1], at[2]);
+    s.renderOrder = 81;
+    G.fx.add(s);
+    const t0 = performance.now();
+    const a = (now) => {
+      const reach = S.view === 'slice' ? (ortho.top - ortho.bottom) * 0.9 : camera.position.distanceTo(s.position);
+      const base = Math.max(0.02, reach * 0.034) * (o.size || 1);
+      // hz: a slow breath (a sine); blink: a light switched on and off
+      let k = 1;
+      if (o.blink) k = ((now - t0) / 1000 * o.blink) % 1 < 0.42 ? 1 : 0.08;
+      else if (o.hz) k = 0.5 + 0.5 * Math.sin((now - t0) / 1000 * Math.PI * 2 * o.hz);
+      s.scale.setScalar(base * (0.7 + 0.55 * k));
+      s.material.opacity = (o.alpha || 0.9) * (0.35 + 0.65 * k);
+      return true;
+    };
+    beacons[key] = { s, a };
+    anims.add(a);
+    start();
+  }
+  function clearBeacons() { Object.keys(beacons).forEach((k) => beacon(k, null)); }
+  /* Cells that fade away (lost after seizures): v 1 = as they are, toward 0 = gone. */
+  function fadeCells(keys, v) {
+    for (const k of keys) {
+      const c = byKey.cells[k];
+      if (!c) continue;
+      c.mesh.material.uniforms.dim.value = v;
+      c.mesh.material.depthWrite = v > 0.5;
+    }
+    dirty = true;
   }
   /* Persistent drawn bundles (the medial perforant path, the temporoammonic
      path): ccf polylines drawn as tubes, shown or hidden, pulsed by events. */
@@ -1665,19 +1779,26 @@ export function create(host, opts) {
   }
 
   /* ---------- camera ---------- */
+  let camAnim = null;
+  function stopFlight() { if (camAnim) { anims.delete(camAnim); camAnim = null; } }
   function fly(pos, target, ms) {
+    // one flight at a time: a new one takes over from wherever the camera is now (two
+    // overlapping flights made it arrive and then snap back toward the older goal: 11-24)
+    stopFlight();
     const p0 = camera.position.clone(), t0 = controls.target.clone();
     const p1 = new THREE.Vector3(...pos), t1 = new THREE.Vector3(...target);
     if (reduced() || !ms) { camera.position.copy(p1); controls.target.copy(t1); controls.update(); dirty = true; camMoved(); return; }
     const s = performance.now();
-    anims.add((now) => {
+    const a = (now) => {
       const k = Math.min(1, (now - s) / ms);
       const e = ease(k);
       camera.position.lerpVectors(p0, p1, e);
       controls.target.lerpVectors(t0, t1, e);
-      if (k >= 1) camMoved();
+      if (k >= 1) { camMoved(); if (camAnim === a) camAnim = null; }
       return k < 1;
-    });
+    };
+    camAnim = a;
+    anims.add(a);
     start();
   }
   /* fill: how much of the view the points should take (0.4 = honed in, with context) */
@@ -1897,6 +2018,7 @@ export function create(host, opts) {
   let darkAnim = null;
   function setDark(on) {
     S.darkTarget = on ? 1 : 0;
+    try { cb.onDark(!!on); } catch (e) { /* the page's business */ }
     if (darkAnim) { anims.delete(darkAnim); darkAnim = null; }     // one fade at a time
     const d0 = S.dark, d1 = S.darkTarget, t0 = performance.now();
     if (reduced() || d0 === d1) { S.dark = d1; dirty = true; return; }
@@ -1913,6 +2035,7 @@ export function create(host, opts) {
   function ride(steps, o) {
     stopRide(true);
     for (const c of Object.values(byKey.cells)) { const u = c.mesh.material.uniforms; u.mark.value = 0; u.hot.value = 0; u.dim.value = 1; u.axonAlpha.value = 0.22; }
+    stopFlight();
     const R = { steps: steps.map((s) => prepStep(s)), i: -1, t0: 0, paused: !!(o && o.paused), o: o || {}, pauseAt: 0, tmp: [] };
     S.ride = R;
     S.manual = false;
@@ -2101,7 +2224,7 @@ export function create(host, opts) {
       driveCamera(head, st, k);
     }
     if (t >= st.dur && !R.hold) {
-      if (R.o.auto === false) { R.hold = true; return; }
+      if (R.o.auto === false) { R.hold = true; if (R.o.onHold) R.o.onHold(R.i); return; }
       gotoStep(R.i + 1);
     }
   }
@@ -2127,7 +2250,9 @@ export function create(host, opts) {
     applyClippingFast();
     if (S.manual) { camVel.set(0, 0, 0); tgtVel.set(0, 0, 0); return; }
     const still = st.kind === 'synapse' || st.kind === 'fire';
-    const near = still ? 0.2 : st.kind === 'dend' ? 0.26 : 0.44;
+    // how far back the camera rides (mm): far enough to see the layers and where the signal is
+    // going (0.2 to 0.44 was a few dendrites filling the screen: "WAYYY too zoomed in", 11-24)
+    const near = still ? 0.65 : st.kind === 'dend' ? 0.8 : clamp((st.len || 1) * 0.4, 0.9, 2.0);
     const focusPt = S.ride && S.ride.smooth ? S.ride.smooth : head;
     if (still) {
       // ease in toward the point along the current line of sight, then hold
@@ -2169,7 +2294,9 @@ export function create(host, opts) {
     }
   }
   function pauseRide(p) { if (S.ride) { S.ride.paused = p == null ? !S.ride.paused : !!p; dirty = true; } return S.ride ? S.ride.paused : false; }
-  function stepRide(d) { if (S.ride) { S.ride.hold = false; gotoStep(clamp(S.ride.i + d, 0, S.ride.steps.length)); } }
+  function stepRide(d) { if (S.ride) { S.ride.hold = false; S.ride.paused = false; gotoStep(clamp(S.ride.i + d, 0, S.ride.steps.length)); } }
+  /* Step by step (false: each step waits for a click) or play through (true). */
+  function setRideAuto(v) { if (S.ride) { S.ride.o.auto = !!v; if (v && S.ride.hold) stepRide(1); } }
   function reframe() { S.manual = false; }
   function finishRide() {
     const R = S.ride;
@@ -2261,18 +2388,21 @@ export function create(host, opts) {
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
     focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
-    ride, pauseRide, stepRide, stopRide, settle, reframe, setDark,
+    setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd,
+    ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
     snapshot, record, theme, dispose,
     pause: stop, resume: () => { dirty = true; start(); },
     has: (k) => Object.keys(byKey[k] || {}).length > 0,
     get level() { return S.level; }, get view() { return S.view; }, get slice() { return S.slice; },
-    get rideState() { return S.ride ? { i: S.ride.i, n: S.ride.steps.length, paused: S.ride.paused, manual: S.manual, head: S.ride.head } : null; },
+    get rideState() { return S.ride ? { i: S.ride.i, n: S.ride.steps.length, paused: S.ride.paused, manual: S.manual, head: S.ride.head,
+      hold: !!S.ride.hold, done: !!S.ride.done, auto: S.ride.o.auto !== false } : null; },
     poke: () => { dirty = true; },
     diag: () => ({ shaderErrors: shaderErrors.slice(), programs: renderer.info.programs.length, calls: renderer.info.render.calls,
                    tris: renderer.info.render.triangles, view: S.view, quad: !!(sliceQuad && sliceQuad.parent), caps: G.caps.children.length,
                    volumes: volumesReady, cut: S.cut.kind, gl2: renderer.capabilities.isWebGL2,
                    frameMs: +quality.ema.toFixed(1), maxDraw: quality.maxDraw, maxAt: quality.maxAt, glyphMs, glyphSegs: glyphN, lowQuality: quality.low, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }),
     set mini(v) { S.mini = !!v; dirty = true; },
+    miniRect,
     toCcf, W,
   };
 }

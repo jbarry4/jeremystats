@@ -15,6 +15,30 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.24.1 - A pause says so; Doppler runs can be banked by hand; Incisor's list has a search
+
+Needs a restart and a reload.
+
+- **A recording that paused shows the pause.** KCNT1 m529 s1 stopped at 6:15
+  for 33 minutes. Since 2026.11.20.1 the recording is its full 74:57, but the
+  overview strip drew those 33 minutes as a flat line -- each empty bin
+  repeated the last one before it -- which read as the old fault still being
+  there. The strip now leaves a pause empty, hatched, and labelled "paused 33
+  min — nothing recorded".
+- **Doppler: Bank it.** A run that landed unbanked could only be run again,
+  and a run still on the cluster refuses a second copy ("This exact job is
+  already running on the VACC"), so there was no way forward. "4. Not banked"
+  now has **Bank it**, which banks the run as it is and sends it to Spotter;
+  Run it again is still there beside it.
+- **Doppler: banking as runs land is a choice.** Under the bank card,
+  "Runs landing on this computer: **Banked as they land** / **Banked by
+  hand**". On by default, as it has been.
+- **Doppler runs picked up after a restart are banked.** A batch that landed
+  after Jarvis restarted was filed and never banked; that is where the "Not
+  banked" runs came from.
+- **Incisor's "Look at them, then bank" list has a search** (a mouse, a
+  session, a project, a hilus channel) and **Everything / Not banked**.
+
 ## 2026.11.23.1 - Sync: a request dropped at start-up is no longer filed as a fault
 
 Needs a restart (backend change). A page reload is not enough.

@@ -1,0 +1,151 @@
+measure,label,model,formula,term,coef,p,n_mice,n_sessions,transform
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",0.0792060368086466,0.6668661210399276,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.25896636966450837,0.20976142618975346,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",0.22613926329415032,0.0007668809551768477,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",0.26436078835749466,0.0005926410811796778,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-0.013140047768446555,0.8463910026892155,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.022817203735962993,0.45271343369526673,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.05445535333028361,0.7734313577214714,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.38159494184436105,0.07570375941648326,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",0.27177310983481234,0.0015514300783304805,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",0.26149143083233584,0.007921374442406778,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,-0.006490208442356617,0.9315816805587883,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.004505066662050246,0.9081530468766326,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",0.08698981678442547,0.6345982453358413,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.22223329904597214,0.27823797037801457,56,896,none
+entrances_per_rev,Entrances per turn of the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.030386188211803777,0.6435479920899375,56,896,none
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",0.08978269660633934,0.6825892550636855,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.22520404911990294,0.35942004156493934,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",0.1873124430385957,0.010220919316105494,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",0.24375078084986826,0.003527508482745208,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,0.1730302849698745,0.026361411328076546,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.03021298569918944,0.3598544044996018,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.031299129147532134,0.8893712170354063,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.3688493269936492,0.14782929119133187,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",0.24392191740583347,0.009504207024973765,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",0.2924867577987319,0.006722643985939705,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.16509185217939087,0.058345384034923786,56,896,log1p
+entrances,Entrances into the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.021102622183591394,0.6220708517687306,56,896,log1p
+entrances,Entrances into the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",0.09830275386944072,0.6531617147529001,56,896,log1p
+entrances,Entrances into the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.18603067102860163,0.4464309167834696,56,896,log1p
+entrances,Entrances into the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.21913749868516852,0.003663477654665478,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",0.10804581056821419,0.6373144265996786,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.2166656241232256,0.398910981714361,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",0.20076518049953537,0.012675967156081746,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",0.3320670787006877,0.00031787558645361073,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,0.16731870404456178,0.04379315637255226,56,896,log1p
+shocks,Shocks,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.08566666656664236,0.01866426052495617,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.0069359412268591766,0.9765032818486684,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.384903023644247,0.1497948027130032,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",0.23536523704091372,0.025044939183453626,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",0.35649340656732886,0.0030838030583611245,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.14428137194042762,0.12181821810978952,56,896,log1p
+shocks,Shocks,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.06815169551860675,0.1536997145075687,56,896,log1p
+shocks,Shocks,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",0.12261939242674726,0.5914637799778224,56,896,log1p
+shocks,Shocks,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.15637140100187716,0.5406217102251223,56,896,log1p
+shocks,Shocks,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.23621629592799354,0.003409745144307912,56,896,log1p
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",0.2650629757636088,0.4834116599124677,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.28577959391172414,0.5036007261518999,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",0.35159257243277214,0.06875459579015336,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",1.085940348185875,8.82007076337832e-07,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,0.3389379582174256,0.026075064857225813,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.11580477824324893,0.18362195109316548,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",0.15220294231777917,0.7031685732440404,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.7403188647355471,0.10561385509242396,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",0.244985840402564,0.3229062756248239,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",0.9703382522345666,0.0006251026295013982,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.36412533124512525,0.03593340597643768,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.013306821731161777,0.9056595566790109,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",0.2831386004569123,0.45624933919692334,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.21288306082801564,0.6197670217596887,56,896,none
+time_in_zone_pct,Time in the shock zone,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.42158986139799254,0.005647126941917103,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",0.08078389418189899,0.04283789921122433,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",0.013330824936198806,0.767700981882245,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",0.11632357251276342,4.7468830313891635e-08,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-0.0008141015274655479,0.9733356189249144,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-0.0010403475182469884,0.9492854401468068,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.014611303300897216,0.12811452987929822,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",0.021699776058618784,0.6070330649171991,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",0.015494556423398446,0.7487310273433272,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",0.11675933316079518,9.6315412788742e-06,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-0.00778734134350308,0.7965376905999784,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,-0.01581154577978797,0.392946704638085,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.026400380484887638,0.02723723905262956,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",0.08288892725494458,0.036424828308945036,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",0.021597961795603478,0.6292854484013473,56,896,none
+strategy_score,Opposite over (opposite + pre-shock quadrant),geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.00825506004619052,0.6044420687241014,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",-0.03945689625876463,0.3269841938707351,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",0.048327163608284936,0.2832871201503777,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",-0.03061107273370011,0.022029103560519108,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-0.04067364103937393,0.007901884084109731,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-0.0320615803051708,0.024216070607994356,56,896,none
+R,Concentration of position around the arena,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,-0.004018288503367537,0.5063951476444271,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.02165337827598334,0.5996954153169054,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",0.06465851238256,0.16627995368353687,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",-0.036351015772703124,0.03426377790022448,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-0.0352680800414867,0.07343491198723018,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,-0.03313052186675663,0.03729008219137504,56,896,none
+R,Concentration of position around the arena,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],-0.0006773559475627301,0.9309342782819768,56,896,none
+R,Concentration of position around the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",-0.04075813220513645,0.3119449561034342,56,896,none
+R,Concentration of position around the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",0.0422266568156178,0.348279636758392,56,896,none
+R,Concentration of position around the arena,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,-0.039278182195659976,0.004690372102774438,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",-0.09071914982041093,0.014438465023049475,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.003607943707029643,0.931511194126811,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",-0.1237970042230449,1.511822316323971e-09,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-0.013513418145565378,0.5639306399627633,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-0.008578865107296703,0.5747258405568609,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,-0.015417638407119068,0.09493968230294358,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.02714422091486082,0.4902998439217786,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.00024986194034859303,0.9955830764788501,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",-0.12610040905844075,6.564636797837408e-07,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-0.0043420322453549915,0.8810549034079759,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.00496532629528099,0.7745665467807261,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],-0.0250495359446187,0.029185597933246755,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",-0.09293105475654734,0.011612480161365138,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.012282058043693174,0.7678387141274627,56,896,none
+zone_CW,Time in the pre-shock quadrant,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,-0.018327271850449443,0.21883493969066736,56,896,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",-0.0330195203833652,0.15296711071115723,56,797,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",0.04974454059291484,0.058135706187096084,56,797,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",-0.04505506327681373,0.07033254033936734,56,797,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-0.0347422521427395,0.21869761794044718,56,797,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-0.00043964512005983123,0.9658124835933837,56,797,none
+brake_share,Close approaches that turned back,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,-0.00852826339003455,0.448979277906817,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.009445738311400161,0.7511046825329665,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",0.07228388096624619,0.036292960315819675,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",-0.04782023275808817,0.11651075581761522,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-0.04798675336874922,0.16642945155721445,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.0013129861908153116,0.9245019561228063,56,797,none
+brake_share,Close approaches that turned back,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],-0.004038678230730283,0.7713180919244595,56,797,none
+brake_share,Close approaches that turned back,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",-0.03138571389580018,0.23414060424147687,56,797,none
+brake_share,Close approaches that turned back,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",0.04835054731466121,0.10672721431692352,56,797,none
+brake_share,Close approaches that turned back,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,-0.00293046515245178,0.8005795972119752,56,797,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",-0.01011604100552571,0.461945588858627,56,896,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-0.014840079609072692,0.3402109515420354,56,896,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",-0.010952049104197201,0.09498806672880386,56,896,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-0.02722077217417611,0.00028612154439964057,56,896,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,0.006781607277163014,0.2294896962691605,56,896,none
+straightness,Straightness of walking,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,0.0022684530314032035,0.44351722886846157,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-0.005663700535493233,0.692272954668588,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-0.003616614595555348,0.825465136346951,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",-0.009795386252917242,0.24139213476654875,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-0.025689195499504443,0.007302828942139143,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,0.00180105106363955,0.7733528747580005,56,896,none
+straightness,Straightness of walking,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],0.006407889562369061,0.09111368377115968,56,896,none
+straightness,Straightness of walking,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",-0.010232025064331261,0.4539201374153743,56,896,none
+straightness,Straightness of walking,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-0.015902556440935915,0.3024635456301641,56,896,none
+straightness,Straightness of walking,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,0.005367941682208985,0.32588430939977053,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]",-4.746753380162294,0.2525550761410995,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]",-10.151174456174921,0.029896785436943834,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Het]:sc",-0.32996827218154257,0.8039835555302954,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc","C(yh, Treatment('WT'))[T.Hom]:sc",-5.8522848676404715,0.0001235089005931448,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot,-2.2867639027355104,0.1577037384820532,56,896,none
+rim_pct,Time at the rim,geno_x_session_speed,"y ~ C(yh, Treatment('WT')) * sc + rot * sc",rot:sc,-1.1971770411759188,0.04684124444414615,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]",-4.245919789599205,0.3088072297463337,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]",-5.447528629727123,0.2515720612961492,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Het]:C(day)[T.d2]",-0.6843904106689225,0.6766664455234923,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)","C(yh, Treatment('WT'))[T.Hom]:C(day)[T.d2]",-8.212940443615736,1.323511925933328e-05,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot,-0.3290696621269732,0.847863042008151,56,896,none
+rim_pct,Time at the rim,geno_x_day_speed,"y ~ C(yh, Treatment('WT')) * C(day) + rot * C(day)",rot:C(day)[T.d2],-2.591138771446062,0.0005347465209927061,56,896,none
+rim_pct,Time at the rim,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Het]",-4.968152486318645,0.24583845092014178,56,896,none
+rim_pct,Time at the rim,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot","C(yh, Treatment('WT'))[T.Hom]",-11.08774159753966,0.02140939065411804,56,896,none
+rim_pct,Time at the rim,geno_speed,"y ~ C(yh, Treatment('WT')) + sc + rot",rot,-3.3640224641124523,0.04209099414079843,56,896,none

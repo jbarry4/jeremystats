@@ -18446,3 +18446,10 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .cells-cv { width: 100%; display: block; }
 /* The list scrolls so the labels, the name and Carry over stay in view. */
 .xm-new .xm-wfs { max-height: 38vh; overflow: auto; }
+/* Incisor's review list: a search and Not banked / Everything (2026-11-24). */
+.inc-review-bar { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-8); margin: var(--sp-6) 0 var(--sp-8); }
+.inc-review-find { flex: 1 1 260px; min-width: 0; }
+/* Doppler: whether runs bank themselves as they land (2026-11-24). */
+.dop-autobank { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6); margin-top: var(--sp-6); }

@@ -1,0 +1,4 @@
+p,test,effect,n_a,n_b,mean_a,mean_b,contrast,words
+1.0,Fisher exact,-0.026190476190476153,21,20,0.47619047619047616,0.45,Het_vs_WT,share of learners (day-2 entrances per turn < 0.5)
+0.3204258086010757,Fisher exact,0.19047619047619047,21,15,0.47619047619047616,0.6666666666666666,Hom_vs_WT,share of learners (day-2 entrances per turn < 0.5)
+0.3063564991697699,Fisher exact,0.21666666666666662,20,15,0.45,0.6666666666666666,Hom_vs_Het,share of learners (day-2 entrances per turn < 0.5)
