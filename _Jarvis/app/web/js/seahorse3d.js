@@ -135,7 +135,7 @@ const SLICE_FS = `
   uniform sampler2D lamLut; uniform sampler2D alLut;    // 256 x 1, 1024 x 1 (a = inside HPF)
   uniform sampler2D hiLut; uniform sampler2D alHi;      // highlights
   uniform sampler2D pulseLut;                           // pulsing highlights (DS sinks)
-  uniform float pulse; uniform float dimRest;
+  uniform float pulse; uniform float pulseSide; uniform float dimRest;   // pulseSide 1: paint the right hemisphere only
   uniform int mode;                                     // 0 layers, 1 Allen, 2 Nissl
   uniform int mask;                                     // 0 everything, 1 hippocampal formation only
   uniform vec3 paper; uniform vec3 ink;
@@ -208,6 +208,7 @@ const SLICE_FS = `
     }
     vec4 h = lam > 0u ? lut(hiLut, lam, 256.0) : lut(alHi, al, 1024.0);
     vec4 p = lut(pulseLut, lam, 256.0);
+    if (left && pulseSide > 0.5) p.a = 0.0;            // a recording paints the side its probe was in
     // when something is highlighted, the rest steps back so it reads at a glance
     if (dimRest > 0.0 && h.a < 0.05 && p.a < 0.05) col = mix(col, paper, 0.55 * dimRest);
     col = mix(col, h.rgb, h.a);
@@ -669,7 +670,7 @@ export function create(host, opts) {
       dimF: { value: new THREE.Vector3(1, 1, 1) }, dimH: { value: new THREE.Vector3(1, 1, 1) }, dimB: { value: new THREE.Vector3(1, 1, 1) },
       hasF: { value: 0 }, hasH: { value: 0 },
       lamLut: { value: lut(256) }, alLut: { value: lut(1024) }, hiLut: { value: lut(256) }, alHi: { value: lut(1024) }, pulseLut: { value: lut(256) },
-      pulse: { value: 0 }, dimRest: { value: 0 }, mode: { value: 0 }, mask: { value: 0 },
+      pulse: { value: 0 }, pulseSide: { value: 0 }, dimRest: { value: 0 }, mode: { value: 0 }, mask: { value: 0 },
       paper: { value: new THREE.Color('#fbfaf6') }, ink: { value: new THREE.Color('#1d2421') },
       lineK: { value: 1.2 }, alpha: { value: 1 },
     };
@@ -826,6 +827,8 @@ export function create(host, opts) {
     if (pulseAnim) { anims.delete(pulseAnim); pulseAnim = null; }
     U.pulse.value = 1;
   }
+  /* the pulsing paint on one side only (1: the right hemisphere, where a probe was) or both (0) */
+  function setPulseSide(v) { U.pulseSide.value = v ? 1 : 0; dirty = true; }
   function setSliceMode(m) { U.mode.value = { lamina: 0, allen: 1, nissl: 2 }[m] || 0; dirty = true; }
 
   /* ---------- theme ---------- */
@@ -906,8 +909,8 @@ export function create(host, opts) {
       crowd.material.uniforms.uOrtho.value = isO ? 1 : 0;
       crowd.material.uniforms.uPx.value = pxOrtho;
       crowd.material.uniforms.uScale.value = 1 / pxPersp;
-      // the crowd steps back while a ride plays or a cell is in the spotlight
-      const quiet = S.ride || (S.focus && S.focus.cells && S.focus.cells.size);
+      // the crowd steps back while a ride plays, the stage is dark (a story), or a cell is in the spotlight
+      const quiet = S.ride || S.dark > 0.5 || (S.focus && S.focus.cells && S.focus.cells.size);
       crowd.material.uniforms.alpha.value = quiet ? 0.32 : 0.85;
       if (glyphs) {
         // a 10 um soma this many pixels across: the dendrites come in as you close in
@@ -2388,7 +2391,7 @@ export function create(host, opts) {
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
     focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
-    setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd,
+    setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd, setPulseSide,
     ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
     snapshot, record, theme, dispose,
     pause: stop, resume: () => { dirty = true; start(); },

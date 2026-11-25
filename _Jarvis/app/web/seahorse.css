@@ -278,6 +278,79 @@
 .sh-legend .sink::before { background: var(--sh-sink); }
 .sh-legend .source::before { background: var(--sh-source); }
 
+/* ------------------------------------------------------------------ the story (seahorse_story.js) */
+/* what kind of claim a stop makes: recorded, our hypothesis, a model, the literature, next */
+.sh-evtag {
+  display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px 0 7px; border-radius: 6px; vertical-align: 1px;
+  font-size: 10.5px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; color: var(--text-2); background: var(--sh-ink-2);
+}
+.sh-evtag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.sh-evtag.rec { color: light-dark(#b0501a, #ffb06a); background: light-dark(rgba(224, 122, 46, 0.13), rgba(255, 150, 70, 0.17)); }
+.sh-evtag.hyp { color: light-dark(#6a4dc2, #c3b0ff); background: light-dark(rgba(124, 92, 214, 0.12), rgba(170, 145, 255, 0.17)); }
+.sh-evtag.model { color: var(--warn); background: var(--warn-soft); }
+.sh-evtag.next { color: light-dark(#2d6db5, #94c8ff); background: light-dark(rgba(58, 118, 214, 0.12), rgba(120, 180, 255, 0.17)); }
+.sh-kicker .sh-evtag { letter-spacing: 0.02em; text-transform: none; }
+.sh-story-t b { font-variant-numeric: tabular-nums; }
+/* the stops, grouped by act; each one a step you can click back to */
+.sh-story-dots { display: flex; gap: 10px; align-items: center; }
+.sh-story-act { display: flex; gap: 3px; flex: var(--n, 1); min-width: 0; padding: 3px 0; border-radius: 6px; }
+.sh-story-act button {
+  flex: 1; min-width: 6px; height: 5px; padding: 0; border: 0; border-radius: 3px; background: var(--sh-ink-2); cursor: pointer;
+  transition: background-color var(--dur-3, .24s), transform var(--dur-2, .16s) var(--sh-ease);
+}
+.sh-story-act button:hover { background: var(--sh-ink-3); transform: scaleY(1.5); }
+.sh-story-act button.done { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+.sh-story-act button.done.hyp { background: color-mix(in srgb, light-dark(#6a4dc2, #c3b0ff) 48%, transparent); }
+.sh-story-act button.now { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
+/* the paint's key: what the ember on the section means */
+.sh-heatkey { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.sh-heatkey > span:first-child { color: var(--text-2); font-weight: 600; }
+.sh-heatkey i { width: 72px; height: 8px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--sh-glass-line); }
+/* the recorded probe on the section, and words on the 3D stage: the stage is dark for the story */
+.sh-story-over { position: absolute; z-index: 4; pointer-events: none; animation: sh-fade 0.5s var(--sh-ease) both; }
+.sh-story-over svg { position: absolute; inset: 0; overflow: visible; }
+.sh-story-over .shank-halo { stroke: rgba(4, 7, 10, 0.6); stroke-width: 5; stroke-linecap: round; }
+.sh-story-over .shank { stroke: #e9e1cf; stroke-width: 1.6; stroke-linecap: round; opacity: 0.9; }
+.sh-story-over .tip { fill: #e9e1cf; opacity: 0.9; }
+.sh-story-over .zone { stroke: var(--zc); stroke-width: 7; stroke-linecap: round; opacity: 0.85; transition: opacity 0.12s; }
+.sh-story-over .lead { fill: none; stroke: rgba(233, 225, 207, 0.32); stroke-width: 1; }
+.sh-story-over .zdot { fill: var(--zc); stroke: rgba(4, 7, 10, 0.8); stroke-width: 1; }
+.sh-story-over .zlabel, .sh-story-over .ulabel {
+  fill: #ece5d6; font: 600 11px var(--sans); letter-spacing: 0.01em; paint-order: stroke; stroke: rgba(5, 8, 12, 0.88); stroke-width: 3.6px; stroke-linejoin: round;
+}
+.sh-story-over .ulabel { font-size: 10.5px; font-weight: 550; text-anchor: end; fill: #cfd8d4; }
+.sh-story-over .unit { stroke: rgba(255, 255, 255, 0.92); stroke-width: 1.4; transition: r 0.08s; }
+.sh-story-over .unit-halo { stroke: none; }
+.sh-story-words { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.sh-story-words .sh-sword {
+  left: 0; top: 0; color: #f4eee2; font-size: 11.5px;
+  text-shadow: 0 0 2px rgba(4, 7, 10, 0.95), 0 0 4px rgba(4, 7, 10, 0.9), 0 0 10px rgba(4, 7, 10, 0.8);
+}
+.sh-story-words .sh-sword.cool { color: #a6e6ff; }
+/* the card's panels: figure A's own snapshot, and the recording drawn small */
+.sh-story-fig { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sh-story-fig img { display: block; width: 100%; height: auto; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--line-soft); }
+.sh-story-fig figcaption { font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+.sh-story-panel { display: flex; flex-direction: column; gap: 6px; }
+.sh-story-cv { display: block; width: 100%; border-radius: 10px; }
+.sh-story-toc { display: flex; flex-direction: column; gap: 10px; }
+.sh-story-tocact { display: flex; flex-direction: column; gap: 1px; }
+.sh-story-tocact .k { font-size: 10.5px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); padding: 0 8px 3px; }
+.sh-story-tocrow {
+  display: flex; align-items: center; gap: 9px; text-align: left; font: 500 12.5px/1.35 var(--sans); color: var(--text-2);
+  padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; transition: background-color var(--dur-2, .16s), color var(--dur-2, .16s);
+}
+.sh-story-tocrow:hover { background: var(--sh-ink-1); color: var(--text); }
+.sh-story-tocrow.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.sh-story-tocrow i { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--text-3); }
+.sh-story-tocrow i.rec { background: light-dark(#d06a28, #ffa45c); }
+.sh-story-tocrow i.hyp { background: light-dark(#7b5fd6, #b9a4ff); }
+.sh-story-tocrow i.model { background: var(--warn); }
+.sh-story-tocrow i.next { background: light-dark(#3a7fd0, #8cc4ff); }
+.sh-story-tocrow:focus-visible { outline: var(--focus-ring, 2px solid var(--accent-line)); outline-offset: 1px; }
+/* the map's bands take the same heat */
+.sh-svg .heatrect { pointer-events: none; transition: opacity 0.12s linear, fill 0.12s linear; }
+
 /* words on the stage */
 .sh-labels { position: absolute; inset: 0; pointer-events: none; z-index: 4; transition: opacity 0.14s var(--sh-ease); }
 .sh-labels.moving { opacity: 0; }
@@ -660,7 +733,7 @@
 @keyframes sh-rise { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .sh-load-head svg, .sh-svg .flow, .sh-svg .sinkrect.sink, .sh-load-steps li.now .mark, .sh-pop-in, .sh-fade-in, .sh-svg .here-ring,
-  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready { animation: none !important; }
+  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready, .sh-story-over { animation: none !important; }
   .sh-svg .flow { stroke-dasharray: none; }
 }
 [data-motion="calm"] #view-seahorse .sh-card > *, [data-motion="calm"] #view-seahorse .sh-word { animation: none; }

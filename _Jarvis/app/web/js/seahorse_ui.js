@@ -56,6 +56,8 @@ BARRY.shUI = (function () {
     spark: '<path d="M12 3.5l1.9 5.6 5.6 1.9-5.6 1.9-1.9 5.6-1.9-5.6-5.6-1.9 5.6-1.9z"/>',
     plus: '<path d="M12 5.5v13M5.5 12h13"/>',
     note: '<path d="M5.5 5.5h13v9l-4 4h-9z"/><path d="M14.5 18.5v-4h4"/>',
+    // a trace that stumbles, bursts and falls quiet: the seizure story
+    burst: '<path d="M2.5 13h2.4l1-1.6 1 3 1.2-4.6 1.4 7.2 1.6-10.4 1.6 12.4 1.6-11 1.4 7.6 1.1-3.8.9 1.2h2.3"/>',
   };
   function icon(name, size) {
     const s = document.createElementNS(NS, 'svg');

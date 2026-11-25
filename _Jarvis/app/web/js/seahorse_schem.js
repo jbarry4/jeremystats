@@ -501,6 +501,29 @@ BARRY.shSchem = (function () {
   }
 
   /* ----------------------------------------------------------------------
+     Heat on the layers (the seizure story): m = Map(layer key -> [css color,
+     opacity]). Cheap enough to call many times a second: each band keeps
+     one overlay, recolored in place, and loses it when the layer cools.
+     ---------------------------------------------------------------------- */
+  function heat(s, m) {
+    if (!s) return;
+    s.querySelectorAll('[data-layer]').forEach((n) => {
+      const k = n.dataset.layer, h = m && m.get(k);
+      let over = n.querySelector(':scope > .heatrect');
+      if (!h) { if (over) over.remove(); return; }
+      if (!over) {
+        const r = n.querySelector('rect, path');
+        if (!r) return;
+        over = r.tagName === 'path' ? svg('path', { class: 'heatrect', d: r.getAttribute('d') })
+          : svg('rect', { class: 'heatrect', x: r.getAttribute('x'), y: r.getAttribute('y'), width: r.getAttribute('width'), height: r.getAttribute('height') });
+        n.insertBefore(over, r.nextSibling);
+      }
+      over.style.fill = h[0];
+      over.style.opacity = String(h[1]);
+    });
+  }
+
+  /* ----------------------------------------------------------------------
      State onto a drawing
      ---------------------------------------------------------------------- */
   /* st: {focus: {cells, regionKeys, conns, layers} | null, hover: sel | null, sel: sel | null,
@@ -630,5 +653,5 @@ BARRY.shSchem = (function () {
     s.classList.toggle('sh-tiny', scale < 0.62);
   }
 
-  return { circuit, dentate, cell, apply, follow, fitText, svg };
+  return { circuit, dentate, cell, apply, heat, follow, fitText, svg };
 })();

@@ -84,6 +84,9 @@ BARRY.views.seahorse = (function () {
   const typeOfInst = (key) => { const i = instOf(key); return i ? (i.type || i.key) : key; };
   const isRide = () => !!(S.play && S.play.kind === 'ride');
   const isEvent = () => !!(S.play && S.play.kind === 'event');
+  const isStory = () => !!(S.play && S.play.kind === 'story');
+  /* a ride or a story has the stage to itself: the navigator and the tools step away */
+  const cinematic = () => isRide() || isStory();
   function regionOfLayer(k) {
     if (!k) return null;
     if (/^(oml|mml|iml|gcl)/.test(k) || k === 'hil') return 'dg';
@@ -93,7 +96,7 @@ BARRY.views.seahorse = (function () {
     if (k === 'sub' || k === 'pros') return 'sub';
     return null;
   }
-  function refText(k) { return (S.kb && S.kb.refs[k]) || (S.rides && S.rides.refs[k]) || k; }
+  function refText(k) { return (S.kb && S.kb.refs[k]) || (S.rides && S.rides.refs[k]) || (BARRY.shStory && BARRY.shStory.REFS[k]) || k; }
   /* "Wong RKS, Traub RD (1983) ..." -> "Wong & Traub 1983"; three or more
      authors -> "Amaral et al. 2007". */
   function refShort(k) {
@@ -299,7 +302,7 @@ BARRY.views.seahorse = (function () {
       for (const n of want) {
         win.start(n);
         if (n === 'three') {
-          S.three = await import('./seahorse3d.js?v=5');
+          S.three = await import('./seahorse3d.js?v=6');
           win.bytes(n, 700000, 700000);
         } else if (n === 'rides.json') {
           S.rides = await getJSON('rides.json');
@@ -555,7 +558,7 @@ BARRY.views.seahorse = (function () {
     const nav = $('.sh-nav');
     if (!nav) return;
     nav.innerHTML = '';
-    nav.classList.toggle('away', isRide());
+    nav.classList.toggle('away', cinematic());
     const now = ladderNow();
     const lad = el('div', { class: 'sh-ladder sh-glass', role: 'group', 'aria-label': 'How close' });
     (LADDERS[S.mode] || []).forEach(([k, words, tip], i) => {
@@ -609,7 +612,7 @@ BARRY.views.seahorse = (function () {
     const t = $('.sh-tools');
     if (!t) return;
     t.innerHTML = '';
-    t.classList.toggle('away', isRide());
+    t.classList.toggle('away', cinematic());
     if (S.mode === 'schematic') return;
     t.appendChild(UI.button({ icon: 'sliders', text: 'View', cls: 'sh-view-btn', title: 'What the stage shows', onclick: (e) => openViewSheet(e.currentTarget) }));
     t.appendChild(UI.button({ icon: 'frame', cls: 'icon', aria: 'Recenter', title: 'Recenter the view', onclick: recenter }));
@@ -668,6 +671,7 @@ BARRY.views.seahorse = (function () {
      ================================================================== */
   async function setMode(m) {
     if (isRide() && m !== '3d') stopPlay();
+    if (isStory() && !S.play.moving && m !== S.mode) stopPlay();       // you took the wheel: the story ends
     UI.closeAll();
     const changed = S.mode !== m;
     S.mode = m;
@@ -693,7 +697,7 @@ BARRY.views.seahorse = (function () {
       if (!ok2) return;
       S.stage.setView('slice');
       S.stage.setSliceMode(S.slice.layer);
-      S.stage.mini = S.slice.mini;
+      S.stage.mini = S.slice.mini && !isStory();
       if (!S.slice.C) sliceZoom('hippocampus'); else pushSlice();
       ensureCrowd();
     }
@@ -761,7 +765,7 @@ BARRY.views.seahorse = (function () {
     renderRail();
   }
   function applyCut() {
-    if (!S.stage || S.mode !== '3d' || isRide()) return;
+    if (!S.stage || S.mode !== '3d' || cinematic()) return;
     if (S.level === 'brain') S.stage.setCut({ kind: 'none' });
     else if (S.level === 'slab') S.stage.setCut({ kind: 'slab', pos: S.cut.pos, thick: 300 });
     else S.stage.setCut({ kind: S.cut.kind, pos: S.cut.pos });
@@ -771,7 +775,7 @@ BARRY.views.seahorse = (function () {
   function placeMini() {
     const f = $('.sh-miniframe'), cap = $('.sh-minicap');
     if (!f) return;
-    const on = S.mode === 'slice' && S.slice.mini && S.stage && S.stage.view === 'slice' && S.stage.miniRect;
+    const on = S.mode === 'slice' && S.slice.mini && S.stage && S.stage.view === 'slice' && S.stage.miniRect && !isStory();
     f.classList.toggle('on', !!on);
     cap.classList.toggle('on', !!on);
     if (!on) return;
@@ -935,6 +939,7 @@ BARRY.views.seahorse = (function () {
     clearTimeout(camT);
     camT = setTimeout(updateHere, 160);
     if (S.mode === 'slice') syncLadder();
+    if (isStory()) { storyOverlay(true); return; }
     const lb = $('.sh-labels');
     if (lb && S.mode === '3d') lb.classList.add('moving');
     clearTimeout(labT);
@@ -942,6 +947,7 @@ BARRY.views.seahorse = (function () {
   }
   function onStageFrame() {
     if (isRide()) updateRideTag();
+    else if (isStory()) placeStoryWords();
     else placeSelTag();
   }
   /* What sits at the middle of the view: the "you are here" of the map. */
@@ -1002,7 +1008,7 @@ BARRY.views.seahorse = (function () {
     box.innerHTML = '';
     S.labelPos = new Map();
     const B = stageBox();
-    if (!B || !S.stage || S.mode === 'schematic' || !S.volumesUp || isRide()) { placeSelTag(); return; }
+    if (!B || !S.stage || S.mode === 'schematic' || !S.volumesUp || cinematic()) { placeSelTag(); return; }
     const placed = panelBoxes(B);
     const put = (x, y, text, cls, w0, kids) => {
       const w = w0 || text.length * 6.6 + 10, h = 18;
@@ -1374,6 +1380,19 @@ BARRY.views.seahorse = (function () {
       const sink = hexRgb(SINK), src = hexRgb(SOURCE);
       P.sink.forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, sink.concat(0.7)); });
       (P.source || []).forEach((k) => { const c = codeOf(k); if (c) pulse.set(c, src.concat(0.45)); });
+    } else if (P && P.kind === 'story') {
+      // the story: recorded zones in ember (how far each is from its quiet self), or the model's
+      // sink and source, or the loop's burning cut face; everything else steps back
+      const R = BARRY.shStory;
+      const put = (k, lv) => { const c = codeOf(k), a = R.alphaOf(lv); if (c && a) pulse.set(c, R.ramp(lv).concat(Math.min(0.88, a))); };
+      if (P.stop && P.stop.measure) P.D.zones.forEach((z) => z.layers.forEach((k) => put(k, P.levels[z.key] || 0)));
+      else if (P.extra) for (const [k, lv] of P.extra) put(k, lv);
+      else if (P.modelPaint) {
+        const sink = hexRgb(SINK), src = hexRgb(SOURCE);
+        for (const [k, v] of P.modelPaint) { const c = codeOf(k); if (c && Math.abs(v) > 0.04) pulse.set(c, (v < 0 ? sink : src).concat(Math.min(0.92, 0.4 + Math.abs(v) * 0.8))); }
+      }
+      if (P.light != null) { const c = codeOf('hil'); if (c) pulse.set(c, hexRgb(LIGHT).concat(0.16 + 0.64 * P.light)); }
+      dimRest = !!(P.stop && (P.stop.measure || P.model || P.extra || P.light != null));
     }
     S.stage.setHighlights({ lam, allen, pulse, dimRest });
     if (P && P.kind === 'event' && S.stage.setPulse) S.stage.setPulse(1);
@@ -1390,6 +1409,7 @@ BARRY.views.seahorse = (function () {
   function schemKind() {
     if (S.schemPick !== 'auto') return S.schemPick;
     if (S.mode === 'schematic') return S.schemFullPick || 'circuit';
+    if (isStory() && S.play.stop) return S.play.stop.map || 'dentate';
     if (S.sel && S.sel.type === 'cell' && !isRide()) return 'cell';
     if (S.play && (S.play.kind === 'event' || ['ds1', 'ds2', 'dentate'].includes(S.play.key))) return 'dentate';
     if (S.mode === '3d' && S.level === 'slab') return 'dentate';
@@ -1496,7 +1516,7 @@ BARRY.views.seahorse = (function () {
      Cards: one system. A sticky head (kicker, name), a lede, the things
      you can do, then sections that fold (remembered by their heading).
      ================================================================== */
-  const FOLDED = new Set(['References', 'Sources', 'The crowd', 'Method']);
+  const FOLDED = new Set(['References', 'Sources', 'The crowd', 'Method', 'Every stop', 'The recording']);
   function showCard(sel) {
     if (S.quiz && S.quiz.open && !(sel && sel.type === 'quiz')) S.quiz.open = false;
     const card = $('.sh-card');
@@ -1526,6 +1546,7 @@ BARRY.views.seahorse = (function () {
     if (sel.type === 'views') return renderViews(card, sel);
     if (sel.type === 'quiz') return renderQuiz(card);
     if (sel.type === 'event') return renderEventCard(card);
+    if (sel.type === 'story') return renderStoryCard(card);
     if (sel.type === 'allen') return renderAllen(card, sel);
     return renderAbout(card);
   }
@@ -1973,7 +1994,8 @@ BARRY.views.seahorse = (function () {
   }
   function syncProbe() {
     if (!S.stage) return;
-    const pr = S.probe.on ? probeForStage() : null;
+    // a story draws its own probe (the recorded one) on the section
+    const pr = S.probe.on && !isStory() ? probeForStage() : null;
     // the ribbon beside the shank: each contact in its layer's color
     if (pr && S.blobs['brain50.shb.gz']) pr.ribbon = contactLayers().map((k) => (k ? lamColor(k) : null) || '#8a8a8a');
     S.stage.setProbe(pr);
@@ -2282,13 +2304,15 @@ BARRY.views.seahorse = (function () {
       syncPaths();
     }
     if (p.kind === 'event') { stopEventAnim(); if (S.stage && S.stage.setPulse) S.stage.setPulse(null); }
+    if (p.kind === 'story') endStory(p);
     S.play = null;
-    if (p.kind === 'event') applyHighlights();      // the sink and source paint goes with the event
+    if (p.kind === 'event' || p.kind === 'story') applyHighlights();      // the paint goes with it
     hideInset();
-    // an event's model panel belongs to the event: give the card back
-    if ($('.sh-card .sh-lam') && !(S.quiz && S.quiz.open)) showCard(S.sel);
+    // an event's model panel and a story's card belong to them: give the card back
+    if (($('.sh-card .sh-lam') || $('.sh-card .sh-story-head')) && !(S.quiz && S.quiz.open)) showCard(S.sel);
     const rt = $('.sh-ridetag'); if (rt) rt.remove();
     showExtras();
+    if (p.kind === 'story') { syncProbe(); placeMini(); renderNav(); renderTools(); renderDock(); renderRail(); applyCut(); updateLabels(); }
     if (!quiet) {
       S.focus = S.sel ? focusFor(S.sel) : null;
       applyFocusAll();
@@ -2559,6 +2583,700 @@ BARRY.views.seahorse = (function () {
   }
 
   /* ==================================================================
+     Stories: one recorded event told click by click (seahorse_story.js).
+     On the probe, the section is painted from the recording itself; beyond
+     it, the 3D stage draws our hypothesis. The stage goes dark for it, and
+     nothing moves on to the next stop without a click.
+     ================================================================== */
+  const ST = () => BARRY.shStory;
+  const STORY_SPEEDS = [[0.05, '1/20'], [0.2, '1/5'], [0.5, '1/2'], [1, 'Real time'], [2, '2×']];
+  const COOL = '#6fd3ff';                // the septum's pacing
+  const LIGHT = '#4f9dff';               // the light on the hilus
+  const EMBER = (lv) => 'rgb(' + ST().ramp(lv).join(',') + ')';
+  const fmtStoryT = (t, span) => (t < -0.0049 ? '−' : '') + Math.abs(t).toFixed(span > 12 ? 1 : 2) + ' s';
+  async function startStory(key, o) {
+    o = o || {};
+    const story = ST().stories().find((s) => s.key === key);
+    if (!story) return;
+    if (!o.fromTour) endTour();
+    stopPlay(true);
+    UI.closeAll();
+    const ok = await need(['three', 'mesh_brain.shb.gz', 'mesh_hpf.shb.gz', 'mesh_lamina.shb.gz', 'cells.shb.gz', 'brain50.shb.gz', 'hip20.shb.gz', 'fine10.shb.gz'],
+      'Getting the seizure ready', 'The section the probe went through, the hippocampus around it, and the whole brain beyond.');
+    if (!ok) return;
+    let D = S.storyData && S.storyData[key];
+    if (!D) {
+      try { D = await getJSON(story.data); } catch (err) {
+        toast('The story\'s recording is missing (web/seahorse/' + story.data + '). Build it with: python tools/seahorse/story_m459.py', 'err');
+        return;
+      }
+      S.storyData = Object.assign(S.storyData || {}, { [key]: D });
+    }
+    const P = { kind: 'story', key, story, D, i: -1, stop: null, t: 0, speed: 1, paused: true, held: false, levels: {}, extra: null,
+                fxN: {}, timers: [], words: [], moving: false, speeds: {}, seq: 0 };
+    P.geo = storyGeo(story, D);
+    S.play = P;
+    allenCentres();
+    await runStop(o.at || 0);
+    startStoryClock();
+  }
+  /* Where each recorded zone sits on a probe line through the atlas's section:
+     its layers, top to bottom, sampled along the shank. */
+  function storyGeo(story, D) {
+    const ap = story.probe.ap, ml = story.probe.ml;
+    const codeZone = new Map();
+    D.zones.forEach((z) => z.layers.forEach((k) => { const l = lamOf(k); if (l) codeZone.set(l.code, z.key); }));
+    const zones = {};
+    for (let dv = 900; dv <= 3400; dv += 10) {
+      const zk = codeZone.get(sampleAt(ap, dv, ml).lam);
+      if (!zk) continue;
+      const z = zones[zk] || (zones[zk] = { dv0: dv, dv1: dv + 10 });
+      z.dv0 = Math.min(z.dv0, dv); z.dv1 = Math.max(z.dv1, dv + 10);
+    }
+    // a zone the atlas misses here keeps the place it has on the measured line (AP -1.80, ML 1.40 mm)
+    const FALLBACK = { ca1o: [1420, 1600], ca1r: [1600, 2000], supd: [2000, 2160], supp: [2160, 2230], supg: [2230, 2340],
+                       hil: [2340, 2520], infg: [2520, 2600], infp: [2600, 2670], infd: [2670, 2790] };
+    D.zones.forEach((z) => { if (!zones[z.key] && FALLBACK[z.key]) zones[z.key] = { dv0: FALLBACK[z.key][0], dv1: FALLBACK[z.key][1] }; });
+    const vals = Object.values(zones);
+    const top = Math.min(...vals.map((z) => z.dv0)), bottom = Math.max(...vals.map((z) => z.dv1));
+    // the sorted unit: its contact's place inside its zone
+    const uz = D.zones.find((z) => D.unit.csc >= z.csc[0] && D.unit.csc <= z.csc[1]);
+    const g = uz && zones[uz.key];
+    const unitDv = g ? g.dv0 + (g.dv1 - g.dv0) * ((D.unit.csc - uz.csc[0] + 0.5) / (uz.csc[1] - uz.csc[0] + 1)) : null;
+    return { ap, ml, zones, top, bottom, unitDv };
+  }
+  /* Allen structures' middles (CCF um) on each side, from the 50 um labels, in
+     one pass: the septum, the cortex the discharge reaches, the thalamus, the brainstem. */
+  const ALLEN_IDS = { MS: 564, MOp: 985, SSp: 322, AUD: 247, VISp: 385, RSP: 254, ACA: 31, TH: 549, MB: 313, P: 771, MY: 354 };
+  let allenC = null;
+  function allenCentres() {
+    if (allenC) return allenC;
+    const B = S.blobs['brain50.shb.gz'];
+    if (!B) return {};
+    const st = B.header.structures, names = Object.keys(ALLEN_IDS), ids = names.map((n) => ALLEN_IDS[n]);
+    const slot = new Int16Array(st.length).fill(-1);
+    st.forEach((s, i) => { const hit = ids.findIndex((id) => s.id === id || (s.path || []).includes(id)); if (hit >= 0) slot[i] = hit; });
+    const acc = new Float64Array(ids.length * 8), L = B.arrays.labels;
+    for (let i = 0; i < 264; i++) for (let j = 0; j < 160; j++) {
+      const row = (i * 160 + j) * 228;
+      for (let k = 0; k < 228; k++) {
+        const s = slot[L[row + k]];
+        if (s < 0) continue;
+        const o = (s * 2 + (k * 50 + 25 >= 5700 ? 0 : 1)) * 4;
+        acc[o]++; acc[o + 1] += i; acc[o + 2] += j; acc[o + 3] += k;
+      }
+    }
+    allenC = {};
+    names.forEach((n, s) => {
+      const get = (side) => { const o = (s * 2 + side) * 4, c = acc[o]; return c ? [acc[o + 1] / c * 50 + 25, acc[o + 2] / c * 50 + 25, acc[o + 3] / c * 50 + 25] : null; };
+      const r = get(0), l = get(1);
+      allenC[n] = { r, l, m: r && l ? [(r[0] + l[0]) / 2, (r[1] + l[1]) / 2, 5700] : (r || l) };
+    });
+    return allenC;
+  }
+  const allenW = (name, side) => { const c = (allenCentres()[name] || {})[side || 'r']; return c ? S.three.W(c[0], c[1], c[2]) : null; };
+  const hpfW = (k, side) => { const c = S.stage && S.stage.centroid('hpf', k, true); return c && side === 'l' ? [-c[0], c[1], c[2]] : c; };
+  const geoW = (P, dv) => S.three.W(P.geo.ap, dv, P.geo.ml);
+
+  async function runStop(i) {
+    const P = S.play;
+    if (!P || P.kind !== 'story') return;
+    const stops = P.story.stops;
+    i = Math.max(0, Math.min(stops.length - 1, i));
+    clearStoryFx(P);
+    const st = stops[i];
+    P.i = i; P.stop = st; P.seq++;
+    const seq = P.seq;
+    P.levels = {}; P.extra = null; P.fxN = {}; P.bump = {}; P.fxT0 = performance.now(); P.drawAt = 0; P.schemAt = 0;
+    if (st.clip) {
+      P.t = st.clip[0];
+      P.speed = P.speeds[st.key] || st.speed || 1;
+      P.paused = false; P.held = false;
+      // a still picture where motion is unwelcome: the clip's busiest moment
+      if (reducedMotion()) { P.t = storyPeak(P, st); P.paused = true; P.held = true; }
+    } else { P.t = 0; P.paused = false; P.held = true; }
+    P.model = st.model ? storyModel(st.model) : null;
+    // the rail: the map lit for this stop, and the story's card
+    S.focus = { cells: new Set(), regionKeys: new Set((st.focus || {}).regions || []), conns: new Set((st.focus || {}).conns || []), layers: new Set() };
+    renderDock();
+    showCard({ type: 'story' });
+    renderRail();
+    P.moving = true;
+    try { await storyView(P, st); } finally { P.moving = false; }
+    if (S.play !== P || P.seq !== seq || !S.stage) return;
+    S.stage.setDark(true);
+    S.stage.mini = false;
+    if (S.stage.setPulse) S.stage.setPulse(1);
+    if (S.stage.setPulseSide) S.stage.setPulseSide(1);      // the probe was in the right hemisphere
+    placeMini();
+    syncProbe();
+    // the cells this stop is about stand out; the rest step back
+    const types = (st.focus || {}).cells || [];
+    if (types.length && S.mode !== 'schematic') S.stage.focus({ cells: new Set(types.flatMap((t) => instancesOfType(t))), regions: new Set(), layers: new Set() });
+    else S.stage.focus(null);
+    P.words = storyWords(P, st);
+    renderNav();
+    renderTools();
+    applyHighlights();
+    storyOverlay(true);
+    updateLabels();
+  }
+  function storyGo(i) { const P = S.play; if (P && P.kind === 'story') runStop(i); }
+  function storyNext() {
+    const P = S.play;
+    if (!P || P.kind !== 'story') return;
+    if (P.i >= P.story.stops.length - 1) stopPlay(); else runStop(P.i + 1);
+  }
+  /* The view a stop asks for: the section through the probe (gliding, not
+     jumping, from one framing to the next), or the 3D hippocampus or brain. */
+  async function storyView(P, st) {
+    const v = st.view;
+    if (v === 'probe' || v === 'dentate') {
+      const fr = storyFrame(P, v);
+      const ap = fr.C[0];
+      const same = S.mode === 'slice' && S.slice.plane === 'coronal' && Math.abs(S.slice.pos - ap) < 1 && !S.slice.tiltA && !S.slice.tiltB && !S.slice.custom;
+      S.slice.plane = 'coronal'; S.slice.pos = ap; S.slice.tiltA = 0; S.slice.tiltB = 0; S.slice.custom = null;
+      if (S.mode !== 'slice') { S.slice.C = fr.C; S.slice.k = fr.k; await setMode('slice'); }
+      else await glideSlice(fr.C, fr.k, same ? 900 : 0);
+      return;
+    }
+    const lv = v === 'hpf' ? 'hpf' : 'brain';
+    if (S.mode !== '3d') { S.level = lv; await setMode('3d'); }
+    else if (S.level !== lv) await setLevel(lv);
+    if (!S.stage) return;
+    // the hippocampus is cut open at the probe's section; the brain is whole
+    S.stage.setCut(lv === 'brain' ? { kind: 'none' } : { kind: 'coronal', pos: P.geo.ap });
+    const cam = storyCam(P, v);
+    if (cam) S.stage.fly(cam.pos, cam.target, 1700);
+  }
+  /* Where the camera stands for a 3D stop: far enough back to see the whole
+     of what the stop is about, aimed a little low so it sits above the dock
+     (the 3D camera sees 35 degrees top to bottom). */
+  function storyCam(P, v) {
+    const aim = (target, dir, d) => {
+      const n = Math.hypot(...dir);
+      return { pos: target.map((x, i) => x + dir[i] / n * d), target };
+    };
+    if (v === 'hpf') return aim([2.6, -0.8, 1.5], [0.72, 0.5, -0.48], 14.5);          // the right hippocampal formation, cut at the probe
+    if (v === 'brain-septum') return aim([1.4, -0.9, 0.3], [0.9, 0.36, -0.25], 17);     // the septum, the dentate, the entorhinal cortex
+    if (v === 'brain') return aim([0, -1.4, 0.2], [0.82, 0.42, 0.38], 27);              // the whole brain from the right, a little behind
+    return null;
+  }
+  /* The middle of some layers where a coronal plane crosses them (right side, CCF um). */
+  const planeC = new Map();
+  function planeCentre(keys, ap) {
+    const id = keys.join(',') + '@' + ap;
+    if (planeC.has(id)) return planeC.get(id);
+    const codes = new Set(keys.map((k) => (lamOf(k) || {}).code).filter(Boolean));
+    let n = 0, d = 0, m = 0;
+    for (let ml = 5760; ml < 10200; ml += 20) for (let dv = 900; dv < 4600; dv += 20) { if (codes.has(sampleAt(ap, dv, ml).lam)) { n++; d += dv; m += ml; } }
+    const c = n ? [ap, d / n, m / n] : null;
+    planeC.set(id, c);
+    return c;
+  }
+  /* The loop's stations: the dentate, CA3 and CA1 where the probe's section crosses
+     them; the subiculum and the entorhinal cortex behind it. */
+  function loopPt(P, k) {
+    const lay = { DG: ['hil'], CA3: ['ca3sp'], CA1: ['ca1sp'] }[k];
+    const c = lay && planeCentre(lay, P.geo.ap);
+    return c ? S.three.W(c[0], c[1], c[2]) : hpfW(k);
+  }
+  /* The section's framing: the probe, top to bottom (or closer, on the dentate), in the room above the dock. */
+  function storyFrame(P, v) {
+    const g = P.geo;
+    const host = $('.sh-host').getBoundingClientRect();
+    const W = Math.max(240, host.width), H = Math.max(240, host.height);
+    const dock = $('.sh-dock');
+    const dockH = dock ? dock.getBoundingClientRect().height : 190;
+    const room = Math.max(180, H - dockH - 2 * 16 - 24);
+    const ap = g.ap;
+    let wUm, hUm, cx, cy;
+    if (v === 'dentate') { wUm = 2400; hUm = (g.zones.infd || { dv1: g.bottom }).dv1 - (g.zones.supd || { dv0: g.top }).dv0 + 420; cx = g.ml + 260; cy = ((g.zones.supd || { dv0: g.top }).dv0 + (g.zones.infd || { dv1: g.bottom }).dv1) / 2; }
+    else { wUm = 4400; hUm = g.bottom - g.top + 320; cx = g.ml + 300; cy = (g.top + g.bottom) / 2; }
+    const k = Math.max(wUm / (W * 0.94), hUm / room);
+    const yWant = 16 + room / 2;
+    return { C: [ap, cy + (H / 2 - yWant) * k, cx], k };
+  }
+  let glideRaf = 0;
+  function glideSlice(C1, k1, ms) {
+    cancelAnimationFrame(glideRaf);
+    const A = S.slice.custom || sliceAxes();
+    const C0 = S.slice.C ? S.slice.C.slice() : C1.slice(), k0 = S.slice.k || k1;
+    if (!S.stage || reducedMotion() || !ms) { S.slice.C = C1; S.slice.k = k1; pushSlice(); syncLadder(); storyOverlay(true); return Promise.resolve(); }
+    return new Promise((done) => {
+      const t0 = performance.now();
+      const step = (now) => {
+        const u = Math.min(1, (now - t0) / ms);
+        const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+        S.slice.C = C0.map((x, i) => x + (C1[i] - x) * e);
+        S.slice.k = Math.exp(Math.log(k0) + (Math.log(k1) - Math.log(k0)) * e);       // zoom evenly
+        if (S.stage) S.stage.setSlice({ N: A.N, U: A.U, V: A.V, C: S.slice.C, k: S.slice.k });
+        storyOverlay(true);
+        if (u < 1) glideRaf = requestAnimationFrame(step);
+        else { glideRaf = 0; pushSlice(); syncLadder(); done(); }
+      };
+      glideRaf = requestAnimationFrame(step);
+    });
+  }
+  /* The model dentate spike (the gate stop): seahorse_phys.js's DS2, its sink held at its peak. */
+  function storyModel(key) {
+    const ev = BARRY.shPhys.EVENTS[key];
+    if (!ev) return null;
+    let cm = 1e-9, peak = 0;
+    for (let t = 0; t <= ev.ms; t += 0.5) for (const v of BARRY.shPhys.layerCsd(ev, t).values()) if (Math.abs(v) > cm) { cm = Math.abs(v); peak = t; }
+    return { ev, cm, peak };
+  }
+  function storyPeak(P, st) {
+    let best = st.clip[0], bv = -1;
+    for (let t = st.clip[0]; t <= st.clip[1]; t += 0.02) {
+      const lv = ST().zoneLevels(P.D, t, st.measure);
+      const s = Object.values(lv).reduce((a, b) => a + b, 0);
+      if (s > bv) { bv = s; best = t; }
+    }
+    return best;
+  }
+
+  /* the lights come back up: everything the story put on the stage goes */
+  function endStory(P) {
+    stopStoryClock();
+    cancelAnimationFrame(glideRaf);
+    P.seq++;
+    clearStoryFx(P);
+    if (S.stage) {
+      S.stage.setDark(false);
+      if (S.stage.setPulse) S.stage.setPulse(null);
+      if (S.stage.setPulseSide) S.stage.setPulseSide(0);
+      S.stage.mini = S.slice.mini;
+      S.stage.focus(null);
+    }
+    ['.sh-story-over', '.sh-story-words'].forEach((q) => { const n = $(q); if (n) n.remove(); });
+    const svg = $('.sh-map svg');
+    if (svg && BARRY.shSchem.heat) BARRY.shSchem.heat(svg, new Map());
+  }
+
+  /* ---------- the story's clock ---------- */
+  let stRaf = 0, stLast = 0;
+  function startStoryClock() {
+    cancelAnimationFrame(stRaf);
+    stLast = performance.now();
+    const tick = (now) => {
+      const P = S.play;
+      if (!P || P.kind !== 'story') { stRaf = 0; return; }
+      const dt = Math.min(100, now - stLast);
+      stLast = now;
+      try { storyTick(P, now, dt); } catch (err) { reportClientError('seahorse:story', err.message, err.stack); }
+      stRaf = requestAnimationFrame(tick);
+    };
+    stRaf = requestAnimationFrame(tick);
+  }
+  function stopStoryClock() { cancelAnimationFrame(stRaf); stRaf = 0; }
+  function storyTick(P, now, dt) {
+    const st = P.stop;
+    if (!st || P.moving && st.view !== 'probe' && st.view !== 'dentate') return;
+    if (st.clip && !P.paused) {
+      P.t += dt / 1000 * P.speed;
+      if (P.t >= st.clip[1]) { P.t = st.clip[1]; P.paused = true; syncStoryPlay(); if (!P.held) { P.held = true; renderDock(); } }
+    }
+    if (st.measure) {
+      // recorded: each zone's level now, with a short afterglow on screen so a 50 ms discharge still reads
+      const lv = ST().zoneLevels(P.D, P.t, st.measure);
+      const fall = Math.exp(-dt / 240);
+      for (const k in lv) P.levels[k] = P.paused ? lv[k] : Math.max(lv[k], (P.levels[k] || 0) * fall);
+    } else if (P.model) {
+      // the volley arrives, the sink holds long enough to be read, it fades, a rest
+      const M = P.model, ms = (now - P.fxT0) % 3200;
+      let t = null;
+      if (ms < 700) t = M.peak - 14 + 14 * (ms / 700);
+      else if (ms < 2000) t = M.peak;
+      else if (ms < 2600) t = M.peak + 20 * ((ms - 2000) / 600);
+      P.modelT = t;
+      const m = new Map();
+      if (t != null) for (const [k, v] of BARRY.shPhys.layerCsd(M.ev, t)) m.set(k, v / M.cm);
+      P.modelPaint = m;
+    }
+    if (st.fx && S.mode !== 'schematic' && S.stage) storyFx(P, now - P.fxT0);
+    applyHighlights();
+    paintStoryOverlay(P);
+    if (now - P.drawAt > 33) { P.drawAt = now; drawStoryPanels(P); syncStoryTime(P); }
+    if (now - P.schemAt > 120) { P.schemAt = now; storySchemHeat(P); }
+  }
+  function toggleStoryPause() {
+    const P = S.play;
+    if (!P || P.kind !== 'story' || !P.stop.clip) return;
+    if (P.paused && P.t >= P.stop.clip[1] - 1e-6) { P.t = P.stop.clip[0]; P.levels = {}; }
+    P.paused = !P.paused;
+    syncStoryPlay();
+  }
+  function syncStoryPlay() {
+    const P = S.play;
+    const b = $('.sh-tr-play');
+    if (!b || !P || P.kind !== 'story') return;
+    b.replaceWith(playBtn(!P.paused, toggleStoryPause));
+  }
+  function syncStoryTime(P) {
+    const t = $('.sh-story-t b');
+    if (t) t.textContent = fmtStoryT(P.t, P.stop.clip ? P.stop.clip[1] - P.stop.clip[0] : 0);
+    const sc = $('.sh-tr-scrub');
+    if (sc && sc.set && !sc.matches(':active')) sc.set(P.t);
+  }
+
+  /* ---------- what the 3D stage draws beyond the probe (all of it hypothesis) ---------- */
+  function clearStoryFx(P) {
+    P.timers.forEach(clearTimeout);
+    P.timers = [];
+    P.extra = null; P.modelPaint = null; P.light = null; P.words = [];
+    const w = $('.sh-story-words'); if (w) w.innerHTML = '';
+    const st = S.stage;
+    if (!st || !st.setHeat) return;
+    st.clearBeacons(); st.glowBrain(null); st.setHeat(null); st.fadeCrowd(null);
+  }
+  const fxOnce = (P, key, ms, at, fn) => { if (ms >= at && !P.fxN[key]) { P.fxN[key] = 1; fn(); } };
+  const fxEvery = (P, key, ms, period, fn) => { const n = Math.floor(ms / period); if (P.fxN[key] == null || P.fxN[key] < n) { P.fxN[key] = n; fn(n); } };
+  const fxLater = (P, ms, fn) => { const id = setTimeout(() => { if (S.play === P && P.stop) fn(); }, ms); P.timers.push(id); };
+  const LOOP_LAYERS = ['oml1', 'mml1', 'iml1', 'gcl1', 'hil', 'gcl2', 'iml2', 'mml2', 'oml2', 'ca3so', 'ca3sp', 'ca3slu', 'ca3sr', 'ca2so', 'ca2sp', 'ca2sr', 'ca1so', 'ca1sp', 'ca1sr', 'ca1slm'];
+  function storyFx(P, ms) {
+    const st = S.stage, f = P.stop.fx, now = performance.now();
+    P.bump = P.bump || {};
+    // the clay keeps its own colors: a low glow where a region is seizing, and a flash where a discharge lands
+    const land = (k) => { P.bump[k] = performance.now(); };
+    const glow = (base) => {
+      const h = {};
+      ['DG', 'CA3', 'CA2', 'CA1', 'SUB', 'ProS', 'ENTm', 'ENTl'].forEach((k) => {
+        const b = P.bump[k] ? 0.6 * Math.exp(-(now - P.bump[k]) / 650) : 0;
+        h[k] = Math.min(1, (base[k] != null ? base[k] : base._ || 0) + b);
+      });
+      st.setHeat(h, '#ff6a2a');
+    };
+    if (f === 'loop') {
+      // laps around the loop, each landing harder on the dentate; the cut face burns hotter lap by lap
+      const LAP = 3000, lap = ms / LAP;
+      fxEvery(P, 'lap', ms, LAP, (n) => {
+        const w = Math.min(1, 0.35 + n * 0.22);
+        [['DG', 'CA3', 'gc'], ['CA3', 'CA1', 'ca3'], ['CA1', 'SUB', 'ca1'], ['SUB', 'ENTm', null], ['ENTm', 'DG', 'stel']].forEach(([a, b, cell], i) => fxLater(P, i * 540, () => {
+          const A = loopPt(P, a), B = loopPt(P, b);
+          if (A && B) st.volley(A, B, EMBER(0.5 + 0.45 * w), 1050, { size: 0.9 + w * 0.9, lift: 0.6 });
+          if (cell) instancesOfType(cell).forEach((k) => st.pulseCell(k, 950));
+          fxLater(P, 870, () => land(b));
+        }));
+      });
+      glow({ _: Math.min(0.26, 0.04 + lap * 0.06) });
+      const h = Math.min(0.78, 0.22 + lap * 0.12);
+      const flick = 0.8 + 0.2 * Math.sin(ms / 120) * Math.sin(ms / 410);
+      P.extra = new Map(LOOP_LAYERS.map((k, i) => [k, Math.min(1, h * flick * (0.78 + 0.22 * Math.sin(i * 1.7 + ms / 300)))]));
+    } else if (f === 'septum') {
+      const sep = allenW('MS', 'm');
+      fxOnce(P, 'beacon', ms, 0, () => { if (sep) st.beacon('septum', sep, COOL, { hz: 0.72, size: 1.25 }); });
+      // each breath of the septum (theta, slowed down to be seen) goes out to the hilus and the entorhinal cortex
+      fxEvery(P, 'pace', ms, 1390, () => {
+        const dg = loopPt(P, 'DG'), ec = hpfW('ENTm');
+        if (sep && dg) st.volley(sep, dg, COOL, 1150, { size: 0.85, lift: 0.35, land: false });
+        if (sep && ec) fxLater(P, 240, () => st.volley(sep, ec, COOL, 1350, { size: 0.85, lift: 0.5, land: false }));
+        // and the disinhibited dentate answers, in ember
+        fxLater(P, 1000, () => { const d = loopPt(P, 'DG'); if (d) st.flareAt(d, EMBER(0.72), 950); land('DG'); });
+      });
+      glow({ DG: 0.24, _: 0.1 });
+    } else if (f === 'global') {
+      const ec = hpfW('ENTl') || hpfW('ENTm');
+      fxEvery(P, 'wave', ms, 3400, () => {
+        land('ENTl'); land('ENTm');
+        ['SSp', 'MOp', 'AUD', 'VISp', 'RSP', 'ACA'].forEach((n, i) => fxLater(P, i * 240, () => { const b = allenW(n, 'r'); if (ec && b) st.volley(ec, b, EMBER(0.7), 1350, { size: 1.15, lift: 0.4 }); }));
+        fxLater(P, 500, () => { const th = allenW('TH', 'r'), dg = hpfW('DG'); if (th && dg) st.volley(dg, th, EMBER(0.62), 1250, { size: 1.05, lift: 0.3 }); });
+        // across the commissure to the other hippocampus
+        fxLater(P, 1300, () => { const a = hpfW('DG'), b = hpfW('DG', 'l'); if (a && b) st.volley(a, b, EMBER(0.8), 1400, { size: 1.15, lift: 0.55 }); });
+      });
+      const k = Math.min(1, ms / 6500);
+      st.glowBrain({ Isocortex: { color: '#ff7a2f', a: 0.12 + 0.48 * k }, TH: { color: '#ff9a3c', a: 0.1 + 0.42 * k } });
+      glow({ _: 0.22 });
+    } else if (f === 'clonic') {
+      // jerks in time with the cortical discharge (drawn at a pace you can follow)
+      const beat = 2.2, ph = (ms / 1000 * beat) % 1, kick = Math.exp(-ph * 5);
+      st.glowBrain({ Isocortex: { color: '#ff7a2f', a: 0.26 + 0.5 * kick }, TH: { color: '#ff9a3c', a: 0.4 } });
+      fxEvery(P, 'jerk', ms, 1000 / beat, () => { ['r', 'l'].forEach((s) => { const p = allenW('MOp', s); if (p) st.flareAt(p, '#ffe0a0', 650); }); });
+      glow({ _: 0.22 });
+    } else if (f === 'tonic') {
+      const k = Math.min(1, ms / 2600), sh = 0.9 + 0.1 * Math.sin(ms / 230);
+      const stem = { color: '#ffd27a', a: (0.3 + 0.6 * k) * sh };
+      st.glowBrain({ Isocortex: { color: '#ff7a2f', a: 0.3 }, TH: { color: '#ff9a3c', a: 0.4 }, MB: stem, P: stem, MY: stem });
+      fxEvery(P, 'stiff', ms, 1100, () => { const p = allenW('P', 'm') || allenW('P', 'r'); if (p) st.flareAt(p, '#fff1c0', 1300); });
+      glow({ _: 0.22 });
+    } else if (f === 'damage') {
+      // the hilar interneurons stand out for a moment, then fade away, somata and tracings both
+      const up = Math.min(1, ms / 800), k = Math.max(0, Math.min(1, (ms - 1300) / 4200));
+      const v = (1 + 1.6 * up) * (1 - 0.96 * k * k * (3 - 2 * k));
+      st.fadeCells(instancesOfType('hipp'), Math.min(1, v));
+      const hk = ((S.kb.crowd || {}).kinds || []).findIndex((x) => x.key === 'hipp');
+      if (hk >= 0) st.fadeCrowd(hk, v);
+    } else if (f === 'opto') {
+      // light on the hilus at a steady rhythm (drawn at 2 a second); with each flash the hilar interneurons fire together
+      const ph = (ms / 1000 * 2) % 1;
+      P.light = ph < 0.42 ? 1 - ph : 0.1;
+      const hk = ((S.kb.crowd || {}).kinds || []).findIndex((x) => x.key === 'hipp');
+      if (hk >= 0) st.fadeCrowd(hk, 1 + 1.6 * P.light);
+      fxEvery(P, 'flash', ms, 500, () => instancesOfType('hipp').forEach((k) => st.pulseCell(k, 430)));
+    }
+  }
+  /* Words on the 3D stage for what the hypothesis stops talk about. */
+  function storyWords(P, st) {
+    if (S.mode === 'schematic') return [];
+    const w = (text, at, cls) => (at ? { text, at, cls } : null);
+    const f = st.fx;
+    let out = [];
+    if (f === 'loop') out = [w('Dentate gyrus', loopPt(P, 'DG')), w('CA3', loopPt(P, 'CA3')), w('CA1', loopPt(P, 'CA1')), w('Subiculum', hpfW('SUB')), w('Entorhinal cortex', hpfW('ENTm'))];
+    else if (f === 'septum') out = [w('Medial septum', allenW('MS', 'm'), 'cool'), w('Dentate gyrus', loopPt(P, 'DG')), w('Entorhinal cortex', hpfW('ENTm'))];
+    else if (f === 'global') out = [w('Neocortex', allenW('SSp', 'r')), w('Thalamus', allenW('TH', 'r')), w('The other hippocampus', hpfW('DG', 'l')), w('Entorhinal cortex', hpfW('ENTl'))];
+    else if (f === 'clonic') out = [w('Motor cortex', allenW('MOp', 'r')), w('Motor cortex', allenW('MOp', 'l'))];
+    else if (f === 'tonic') out = [w('Brainstem', allenW('P', 'm') || allenW('P', 'r')), w('Motor cortex', allenW('MOp', 'r'))];
+    else if (f === 'damage' || f === 'opto') {
+      const h = P.geo.zones.hil, at = h ? geoW(P, (h.dv0 + h.dv1) / 2) : null;
+      out = [w(f === 'damage' ? 'Hilar interneurons: fewer after seizures?' : 'Light on the hilus', at, f === 'opto' ? 'cool' : '')];
+    }
+    return out.filter(Boolean);
+  }
+  function placeStoryWords() {
+    const P = S.play;
+    let box = $('.sh-story-words');
+    if (!P || P.kind !== 'story' || !P.words || !P.words.length || S.mode === 'schematic' || !S.stage) { if (box && box.childNodes.length) box.innerHTML = ''; return; }
+    const B = stageBox();
+    if (!B) return;
+    if (!box) { box = el('div', { class: 'sh-story-words', 'aria-hidden': 'true' }); $('.sh-stage').appendChild(box); }
+    if (box.childNodes.length !== P.words.length) { box.innerHTML = ''; P.words.forEach((x) => box.appendChild(el('span', { class: 'sh-word sh-sword ' + (x.cls || ''), text: x.text }))); }
+    // whole words only: one that would run off the stage is slid back onto it, and one
+    // that would sit under the dock (or is far off the stage) waits until it can be read whole
+    const dk = $('.sh-dock > *'), dr = dk ? dk.getBoundingClientRect() : null, sr = B.sr;
+    P.words.forEach((x, i) => {
+      const p = S.stage.project(x.at);
+      const n = box.childNodes[i];
+      const w = n.offsetWidth || x.text.length * 7, h = 18;
+      let cx = p[0], cy = p[1] - 22;
+      const far = p[2] > 1 || cx < -80 || cy < -80 || cx > B.W + 80 || cy > B.H + 80;
+      cx = Math.max(w / 2 + 8, Math.min(B.W - w / 2 - 8, cx));
+      cy = Math.max(h / 2 + 8, Math.min(B.H - h / 2 - 8, cy));
+      const ax = sr.left + B.ox + cx, ay = sr.top + B.oy + cy;
+      const under = dr && ax + w / 2 > dr.left - 6 && ax - w / 2 < dr.right + 6 && ay + h / 2 > dr.top - 6 && ay - h / 2 < dr.bottom + 6;
+      n.style.visibility = far || under ? 'hidden' : '';
+      n.style.transform = 'translate(' + Math.round(B.ox + cx) + 'px,' + Math.round(B.oy + cy) + 'px) translate(-50%, -50%)';
+    });
+  }
+
+  /* ---------- the probe on the section ---------- */
+  function storyOverlay(rebuild) {
+    const P = S.play;
+    let box = $('.sh-story-over');
+    const on = P && P.kind === 'story' && P.stop && P.stop.probe !== false && (P.stop.view === 'probe' || P.stop.view === 'dentate') && S.mode === 'slice' && S.stage && S.stage.view === 'slice';
+    if (!on) { if (box) box.remove(); return; }
+    const B = stageBox();
+    if (!B) return;
+    if (!box) { box = el('div', { class: 'sh-story-over', 'aria-hidden': 'true' }); $('.sh-stage').appendChild(box); rebuild = true; }
+    if (rebuild) buildProbeOverlay(box, P, B);
+    paintStoryOverlay(P);
+  }
+  function buildProbeOverlay(box, P, B) {
+    const g = P.geo, R = ST();
+    const px = (dv) => S.stage.ccfToSlicePx([g.ap, dv, g.ml]);
+    const a = px(g.top - 150), b = px(g.bottom + 150);
+    const x = a[0];
+    const svg = el('svg', { class: 'sh-svg', width: B.W, height: B.H, viewBox: '0 0 ' + B.W + ' ' + B.H });
+    svg.appendChild(el('line', { class: 'shank-halo', x1: x, y1: a[1], x2: b[0], y2: b[1] }));
+    svg.appendChild(el('line', { class: 'shank', x1: x, y1: a[1], x2: b[0], y2: b[1] }));
+    svg.appendChild(el('path', { class: 'tip', d: 'M' + (b[0] - 4) + ',' + b[1] + ' L' + b[0] + ',' + (b[1] + 9) + ' L' + (b[0] + 4) + ',' + b[1] + ' Z' }));
+    // the zones along the shank, and their names in a column beside it
+    const rows = P.D.zones.map((z) => { const gz = g.zones[z.key]; const p0 = px(gz.dv0), p1 = px(gz.dv1); return { z, y0: p0[1], y1: p1[1], ym: (p0[1] + p1[1]) / 2, x: p0[0] }; });
+    rows.forEach((r) => svg.appendChild(el('line', { class: 'zone', 'data-z': r.z.key, style: '--zc:' + lamColor(r.z.layers[0]), x1: r.x, y1: r.y0 + 1.5, x2: r.x, y2: Math.max(r.y0 + 2, r.y1 - 1.5) })));
+    // names only for the zones in view (a close framing leaves CA1 above the top), laid out so none overlap
+    const named = rows.filter((r) => r.ym > 14 && r.ym < B.H - 14);
+    const lx = x + 30, gap = 17;
+    const ys = named.map((r) => r.ym);
+    for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + gap);
+    const over = ys.length ? ys[ys.length - 1] - (B.H - 18) : 0;
+    if (over > 0) for (let i = ys.length - 1; i >= 0; i--) { ys[i] -= over; if (i && ys[i - 1] > ys[i] - gap) ys[i - 1] = ys[i] - gap; }
+    named.forEach((r, i) => {
+      const zc = '--zc:' + lamColor(r.z.layers[0]);
+      const y = ys[i];
+      svg.appendChild(el('path', { class: 'lead', d: 'M' + (r.x + 6) + ',' + r.ym + ' C' + (r.x + 18) + ',' + r.ym + ' ' + (lx - 14) + ',' + y + ' ' + (lx - 4) + ',' + y }));
+      svg.appendChild(el('circle', { class: 'zdot', 'data-z': r.z.key, style: zc, cx: lx + 1, cy: y, r: 3.6 }));
+      svg.appendChild(el('text', { class: 'zlabel', x: lx + 10, y: y + 3.8 }, [R.ZONE_WORDS[r.z.key][0]]));
+    });
+    if (P.stop.unit && g.unitDv != null) {
+      const u = px(g.unitDv);
+      const uc = (cellOf('hipp') || {}).color || '#8fd';
+      svg.appendChild(el('circle', { class: 'unit-halo', cx: u[0] - 12, cy: u[1], r: 9, fill: uc }));
+      svg.appendChild(el('circle', { class: 'unit', cx: u[0] - 12, cy: u[1], r: 4.2, fill: uc }));
+      const ut = el('text', { class: 'ulabel', x: u[0] - 26, y: u[1] + 4 }, ['contact ' + P.D.unit.csc]);
+      svg.appendChild(ut);
+    }
+    box.innerHTML = '';
+    box.appendChild(svg);
+    Object.assign(box.style, { left: B.ox + 'px', top: B.oy + 'px', width: B.W + 'px', height: B.H + 'px' });
+  }
+  function paintStoryOverlay(P) {
+    const box = $('.sh-story-over');
+    if (!box || !P.stop) return;
+    const R = ST(), measure = P.stop.measure;
+    box.querySelectorAll('[data-z]').forEach((n) => {
+      const k = n.getAttribute('data-z');
+      if (measure) {
+        const lv = P.levels[k] || 0, a = R.alphaOf(lv);
+        const c = 'rgb(' + R.ramp(lv).join(',') + ')';
+        n.style.stroke = n.tagName === 'line' ? (a ? c : '') : '';
+        n.style.fill = n.tagName === 'circle' ? (a ? c : '') : '';
+        n.style.opacity = n.tagName === 'line' ? String(Math.max(0.34, a)) : String(a ? Math.max(0.5, a) : 0.35);
+      } else { n.style.stroke = ''; n.style.fill = ''; n.style.opacity = ''; }
+    });
+    const u = box.querySelector('circle.unit'), uh = box.querySelector('circle.unit-halo');
+    if (u) {
+      const hz = R.unitRate(P.D, P.t), k = Math.min(1, hz / 60);
+      u.setAttribute('r', (3.4 + 3.6 * k).toFixed(2));
+      uh.setAttribute('r', (6 + 12 * k).toFixed(2));
+      uh.style.opacity = (0.08 + 0.5 * k).toFixed(3);
+      u.style.opacity = (0.45 + 0.55 * Math.min(1, hz / 8)).toFixed(3);
+    }
+  }
+  /* the map: the same heat in the plate's bands */
+  function storySchemHeat(P) {
+    const svg = $('.sh-map svg');
+    if (!svg || !BARRY.shSchem.heat) return;
+    const R = ST(), m = new Map();
+    if (P.stop && P.stop.measure) P.D.zones.forEach((z) => { const lv = P.levels[z.key] || 0, a = R.alphaOf(lv); if (a) z.layers.forEach((k) => m.set(k, ['rgb(' + R.ramp(lv).join(',') + ')', Math.min(0.9, a)])); });
+    else if (P.extra) for (const [k, lv] of P.extra) { const a = R.alphaOf(lv); if (a) m.set(k, ['rgb(' + R.ramp(lv).join(',') + ')', Math.min(0.9, a)]); }
+    else if (P.modelPaint) for (const [k, v] of P.modelPaint) if (Math.abs(v) > 0.06) m.set(k, [v < 0 ? SINK : SOURCE, Math.min(0.85, 0.3 + Math.abs(v) * 0.7)]);
+    BARRY.shSchem.heat(svg, m);
+  }
+
+  /* ---------- the dock ---------- */
+  function fillStory(box) {
+    const P = S.play, st = P.stop, R = ST();
+    if (!st) return;
+    const n = P.story.stops.length;
+    const act = R.ACTS.find((a) => a.key === st.act) || { label: '' };
+    const tag = R.TAGS[st.tag] || R.TAGS.recorded;
+    box.appendChild(trHead('Seizure · mouse 459', act.label, [ofN('Stop', P.i + 1, n),
+      st.clip ? el('span', { class: 'sh-story-t', title: 'Seconds from the hilar onset, 888.7 s into the session' }, ['t = ', el('b', { text: fmtStoryT(P.t, st.clip[1] - st.clip[0]) })]) : null]));
+    box.appendChild(el('div', { class: 'sh-tr-say' }, [el('span', { class: 'sh-evtag ' + tag.cls, title: tag.label + ': ' + tag.sub, text: tag.label }), ' ', el('b', { text: st.title + '. ' }), st.say]));
+    box.appendChild(storyDots(P));
+    const last = P.i >= n - 1;
+    const ctl = el('div', { class: 'sh-tr-ctl' }, [
+      UI.button({ icon: 'prev', cls: 'icon quiet', aria: 'Back a stop', title: 'Back a stop (←)', disabled: P.i <= 0, onclick: () => storyGo(P.i - 1) })]);
+    if (st.clip) {
+      ctl.appendChild(playBtn(!P.paused, toggleStoryPause));
+      const span = st.clip[1] - st.clip[0];
+      const scrub = UI.range({ min: st.clip[0], max: st.clip[1], step: span > 12 ? 0.05 : 0.01, value: P.t, fmt: (v) => fmtStoryT(+v, span), aria: 'Time in the recording', wide: true,
+        on: (v) => { P.paused = true; P.t = +v; syncStoryPlay(); } });
+      scrub.classList.add('sh-tr-scrub');
+      ctl.appendChild(scrub);
+    } else ctl.appendChild(el('span', { class: 'grow' }));
+    ctl.appendChild(UI.button({ icon: 'next', text: last ? 'Finish' : 'Next', cls: 'sm sh-next' + (P.held ? ' solid sh-ready' : ''),
+      title: (last ? 'Finish the story' : 'Next stop') + ' (→)', onclick: () => storyNext() }));
+    box.appendChild(ctl);
+    const ctl2 = el('div', { class: 'sh-tr-ctl' });
+    if (st.clip) ctl2.appendChild(UI.seg('Speed', STORY_SPEEDS.map(([v, t]) => [v, t, t === 'Real time' ? 'As it happened' : t === '2×' ? 'Twice as fast as it happened' : t + ' of real time']), P.speed,
+      (v) => { P.speed = v; P.speeds[st.key] = v; }, { small: true }));
+    ctl2.appendChild(storyLegend(P));
+    ctl2.appendChild(el('span', { class: 'grow' }));
+    ctl2.appendChild(UI.button({ text: 'End', cls: 'sm quiet', title: 'End the story (Esc)', onclick: () => stopPlay() }));
+    box.appendChild(ctl2);
+  }
+  function storyDots(P) {
+    const R = ST();
+    const box = el('div', { class: 'sh-story-dots' });
+    R.ACTS.forEach((a) => {
+      const idx = P.story.stops.map((s, i) => [s, i]).filter(([s]) => s.act === a.key);
+      if (!idx.length) return;
+      box.appendChild(el('div', { class: 'sh-story-act' + (idx.some(([, i]) => i === P.i) ? ' on' : ''), title: a.label, style: '--n:' + idx.length }, idx.map(([s, i]) =>
+        el('button', { type: 'button', tabindex: '-1', class: (i < P.i ? 'done ' : i === P.i ? 'now ' : '') + (R.TAGS[s.tag] || {}).cls, title: s.title, 'aria-label': 'Stop ' + (i + 1) + ': ' + s.title, onclick: () => storyGo(i) }))));
+    });
+    return box;
+  }
+  function storyLegend(P) {
+    const st = P.stop;
+    if (st.measure) {
+      const [lo, hi] = ST().SCALE[st.measure];
+      return el('span', { class: 'sh-heatkey', title: st.measure === 'mua' ? 'Each zone\'s multi-unit firing against its own quiet baseline' : 'Each zone\'s current density against its own quiet baseline (figure A\'s measure)' }, [
+        el('span', { text: st.measure === 'mua' ? 'Firing' : 'Current' }), el('i', { style: 'background:' + ST().rampCss() }),
+        el('span', { class: 'ends', text: lo + '× to ' + hi + '× quiet' })]);
+    }
+    if (P.model) return el('span', { class: 'sh-legend' }, [el('span', { class: 'sink', text: 'sink' }), el('span', { class: 'source', text: 'source' })]);
+    if (st.fx) return el('span', { class: 'sh-small', text: 'Drawn, not recorded' });
+    return el('span');
+  }
+
+  /* ---------- the card ---------- */
+  function renderStoryCard(card) {
+    const P = S.play;
+    if (!P || P.kind !== 'story' || !P.stop) return renderAbout(card);
+    const st = P.stop, R = ST(), tag = R.TAGS[st.tag] || R.TAGS.recorded;
+    const act = R.ACTS.find((a) => a.key === st.act) || { label: '' };
+    const head = cardHead([el('span', { class: 'sh-evtag ' + tag.cls, text: tag.label }), el('span', { text: tag.sub })], st.title, {});
+    head.classList.add('sh-story-head');
+    card.appendChild(head);
+    card.appendChild(el('p', { class: 'sh-lede', text: st.lede || '' }));
+    (st.panels || []).forEach((p) => { const n = storyPanel(P, st, p); if (n) card.appendChild(n); });
+    (st.more || []).forEach((t) => card.appendChild(el('p', { text: t })));
+    if (st.refs && st.refs.length) card.appendChild(el('div', { class: 'sh-actions' }, [citeChips(st.refs)]));
+    card.appendChild(el('h3', { text: 'Every stop (' + P.story.stops.length + ')' }));
+    card.appendChild(el('div', { class: 'sh-story-toc' }, R.ACTS.map((a) => {
+      const idx = P.story.stops.map((s, i) => [s, i]).filter(([s]) => s.act === a.key);
+      if (!idx.length) return null;
+      return el('div', { class: 'sh-story-tocact' }, [el('div', { class: 'k', text: a.label })].concat(idx.map(([s, i]) =>
+        el('button', { type: 'button', class: 'sh-story-tocrow' + (i === P.i ? ' on' : ''), onclick: () => storyGo(i) }, [
+          el('i', { class: (R.TAGS[s.tag] || {}).cls }), el('span', { text: s.title })]))));
+    })));
+    const D = P.D;
+    card.appendChild(el('h3', { text: 'The recording' }));
+    card.appendChild(el('div', { class: 'sh-src' }, [
+      el('div', {}, [el('b', { text: D.what + '. ' }), 't = 0 is the hilar onset, ' + D.onset_s + ' s into the session; quiet baseline ' + D.baseline_s[0] + ' to ' + D.baseline_s[1] + ' s.']),
+      el('div', { text: D.source + '. Built by tools/seahorse/story_m459.py (' + D.built + ').' }),
+      el('div', { text: 'The section places each zone where its layers are in the atlas, on a probe line at AP −1.80, ML +1.40 mm; the zones themselves are the recorded contacts.' }),
+      el('div', { text: 'No video: the session\'s camera file tracked nothing, and no movie was saved.' }),
+    ]));
+    requestAnimationFrame(() => drawStoryPanels(P, true));
+  }
+  function storyPanel(P, st, kind) {
+    const R = ST();
+    if (kind === 'zones') {
+      return el('div', { class: 'sh-probe-table' }, P.D.zones.map((z) => el('div', {
+        onpointerenter: () => setHover({ type: 'lamina', key: z.layers[0] }, 'card'), onpointerleave: () => setHover(null, 'card') }, [
+        el('span', { class: 'ch', text: 'ch ' + z.csc[0] + '–' + z.csc[1] }),
+        el('span', { class: 'sh-sw sq', style: 'background:' + lamColor(z.layers[0]) }),
+        el('span', { text: R.ZONE_WORDS[z.key][0] }),
+      ])));
+    }
+    if (kind === 'figure' && st.figure != null) {
+      const bar = ['red', 'green', 'blue', 'purple'][st.figure];
+      const s = (x) => (x < 0 ? '−' : '') + String(+Math.abs(x).toFixed(2));
+      return el('figure', { class: 'sh-story-fig' }, [
+        el('img', { src: BASE + P.story.figures[st.figure], alt: 'Figure A, stage ' + (st.figure + 1) + ': current source density on every contact over one second', loading: 'lazy' }),
+        el('figcaption', { text: 'Figure A, stage ' + (st.figure + 1) + ' (' + s(st.win[0]) + ' to ' + s(st.win[1]) + ' s): red sink, blue source, the potentials drawn over them; the ' + bar + ' bar marks the zone.' }),
+      ]);
+    }
+    const cap = {
+      timeline: st.measure === 'mua' ? 'Each zone\'s firing against its own quiet level, top of the probe to bottom.' : 'Each zone\'s current density against its own quiet level, top of the probe to bottom (figure A\'s measure).',
+      unit: 'The hilar interneuron on contact ' + P.D.unit.csc + ' (spike ' + P.D.unit.width_ms + ' ms wide): its firing in 0.25 s bins, 10 s before to 90 s after the onset.',
+      raster: 'Every discharge in the 40 s before the onset, one tick each.',
+      offs: 'How long each zone kept firing after the onset.',
+    }[kind];
+    if (!cap) return null;
+    return el('div', { class: 'sh-story-panel' }, [el('canvas', { class: 'sh-story-cv', 'data-k': kind }), el('div', { class: 'sh-small', text: cap })]);
+  }
+  function drawStoryPanels(P, force) {
+    const cvs = $$('.sh-card canvas.sh-story-cv');
+    if (!cvs.length || !P.stop) return;
+    const R = ST(), st = P.stop;
+    const tx = hexRgb(tok('--text', '#222'));
+    const ink = (a) => 'rgba(' + tx[0] + ',' + tx[1] + ',' + tx[2] + ',' + a + ')';
+    const o = { ink: tok('--text', '#222'), ink1: ink(0.06), ink2: ink(0.62), ink3: ink(0.42), soft: ink(0.07), accent: tok('--accent', '#e5a823'), font: tok('--sans', 'sans-serif'),
+                hot: 'rgb(' + R.ramp(0.55).join(',') + ')', cellColor: (cellOf('hipp') || {}).color || '#3d9a8f', cursor: st.clip ? P.t : null, win: st.clip || null };
+    cvs.forEach((cv) => {
+      const k = cv.dataset.k;
+      if (k === 'timeline') {
+        const span = st.key === 'stumble' ? [-12, 0.5] : st.measure === 'mua' ? [0, 50] : [-0.5, 6.5];
+        R.drawTimeline(cv, P.D, Object.assign({}, o, { t0: span[0], t1: span[1], measure: st.measure || 'absx', win: st.win || null, stage: st.figure != null ? st.figure + 1 : '' }));
+      } else if (k === 'unit') R.drawUnit(cv, P.D, o);
+      else if (k === 'raster') R.drawRaster(cv, P.D, o);
+      else if (k === 'offs') R.drawOffs(cv, P.D, o);
+    });
+  }
+
+  /* ==================================================================
      Tours, and the pathways hop by hop
      ================================================================== */
   function startTour(key) {
@@ -2652,6 +3370,7 @@ BARRY.views.seahorse = (function () {
     else if (kind === 'ride') fillRide(box);
     else if (kind === 'event') fillEvent(box);
     else if (kind === 'path') fillPath(box);
+    else if (kind === 'story') fillStory(box);
     updateLabels();
   }
   function fillLauncher(box) {
@@ -2666,6 +3385,12 @@ BARRY.views.seahorse = (function () {
     box.appendChild(b('wave', 'Play an event', 'Dentate spikes, ripples, theta: model laminar profiles', eventMenu));
     box.appendChild(el('span', { class: 'sep' }));
     box.appendChild(b('tour', 'Take a tour', 'Guided tours, and the pathways hop by hop', tourMenu));
+    box.appendChild(el('span', { class: 'sep' }));
+    box.appendChild(b('burst', 'Watch a seizure', 'A recorded seizure, click by click: where the circuit first fails, how it spreads, what follows', storyMenu));
+  }
+  function storyMenu(anchor) {
+    UI.menu(anchor, [{ title: 'Recorded, then explained', items: ST().stories().map((s) => ({ label: s.label, sub: s.blurb, icon: 'burst', on: () => startStory(s.key) })) }],
+      { where: 'above-center', width: 380 });
   }
   const evColor = (kind) => kind === 'ds' ? tok('--call-ds', '#5aa9ff') : kind === 'pspike' ? tok('--call-p', '#ff6b5e') : kind === 'custom' ? tok('--text-3', '#999') : tok('--accent', '#e5a823');
   function rideMenu(anchor) {
@@ -2876,6 +3601,7 @@ BARRY.views.seahorse = (function () {
       else if (t.ride) startRide(t.ride);
       else if (t.event) playEvent(t.event);
       else if (t.tour) startTour(t.tour);
+      else if (t.story) startStory(t.story);
       else if (t.view) openView((S.lab.views[t.view] || {}).state);
       else pick(t, 'search');
     };
@@ -2884,7 +3610,8 @@ BARRY.views.seahorse = (function () {
       const code = parseCode(v);
       if (code) { items = [{ label: 'Open the shared view', sub: 'From a copied code', kind: 'view', target: { code } }]; at = 0; paint(); return; }
       const idx = BARRY.shLearn.index(S.kb, { rides: (S.rides || {}).rides, events: BARRY.shPhys.EVENTS,
-        tours: BARRY.shLearn.tours(S.kb, { probeAp: 7300 }), views: Object.entries(S.lab.views || {}).filter(([, x]) => x).map(([id, x]) => ({ id, name: x.name, by: x.by })) });
+        tours: BARRY.shLearn.tours(S.kb, { probeAp: 7300 }), views: Object.entries(S.lab.views || {}).filter(([, x]) => x).map(([id, x]) => ({ id, name: x.name, by: x.by })),
+        stories: ST().stories() });
       items = BARRY.shLearn.search(idx, v);
       at = 0;
       paint();
@@ -3026,6 +3753,12 @@ BARRY.views.seahorse = (function () {
       if (e.key === 'f' || e.key === 'F') { S.stage.reframe(); renderDock(); return; }
     }
     if (P && P.kind === 'event' && e.key === ' ') { e.preventDefault(); toggleEventPause(); return; }
+    if (P && P.kind === 'story') {
+      // Space: pause and play a clip, or on to the next stop when this one waits for you
+      if (e.key === ' ') { e.preventDefault(); if (P.held && (!P.stop.clip || P.paused)) storyNext(); else toggleStoryPause(); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); storyNext(); return; }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); storyGo(P.i - 1); return; }
+    }
     if (e.key === 'Escape') {
       if (UI.current()) return;
       if (S.tour) { endTour(); stopPlay(); }
@@ -3078,13 +3811,15 @@ BARRY.views.seahorse = (function () {
     if (S.stage) S.stage.pause();
     if (isRide() && S.stage) S.stage.pauseRide(true);
     stopEventAnim();
+    stopStoryClock();
   }
   function onReturn() {
     if (S.stage && S.mode !== 'schematic') S.stage.resume();
     if (isEvent()) { showEventPanel(); startEventClock(); }
+    if (isStory()) startStoryClock();
   }
 
   // _do: the tab's own verbs, for the screenshot harnesses (tools/ui_shots.py --steps)
   return { onShow, onHide, onReturn, _state: S,
-           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz } };
+           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz, startStory, storyGo } };
 })();
