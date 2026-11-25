@@ -41,6 +41,12 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 30: 2026-11-25 (morning, scheduled), 11-24 08:50 to 11-25 08:50
+
+Covered: Bluebarry's 11-24 report (0 faults, 48 actions, build `2026.11.24.1 8528bd44`; no 11-24 shard). HEAD is `1fc9aa72`; its merges brought Blackbarry's (`lcom549913-e62b`, Isabella) 11-19 to 11-23 reports: 0 faults, 0/6/0/0/521 actions, builds `2026.11.18.2` then `2026.11.23.1`. `git fetch` moved `origin/master` to `6ecec712`; it brings curation, event-bank, prefs and session files but no report, shard or app code. The cloud was not read this pass. No code changed.
+
+Next pass: Bluebarry's 11-25 report; Rain's, Isabella's (Mac and Blackbarry) and Samara's 11-24 and later; Strawbarry's 11-20 and later when git brings them; the cloud from `2026-11-24T13:50Z`. Every open item from pass 29 stands unchanged.
+
 ## Pass 29: 2026-11-24 (morning, scheduled), 11-23 08:50 to 11-24 08:50
 
 Covered: Bluebarry's 11-23 report and shard (14 rows, all `test: true`).
