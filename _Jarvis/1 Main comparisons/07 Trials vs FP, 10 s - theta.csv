@@ -1,0 +1,1065 @@
+rat,day,source,pair,coherence,day_name,source_name,pair_name
+3,1,1,1,0.5253669011,Precon1,Trials (each cue),R ACC - R OFC
+3,1,1,2,0.2666398339,Precon1,Trials (each cue),R ACC - R DHC
+3,1,1,4,0.2548131899,Precon1,Trials (each cue),R ACC - R PER
+3,1,1,7,0.1164903618,Precon1,Trials (each cue),R ACC - L DHC
+3,1,1,8,0.5698635387,Precon1,Trials (each cue),R ACC - L OFC
+3,1,1,9,0.4382293858,Precon1,Trials (each cue),R ACC - L ACC
+3,1,1,10,0.2193358751,Precon1,Trials (each cue),R OFC - R DHC
+3,1,1,12,0.3000085791,Precon1,Trials (each cue),R OFC - R PER
+3,1,1,15,0.1259690635,Precon1,Trials (each cue),R OFC - L DHC
+3,1,1,16,0.4560032682,Precon1,Trials (each cue),R OFC - L OFC
+3,1,1,17,0.5075528353,Precon1,Trials (each cue),R OFC - L ACC
+3,1,1,19,0.2963079902,Precon1,Trials (each cue),R DHC - R PER
+3,1,1,22,0.2841007144,Precon1,Trials (each cue),R DHC - L DHC
+3,1,1,23,0.24609481,Precon1,Trials (each cue),R DHC - L OFC
+3,1,1,24,0.1904484576,Precon1,Trials (each cue),R DHC - L ACC
+3,1,1,32,0.2075509996,Precon1,Trials (each cue),R PER - L DHC
+3,1,1,33,0.2440763447,Precon1,Trials (each cue),R PER - L OFC
+3,1,1,34,0.248651509,Precon1,Trials (each cue),R PER - L ACC
+3,1,1,42,0.1198866707,Precon1,Trials (each cue),L DHC - L OFC
+3,1,1,43,0.1271052313,Precon1,Trials (each cue),L DHC - L ACC
+3,1,1,44,0.4886529217,Precon1,Trials (each cue),L OFC - L ACC
+3,1,2,1,0.53057475,Precon1,FP snippets,R ACC - R OFC
+3,1,2,2,0.2458896116,Precon1,FP snippets,R ACC - R DHC
+3,1,2,4,0.1830613348,Precon1,FP snippets,R ACC - R PER
+3,1,2,7,0.1171405866,Precon1,FP snippets,R ACC - L DHC
+3,1,2,8,0.5345628986,Precon1,FP snippets,R ACC - L OFC
+3,1,2,9,0.4779999555,Precon1,FP snippets,R ACC - L ACC
+3,1,2,10,0.1824670872,Precon1,FP snippets,R OFC - R DHC
+3,1,2,12,0.1817386381,Precon1,FP snippets,R OFC - R PER
+3,1,2,15,0.1194510636,Precon1,FP snippets,R OFC - L DHC
+3,1,2,16,0.4932201333,Precon1,FP snippets,R OFC - L OFC
+3,1,2,17,0.5008761443,Precon1,FP snippets,R OFC - L ACC
+3,1,2,19,0.272995825,Precon1,FP snippets,R DHC - R PER
+3,1,2,22,0.2987839986,Precon1,FP snippets,R DHC - L DHC
+3,1,2,23,0.2371507065,Precon1,FP snippets,R DHC - L OFC
+3,1,2,24,0.1807949411,Precon1,FP snippets,R DHC - L ACC
+3,1,2,32,0.1881236989,Precon1,FP snippets,R PER - L DHC
+3,1,2,33,0.1612683812,Precon1,FP snippets,R PER - L OFC
+3,1,2,34,0.1753166388,Precon1,FP snippets,R PER - L ACC
+3,1,2,42,0.1064680271,Precon1,FP snippets,L DHC - L OFC
+3,1,2,43,0.1211212468,Precon1,FP snippets,L DHC - L ACC
+3,1,2,44,0.5391180204,Precon1,FP snippets,L OFC - L ACC
+3,4,1,1,0.6966951107,Precon4,Trials (each cue),R ACC - R OFC
+3,4,1,2,0.4922989345,Precon4,Trials (each cue),R ACC - R DHC
+3,4,1,4,0.5628984331,Precon4,Trials (each cue),R ACC - R PER
+3,4,1,7,0.2908703302,Precon4,Trials (each cue),R ACC - L DHC
+3,4,1,8,0.749118203,Precon4,Trials (each cue),R ACC - L OFC
+3,4,1,9,0.6782327937,Precon4,Trials (each cue),R ACC - L ACC
+3,4,1,10,0.4569682463,Precon4,Trials (each cue),R OFC - R DHC
+3,4,1,12,0.5731974697,Precon4,Trials (each cue),R OFC - R PER
+3,4,1,15,0.3235967005,Precon4,Trials (each cue),R OFC - L DHC
+3,4,1,16,0.6934851704,Precon4,Trials (each cue),R OFC - L OFC
+3,4,1,17,0.7007151685,Precon4,Trials (each cue),R OFC - L ACC
+3,4,1,19,0.5991258714,Precon4,Trials (each cue),R DHC - R PER
+3,4,1,22,0.4815977693,Precon4,Trials (each cue),R DHC - L DHC
+3,4,1,23,0.5122173815,Precon4,Trials (each cue),R DHC - L OFC
+3,4,1,24,0.4542707308,Precon4,Trials (each cue),R DHC - L ACC
+3,4,1,32,0.3656929489,Precon4,Trials (each cue),R PER - L DHC
+3,4,1,33,0.5948963772,Precon4,Trials (each cue),R PER - L OFC
+3,4,1,34,0.5535211357,Precon4,Trials (each cue),R PER - L ACC
+3,4,1,42,0.3019192772,Precon4,Trials (each cue),L DHC - L OFC
+3,4,1,43,0.3117588477,Precon4,Trials (each cue),L DHC - L ACC
+3,4,1,44,0.7340829844,Precon4,Trials (each cue),L OFC - L ACC
+3,4,2,1,0.6883604425,Precon4,FP snippets,R ACC - R OFC
+3,4,2,2,0.4102268215,Precon4,FP snippets,R ACC - R DHC
+3,4,2,4,0.4456990999,Precon4,FP snippets,R ACC - R PER
+3,4,2,7,0.2915446914,Precon4,FP snippets,R ACC - L DHC
+3,4,2,8,0.7263848646,Precon4,FP snippets,R ACC - L OFC
+3,4,2,9,0.679521203,Precon4,FP snippets,R ACC - L ACC
+3,4,2,10,0.3614654728,Precon4,FP snippets,R OFC - R DHC
+3,4,2,12,0.4185653887,Precon4,FP snippets,R OFC - R PER
+3,4,2,15,0.2954695589,Precon4,FP snippets,R OFC - L DHC
+3,4,2,16,0.6754315046,Precon4,FP snippets,R OFC - L OFC
+3,4,2,17,0.6871618104,Precon4,FP snippets,R OFC - L ACC
+3,4,2,19,0.5815822938,Precon4,FP snippets,R DHC - R PER
+3,4,2,22,0.5132698002,Precon4,FP snippets,R DHC - L DHC
+3,4,2,23,0.4186519971,Precon4,FP snippets,R DHC - L OFC
+3,4,2,24,0.4129205367,Precon4,FP snippets,R DHC - L ACC
+3,4,2,32,0.3786227794,Precon4,FP snippets,R PER - L DHC
+3,4,2,33,0.4527484629,Precon4,FP snippets,R PER - L OFC
+3,4,2,34,0.4610030842,Precon4,FP snippets,R PER - L ACC
+3,4,2,42,0.3080399982,Precon4,FP snippets,L DHC - L OFC
+3,4,2,43,0.3443530259,Precon4,FP snippets,L DHC - L ACC
+3,4,2,44,0.7317186261,Precon4,FP snippets,L OFC - L ACC
+4,1,1,1,0.2861956835,Precon1,Trials (each cue),R ACC - R OFC
+4,1,1,2,0.1449833314,Precon1,Trials (each cue),R ACC - R DHC
+4,1,1,3,0.1563657505,Precon1,Trials (each cue),R ACC - R RSC
+4,1,1,5,0.1102558619,Precon1,Trials (each cue),R ACC - L POR-SUB
+4,1,1,6,0.1310361042,Precon1,Trials (each cue),R ACC - L RSC
+4,1,1,7,0.0836784845,Precon1,Trials (each cue),R ACC - L DHC
+4,1,1,8,0.2672986975,Precon1,Trials (each cue),R ACC - L OFC
+4,1,1,9,0.4489644502,Precon1,Trials (each cue),R ACC - L ACC
+4,1,1,10,0.1414308031,Precon1,Trials (each cue),R OFC - R DHC
+4,1,1,11,0.1370482827,Precon1,Trials (each cue),R OFC - R RSC
+4,1,1,13,0.09379559297,Precon1,Trials (each cue),R OFC - L POR-SUB
+4,1,1,14,0.1163880743,Precon1,Trials (each cue),R OFC - L RSC
+4,1,1,15,0.08295572757,Precon1,Trials (each cue),R OFC - L DHC
+4,1,1,16,0.5469696377,Precon1,Trials (each cue),R OFC - L OFC
+4,1,1,17,0.3008033123,Precon1,Trials (each cue),R OFC - L ACC
+4,1,1,18,0.5215850829,Precon1,Trials (each cue),R DHC - R RSC
+4,1,1,20,0.1724986261,Precon1,Trials (each cue),R DHC - L POR-SUB
+4,1,1,21,0.342229244,Precon1,Trials (each cue),R DHC - L RSC
+4,1,1,22,0.229312747,Precon1,Trials (each cue),R DHC - L DHC
+4,1,1,23,0.1515606029,Precon1,Trials (each cue),R DHC - L OFC
+4,1,1,24,0.165421147,Precon1,Trials (each cue),R DHC - L ACC
+4,1,1,26,0.1947162842,Precon1,Trials (each cue),R RSC - L POR-SUB
+4,1,1,27,0.6486073462,Precon1,Trials (each cue),R RSC - L RSC
+4,1,1,28,0.1921826949,Precon1,Trials (each cue),R RSC - L DHC
+4,1,1,29,0.1393060061,Precon1,Trials (each cue),R RSC - L OFC
+4,1,1,30,0.1805625511,Precon1,Trials (each cue),R RSC - L ACC
+4,1,1,35,0.1796641852,Precon1,Trials (each cue),L POR-SUB - L RSC
+4,1,1,36,0.1958867217,Precon1,Trials (each cue),L POR-SUB - L DHC
+4,1,1,37,0.1164991979,Precon1,Trials (each cue),L POR-SUB - L OFC
+4,1,1,38,0.1302326401,Precon1,Trials (each cue),L POR-SUB - L ACC
+4,1,1,39,0.1671442428,Precon1,Trials (each cue),L RSC - L DHC
+4,1,1,40,0.127760164,Precon1,Trials (each cue),L RSC - L OFC
+4,1,1,41,0.1483879342,Precon1,Trials (each cue),L RSC - L ACC
+4,1,1,42,0.09886880895,Precon1,Trials (each cue),L DHC - L OFC
+4,1,1,43,0.1077556353,Precon1,Trials (each cue),L DHC - L ACC
+4,1,1,44,0.3968954775,Precon1,Trials (each cue),L OFC - L ACC
+4,1,2,1,0.3972143472,Precon1,FP snippets,R ACC - R OFC
+4,1,2,2,0.2031859892,Precon1,FP snippets,R ACC - R DHC
+4,1,2,3,0.199812644,Precon1,FP snippets,R ACC - R RSC
+4,1,2,5,0.1436725177,Precon1,FP snippets,R ACC - L POR-SUB
+4,1,2,6,0.1958647815,Precon1,FP snippets,R ACC - L RSC
+4,1,2,7,0.1268545084,Precon1,FP snippets,R ACC - L DHC
+4,1,2,8,0.5163071681,Precon1,FP snippets,R ACC - L OFC
+4,1,2,9,0.4830957496,Precon1,FP snippets,R ACC - L ACC
+4,1,2,10,0.1497215439,Precon1,FP snippets,R OFC - R DHC
+4,1,2,11,0.1484028005,Precon1,FP snippets,R OFC - R RSC
+4,1,2,13,0.1040972562,Precon1,FP snippets,R OFC - L POR-SUB
+4,1,2,14,0.143464623,Precon1,FP snippets,R OFC - L RSC
+4,1,2,15,0.1011875174,Precon1,FP snippets,R OFC - L DHC
+4,1,2,16,0.4934699362,Precon1,FP snippets,R OFC - L OFC
+4,1,2,17,0.3686949602,Precon1,FP snippets,R OFC - L ACC
+4,1,2,18,0.6800944602,Precon1,FP snippets,R DHC - R RSC
+4,1,2,20,0.3417597259,Precon1,FP snippets,R DHC - L POR-SUB
+4,1,2,21,0.5449804357,Precon1,FP snippets,R DHC - L RSC
+4,1,2,22,0.3808379714,Precon1,FP snippets,R DHC - L DHC
+4,1,2,23,0.2010601463,Precon1,FP snippets,R DHC - L OFC
+4,1,2,24,0.2162448781,Precon1,FP snippets,R DHC - L ACC
+4,1,2,26,0.333518783,Precon1,FP snippets,R RSC - L POR-SUB
+4,1,2,27,0.7170790154,Precon1,FP snippets,R RSC - L RSC
+4,1,2,28,0.371914544,Precon1,FP snippets,R RSC - L DHC
+4,1,2,29,0.2017711388,Precon1,FP snippets,R RSC - L OFC
+4,1,2,30,0.2186518331,Precon1,FP snippets,R RSC - L ACC
+4,1,2,35,0.3425394696,Precon1,FP snippets,L POR-SUB - L RSC
+4,1,2,36,0.3300351217,Precon1,FP snippets,L POR-SUB - L DHC
+4,1,2,37,0.1709850822,Precon1,FP snippets,L POR-SUB - L OFC
+4,1,2,38,0.1739259933,Precon1,FP snippets,L POR-SUB - L ACC
+4,1,2,39,0.3661184975,Precon1,FP snippets,L RSC - L DHC
+4,1,2,40,0.1929605704,Precon1,FP snippets,L RSC - L OFC
+4,1,2,41,0.2024624534,Precon1,FP snippets,L RSC - L ACC
+4,1,2,42,0.1325768456,Precon1,FP snippets,L DHC - L OFC
+4,1,2,43,0.1534151352,Precon1,FP snippets,L DHC - L ACC
+4,1,2,44,0.5372708604,Precon1,FP snippets,L OFC - L ACC
+4,4,1,1,0.1706113231,Precon4,Trials (each cue),R ACC - R OFC
+4,4,1,2,0.176638105,Precon4,Trials (each cue),R ACC - R DHC
+4,4,1,3,0.2108266837,Precon4,Trials (each cue),R ACC - R RSC
+4,4,1,5,0.1444815553,Precon4,Trials (each cue),R ACC - L POR-SUB
+4,4,1,6,0.07720906011,Precon4,Trials (each cue),R ACC - L RSC
+4,4,1,7,0.1145846488,Precon4,Trials (each cue),R ACC - L DHC
+4,4,1,8,0.3125016947,Precon4,Trials (each cue),R ACC - L OFC
+4,4,1,9,0.5396264649,Precon4,Trials (each cue),R ACC - L ACC
+4,4,1,10,0.1011676387,Precon4,Trials (each cue),R OFC - R DHC
+4,4,1,11,0.1052843761,Precon4,Trials (each cue),R OFC - R RSC
+4,4,1,13,0.1029273373,Precon4,Trials (each cue),R OFC - L POR-SUB
+4,4,1,14,0.06884522757,Precon4,Trials (each cue),R OFC - L RSC
+4,4,1,15,0.09090058458,Precon4,Trials (each cue),R OFC - L DHC
+4,4,1,16,0.2256712586,Precon4,Trials (each cue),R OFC - L OFC
+4,4,1,17,0.1547899083,Precon4,Trials (each cue),R OFC - L ACC
+4,4,1,18,0.4123164394,Precon4,Trials (each cue),R DHC - R RSC
+4,4,1,20,0.192626021,Precon4,Trials (each cue),R DHC - L POR-SUB
+4,4,1,21,0.0917257905,Precon4,Trials (each cue),R DHC - L RSC
+4,4,1,22,0.1869575838,Precon4,Trials (each cue),R DHC - L DHC
+4,4,1,23,0.1577609474,Precon4,Trials (each cue),R DHC - L OFC
+4,4,1,24,0.1779503613,Precon4,Trials (each cue),R DHC - L ACC
+4,4,1,26,0.2150895081,Precon4,Trials (each cue),R RSC - L POR-SUB
+4,4,1,27,0.1025683948,Precon4,Trials (each cue),R RSC - L RSC
+4,4,1,28,0.170347784,Precon4,Trials (each cue),R RSC - L DHC
+4,4,1,29,0.1771504305,Precon4,Trials (each cue),R RSC - L OFC
+4,4,1,30,0.2157504916,Precon4,Trials (each cue),R RSC - L ACC
+4,4,1,35,0.0903361018,Precon4,Trials (each cue),L POR-SUB - L RSC
+4,4,1,36,0.1682528935,Precon4,Trials (each cue),L POR-SUB - L DHC
+4,4,1,37,0.1494646304,Precon4,Trials (each cue),L POR-SUB - L OFC
+4,4,1,38,0.1559453103,Precon4,Trials (each cue),L POR-SUB - L ACC
+4,4,1,39,0.08003346123,Precon4,Trials (each cue),L RSC - L DHC
+4,4,1,40,0.07744809668,Precon4,Trials (each cue),L RSC - L OFC
+4,4,1,41,0.07537376207,Precon4,Trials (each cue),L RSC - L ACC
+4,4,1,42,0.1300774549,Precon4,Trials (each cue),L DHC - L OFC
+4,4,1,43,0.1165551984,Precon4,Trials (each cue),L DHC - L ACC
+4,4,1,44,0.3518055057,Precon4,Trials (each cue),L OFC - L ACC
+4,4,2,1,0.0896753699,Precon4,FP snippets,R ACC - R OFC
+4,4,2,2,0.1393586441,Precon4,FP snippets,R ACC - R DHC
+4,4,2,3,0.2155238459,Precon4,FP snippets,R ACC - R RSC
+4,4,2,5,0.1340312997,Precon4,FP snippets,R ACC - L POR-SUB
+4,4,2,6,0.08404832314,Precon4,FP snippets,R ACC - L RSC
+4,4,2,7,0.1196666531,Precon4,FP snippets,R ACC - L DHC
+4,4,2,8,0.4465369607,Precon4,FP snippets,R ACC - L OFC
+4,4,2,9,0.541444455,Precon4,FP snippets,R ACC - L ACC
+4,4,2,10,0.06065278654,Precon4,FP snippets,R OFC - R DHC
+4,4,2,11,0.07075380587,Precon4,FP snippets,R OFC - R RSC
+4,4,2,13,0.05567286811,Precon4,FP snippets,R OFC - L POR-SUB
+4,4,2,14,0.05582054092,Precon4,FP snippets,R OFC - L RSC
+4,4,2,15,0.07043670135,Precon4,FP snippets,R OFC - L DHC
+4,4,2,16,0.09617022164,Precon4,FP snippets,R OFC - L OFC
+4,4,2,17,0.08882358226,Precon4,FP snippets,R OFC - L ACC
+4,4,2,18,0.3005264032,Precon4,FP snippets,R DHC - R RSC
+4,4,2,20,0.1811170254,Precon4,FP snippets,R DHC - L POR-SUB
+4,4,2,21,0.08031134632,Precon4,FP snippets,R DHC - L RSC
+4,4,2,22,0.1721689504,Precon4,FP snippets,R DHC - L DHC
+4,4,2,23,0.1125185311,Precon4,FP snippets,R DHC - L OFC
+4,4,2,24,0.151659859,Precon4,FP snippets,R DHC - L ACC
+4,4,2,26,0.2993602576,Precon4,FP snippets,R RSC - L POR-SUB
+4,4,2,27,0.1209351358,Precon4,FP snippets,R RSC - L RSC
+4,4,2,28,0.3085022509,Precon4,FP snippets,R RSC - L DHC
+4,4,2,29,0.1871912299,Precon4,FP snippets,R RSC - L OFC
+4,4,2,30,0.2690519112,Precon4,FP snippets,R RSC - L ACC
+4,4,2,35,0.102118401,Precon4,FP snippets,L POR-SUB - L RSC
+4,4,2,36,0.274111353,Precon4,FP snippets,L POR-SUB - L DHC
+4,4,2,37,0.1214001157,Precon4,FP snippets,L POR-SUB - L OFC
+4,4,2,38,0.1533891106,Precon4,FP snippets,L POR-SUB - L ACC
+4,4,2,39,0.0849637863,Precon4,FP snippets,L RSC - L DHC
+4,4,2,40,0.07286785638,Precon4,FP snippets,L RSC - L OFC
+4,4,2,41,0.07995233927,Precon4,FP snippets,L RSC - L ACC
+4,4,2,42,0.1079853637,Precon4,FP snippets,L DHC - L OFC
+4,4,2,43,0.1546598921,Precon4,FP snippets,L DHC - L ACC
+4,4,2,44,0.4972158909,Precon4,FP snippets,L OFC - L ACC
+6,1,1,1,0.05796297807,Precon1,Trials (each cue),R ACC - R OFC
+6,1,1,2,0.06842982758,Precon1,Trials (each cue),R ACC - R DHC
+6,1,1,3,0.05694351857,Precon1,Trials (each cue),R ACC - R RSC
+6,1,1,4,0.06104896347,Precon1,Trials (each cue),R ACC - R PER
+6,1,1,5,0.05289940283,Precon1,Trials (each cue),R ACC - L POR-SUB
+6,1,1,6,0.06306808487,Precon1,Trials (each cue),R ACC - L RSC
+6,1,1,7,0.06093543619,Precon1,Trials (each cue),R ACC - L DHC
+6,1,1,8,0.04525946018,Precon1,Trials (each cue),R ACC - L OFC
+6,1,1,9,0.05608897479,Precon1,Trials (each cue),R ACC - L ACC
+6,1,1,10,0.1315183608,Precon1,Trials (each cue),R OFC - R DHC
+6,1,1,11,0.1096866787,Precon1,Trials (each cue),R OFC - R RSC
+6,1,1,12,0.1248743674,Precon1,Trials (each cue),R OFC - R PER
+6,1,1,13,0.07110342136,Precon1,Trials (each cue),R OFC - L POR-SUB
+6,1,1,14,0.0647632972,Precon1,Trials (each cue),R OFC - L RSC
+6,1,1,15,0.09379010713,Precon1,Trials (each cue),R OFC - L DHC
+6,1,1,16,0.08876905616,Precon1,Trials (each cue),R OFC - L OFC
+6,1,1,17,0.2005381925,Precon1,Trials (each cue),R OFC - L ACC
+6,1,1,18,0.4083523569,Precon1,Trials (each cue),R DHC - R RSC
+6,1,1,19,0.1778189692,Precon1,Trials (each cue),R DHC - R PER
+6,1,1,20,0.1074594268,Precon1,Trials (each cue),R DHC - L POR-SUB
+6,1,1,21,0.2123184408,Precon1,Trials (each cue),R DHC - L RSC
+6,1,1,22,0.7274878434,Precon1,Trials (each cue),R DHC - L DHC
+6,1,1,23,0.09343356391,Precon1,Trials (each cue),R DHC - L OFC
+6,1,1,24,0.2077980271,Precon1,Trials (each cue),R DHC - L ACC
+6,1,1,25,0.1245780585,Precon1,Trials (each cue),R RSC - R PER
+6,1,1,26,0.09833477459,Precon1,Trials (each cue),R RSC - L POR-SUB
+6,1,1,27,0.3930208682,Precon1,Trials (each cue),R RSC - L RSC
+6,1,1,28,0.2934909782,Precon1,Trials (each cue),R RSC - L DHC
+6,1,1,29,0.05872076473,Precon1,Trials (each cue),R RSC - L OFC
+6,1,1,30,0.1774585093,Precon1,Trials (each cue),R RSC - L ACC
+6,1,1,31,0.07734307775,Precon1,Trials (each cue),R PER - L RSC
+6,1,1,32,0.149836462,Precon1,Trials (each cue),R PER - L DHC
+6,1,1,33,0.07204144916,Precon1,Trials (each cue),R PER - L OFC
+6,1,1,34,0.1682275168,Precon1,Trials (each cue),R PER - L ACC
+6,1,1,35,0.06759524475,Precon1,Trials (each cue),L POR-SUB - L RSC
+6,1,1,36,0.1104006937,Precon1,Trials (each cue),L POR-SUB - L DHC
+6,1,1,37,0.07859952522,Precon1,Trials (each cue),L POR-SUB - L OFC
+6,1,1,38,0.09624936862,Precon1,Trials (each cue),L POR-SUB - L ACC
+6,1,1,39,0.2139116817,Precon1,Trials (each cue),L RSC - L DHC
+6,1,1,40,0.07314166661,Precon1,Trials (each cue),L RSC - L OFC
+6,1,1,41,0.1175768923,Precon1,Trials (each cue),L RSC - L ACC
+6,1,1,42,0.08153080895,Precon1,Trials (each cue),L DHC - L OFC
+6,1,1,43,0.1618039223,Precon1,Trials (each cue),L DHC - L ACC
+6,1,1,44,0.491440907,Precon1,Trials (each cue),L OFC - L ACC
+6,1,2,1,0.1640512709,Precon1,FP snippets,R ACC - R OFC
+6,1,2,2,0.1120692846,Precon1,FP snippets,R ACC - R DHC
+6,1,2,3,0.115840839,Precon1,FP snippets,R ACC - R RSC
+6,1,2,4,0.151173325,Precon1,FP snippets,R ACC - R PER
+6,1,2,5,0.0714363802,Precon1,FP snippets,R ACC - L POR-SUB
+6,1,2,6,0.1200900765,Precon1,FP snippets,R ACC - L RSC
+6,1,2,7,0.1081865412,Precon1,FP snippets,R ACC - L DHC
+6,1,2,8,0.203618099,Precon1,FP snippets,R ACC - L OFC
+6,1,2,9,0.2312120558,Precon1,FP snippets,R ACC - L ACC
+6,1,2,10,0.07533950284,Precon1,FP snippets,R OFC - R DHC
+6,1,2,11,0.07710661075,Precon1,FP snippets,R OFC - R RSC
+6,1,2,12,0.1155917002,Precon1,FP snippets,R OFC - R PER
+6,1,2,13,0.06628566971,Precon1,FP snippets,R OFC - L POR-SUB
+6,1,2,14,0.07720631514,Precon1,FP snippets,R OFC - L RSC
+6,1,2,15,0.07150929611,Precon1,FP snippets,R OFC - L DHC
+6,1,2,16,0.2261936958,Precon1,FP snippets,R OFC - L OFC
+6,1,2,17,0.1613379908,Precon1,FP snippets,R OFC - L ACC
+6,1,2,18,0.7607593131,Precon1,FP snippets,R DHC - R RSC
+6,1,2,19,0.1979212684,Precon1,FP snippets,R DHC - R PER
+6,1,2,20,0.368858932,Precon1,FP snippets,R DHC - L POR-SUB
+6,1,2,21,0.734064282,Precon1,FP snippets,R DHC - L RSC
+6,1,2,22,0.800299588,Precon1,FP snippets,R DHC - L DHC
+6,1,2,23,0.08534384341,Precon1,FP snippets,R DHC - L OFC
+6,1,2,24,0.08031302961,Precon1,FP snippets,R DHC - L ACC
+6,1,2,25,0.1967479867,Precon1,FP snippets,R RSC - R PER
+6,1,2,26,0.3820694699,Precon1,FP snippets,R RSC - L POR-SUB
+6,1,2,27,0.8096625989,Precon1,FP snippets,R RSC - L RSC
+6,1,2,28,0.6931688826,Precon1,FP snippets,R RSC - L DHC
+6,1,2,29,0.08525525908,Precon1,FP snippets,R RSC - L OFC
+6,1,2,30,0.08528217345,Precon1,FP snippets,R RSC - L ACC
+6,1,2,31,0.1997885924,Precon1,FP snippets,R PER - L RSC
+6,1,2,32,0.202424728,Precon1,FP snippets,R PER - L DHC
+6,1,2,33,0.1256710776,Precon1,FP snippets,R PER - L OFC
+6,1,2,34,0.1203044622,Precon1,FP snippets,R PER - L ACC
+6,1,2,35,0.3876858346,Precon1,FP snippets,L POR-SUB - L RSC
+6,1,2,36,0.3843805246,Precon1,FP snippets,L POR-SUB - L DHC
+6,1,2,37,0.07449845394,Precon1,FP snippets,L POR-SUB - L OFC
+6,1,2,38,0.0887769849,Precon1,FP snippets,L POR-SUB - L ACC
+6,1,2,39,0.7497414114,Precon1,FP snippets,L RSC - L DHC
+6,1,2,40,0.08284410394,Precon1,FP snippets,L RSC - L OFC
+6,1,2,41,0.09321469705,Precon1,FP snippets,L RSC - L ACC
+6,1,2,42,0.08262871105,Precon1,FP snippets,L DHC - L OFC
+6,1,2,43,0.09622776081,Precon1,FP snippets,L DHC - L ACC
+6,1,2,44,0.3458988696,Precon1,FP snippets,L OFC - L ACC
+6,4,1,1,0.1784349109,Precon4,Trials (each cue),R ACC - R OFC
+6,4,1,2,0.20115165,Precon4,Trials (each cue),R ACC - R DHC
+6,4,1,3,0.2814119932,Precon4,Trials (each cue),R ACC - R RSC
+6,4,1,4,0.3107296568,Precon4,Trials (each cue),R ACC - R PER
+6,4,1,5,0.1435691424,Precon4,Trials (each cue),R ACC - L POR-SUB
+6,4,1,6,0.1550114482,Precon4,Trials (each cue),R ACC - L RSC
+6,4,1,7,0.2259343747,Precon4,Trials (each cue),R ACC - L DHC
+6,4,1,8,0.2595783847,Precon4,Trials (each cue),R ACC - L OFC
+6,4,1,9,0.527352479,Precon4,Trials (each cue),R ACC - L ACC
+6,4,1,10,0.07849244516,Precon4,Trials (each cue),R OFC - R DHC
+6,4,1,11,0.1035725075,Precon4,Trials (each cue),R OFC - R RSC
+6,4,1,12,0.1067438484,Precon4,Trials (each cue),R OFC - R PER
+6,4,1,13,0.0800248756,Precon4,Trials (each cue),R OFC - L POR-SUB
+6,4,1,14,0.08813908652,Precon4,Trials (each cue),R OFC - L RSC
+6,4,1,15,0.09465000496,Precon4,Trials (each cue),R OFC - L DHC
+6,4,1,16,0.1128436609,Precon4,Trials (each cue),R OFC - L OFC
+6,4,1,17,0.1702404565,Precon4,Trials (each cue),R OFC - L ACC
+6,4,1,18,0.3621267992,Precon4,Trials (each cue),R DHC - R RSC
+6,4,1,19,0.1225516301,Precon4,Trials (each cue),R DHC - R PER
+6,4,1,20,0.1631781643,Precon4,Trials (each cue),R DHC - L POR-SUB
+6,4,1,21,0.2156288246,Precon4,Trials (each cue),R DHC - L RSC
+6,4,1,22,0.419155316,Precon4,Trials (each cue),R DHC - L DHC
+6,4,1,23,0.1121552499,Precon4,Trials (each cue),R DHC - L OFC
+6,4,1,24,0.1862936243,Precon4,Trials (each cue),R DHC - L ACC
+6,4,1,25,0.156589955,Precon4,Trials (each cue),R RSC - R PER
+6,4,1,26,0.2203570227,Precon4,Trials (each cue),R RSC - L POR-SUB
+6,4,1,27,0.2389500344,Precon4,Trials (each cue),R RSC - L RSC
+6,4,1,28,0.4123034769,Precon4,Trials (each cue),R RSC - L DHC
+6,4,1,29,0.1417719374,Precon4,Trials (each cue),R RSC - L OFC
+6,4,1,30,0.2810069734,Precon4,Trials (each cue),R RSC - L ACC
+6,4,1,31,0.09678386895,Precon4,Trials (each cue),R PER - L RSC
+6,4,1,32,0.1488363795,Precon4,Trials (each cue),R PER - L DHC
+6,4,1,33,0.1546833792,Precon4,Trials (each cue),R PER - L OFC
+6,4,1,34,0.2928325822,Precon4,Trials (each cue),R PER - L ACC
+6,4,1,35,0.1351716461,Precon4,Trials (each cue),L POR-SUB - L RSC
+6,4,1,36,0.1800373062,Precon4,Trials (each cue),L POR-SUB - L DHC
+6,4,1,37,0.1042612328,Precon4,Trials (each cue),L POR-SUB - L OFC
+6,4,1,38,0.1463651022,Precon4,Trials (each cue),L POR-SUB - L ACC
+6,4,1,39,0.2490822515,Precon4,Trials (each cue),L RSC - L DHC
+6,4,1,40,0.09195150828,Precon4,Trials (each cue),L RSC - L OFC
+6,4,1,41,0.1577693579,Precon4,Trials (each cue),L RSC - L ACC
+6,4,1,42,0.1213043436,Precon4,Trials (each cue),L DHC - L OFC
+6,4,1,43,0.2257348393,Precon4,Trials (each cue),L DHC - L ACC
+6,4,1,44,0.5206647679,Precon4,Trials (each cue),L OFC - L ACC
+6,4,2,1,0.07000057146,Precon4,FP snippets,R ACC - R OFC
+6,4,2,2,0.1102368352,Precon4,FP snippets,R ACC - R DHC
+6,4,2,3,0.2274717046,Precon4,FP snippets,R ACC - R RSC
+6,4,2,4,0.2413411162,Precon4,FP snippets,R ACC - R PER
+6,4,2,5,0.1224964841,Precon4,FP snippets,R ACC - L POR-SUB
+6,4,2,6,0.08637842587,Precon4,FP snippets,R ACC - L RSC
+6,4,2,7,0.1393009084,Precon4,FP snippets,R ACC - L DHC
+6,4,2,8,0.2372165282,Precon4,FP snippets,R ACC - L OFC
+6,4,2,9,0.2814261673,Precon4,FP snippets,R ACC - L ACC
+6,4,2,10,0.05379735586,Precon4,FP snippets,R OFC - R DHC
+6,4,2,11,0.06296863549,Precon4,FP snippets,R OFC - R RSC
+6,4,2,12,0.06566688379,Precon4,FP snippets,R OFC - R PER
+6,4,2,13,0.05196194423,Precon4,FP snippets,R OFC - L POR-SUB
+6,4,2,14,0.05398253532,Precon4,FP snippets,R OFC - L RSC
+6,4,2,15,0.05804137575,Precon4,FP snippets,R OFC - L DHC
+6,4,2,16,0.06980080874,Precon4,FP snippets,R OFC - L OFC
+6,4,2,17,0.06609336169,Precon4,FP snippets,R OFC - L ACC
+6,4,2,18,0.2949611761,Precon4,FP snippets,R DHC - R RSC
+6,4,2,19,0.128440333,Precon4,FP snippets,R DHC - R PER
+6,4,2,20,0.1775027868,Precon4,FP snippets,R DHC - L POR-SUB
+6,4,2,21,0.1261719277,Precon4,FP snippets,R DHC - L RSC
+6,4,2,22,0.1613320554,Precon4,FP snippets,R DHC - L DHC
+6,4,2,23,0.07973981867,Precon4,FP snippets,R DHC - L OFC
+6,4,2,24,0.08908343552,Precon4,FP snippets,R DHC - L ACC
+6,4,2,25,0.1729610036,Precon4,FP snippets,R RSC - R PER
+6,4,2,26,0.2861432468,Precon4,FP snippets,R RSC - L POR-SUB
+6,4,2,27,0.1611283645,Precon4,FP snippets,R RSC - L RSC
+6,4,2,28,0.3427012677,Precon4,FP snippets,R RSC - L DHC
+6,4,2,29,0.1071557315,Precon4,FP snippets,R RSC - L OFC
+6,4,2,30,0.1559366232,Precon4,FP snippets,R RSC - L ACC
+6,4,2,31,0.08720082936,Precon4,FP snippets,R PER - L RSC
+6,4,2,32,0.1195949885,Precon4,FP snippets,R PER - L DHC
+6,4,2,33,0.1004301469,Precon4,FP snippets,R PER - L OFC
+6,4,2,34,0.1206783139,Precon4,FP snippets,R PER - L ACC
+6,4,2,35,0.1221622505,Precon4,FP snippets,L POR-SUB - L RSC
+6,4,2,36,0.1885200663,Precon4,FP snippets,L POR-SUB - L DHC
+6,4,2,37,0.09679132207,Precon4,FP snippets,L POR-SUB - L OFC
+6,4,2,38,0.1015115812,Precon4,FP snippets,L POR-SUB - L ACC
+6,4,2,39,0.1016012106,Precon4,FP snippets,L RSC - L DHC
+6,4,2,40,0.06746914924,Precon4,FP snippets,L RSC - L OFC
+6,4,2,41,0.07027851587,Precon4,FP snippets,L RSC - L ACC
+6,4,2,42,0.07119054496,Precon4,FP snippets,L DHC - L OFC
+6,4,2,43,0.1204916439,Precon4,FP snippets,L DHC - L ACC
+6,4,2,44,0.3556887807,Precon4,FP snippets,L OFC - L ACC
+7,1,1,1,0.07122593075,Precon1,Trials (each cue),R ACC - R OFC
+7,1,1,2,0.1149493984,Precon1,Trials (each cue),R ACC - R DHC
+7,1,1,3,0.1348937555,Precon1,Trials (each cue),R ACC - R RSC
+7,1,1,4,0.1618257965,Precon1,Trials (each cue),R ACC - R PER
+7,1,1,5,0.1134311978,Precon1,Trials (each cue),R ACC - L POR-SUB
+7,1,1,6,0.06823674775,Precon1,Trials (each cue),R ACC - L RSC
+7,1,1,7,0.06421513483,Precon1,Trials (each cue),R ACC - L DHC
+7,1,1,8,0.1904546538,Precon1,Trials (each cue),R ACC - L OFC
+7,1,1,9,0.2169950841,Precon1,Trials (each cue),R ACC - L ACC
+7,1,1,10,0.1609523488,Precon1,Trials (each cue),R OFC - R DHC
+7,1,1,11,0.1282943885,Precon1,Trials (each cue),R OFC - R RSC
+7,1,1,12,0.1330623404,Precon1,Trials (each cue),R OFC - R PER
+7,1,1,13,0.08844662808,Precon1,Trials (each cue),R OFC - L POR-SUB
+7,1,1,14,0.06697387797,Precon1,Trials (each cue),R OFC - L RSC
+7,1,1,15,0.08614667897,Precon1,Trials (each cue),R OFC - L DHC
+7,1,1,16,0.1556638596,Precon1,Trials (each cue),R OFC - L OFC
+7,1,1,17,0.1523538391,Precon1,Trials (each cue),R OFC - L ACC
+7,1,1,18,0.4808993682,Precon1,Trials (each cue),R DHC - R RSC
+7,1,1,19,0.1402297702,Precon1,Trials (each cue),R DHC - R PER
+7,1,1,20,0.2168999765,Precon1,Trials (each cue),R DHC - L POR-SUB
+7,1,1,21,0.1093872442,Precon1,Trials (each cue),R DHC - L RSC
+7,1,1,22,0.2382222173,Precon1,Trials (each cue),R DHC - L DHC
+7,1,1,23,0.1963419638,Precon1,Trials (each cue),R DHC - L OFC
+7,1,1,24,0.258105101,Precon1,Trials (each cue),R DHC - L ACC
+7,1,1,25,0.2020544886,Precon1,Trials (each cue),R RSC - R PER
+7,1,1,26,0.2341907157,Precon1,Trials (each cue),R RSC - L POR-SUB
+7,1,1,27,0.09577323724,Precon1,Trials (each cue),R RSC - L RSC
+7,1,1,28,0.1849605639,Precon1,Trials (each cue),R RSC - L DHC
+7,1,1,29,0.2502941887,Precon1,Trials (each cue),R RSC - L OFC
+7,1,1,30,0.3163441974,Precon1,Trials (each cue),R RSC - L ACC
+7,1,1,31,0.07623374753,Precon1,Trials (each cue),R PER - L RSC
+7,1,1,32,0.08161161825,Precon1,Trials (each cue),R PER - L DHC
+7,1,1,33,0.2858791181,Precon1,Trials (each cue),R PER - L OFC
+7,1,1,34,0.3227945372,Precon1,Trials (each cue),R PER - L ACC
+7,1,1,35,0.07544193617,Precon1,Trials (each cue),L POR-SUB - L RSC
+7,1,1,36,0.1599382588,Precon1,Trials (each cue),L POR-SUB - L DHC
+7,1,1,37,0.1779838441,Precon1,Trials (each cue),L POR-SUB - L OFC
+7,1,1,38,0.2404066247,Precon1,Trials (each cue),L POR-SUB - L ACC
+7,1,1,39,0.07555873394,Precon1,Trials (each cue),L RSC - L DHC
+7,1,1,40,0.08315255853,Precon1,Trials (each cue),L RSC - L OFC
+7,1,1,41,0.08864376733,Precon1,Trials (each cue),L RSC - L ACC
+7,1,1,42,0.09424228773,Precon1,Trials (each cue),L DHC - L OFC
+7,1,1,43,0.1083293741,Precon1,Trials (each cue),L DHC - L ACC
+7,1,1,44,0.4520017532,Precon1,Trials (each cue),L OFC - L ACC
+7,1,2,1,0.07033307331,Precon1,FP snippets,R ACC - R OFC
+7,1,2,2,0.1121441985,Precon1,FP snippets,R ACC - R DHC
+7,1,2,3,0.1693304429,Precon1,FP snippets,R ACC - R RSC
+7,1,2,4,0.1167965982,Precon1,FP snippets,R ACC - R PER
+7,1,2,5,0.1103724874,Precon1,FP snippets,R ACC - L POR-SUB
+7,1,2,6,0.08041973482,Precon1,FP snippets,R ACC - L RSC
+7,1,2,7,0.07804986305,Precon1,FP snippets,R ACC - L DHC
+7,1,2,8,0.2336017349,Precon1,FP snippets,R ACC - L OFC
+7,1,2,9,0.2677836033,Precon1,FP snippets,R ACC - L ACC
+7,1,2,10,0.06965019691,Precon1,FP snippets,R OFC - R DHC
+7,1,2,11,0.08145208824,Precon1,FP snippets,R OFC - R RSC
+7,1,2,12,0.08109540812,Precon1,FP snippets,R OFC - R PER
+7,1,2,13,0.06839036405,Precon1,FP snippets,R OFC - L POR-SUB
+7,1,2,14,0.06040242888,Precon1,FP snippets,R OFC - L RSC
+7,1,2,15,0.06254699867,Precon1,FP snippets,R OFC - L DHC
+7,1,2,16,0.08862574427,Precon1,FP snippets,R OFC - L OFC
+7,1,2,17,0.1374618314,Precon1,FP snippets,R OFC - L ACC
+7,1,2,18,0.4488629521,Precon1,FP snippets,R DHC - R RSC
+7,1,2,19,0.1669772807,Precon1,FP snippets,R DHC - R PER
+7,1,2,20,0.2778274905,Precon1,FP snippets,R DHC - L POR-SUB
+7,1,2,21,0.1078066306,Precon1,FP snippets,R DHC - L RSC
+7,1,2,22,0.3963863171,Precon1,FP snippets,R DHC - L DHC
+7,1,2,23,0.1202585761,Precon1,FP snippets,R DHC - L OFC
+7,1,2,24,0.1579238803,Precon1,FP snippets,R DHC - L ACC
+7,1,2,25,0.1818163177,Precon1,FP snippets,R RSC - R PER
+7,1,2,26,0.3114508803,Precon1,FP snippets,R RSC - L POR-SUB
+7,1,2,27,0.1738255661,Precon1,FP snippets,R RSC - L RSC
+7,1,2,28,0.3839138709,Precon1,FP snippets,R RSC - L DHC
+7,1,2,29,0.1244546421,Precon1,FP snippets,R RSC - L OFC
+7,1,2,30,0.1774125825,Precon1,FP snippets,R RSC - L ACC
+7,1,2,31,0.1039116734,Precon1,FP snippets,R PER - L RSC
+7,1,2,32,0.1783381107,Precon1,FP snippets,R PER - L DHC
+7,1,2,33,0.1633763675,Precon1,FP snippets,R PER - L OFC
+7,1,2,34,0.139504431,Precon1,FP snippets,R PER - L ACC
+7,1,2,35,0.167091412,Precon1,FP snippets,L POR-SUB - L RSC
+7,1,2,36,0.3290073362,Precon1,FP snippets,L POR-SUB - L DHC
+7,1,2,37,0.1160816475,Precon1,FP snippets,L POR-SUB - L OFC
+7,1,2,38,0.1552393916,Precon1,FP snippets,L POR-SUB - L ACC
+7,1,2,39,0.2119410839,Precon1,FP snippets,L RSC - L DHC
+7,1,2,40,0.07391470072,Precon1,FP snippets,L RSC - L OFC
+7,1,2,41,0.09256462534,Precon1,FP snippets,L RSC - L ACC
+7,1,2,42,0.08879788752,Precon1,FP snippets,L DHC - L OFC
+7,1,2,43,0.09980565073,Precon1,FP snippets,L DHC - L ACC
+7,1,2,44,0.3237744375,Precon1,FP snippets,L OFC - L ACC
+7,4,1,1,0.09776199696,Precon4,Trials (each cue),R ACC - R OFC
+7,4,1,2,0.2013900947,Precon4,Trials (each cue),R ACC - R DHC
+7,4,1,3,0.2555636708,Precon4,Trials (each cue),R ACC - R RSC
+7,4,1,4,0.2743690348,Precon4,Trials (each cue),R ACC - R PER
+7,4,1,5,0.1895947814,Precon4,Trials (each cue),R ACC - L POR-SUB
+7,4,1,6,0.05202218546,Precon4,Trials (each cue),R ACC - L RSC
+7,4,1,7,0.07405301944,Precon4,Trials (each cue),R ACC - L DHC
+7,4,1,8,0.3541709764,Precon4,Trials (each cue),R ACC - L OFC
+7,4,1,9,0.3948673244,Precon4,Trials (each cue),R ACC - L ACC
+7,4,1,10,0.08824856164,Precon4,Trials (each cue),R OFC - R DHC
+7,4,1,11,0.08617873156,Precon4,Trials (each cue),R OFC - R RSC
+7,4,1,12,0.08318762061,Precon4,Trials (each cue),R OFC - R PER
+7,4,1,13,0.08742094543,Precon4,Trials (each cue),R OFC - L POR-SUB
+7,4,1,14,0.05900257194,Precon4,Trials (each cue),R OFC - L RSC
+7,4,1,15,0.05488837525,Precon4,Trials (each cue),R OFC - L DHC
+7,4,1,16,0.1080445425,Precon4,Trials (each cue),R OFC - L OFC
+7,4,1,17,0.1190357043,Precon4,Trials (each cue),R OFC - L ACC
+7,4,1,18,0.5326040481,Precon4,Trials (each cue),R DHC - R RSC
+7,4,1,19,0.1562958852,Precon4,Trials (each cue),R DHC - R PER
+7,4,1,20,0.214324326,Precon4,Trials (each cue),R DHC - L POR-SUB
+7,4,1,21,0.0640263652,Precon4,Trials (each cue),R DHC - L RSC
+7,4,1,22,0.1722408271,Precon4,Trials (each cue),R DHC - L DHC
+7,4,1,23,0.1909406529,Precon4,Trials (each cue),R DHC - L OFC
+7,4,1,24,0.2329845336,Precon4,Trials (each cue),R DHC - L ACC
+7,4,1,25,0.2148699528,Precon4,Trials (each cue),R RSC - R PER
+7,4,1,26,0.2252789635,Precon4,Trials (each cue),R RSC - L POR-SUB
+7,4,1,27,0.06453336857,Precon4,Trials (each cue),R RSC - L RSC
+7,4,1,28,0.1376210951,Precon4,Trials (each cue),R RSC - L DHC
+7,4,1,29,0.2407045873,Precon4,Trials (each cue),R RSC - L OFC
+7,4,1,30,0.2733212485,Precon4,Trials (each cue),R RSC - L ACC
+7,4,1,31,0.05331656343,Precon4,Trials (each cue),R PER - L RSC
+7,4,1,32,0.07264477822,Precon4,Trials (each cue),R PER - L DHC
+7,4,1,33,0.2836294464,Precon4,Trials (each cue),R PER - L OFC
+7,4,1,34,0.3061704013,Precon4,Trials (each cue),R PER - L ACC
+7,4,1,35,0.05935027905,Precon4,Trials (each cue),L POR-SUB - L RSC
+7,4,1,36,0.09598741206,Precon4,Trials (each cue),L POR-SUB - L DHC
+7,4,1,37,0.2012047515,Precon4,Trials (each cue),L POR-SUB - L OFC
+7,4,1,38,0.2572046785,Precon4,Trials (each cue),L POR-SUB - L ACC
+7,4,1,39,0.06306749948,Precon4,Trials (each cue),L RSC - L DHC
+7,4,1,40,0.05084930553,Precon4,Trials (each cue),L RSC - L OFC
+7,4,1,41,0.05644712659,Precon4,Trials (each cue),L RSC - L ACC
+7,4,1,42,0.07833242728,Precon4,Trials (each cue),L DHC - L OFC
+7,4,1,43,0.07394307016,Precon4,Trials (each cue),L DHC - L ACC
+7,4,1,44,0.6041973311,Precon4,Trials (each cue),L OFC - L ACC
+7,4,2,1,0.1673438938,Precon4,FP snippets,R ACC - R OFC
+7,4,2,2,0.1913882758,Precon4,FP snippets,R ACC - R DHC
+7,4,2,3,0.1818839591,Precon4,FP snippets,R ACC - R RSC
+7,4,2,4,0.2049512036,Precon4,FP snippets,R ACC - R PER
+7,4,2,5,0.1457773772,Precon4,FP snippets,R ACC - L POR-SUB
+7,4,2,6,0.1228089521,Precon4,FP snippets,R ACC - L RSC
+7,4,2,7,0.1135895145,Precon4,FP snippets,R ACC - L DHC
+7,4,2,8,0.2452199666,Precon4,FP snippets,R ACC - L OFC
+7,4,2,9,0.3247263947,Precon4,FP snippets,R ACC - L ACC
+7,4,2,10,0.1515978166,Precon4,FP snippets,R OFC - R DHC
+7,4,2,11,0.05923469323,Precon4,FP snippets,R OFC - R RSC
+7,4,2,12,0.1446573293,Precon4,FP snippets,R OFC - R PER
+7,4,2,13,0.08718767521,Precon4,FP snippets,R OFC - L POR-SUB
+7,4,2,14,0.05909774059,Precon4,FP snippets,R OFC - L RSC
+7,4,2,15,0.06652016974,Precon4,FP snippets,R OFC - L DHC
+7,4,2,16,0.1322145747,Precon4,FP snippets,R OFC - L OFC
+7,4,2,17,0.2037524734,Precon4,FP snippets,R OFC - L ACC
+7,4,2,18,0.2835471315,Precon4,FP snippets,R DHC - R RSC
+7,4,2,19,0.166976049,Precon4,FP snippets,R DHC - R PER
+7,4,2,20,0.2101027486,Precon4,FP snippets,R DHC - L POR-SUB
+7,4,2,21,0.2623208164,Precon4,FP snippets,R DHC - L RSC
+7,4,2,22,0.1814429888,Precon4,FP snippets,R DHC - L DHC
+7,4,2,23,0.1300287234,Precon4,FP snippets,R DHC - L OFC
+7,4,2,24,0.1977302739,Precon4,FP snippets,R DHC - L ACC
+7,4,2,25,0.1359987742,Precon4,FP snippets,R RSC - R PER
+7,4,2,26,0.2403422071,Precon4,FP snippets,R RSC - L POR-SUB
+7,4,2,27,0.2727216123,Precon4,FP snippets,R RSC - L RSC
+7,4,2,28,0.1992785095,Precon4,FP snippets,R RSC - L DHC
+7,4,2,29,0.1106258328,Precon4,FP snippets,R RSC - L OFC
+7,4,2,30,0.1280513211,Precon4,FP snippets,R RSC - L ACC
+7,4,2,31,0.1059762703,Precon4,FP snippets,R PER - L RSC
+7,4,2,32,0.08684969078,Precon4,FP snippets,R PER - L DHC
+7,4,2,33,0.1653915707,Precon4,FP snippets,R PER - L OFC
+7,4,2,34,0.2096446016,Precon4,FP snippets,R PER - L ACC
+7,4,2,35,0.2098697962,Precon4,FP snippets,L POR-SUB - L RSC
+7,4,2,36,0.1887455986,Precon4,FP snippets,L POR-SUB - L DHC
+7,4,2,37,0.09117932256,Precon4,FP snippets,L POR-SUB - L OFC
+7,4,2,38,0.1671279049,Precon4,FP snippets,L POR-SUB - L ACC
+7,4,2,39,0.2384183083,Precon4,FP snippets,L RSC - L DHC
+7,4,2,40,0.06889236116,Precon4,FP snippets,L RSC - L OFC
+7,4,2,41,0.104529621,Precon4,FP snippets,L RSC - L ACC
+7,4,2,42,0.08657235932,Precon4,FP snippets,L DHC - L OFC
+7,4,2,43,0.09428602012,Precon4,FP snippets,L DHC - L ACC
+7,4,2,44,0.2354028133,Precon4,FP snippets,L OFC - L ACC
+8,1,1,1,0.180641225,Precon1,Trials (each cue),R ACC - R OFC
+8,1,1,2,0.09565579921,Precon1,Trials (each cue),R ACC - R DHC
+8,1,1,6,0.1263482982,Precon1,Trials (each cue),R ACC - L RSC
+8,1,1,7,0.1072231544,Precon1,Trials (each cue),R ACC - L DHC
+8,1,1,8,0.1286733102,Precon1,Trials (each cue),R ACC - L OFC
+8,1,1,9,0.1692743401,Precon1,Trials (each cue),R ACC - L ACC
+8,1,1,10,0.1713356524,Precon1,Trials (each cue),R OFC - R DHC
+8,1,1,14,0.2458925069,Precon1,Trials (each cue),R OFC - L RSC
+8,1,1,15,0.190134097,Precon1,Trials (each cue),R OFC - L DHC
+8,1,1,16,0.3488836233,Precon1,Trials (each cue),R OFC - L OFC
+8,1,1,17,0.3623720785,Precon1,Trials (each cue),R OFC - L ACC
+8,1,1,21,0.3998279868,Precon1,Trials (each cue),R DHC - L RSC
+8,1,1,22,0.5480140765,Precon1,Trials (each cue),R DHC - L DHC
+8,1,1,23,0.1473851411,Precon1,Trials (each cue),R DHC - L OFC
+8,1,1,24,0.2756487321,Precon1,Trials (each cue),R DHC - L ACC
+8,1,1,39,0.5070755287,Precon1,Trials (each cue),L RSC - L DHC
+8,1,1,40,0.2271316702,Precon1,Trials (each cue),L RSC - L OFC
+8,1,1,41,0.4045542687,Precon1,Trials (each cue),L RSC - L ACC
+8,1,1,42,0.1641808015,Precon1,Trials (each cue),L DHC - L OFC
+8,1,1,43,0.331861305,Precon1,Trials (each cue),L DHC - L ACC
+8,1,1,44,0.3327765849,Precon1,Trials (each cue),L OFC - L ACC
+8,1,2,1,0.2739882136,Precon1,FP snippets,R ACC - R OFC
+8,1,2,2,0.1491366937,Precon1,FP snippets,R ACC - R DHC
+8,1,2,6,0.2439362438,Precon1,FP snippets,R ACC - L RSC
+8,1,2,7,0.1197627946,Precon1,FP snippets,R ACC - L DHC
+8,1,2,8,0.1515389382,Precon1,FP snippets,R ACC - L OFC
+8,1,2,9,0.3181019662,Precon1,FP snippets,R ACC - L ACC
+8,1,2,10,0.1811132039,Precon1,FP snippets,R OFC - R DHC
+8,1,2,14,0.2889643653,Precon1,FP snippets,R OFC - L RSC
+8,1,2,15,0.1277056503,Precon1,FP snippets,R OFC - L DHC
+8,1,2,16,0.3676528296,Precon1,FP snippets,R OFC - L OFC
+8,1,2,17,0.483777524,Precon1,FP snippets,R OFC - L ACC
+8,1,2,21,0.5663518418,Precon1,FP snippets,R DHC - L RSC
+8,1,2,22,0.3907466911,Precon1,FP snippets,R DHC - L DHC
+8,1,2,23,0.135391907,Precon1,FP snippets,R DHC - L OFC
+8,1,2,24,0.2873063912,Precon1,FP snippets,R DHC - L ACC
+8,1,2,39,0.3912086532,Precon1,FP snippets,L RSC - L DHC
+8,1,2,40,0.2028281462,Precon1,FP snippets,L RSC - L OFC
+8,1,2,41,0.4681525044,Precon1,FP snippets,L RSC - L ACC
+8,1,2,42,0.08263475713,Precon1,FP snippets,L DHC - L OFC
+8,1,2,43,0.1848957568,Precon1,FP snippets,L DHC - L ACC
+8,1,2,44,0.3096406723,Precon1,FP snippets,L OFC - L ACC
+8,4,1,1,0.07348795915,Precon4,Trials (each cue),R ACC - R OFC
+8,4,1,2,0.06908655606,Precon4,Trials (each cue),R ACC - R DHC
+8,4,1,6,0.1165837562,Precon4,Trials (each cue),R ACC - L RSC
+8,4,1,7,0.0535702822,Precon4,Trials (each cue),R ACC - L DHC
+8,4,1,8,0.1085704202,Precon4,Trials (each cue),R ACC - L OFC
+8,4,1,9,0.3535640322,Precon4,Trials (each cue),R ACC - L ACC
+8,4,1,10,0.06323134514,Precon4,Trials (each cue),R OFC - R DHC
+8,4,1,14,0.06643560569,Precon4,Trials (each cue),R OFC - L RSC
+8,4,1,15,0.06970339717,Precon4,Trials (each cue),R OFC - L DHC
+8,4,1,16,0.1045213097,Precon4,Trials (each cue),R OFC - L OFC
+8,4,1,17,0.08409090654,Precon4,Trials (each cue),R OFC - L ACC
+8,4,1,21,0.06299742155,Precon4,Trials (each cue),R DHC - L RSC
+8,4,1,22,0.05938590141,Precon4,Trials (each cue),R DHC - L DHC
+8,4,1,23,0.06688265426,Precon4,Trials (each cue),R DHC - L OFC
+8,4,1,24,0.06428051988,Precon4,Trials (each cue),R DHC - L ACC
+8,4,1,39,0.07473186556,Precon4,Trials (each cue),L RSC - L DHC
+8,4,1,40,0.05917429045,Precon4,Trials (each cue),L RSC - L OFC
+8,4,1,41,0.1580539984,Precon4,Trials (each cue),L RSC - L ACC
+8,4,1,42,0.06705406666,Precon4,Trials (each cue),L DHC - L OFC
+8,4,1,43,0.06501985964,Precon4,Trials (each cue),L DHC - L ACC
+8,4,1,44,0.152251981,Precon4,Trials (each cue),L OFC - L ACC
+8,4,2,1,0.09071027396,Precon4,FP snippets,R ACC - R OFC
+8,4,2,2,0.0595179044,Precon4,FP snippets,R ACC - R DHC
+8,4,2,6,0.2247615993,Precon4,FP snippets,R ACC - L RSC
+8,4,2,7,0.1488981071,Precon4,FP snippets,R ACC - L DHC
+8,4,2,8,0.128049,Precon4,FP snippets,R ACC - L OFC
+8,4,2,9,0.4415663756,Precon4,FP snippets,R ACC - L ACC
+8,4,2,10,0.0443581149,Precon4,FP snippets,R OFC - R DHC
+8,4,2,14,0.04855355338,Precon4,FP snippets,R OFC - L RSC
+8,4,2,15,0.05248001106,Precon4,FP snippets,R OFC - L DHC
+8,4,2,16,0.0721089634,Precon4,FP snippets,R OFC - L OFC
+8,4,2,17,0.0867149659,Precon4,FP snippets,R OFC - L ACC
+8,4,2,21,0.06433175661,Precon4,FP snippets,R DHC - L RSC
+8,4,2,22,0.07989750623,Precon4,FP snippets,R DHC - L DHC
+8,4,2,23,0.06048135348,Precon4,FP snippets,R DHC - L OFC
+8,4,2,24,0.06504158481,Precon4,FP snippets,R DHC - L ACC
+8,4,2,39,0.1714120916,Precon4,FP snippets,L RSC - L DHC
+8,4,2,40,0.0683077956,Precon4,FP snippets,L RSC - L OFC
+8,4,2,41,0.2292572517,Precon4,FP snippets,L RSC - L ACC
+8,4,2,42,0.06640339975,Precon4,FP snippets,L DHC - L OFC
+8,4,2,43,0.1777508119,Precon4,FP snippets,L DHC - L ACC
+8,4,2,44,0.1475026053,Precon4,FP snippets,L OFC - L ACC
+9,1,1,1,0.0611155347,Precon1,Trials (each cue),R ACC - R OFC
+9,1,1,2,0.06710242071,Precon1,Trials (each cue),R ACC - R DHC
+9,1,1,3,0.07390510571,Precon1,Trials (each cue),R ACC - R RSC
+9,1,1,4,0.07041597306,Precon1,Trials (each cue),R ACC - R PER
+9,1,1,6,0.05975429457,Precon1,Trials (each cue),R ACC - L RSC
+9,1,1,8,0.06206935906,Precon1,Trials (each cue),R ACC - L OFC
+9,1,1,9,0.07627943402,Precon1,Trials (each cue),R ACC - L ACC
+9,1,1,10,0.1261079538,Precon1,Trials (each cue),R OFC - R DHC
+9,1,1,11,0.2536237801,Precon1,Trials (each cue),R OFC - R RSC
+9,1,1,12,0.2957094915,Precon1,Trials (each cue),R OFC - R PER
+9,1,1,14,0.09958603668,Precon1,Trials (each cue),R OFC - L RSC
+9,1,1,16,0.4363471795,Precon1,Trials (each cue),R OFC - L OFC
+9,1,1,17,0.3318975274,Precon1,Trials (each cue),R OFC - L ACC
+9,1,1,18,0.2702330072,Precon1,Trials (each cue),R DHC - R RSC
+9,1,1,19,0.1451322312,Precon1,Trials (each cue),R DHC - R PER
+9,1,1,21,0.08014509581,Precon1,Trials (each cue),R DHC - L RSC
+9,1,1,23,0.1388916664,Precon1,Trials (each cue),R DHC - L OFC
+9,1,1,24,0.2079362232,Precon1,Trials (each cue),R DHC - L ACC
+9,1,1,25,0.271646583,Precon1,Trials (each cue),R RSC - R PER
+9,1,1,27,0.1707665291,Precon1,Trials (each cue),R RSC - L RSC
+9,1,1,29,0.2699081176,Precon1,Trials (each cue),R RSC - L OFC
+9,1,1,30,0.5512265836,Precon1,Trials (each cue),R RSC - L ACC
+9,1,1,31,0.1135485829,Precon1,Trials (each cue),R PER - L RSC
+9,1,1,33,0.3031855222,Precon1,Trials (each cue),R PER - L OFC
+9,1,1,34,0.3651678618,Precon1,Trials (each cue),R PER - L ACC
+9,1,1,40,0.09675924677,Precon1,Trials (each cue),L RSC - L OFC
+9,1,1,41,0.1355173052,Precon1,Trials (each cue),L RSC - L ACC
+9,1,1,44,0.3867754958,Precon1,Trials (each cue),L OFC - L ACC
+9,1,2,1,0.2466054872,Precon1,FP snippets,R ACC - R OFC
+9,1,2,2,0.129714776,Precon1,FP snippets,R ACC - R DHC
+9,1,2,3,0.24864365,Precon1,FP snippets,R ACC - R RSC
+9,1,2,4,0.1711554538,Precon1,FP snippets,R ACC - R PER
+9,1,2,6,0.07750987764,Precon1,FP snippets,R ACC - L RSC
+9,1,2,8,0.2475949912,Precon1,FP snippets,R ACC - L OFC
+9,1,2,9,0.348704142,Precon1,FP snippets,R ACC - L ACC
+9,1,2,10,0.1694522878,Precon1,FP snippets,R OFC - R DHC
+9,1,2,11,0.2928893302,Precon1,FP snippets,R OFC - R RSC
+9,1,2,12,0.2799366864,Precon1,FP snippets,R OFC - R PER
+9,1,2,14,0.08076874279,Precon1,FP snippets,R OFC - L RSC
+9,1,2,16,0.519600649,Precon1,FP snippets,R OFC - L OFC
+9,1,2,17,0.4172020132,Precon1,FP snippets,R OFC - L ACC
+9,1,2,18,0.3430390958,Precon1,FP snippets,R DHC - R RSC
+9,1,2,19,0.1950078987,Precon1,FP snippets,R DHC - R PER
+9,1,2,21,0.08246743189,Precon1,FP snippets,R DHC - L RSC
+9,1,2,23,0.1691716122,Precon1,FP snippets,R DHC - L OFC
+9,1,2,24,0.2358133832,Precon1,FP snippets,R DHC - L ACC
+9,1,2,25,0.2762535575,Precon1,FP snippets,R RSC - R PER
+9,1,2,27,0.1140953981,Precon1,FP snippets,R RSC - L RSC
+9,1,2,29,0.3182506393,Precon1,FP snippets,R RSC - L OFC
+9,1,2,30,0.5503247511,Precon1,FP snippets,R RSC - L ACC
+9,1,2,31,0.08807113185,Precon1,FP snippets,R PER - L RSC
+9,1,2,33,0.2701458452,Precon1,FP snippets,R PER - L OFC
+9,1,2,34,0.331984603,Precon1,FP snippets,R PER - L ACC
+9,1,2,40,0.08348443653,Precon1,FP snippets,L RSC - L OFC
+9,1,2,41,0.1037316772,Precon1,FP snippets,L RSC - L ACC
+9,1,2,44,0.4316016861,Precon1,FP snippets,L OFC - L ACC
+9,4,1,1,0.1309677312,Precon4,Trials (each cue),R ACC - R OFC
+9,4,1,2,0.07508364307,Precon4,Trials (each cue),R ACC - R DHC
+9,4,1,3,0.5476514408,Precon4,Trials (each cue),R ACC - R RSC
+9,4,1,4,0.412971698,Precon4,Trials (each cue),R ACC - R PER
+9,4,1,6,0.08313272927,Precon4,Trials (each cue),R ACC - L RSC
+9,4,1,8,0.3006714037,Precon4,Trials (each cue),R ACC - L OFC
+9,4,1,9,0.8419237556,Precon4,Trials (each cue),R ACC - L ACC
+9,4,1,10,0.05779487086,Precon4,Trials (each cue),R OFC - R DHC
+9,4,1,11,0.1157768865,Precon4,Trials (each cue),R OFC - R RSC
+9,4,1,12,0.1299405169,Precon4,Trials (each cue),R OFC - R PER
+9,4,1,14,0.06385341246,Precon4,Trials (each cue),R OFC - L RSC
+9,4,1,16,0.1335007132,Precon4,Trials (each cue),R OFC - L OFC
+9,4,1,17,0.1284141871,Precon4,Trials (each cue),R OFC - L ACC
+9,4,1,18,0.0771608981,Precon4,Trials (each cue),R DHC - R RSC
+9,4,1,19,0.06397777737,Precon4,Trials (each cue),R DHC - R PER
+9,4,1,21,0.06289504585,Precon4,Trials (each cue),R DHC - L RSC
+9,4,1,23,0.06252595718,Precon4,Trials (each cue),R DHC - L OFC
+9,4,1,24,0.07437204486,Precon4,Trials (each cue),R DHC - L ACC
+9,4,1,25,0.2906129033,Precon4,Trials (each cue),R RSC - R PER
+9,4,1,27,0.06675112081,Precon4,Trials (each cue),R RSC - L RSC
+9,4,1,29,0.2262258344,Precon4,Trials (each cue),R RSC - L OFC
+9,4,1,30,0.5991874657,Precon4,Trials (each cue),R RSC - L ACC
+9,4,1,31,0.0680796509,Precon4,Trials (each cue),R PER - L RSC
+9,4,1,33,0.2294778346,Precon4,Trials (each cue),R PER - L OFC
+9,4,1,34,0.4073225491,Precon4,Trials (each cue),R PER - L ACC
+9,4,1,40,0.08075825666,Precon4,Trials (each cue),L RSC - L OFC
+9,4,1,41,0.07764263765,Precon4,Trials (each cue),L RSC - L ACC
+9,4,1,44,0.2887499468,Precon4,Trials (each cue),L OFC - L ACC
+9,4,2,1,0.0864389776,Precon4,FP snippets,R ACC - R OFC
+9,4,2,2,0.1290504266,Precon4,FP snippets,R ACC - R DHC
+9,4,2,3,0.6095600563,Precon4,FP snippets,R ACC - R RSC
+9,4,2,4,0.3613700448,Precon4,FP snippets,R ACC - R PER
+9,4,2,6,0.307003715,Precon4,FP snippets,R ACC - L RSC
+9,4,2,8,0.2036091674,Precon4,FP snippets,R ACC - L OFC
+9,4,2,9,0.8259678803,Precon4,FP snippets,R ACC - L ACC
+9,4,2,10,0.05906968206,Precon4,FP snippets,R OFC - R DHC
+9,4,2,11,0.0695863236,Precon4,FP snippets,R OFC - R RSC
+9,4,2,12,0.07347945247,Precon4,FP snippets,R OFC - R PER
+9,4,2,14,0.05790741936,Precon4,FP snippets,R OFC - L RSC
+9,4,2,16,0.07176021559,Precon4,FP snippets,R OFC - L OFC
+9,4,2,17,0.08015542421,Precon4,FP snippets,R OFC - L ACC
+9,4,2,18,0.1305145738,Precon4,FP snippets,R DHC - R RSC
+9,4,2,19,0.1001410601,Precon4,FP snippets,R DHC - R PER
+9,4,2,21,0.1139580672,Precon4,FP snippets,R DHC - L RSC
+9,4,2,23,0.07415812346,Precon4,FP snippets,R DHC - L OFC
+9,4,2,24,0.131651977,Precon4,FP snippets,R DHC - L ACC
+9,4,2,25,0.2957768055,Precon4,FP snippets,R RSC - R PER
+9,4,2,27,0.4018965169,Precon4,FP snippets,R RSC - L RSC
+9,4,2,29,0.1456509682,Precon4,FP snippets,R RSC - L OFC
+9,4,2,30,0.6227315942,Precon4,FP snippets,R RSC - L ACC
+9,4,2,31,0.1662748164,Precon4,FP snippets,R PER - L RSC
+9,4,2,33,0.1395104095,Precon4,FP snippets,R PER - L OFC
+9,4,2,34,0.3495240479,Precon4,FP snippets,R PER - L ACC
+9,4,2,40,0.08686870954,Precon4,FP snippets,L RSC - L OFC
+9,4,2,41,0.2968515705,Precon4,FP snippets,L RSC - L ACC
+9,4,2,44,0.1887357163,Precon4,FP snippets,L OFC - L ACC
+10,1,1,1,0.1856034718,Precon1,Trials (each cue),R ACC - R OFC
+10,1,1,2,0.06918208508,Precon1,Trials (each cue),R ACC - R DHC
+10,1,1,3,0.172957102,Precon1,Trials (each cue),R ACC - R RSC
+10,1,1,4,0.1479250488,Precon1,Trials (each cue),R ACC - R PER
+10,1,1,5,0.1497475792,Precon1,Trials (each cue),R ACC - L POR-SUB
+10,1,1,6,0.06945849737,Precon1,Trials (each cue),R ACC - L RSC
+10,1,1,7,0.1182577773,Precon1,Trials (each cue),R ACC - L DHC
+10,1,1,8,0.2528692428,Precon1,Trials (each cue),R ACC - L OFC
+10,1,1,9,0.2215039352,Precon1,Trials (each cue),R ACC - L ACC
+10,1,1,10,0.09949567205,Precon1,Trials (each cue),R OFC - R DHC
+10,1,1,11,0.3141178989,Precon1,Trials (each cue),R OFC - R RSC
+10,1,1,12,0.2557661228,Precon1,Trials (each cue),R OFC - R PER
+10,1,1,13,0.2513892886,Precon1,Trials (each cue),R OFC - L POR-SUB
+10,1,1,14,0.07835120095,Precon1,Trials (each cue),R OFC - L RSC
+10,1,1,15,0.1925104783,Precon1,Trials (each cue),R OFC - L DHC
+10,1,1,16,0.3569800382,Precon1,Trials (each cue),R OFC - L OFC
+10,1,1,17,0.3536681326,Precon1,Trials (each cue),R OFC - L ACC
+10,1,1,18,0.1555925602,Precon1,Trials (each cue),R DHC - R RSC
+10,1,1,19,0.09887061677,Precon1,Trials (each cue),R DHC - R PER
+10,1,1,20,0.08710490599,Precon1,Trials (each cue),R DHC - L POR-SUB
+10,1,1,21,0.06575819422,Precon1,Trials (each cue),R DHC - L RSC
+10,1,1,22,0.1439010542,Precon1,Trials (each cue),R DHC - L DHC
+10,1,1,23,0.09345006071,Precon1,Trials (each cue),R DHC - L OFC
+10,1,1,24,0.1024312797,Precon1,Trials (each cue),R DHC - L ACC
+10,1,1,25,0.3283232099,Precon1,Trials (each cue),R RSC - R PER
+10,1,1,26,0.228742302,Precon1,Trials (each cue),R RSC - L POR-SUB
+10,1,1,27,0.07867539261,Precon1,Trials (each cue),R RSC - L RSC
+10,1,1,28,0.4455254474,Precon1,Trials (each cue),R RSC - L DHC
+10,1,1,29,0.2856414213,Precon1,Trials (each cue),R RSC - L OFC
+10,1,1,30,0.3493116779,Precon1,Trials (each cue),R RSC - L ACC
+10,1,1,31,0.07692876561,Precon1,Trials (each cue),R PER - L RSC
+10,1,1,32,0.229485009,Precon1,Trials (each cue),R PER - L DHC
+10,1,1,33,0.2650035753,Precon1,Trials (each cue),R PER - L OFC
+10,1,1,34,0.3158462263,Precon1,Trials (each cue),R PER - L ACC
+10,1,1,35,0.0777607895,Precon1,Trials (each cue),L POR-SUB - L RSC
+10,1,1,36,0.1657373361,Precon1,Trials (each cue),L POR-SUB - L DHC
+10,1,1,37,0.2649199806,Precon1,Trials (each cue),L POR-SUB - L OFC
+10,1,1,38,0.2913269945,Precon1,Trials (each cue),L POR-SUB - L ACC
+10,1,1,39,0.07364489,Precon1,Trials (each cue),L RSC - L DHC
+10,1,1,40,0.07855633016,Precon1,Trials (each cue),L RSC - L OFC
+10,1,1,41,0.06915998545,Precon1,Trials (each cue),L RSC - L ACC
+10,1,1,42,0.1980643619,Precon1,Trials (each cue),L DHC - L OFC
+10,1,1,43,0.249906564,Precon1,Trials (each cue),L DHC - L ACC
+10,1,1,44,0.6590834979,Precon1,Trials (each cue),L OFC - L ACC
+10,1,2,1,0.1377548448,Precon1,FP snippets,R ACC - R OFC
+10,1,2,2,0.06328663727,Precon1,FP snippets,R ACC - R DHC
+10,1,2,3,0.1650597116,Precon1,FP snippets,R ACC - R RSC
+10,1,2,4,0.1350606919,Precon1,FP snippets,R ACC - R PER
+10,1,2,5,0.1279281127,Precon1,FP snippets,R ACC - L POR-SUB
+10,1,2,6,0.06030985729,Precon1,FP snippets,R ACC - L RSC
+10,1,2,7,0.1264330553,Precon1,FP snippets,R ACC - L DHC
+10,1,2,8,0.2151092297,Precon1,FP snippets,R ACC - L OFC
+10,1,2,9,0.1955968253,Precon1,FP snippets,R ACC - L ACC
+10,1,2,10,0.0681467515,Precon1,FP snippets,R OFC - R DHC
+10,1,2,11,0.2919203388,Precon1,FP snippets,R OFC - R RSC
+10,1,2,12,0.1914537215,Precon1,FP snippets,R OFC - R PER
+10,1,2,13,0.136119376,Precon1,FP snippets,R OFC - L POR-SUB
+10,1,2,14,0.0601161434,Precon1,FP snippets,R OFC - L RSC
+10,1,2,15,0.1844837645,Precon1,FP snippets,R OFC - L DHC
+10,1,2,16,0.2379657139,Precon1,FP snippets,R OFC - L OFC
+10,1,2,17,0.2774288754,Precon1,FP snippets,R OFC - L ACC
+10,1,2,18,0.07814217291,Precon1,FP snippets,R DHC - R RSC
+10,1,2,19,0.06330992574,Precon1,FP snippets,R DHC - R PER
+10,1,2,20,0.05456160354,Precon1,FP snippets,R DHC - L POR-SUB
+10,1,2,21,0.05102039013,Precon1,FP snippets,R DHC - L RSC
+10,1,2,22,0.07188135187,Precon1,FP snippets,R DHC - L DHC
+10,1,2,23,0.06755495305,Precon1,FP snippets,R DHC - L OFC
+10,1,2,24,0.06570082414,Precon1,FP snippets,R DHC - L ACC
+10,1,2,25,0.3741317714,Precon1,FP snippets,R RSC - R PER
+10,1,2,26,0.2193741242,Precon1,FP snippets,R RSC - L POR-SUB
+10,1,2,27,0.06315232423,Precon1,FP snippets,R RSC - L RSC
+10,1,2,28,0.6027770938,Precon1,FP snippets,R RSC - L DHC
+10,1,2,29,0.2981019792,Precon1,FP snippets,R RSC - L OFC
+10,1,2,30,0.4163203097,Precon1,FP snippets,R RSC - L ACC
+10,1,2,31,0.06462642763,Precon1,FP snippets,R PER - L RSC
+10,1,2,32,0.3042570085,Precon1,FP snippets,R PER - L DHC
+10,1,2,33,0.2277313635,Precon1,FP snippets,R PER - L OFC
+10,1,2,34,0.3111779288,Precon1,FP snippets,R PER - L ACC
+10,1,2,35,0.05112391556,Precon1,FP snippets,L POR-SUB - L RSC
+10,1,2,36,0.1582334404,Precon1,FP snippets,L POR-SUB - L DHC
+10,1,2,37,0.2140649788,Precon1,FP snippets,L POR-SUB - L OFC
+10,1,2,38,0.2488342407,Precon1,FP snippets,L POR-SUB - L ACC
+10,1,2,39,0.0673744075,Precon1,FP snippets,L RSC - L DHC
+10,1,2,40,0.05431452357,Precon1,FP snippets,L RSC - L OFC
+10,1,2,41,0.06280360532,Precon1,FP snippets,L RSC - L ACC
+10,1,2,42,0.2122524128,Precon1,FP snippets,L DHC - L OFC
+10,1,2,43,0.3058105058,Precon1,FP snippets,L DHC - L ACC
+10,1,2,44,0.627997949,Precon1,FP snippets,L OFC - L ACC
+10,4,1,1,0.07770030903,Precon4,Trials (each cue),R ACC - R OFC
+10,4,1,2,0.05918781274,Precon4,Trials (each cue),R ACC - R DHC
+10,4,1,3,0.2107156496,Precon4,Trials (each cue),R ACC - R RSC
+10,4,1,4,0.1590107767,Precon4,Trials (each cue),R ACC - R PER
+10,4,1,5,0.1776666935,Precon4,Trials (each cue),R ACC - L POR-SUB
+10,4,1,6,0.08617976638,Precon4,Trials (each cue),R ACC - L RSC
+10,4,1,7,0.07054698605,Precon4,Trials (each cue),R ACC - L DHC
+10,4,1,8,0.1270290099,Precon4,Trials (each cue),R ACC - L OFC
+10,4,1,9,0.2280741918,Precon4,Trials (each cue),R ACC - L ACC
+10,4,1,10,0.05867941626,Precon4,Trials (each cue),R OFC - R DHC
+10,4,1,11,0.08309365913,Precon4,Trials (each cue),R OFC - R RSC
+10,4,1,12,0.07478198626,Precon4,Trials (each cue),R OFC - R PER
+10,4,1,13,0.07436623788,Precon4,Trials (each cue),R OFC - L POR-SUB
+10,4,1,14,0.06819225738,Precon4,Trials (each cue),R OFC - L RSC
+10,4,1,15,0.0680645842,Precon4,Trials (each cue),R OFC - L DHC
+10,4,1,16,0.09095069096,Precon4,Trials (each cue),R OFC - L OFC
+10,4,1,17,0.08974521888,Precon4,Trials (each cue),R OFC - L ACC
+10,4,1,18,0.05281825426,Precon4,Trials (each cue),R DHC - R RSC
+10,4,1,19,0.06401024881,Precon4,Trials (each cue),R DHC - R PER
+10,4,1,20,0.06327740667,Precon4,Trials (each cue),R DHC - L POR-SUB
+10,4,1,21,0.07697700961,Precon4,Trials (each cue),R DHC - L RSC
+10,4,1,22,0.06132438119,Precon4,Trials (each cue),R DHC - L DHC
+10,4,1,23,0.05076826566,Precon4,Trials (each cue),R DHC - L OFC
+10,4,1,24,0.06261187699,Precon4,Trials (each cue),R DHC - L ACC
+10,4,1,25,0.2130368903,Precon4,Trials (each cue),R RSC - R PER
+10,4,1,26,0.1755584042,Precon4,Trials (each cue),R RSC - L POR-SUB
+10,4,1,27,0.177005256,Precon4,Trials (each cue),R RSC - L RSC
+10,4,1,28,0.1152512481,Precon4,Trials (each cue),R RSC - L DHC
+10,4,1,29,0.1066968686,Precon4,Trials (each cue),R RSC - L OFC
+10,4,1,30,0.2229913811,Precon4,Trials (each cue),R RSC - L ACC
+10,4,1,31,0.09099833368,Precon4,Trials (each cue),R PER - L RSC
+10,4,1,32,0.08690867608,Precon4,Trials (each cue),R PER - L DHC
+10,4,1,33,0.1173391257,Precon4,Trials (each cue),R PER - L OFC
+10,4,1,34,0.2146527011,Precon4,Trials (each cue),R PER - L ACC
+10,4,1,35,0.08071700906,Precon4,Trials (each cue),L POR-SUB - L RSC
+10,4,1,36,0.07905696581,Precon4,Trials (each cue),L POR-SUB - L DHC
+10,4,1,37,0.1133744327,Precon4,Trials (each cue),L POR-SUB - L OFC
+10,4,1,38,0.214058089,Precon4,Trials (each cue),L POR-SUB - L ACC
+10,4,1,39,0.08393898186,Precon4,Trials (each cue),L RSC - L DHC
+10,4,1,40,0.07213618703,Precon4,Trials (each cue),L RSC - L OFC
+10,4,1,41,0.1075863959,Precon4,Trials (each cue),L RSC - L ACC
+10,4,1,42,0.07810930163,Precon4,Trials (each cue),L DHC - L OFC
+10,4,1,43,0.09450285222,Precon4,Trials (each cue),L DHC - L ACC
+10,4,1,44,0.2466128711,Precon4,Trials (each cue),L OFC - L ACC
+10,4,2,1,0.05955389795,Precon4,FP snippets,R ACC - R OFC
+10,4,2,2,0.04609199381,Precon4,FP snippets,R ACC - R DHC
+10,4,2,3,0.1156450293,Precon4,FP snippets,R ACC - R RSC
+10,4,2,4,0.09024525706,Precon4,FP snippets,R ACC - R PER
+10,4,2,5,0.09809546921,Precon4,FP snippets,R ACC - L POR-SUB
+10,4,2,6,0.06287176646,Precon4,FP snippets,R ACC - L RSC
+10,4,2,7,0.1052952573,Precon4,FP snippets,R ACC - L DHC
+10,4,2,8,0.08103695147,Precon4,FP snippets,R ACC - L OFC
+10,4,2,9,0.1086833062,Precon4,FP snippets,R ACC - L ACC
+10,4,2,10,0.0686040633,Precon4,FP snippets,R OFC - R DHC
+10,4,2,11,0.05754280052,Precon4,FP snippets,R OFC - R RSC
+10,4,2,12,0.06937423222,Precon4,FP snippets,R OFC - R PER
+10,4,2,13,0.06573042277,Precon4,FP snippets,R OFC - L POR-SUB
+10,4,2,14,0.0655954044,Precon4,FP snippets,R OFC - L RSC
+10,4,2,15,0.05924120276,Precon4,FP snippets,R OFC - L DHC
+10,4,2,16,0.05711131396,Precon4,FP snippets,R OFC - L OFC
+10,4,2,17,0.0639751004,Precon4,FP snippets,R OFC - L ACC
+10,4,2,18,0.0773417607,Precon4,FP snippets,R DHC - R RSC
+10,4,2,19,0.06342192314,Precon4,FP snippets,R DHC - R PER
+10,4,2,20,0.0524114746,Precon4,FP snippets,R DHC - L POR-SUB
+10,4,2,21,0.05748833858,Precon4,FP snippets,R DHC - L RSC
+10,4,2,22,0.07352268646,Precon4,FP snippets,R DHC - L DHC
+10,4,2,23,0.05611373825,Precon4,FP snippets,R DHC - L OFC
+10,4,2,24,0.06547764084,Precon4,FP snippets,R DHC - L ACC
+10,4,2,25,0.3605835949,Precon4,FP snippets,R RSC - R PER
+10,4,2,26,0.2479950803,Precon4,FP snippets,R RSC - L POR-SUB
+10,4,2,27,0.06931403874,Precon4,FP snippets,R RSC - L RSC
+10,4,2,28,0.4876716891,Precon4,FP snippets,R RSC - L DHC
+10,4,2,29,0.1375499282,Precon4,FP snippets,R RSC - L OFC
+10,4,2,30,0.3428200729,Precon4,FP snippets,R RSC - L ACC
+10,4,2,31,0.06826127659,Precon4,FP snippets,R PER - L RSC
+10,4,2,32,0.2700262107,Precon4,FP snippets,R PER - L DHC
+10,4,2,33,0.1099595941,Precon4,FP snippets,R PER - L OFC
+10,4,2,34,0.2624981494,Precon4,FP snippets,R PER - L ACC
+10,4,2,35,0.06291605248,Precon4,FP snippets,L POR-SUB - L RSC
+10,4,2,36,0.1980573731,Precon4,FP snippets,L POR-SUB - L DHC
+10,4,2,37,0.1121071739,Precon4,FP snippets,L POR-SUB - L OFC
+10,4,2,38,0.2507505054,Precon4,FP snippets,L POR-SUB - L ACC
+10,4,2,39,0.06734331784,Precon4,FP snippets,L RSC - L DHC
+10,4,2,40,0.06818496659,Precon4,FP snippets,L RSC - L OFC
+10,4,2,41,0.07319314897,Precon4,FP snippets,L RSC - L ACC
+10,4,2,42,0.1083344186,Precon4,FP snippets,L DHC - L OFC
+10,4,2,43,0.2260337368,Precon4,FP snippets,L DHC - L ACC
+10,4,2,44,0.2502212287,Precon4,FP snippets,L OFC - L ACC
+11,1,1,1,0.06390694593,Precon1,Trials (each cue),R ACC - R OFC
+11,1,1,2,0.06263891398,Precon1,Trials (each cue),R ACC - R DHC
+11,1,1,3,0.07066315701,Precon1,Trials (each cue),R ACC - R RSC
+11,1,1,6,0.06317567333,Precon1,Trials (each cue),R ACC - L RSC
+11,1,1,7,0.06684537184,Precon1,Trials (each cue),R ACC - L DHC
+11,1,1,8,0.07143879236,Precon1,Trials (each cue),R ACC - L OFC
+11,1,1,9,0.07960799273,Precon1,Trials (each cue),R ACC - L ACC
+11,1,1,10,0.0585034765,Precon1,Trials (each cue),R OFC - R DHC
+11,1,1,11,0.1122006024,Precon1,Trials (each cue),R OFC - R RSC
+11,1,1,14,0.08213311019,Precon1,Trials (each cue),R OFC - L RSC
+11,1,1,15,0.09649907199,Precon1,Trials (each cue),R OFC - L DHC
+11,1,1,16,0.1651543308,Precon1,Trials (each cue),R OFC - L OFC
+11,1,1,17,0.1565781891,Precon1,Trials (each cue),R OFC - L ACC
+11,1,1,18,0.126240727,Precon1,Trials (each cue),R DHC - R RSC
+11,1,1,21,0.06044656591,Precon1,Trials (each cue),R DHC - L RSC
+11,1,1,22,0.1331271317,Precon1,Trials (each cue),R DHC - L DHC
+11,1,1,23,0.07079106508,Precon1,Trials (each cue),R DHC - L OFC
+11,1,1,24,0.08136648905,Precon1,Trials (each cue),R DHC - L ACC
+11,1,1,27,0.07691092625,Precon1,Trials (each cue),R RSC - L RSC
+11,1,1,28,0.4164439671,Precon1,Trials (each cue),R RSC - L DHC
+11,1,1,29,0.1449345146,Precon1,Trials (each cue),R RSC - L OFC
+11,1,1,30,0.2300451777,Precon1,Trials (each cue),R RSC - L ACC
+11,1,1,39,0.0775380025,Precon1,Trials (each cue),L RSC - L DHC
+11,1,1,40,0.0645469535,Precon1,Trials (each cue),L RSC - L OFC
+11,1,1,41,0.06499624887,Precon1,Trials (each cue),L RSC - L ACC
+11,1,1,42,0.1403616107,Precon1,Trials (each cue),L DHC - L OFC
+11,1,1,43,0.2220635092,Precon1,Trials (each cue),L DHC - L ACC
+11,1,1,44,0.3505494188,Precon1,Trials (each cue),L OFC - L ACC
+11,1,2,1,0.1064308653,Precon1,FP snippets,R ACC - R OFC
+11,1,2,2,0.0682750075,Precon1,FP snippets,R ACC - R DHC
+11,1,2,3,0.08509996543,Precon1,FP snippets,R ACC - R RSC
+11,1,2,6,0.0753411194,Precon1,FP snippets,R ACC - L RSC
+11,1,2,7,0.09108583369,Precon1,FP snippets,R ACC - L DHC
+11,1,2,8,0.1128764487,Precon1,FP snippets,R ACC - L OFC
+11,1,2,9,0.1783137617,Precon1,FP snippets,R ACC - L ACC
+11,1,2,10,0.05736008834,Precon1,FP snippets,R OFC - R DHC
+11,1,2,11,0.07653143103,Precon1,FP snippets,R OFC - R RSC
+11,1,2,14,0.06075226998,Precon1,FP snippets,R OFC - L RSC
+11,1,2,15,0.0701683486,Precon1,FP snippets,R OFC - L DHC
+11,1,2,16,0.07919179301,Precon1,FP snippets,R OFC - L OFC
+11,1,2,17,0.09948022145,Precon1,FP snippets,R OFC - L ACC
+11,1,2,18,0.2401653269,Precon1,FP snippets,R DHC - R RSC
+11,1,2,21,0.1523366368,Precon1,FP snippets,R DHC - L RSC
+11,1,2,22,0.2171055322,Precon1,FP snippets,R DHC - L DHC
+11,1,2,23,0.079509813,Precon1,FP snippets,R DHC - L OFC
+11,1,2,24,0.093813445,Precon1,FP snippets,R DHC - L ACC
+11,1,2,27,0.2351932181,Precon1,FP snippets,R RSC - L RSC
+11,1,2,28,0.4061548311,Precon1,FP snippets,R RSC - L DHC
+11,1,2,29,0.08762384655,Precon1,FP snippets,R RSC - L OFC
+11,1,2,30,0.190549094,Precon1,FP snippets,R RSC - L ACC
+11,1,2,39,0.343216317,Precon1,FP snippets,L RSC - L DHC
+11,1,2,40,0.07430687529,Precon1,FP snippets,L RSC - L OFC
+11,1,2,41,0.1192187759,Precon1,FP snippets,L RSC - L ACC
+11,1,2,42,0.08571178972,Precon1,FP snippets,L DHC - L OFC
+11,1,2,43,0.1921715056,Precon1,FP snippets,L DHC - L ACC
+11,1,2,44,0.2278585286,Precon1,FP snippets,L OFC - L ACC
+11,4,1,1,0.1225323277,Precon4,Trials (each cue),R ACC - R OFC
+11,4,1,2,0.0713139358,Precon4,Trials (each cue),R ACC - R DHC
+11,4,1,3,0.2182347263,Precon4,Trials (each cue),R ACC - R RSC
+11,4,1,6,0.2064465515,Precon4,Trials (each cue),R ACC - L RSC
+11,4,1,7,0.1863384302,Precon4,Trials (each cue),R ACC - L DHC
+11,4,1,8,0.1521960739,Precon4,Trials (each cue),R ACC - L OFC
+11,4,1,9,0.4873075953,Precon4,Trials (each cue),R ACC - L ACC
+11,4,1,10,0.06003491231,Precon4,Trials (each cue),R OFC - R DHC
+11,4,1,11,0.07725892438,Precon4,Trials (each cue),R OFC - R RSC
+11,4,1,14,0.07757527934,Precon4,Trials (each cue),R OFC - L RSC
+11,4,1,15,0.08394156846,Precon4,Trials (each cue),R OFC - L DHC
+11,4,1,16,0.07772581766,Precon4,Trials (each cue),R OFC - L OFC
+11,4,1,17,0.1107495778,Precon4,Trials (each cue),R OFC - L ACC
+11,4,1,18,0.07489732094,Precon4,Trials (each cue),R DHC - R RSC
+11,4,1,21,0.07386264982,Precon4,Trials (each cue),R DHC - L RSC
+11,4,1,22,0.08252936325,Precon4,Trials (each cue),R DHC - L DHC
+11,4,1,23,0.06834379601,Precon4,Trials (each cue),R DHC - L OFC
+11,4,1,24,0.06697283085,Precon4,Trials (each cue),R DHC - L ACC
+11,4,1,27,0.5101678493,Precon4,Trials (each cue),R RSC - L RSC
+11,4,1,28,0.3238381215,Precon4,Trials (each cue),R RSC - L DHC
+11,4,1,29,0.08828001181,Precon4,Trials (each cue),R RSC - L OFC
+11,4,1,30,0.2222987257,Precon4,Trials (each cue),R RSC - L ACC
+11,4,1,39,0.4092174329,Precon4,Trials (each cue),L RSC - L DHC
+11,4,1,40,0.08890258113,Precon4,Trials (each cue),L RSC - L OFC
+11,4,1,41,0.2248312827,Precon4,Trials (each cue),L RSC - L ACC
+11,4,1,42,0.09102920865,Precon4,Trials (each cue),L DHC - L OFC
+11,4,1,43,0.2221859287,Precon4,Trials (each cue),L DHC - L ACC
+11,4,1,44,0.1780989892,Precon4,Trials (each cue),L OFC - L ACC
+11,4,2,1,0.06020333301,Precon4,FP snippets,R ACC - R OFC
+11,4,2,2,0.2001976009,Precon4,FP snippets,R ACC - R DHC
+11,4,2,3,0.2114760006,Precon4,FP snippets,R ACC - R RSC
+11,4,2,6,0.2015828783,Precon4,FP snippets,R ACC - L RSC
+11,4,2,7,0.152510855,Precon4,FP snippets,R ACC - L DHC
+11,4,2,8,0.1651551818,Precon4,FP snippets,R ACC - L OFC
+11,4,2,9,0.4334307873,Precon4,FP snippets,R ACC - L ACC
+11,4,2,10,0.06036976121,Precon4,FP snippets,R OFC - R DHC
+11,4,2,11,0.05121714907,Precon4,FP snippets,R OFC - R RSC
+11,4,2,14,0.0501355679,Precon4,FP snippets,R OFC - L RSC
+11,4,2,15,0.0566989094,Precon4,FP snippets,R OFC - L DHC
+11,4,2,16,0.05478466955,Precon4,FP snippets,R OFC - L OFC
+11,4,2,17,0.06552097317,Precon4,FP snippets,R OFC - L ACC
+11,4,2,18,0.6258839818,Precon4,FP snippets,R DHC - R RSC
+11,4,2,21,0.5683522634,Precon4,FP snippets,R DHC - L RSC
+11,4,2,22,0.3540912554,Precon4,FP snippets,R DHC - L DHC
+11,4,2,23,0.09102039676,Precon4,FP snippets,R DHC - L OFC
+11,4,2,24,0.1894278108,Precon4,FP snippets,R DHC - L ACC
+11,4,2,27,0.5326487177,Precon4,FP snippets,R RSC - L RSC
+11,4,2,28,0.3250817656,Precon4,FP snippets,R RSC - L DHC
+11,4,2,29,0.08610071437,Precon4,FP snippets,R RSC - L OFC
+11,4,2,30,0.1987299707,Precon4,FP snippets,R RSC - L ACC
+11,4,2,39,0.3619565209,Precon4,FP snippets,L RSC - L DHC
+11,4,2,40,0.0795507881,Precon4,FP snippets,L RSC - L OFC
+11,4,2,41,0.1879291757,Precon4,FP snippets,L RSC - L ACC
+11,4,2,42,0.09006476644,Precon4,FP snippets,L DHC - L OFC
+11,4,2,43,0.1428673723,Precon4,FP snippets,L DHC - L ACC
+11,4,2,44,0.2600063399,Precon4,FP snippets,L OFC - L ACC
