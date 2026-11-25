@@ -49,7 +49,7 @@ BARRY.shLearn = (function () {
         beats: [
           { title: 'Four cells from four mice', say: 'MouseLight traced these neurons through whole brains and registered them to the Allen atlas. In that shared frame, each axon passes within micrometres of the next cell\'s dendrite.',
             do: [['mode', '3d'], ['level', 'hpf'], ['focus', ['fan', 'gc', 'ca3', 'ca1']]] },
-          { title: 'Ride it', say: 'Space pauses, the arrows step, drag to look around and F to follow again.', do: [['ride', 'trisynaptic']] },
+          { title: 'Ride it', say: 'Each step waits for you: Next step (or the right arrow, or Space) moves the signal on. Drag to look around, F to follow again.', do: [['ride', 'trisynaptic']] },
         ],
       },
       {

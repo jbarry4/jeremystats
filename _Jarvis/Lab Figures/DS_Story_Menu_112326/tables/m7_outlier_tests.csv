@@ -1,0 +1,18 @@
+test,n,statistic,critical_at_0.05,p,m7_is_outlier_at_0.05,test_used_with_m7,effect_with_m7,p_without_m7,test_used_without_m7,effect_without_m7
+"Grubbs, two-sided, among IED- mice",4.0,1.4531,1.4813,0.1250255498127255,False,,,,,
+"Grubbs, two-sided, among high-knockout mice",6.0,2.0192,1.8871,0.0010460057014206117,True,,,,,
+"Grubbs, two-sided, among the 9 PTEN mice",9.0,1.7795,2.215,0.44613942885775615,False,,,,,
+"Grubbs, two-sided, among all 16 mice",16.0,2.3609,2.5857,0.14345052881255327,False,,,,,
+studentized deleted residual from the PTEN mice line (knockout %),9.0,-7.1018,,0.003523709589349013,True,,,,,
+"studentized deleted residual from the all-mice line (knockout %, controls at 0)",16.0,-5.6173,,0.0013404089597884345,True,,,,,
+contrast IEDneg_vs_CTL (IED- against control),,,,0.002572573794551588,,Student t,-2.3647729443769627,0.001197171285334555,Student t,-3.0526934528467997
+contrast IEDpos_vs_CTL (IED+ against control),,,,1.9156816072959898e-05,,Student t,4.0886687639923425,1.9156816072959898e-05,Student t,4.0886687639923425
+contrast IEDpos_vs_IEDneg (IED+ against IED-),,,,0.0002253259356217326,,Student t,4.13184135355079,1.9725324325308846e-05,Student t,7.658855386320063
+contrast lowKO_vs_CTL (low KO against control),,,,0.001197171285334555,,Student t,-3.0526934528467997,0.001197171285334555,Student t,-3.0526934528467997
+contrast highKO_vs_CTL (high KO against control),,,,0.05128205128205128,,Mann-Whitney,0.5379762432921092,1.9156816072959898e-05,Student t,4.0886687639923425
+contrast highKO_vs_lowKO (high KO against low KO),,,,0.05461105541795371,,Welch t,1.0666103996141343,1.9725324325308846e-05,Student t,7.658855386320063
+contrast PTEN_vs_CTL (PTEN against control),,,,0.7576923076923078,,Mann-Whitney,0.07662797161887222,0.3577837915776254,Welch t,0.44624095186818297
+contrast IED3 (control / IED- / IED+),16.0,,,5.05250544684734e-06,,ANOVA,0.2705416254189683,3.745664955767832e-07,ANOVA,0.3358722889735552
+contrast KO3 (control / low KO / high KO),16.0,,,0.029866154036751913,,Kruskal-Wallis,0.1927171961592251,3.745664955767832e-07,ANOVA,0.3358722889735552
+"contrast KO_dose_all (against % knockout, all mice (controls at 0))",16.0,,,0.1678863477563276,,Spearman,0.36229742870694254,0.0010288541379307541,Pearson,0.5232816604326247
+"contrast KO_dose_PTEN (against % knockout, PTEN mice only)",9.0,,,0.11943893298059964,,Kendall,0.5666666666666667,0.0009590934340137742,Pearson,0.8095238095238096

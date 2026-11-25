@@ -1,0 +1,29 @@
+story,label,raw,adj,status
+1  Hom learning,Hom fewer day-1 shocks than WT,0.013778819863296918,0.10658169135443199,goes
+1  Hom learning,Hom fewer day-1 shocks than Het,0.014255016048190778,0.03518709914518182,holds
+1  Hom learning,Hom less day-1 time in the zone than WT,0.015030325717665206,0.06375393115324494,goes
+1  Hom learning,Hom reach criterion sooner than WT,0.0029882773332020607,0.015185749743487742,holds
+1  Hom learning,Hom reach criterion sooner than Het,0.007767364590855141,0.04304609458898524,holds
+2  Improvement,Het improve less (entrances),0.02719945970492913,0.030708833242225328,holds
+2  Improvement,Hom improve less (entrances),0.010716364044883592,0.026701692998025668,holds
+2  Improvement,Het improve less (shocks),0.08135201189227663,0.03388888556017365,new
+2  Improvement,Hom improve less (shocks),0.004248042190866923,0.010512497866452876,holds
+2  Improvement,Het curves flatter (mixed model),0.0008761530207408143,0.0007668809551768477,holds
+2  Improvement,Hom curves flatter (mixed model),0.0006820858164000091,0.0005926410811796778,holds
+3  Age,Old Hom more day-2 shocks than young Hom,0.02207996968130661,0.25770528269493204,goes
+3  Age,"Hom x age interaction, day-2 shocks",0.03398615165326436,0.3833021359020504,goes
+3  Age,Old Hom enter sooner on day 2,0.009579826682321166,0.04439906819764917,holds
+4  Habituation,Hom cover less of the floor,0.006392529316571412,0.02063742969545797,holds
+4  Habituation,Hom keep to one side,0.06784855305441023,0.02110079016142186,new
+4  Habituation,Hom walk farther,0.03644788383103765,0.015160239621334717,holds
+5-6  Where they wait,Het wait nearer the opposite (direction),0.024848757562121893,0.022998850057497126,holds
+5-6  Where they wait,Het wait opposite (strategy score),0.009193215676885556,0.006060482952128641,holds
+5-6  Where they wait,Het spend less time pre-shock,0.0018683509946933578,0.00036015477204261176,holds
+5-6  Where they wait,Het turn back less at the edge,0.012776208194257656,0.013089706620302103,holds
+5-6  Where they wait,"Het safe spot wanders, day 1",0.015592798316379419,0.017175289443951327,holds
+5-6  Where they wait,Het more scattered (concentration),0.26265262068449047,0.14149346733085374,neither
+7  Path shape,"Hom less at the rim, day 2",0.021478791364148802,0.04396972591656296,holds
+7  Path shape,"Hom walk less straight, day 2",0.025715893019999,0.01832128101161284,holds
+7  Path shape,"Hom walk faster, day 1",0.19346439432388968,0.035411099713650133,new
+7  Path shape,"Hom sit still less, day 1",0.30380818491137224,0.005220337872223552,new
+7  Path shape,"Het walk slower, day 1",0.019085379034796218,0.022339351083177125,holds

@@ -179,6 +179,9 @@ BARRY.shPhys = (function () {
     // CSD sheet
     const img = ctx.createImageData(Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
     const iw = img.width, ih = img.height;
+    // the sink and source colors the stage paints with (so the panel and the sections agree)
+    const rgb = (h, f) => { if (!h || h[0] !== '#') return f; const n = parseInt(h.slice(1, 7), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const SK = rgb(o.sink, [214, 54, 46]), SR = rgb(o.source, [46, 112, 214]);
     for (let y = 0; y < ih; y++) {
       const ci = n - 1 - Math.min(n - 1, Math.floor(y / ih * n));     // shallowest at the top
       for (let x = 0; x < iw; x++) {
@@ -186,8 +189,8 @@ BARRY.shPhys = (function () {
         const v = m.csd[ci * T + ti] / m.cmax;
         const a = Math.min(1, Math.abs(v)) * 0.85;
         const o2 = (y * iw + x) * 4;
-        if (v < 0) { img.data[o2] = 214; img.data[o2 + 1] = 54; img.data[o2 + 2] = 46; }
-        else { img.data[o2] = 46; img.data[o2 + 1] = 112; img.data[o2 + 2] = 214; }
+        const c = v < 0 ? SK : SR;
+        img.data[o2] = c[0]; img.data[o2 + 1] = c[1]; img.data[o2 + 2] = c[2];
         img.data[o2 + 3] = Math.round(a * 255);
       }
     }

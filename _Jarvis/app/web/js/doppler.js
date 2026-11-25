@@ -253,7 +253,9 @@ BARRY.doppler = (function () {
       if (res) {
         list.push({ key: 'report', sig: [oid(res), (q.row || {}).label],
                     build: reportCard });
-        list.push({ key: 'bank', sig: [oid(res)], build: bankCard });
+        // Drawn again once banked by hand, and when the switch flips.
+        list.push({ key: 'bank', sig: [oid(res), ((res && res.banked) || {}).id,
+                                       autobankOn()], build: bankCard });
       }
     }
     list.push({ key: 'runs', sig: 'runs', build: runsShell,
@@ -2146,6 +2148,7 @@ BARRY.doppler = (function () {
               + (res.banked.n || res.n || 0).toLocaleString() + ' candidates, '
               + 'nothing decided yet. Confirm them in Spotter: Next, at the '
               + 'foot of the page.' }),
+        autobankSwitch(),
       ]);
     }
     if (res.before_fix) {
@@ -2159,23 +2162,84 @@ BARRY.doppler = (function () {
        never banked by hand either. Run again, it banks itself as it lands
        -- and is made by the Doppler of today, gap fix included, which an
        old run is not. */
+    /* Not banked -- and now bankable from here (2026-11-24, Rain: "No way
+       to bank Doppler shit right now"). "Run it again" was the only way
+       forward, and a job still on the cluster refuses a second one. */
     const when = (res.computed || {}).at || null;
+    const off = !autobankOn();
     return el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: '4. Not banked' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
         text: 'This run landed' + (when ? ' ' + whenWords(when) : '')
-            + ', before runs banked themselves, and nobody banked it. Run '
-            + 'it again and it banks itself as it lands, made by today’s '
-            + 'Doppler.' }),
+            + (off ? ' while banking as runs land is switched off on this '
+                     + 'computer. Bank it to send it to Spotter.'
+                   : ' and was not banked. Bank it to send it to Spotter, '
+                     + 'exactly as it is.') }),
       el('div', { class: 'tk-actions dop-actions' }, [
+        autobankSwitch(),
         el('span', { class: 'spacer' }),
-        el('button', { class: 'btn', text: 'Run it again',
+        el('button', { class: 'btn ghost', text: 'Run it again',
           title: 'Sends this recording to the cluster again with these '
-               + 'settings. The answer replaces this one and is banked as '
-               + 'it lands.',
+               + 'settings, made by today’s Doppler. Only needed if '
+               + 'the settings or Doppler itself have changed.',
           disabled: (!q.path || !vaccOn()) ? 'disabled' : null,
           onclick: () => run(true) }),
+        el('button', { class: 'btn', text: 'Bank it',
+          title: 'Bank this run as it is: the detector’s list, nothing '
+               + 'decided, under your name. It then waits in Spotter.',
+          disabled: (res.key && runGid()) ? null : 'disabled',
+          onclick: (e) => bankNow(e.currentTarget) }),
       ]),
+    ]);
+  }
+
+  /* Which recording the run on screen is of. */
+  function runGid() {
+    return res.gid || q.gid || null;
+  }
+
+  async function bankNow(btn) {
+    if (!res || !res.key || !runGid()) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Banking…'; }
+    try {
+      const got = await apiPost('/api/doppler/bank',
+                                { gid: runGid(), key: res.key });
+      res.banked = got.banked;
+      toast('Banked as “' + (got.banked.name || 'its own entry')
+            + '”: ' + (got.banked.n || 0).toLocaleString()
+            + ' candidates, waiting in Spotter.', 'ok', 7000);
+      paint();
+    } catch (e) {
+      toast(e.message, 'err', 10000);
+      if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Bank it'; }
+    }
+  }
+
+  /* Whether runs bank themselves as they land on this computer: On or Off,
+     named states (2026-11-24, "At least let auto-banking be selectable").
+     A preference the server reads when a run lands. */
+  const AUTOBANK_PREF = 'doppler_autobank';
+  function autobankOn() {
+    try { return BARRY.prefs.get(AUTOBANK_PREF, 'on') !== 'off'; }
+    catch (e) { return true; }
+  }
+  function autobankSwitch() {
+    return el('div', { class: 'dop-autobank' }, [
+      el('span', { class: 'hint', text: 'Runs landing on this computer:' }),
+      BARRY.ui.seg([
+        ['on', 'Banked as they land', 'Each run banks itself the moment it '
+                                      + 'lands, and waits in Spotter'],
+        ['off', 'Banked by hand', 'Runs land unbanked; Bank it, here, '
+                                  + 'sends one to Spotter'],
+      ], autobankOn() ? 'on' : 'off', (v) => {
+        try { BARRY.prefs.set(AUTOBANK_PREF, v); BARRY.prefs.flush(); }
+        catch (e) { /* kept for this session */ }
+        toast(v === 'off'
+          ? 'Runs on this computer now land unbanked. Bank each from here.'
+          : 'Runs on this computer now bank themselves as they land.',
+          'ok', 5000);
+        paint();
+      }),
     ]);
   }
 
