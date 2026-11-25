@@ -777,6 +777,9 @@ export function create(host, opts) {
   /* Hover and selection on the 3D structures: the hovered one glows and
      the rest step back; the selected one keeps an accent outline. */
   const HL = { hover: null, sel: null };
+  // the seizure story's heat on the clay (setHeat): it sits under hover and selection
+  const heatCol = new THREE.Color('#ff7a2f');
+  let heat = {};
   function highlight(kind, t) {
     HL[kind] = t && ((t.regions && t.regions.size) || (t.layers && t.layers.size) || (t.cells && t.cells.size)) ? t : null;
     const acc = new THREE.Color(S.colors.accent || '#e5a823');
@@ -798,6 +801,7 @@ export function create(host, opts) {
           if (hov && !isH && !isS) m.material.color.lerp(bg, 0.6);
         }
         m.material.emissive.copy(isH ? acc : isS ? acc : new THREE.Color(0, 0, 0)).multiplyScalar(isH ? 0.42 : isS ? 0.18 : 0);
+        if (!isH && !isS && g === 'hpf' && heat[k]) m.material.emissive.copy(heatCol).multiplyScalar(0.8 * heat[k]);
         const o = m.children.find((c) => c.userData.outlineOf);
         if (o) { o.material.uniforms.color.value.copy(isS || isH ? acc : ink); o.material.uniforms.px.value = isS || isH ? 2.6 : 1.1; o.material.uniforms.alpha.value = isS || isH ? 1 : 0.38; }
       }
@@ -1334,8 +1338,21 @@ export function create(host, opts) {
     crowd.frustumCulled = false;
     G.crowd.add(crowd);
     crowdData = data;
+    crowdA0 = null;
     glyphSig = '';
     applyClipping();
+  }
+  /* One kind of soma fading out of the crowd (kind: its index in the crowd's
+     kinds; v 0..1); fadeCrowd(null) brings every dot back. */
+  let crowdA0 = null;
+  function fadeCrowd(kind, v) {
+    if (!crowd || !crowdData || !crowdData.kind) return;
+    const a = crowd.geometry.attributes.a;
+    if (!crowdA0) { if (kind == null) return; crowdA0 = Float32Array.from(a.array); }
+    const K = crowdData.kind;
+    for (let i = 0; i < K.length; i++) a.array[i] = kind != null && K[i] === kind ? crowdA0[i] * v : crowdA0[i];
+    a.needsUpdate = true;
+    dirty = true;
   }
   /* Up close the crowd's dots are drawn out as cells: each soma in the
      section's sheet gets its dendrites, laid in the plane of the section
@@ -1592,18 +1609,21 @@ export function create(host, opts) {
     glowTex = new THREE.CanvasTexture(c);
     return glowTex;
   }
-  function volley(from, to, color, ms) {
+  /* o: {size: spark scale, lift: how high the arc rises (1 = the usual), alpha, land: flare where it lands (default on)} */
+  function volley(from, to, color, ms, o) {
+    o = o || {};
     const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
     const mid = a.clone().add(b).multiplyScalar(0.5);
-    mid.y += a.distanceTo(b) * 0.35 + 0.2;
+    mid.y += (a.distanceTo(b) * 0.35 + 0.2) * (o.lift == null ? 1 : o.lift);
     const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
     const pts = curve.getPoints(80);
+    const la = 0.55 * (o.alpha == null ? 1 : o.alpha);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: false }));
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity: la, depthTest: false }));
     line.renderOrder = 20;
     G.fx.add(line);
     const N = 14;
-    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: Math.max(0.09, camera.position.distanceTo(controls.target) * 0.012), transparent: true, opacity: 0.95, depthTest: false }));
+    const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color, size: Math.max(0.09, camera.position.distanceTo(controls.target) * 0.012) * (o.size || 1), transparent: true, opacity: 0.95, depthTest: false }));
     sparks.geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
     G.fx.add(sparks);
     const s = performance.now(), dur = ms || 2200;
@@ -1613,14 +1633,91 @@ export function create(host, opts) {
     anims.add((now) => {
       const k = (now - s) / dur;
       if (k > 1.25) { done(); return false; }
-      if (k >= 0.83 && !landed) { landed = true; flare(b, color, 900); }
+      if (k >= 0.83 && !landed) { landed = true; if (o.land !== false) flare(b, color, 900); }
       const pos = sparks.geometry.attributes.position;
       for (let i = 0; i < N; i++) { const p = curve.getPoint(Math.min(1, Math.max(0, k * 1.2 - i * 0.035))); pos.setXYZ(i, p.x, p.y, p.z); }
       pos.needsUpdate = true;
-      line.material.opacity = 0.55 * Math.max(0, 1 - Math.max(0, k - 1) * 4);
+      line.material.opacity = la * Math.max(0, 1 - Math.max(0, k - 1) * 4);
       return true;
     });
     start();
+  }
+  /* ---------- a seizure's spread, drawn on the clay (the seizure story) ---------- */
+  /* Heat: hippocampal regions glow from inside, {key: 0..1}; null cools them all. */
+  function heatOf(m, k) {
+    const isH = HL.hover && HL.hover.regions && HL.hover.regions.has(k);
+    const isS = HL.sel && HL.sel.regions && HL.sel.regions.has(k);
+    if (isH || isS) return;
+    m.material.emissive.copy(heatCol).multiplyScalar(0.8 * (heat[k] || 0));
+  }
+  function setHeat(map, color) {
+    heat = map || {};
+    if (color) heatCol.set(color);
+    for (const [k, m] of Object.entries(byKey.hpf)) heatOf(m, k);
+    dirty = true;
+  }
+  /* The brain's divisions (Isocortex, TH, MB, P, MY, ...) as glowing ghosts:
+     {key: {color, a: 0..1}}; a division left out, or null, goes back as it was. */
+  function glowBrain(map) {
+    for (const [k, m] of Object.entries(byKey.brain)) {
+      if (k === 'root' || k === 'HPF' || !m.material.uniforms) continue;
+      const u = m.material.uniforms;
+      if (!m.userData.orig) m.userData.orig = { color: u.color.value.clone(), opacity: u.opacity.value, visible: m.visible };
+      const g = map && map[k];
+      if (g && g.a > 0.005) {
+        u.color.value.set(g.color || '#ff7a2f');
+        u.opacity.value = 0.1 + 0.62 * Math.min(1, g.a);
+        m.material.blending = S.dark > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
+        m.visible = true;
+      } else if (m.userData.glowing !== false) {
+        u.color.value.copy(m.userData.orig.color);
+        u.opacity.value = m.userData.orig.opacity;
+        m.material.blending = THREE.NormalBlending;
+        m.visible = m.userData.orig.visible;
+      }
+      m.userData.glowing = !!(g && g.a > 0.005);
+    }
+    dirty = true;
+  }
+  /* A light that stays and breathes where it is put (world mm): the medial
+     septum's pacing, the light on the hilus. at null takes it away. */
+  const beacons = {};
+  function beacon(key, at, color, o) {
+    const old = beacons[key];
+    if (old) { G.fx.remove(old.s); old.s.material.dispose(); anims.delete(old.a); delete beacons[key]; dirty = true; }
+    if (!at) return;
+    o = o || {};
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: color || '#fff4c2', map: glowTexture(), transparent: true, depthTest: false,
+      opacity: 0.9, blending: THREE.AdditiveBlending }));
+    s.position.set(at[0], at[1], at[2]);
+    s.renderOrder = 81;
+    G.fx.add(s);
+    const t0 = performance.now();
+    const a = (now) => {
+      const reach = S.view === 'slice' ? (ortho.top - ortho.bottom) * 0.9 : camera.position.distanceTo(s.position);
+      const base = Math.max(0.02, reach * 0.034) * (o.size || 1);
+      // hz: a slow breath (a sine); blink: a light switched on and off
+      let k = 1;
+      if (o.blink) k = ((now - t0) / 1000 * o.blink) % 1 < 0.42 ? 1 : 0.08;
+      else if (o.hz) k = 0.5 + 0.5 * Math.sin((now - t0) / 1000 * Math.PI * 2 * o.hz);
+      s.scale.setScalar(base * (0.7 + 0.55 * k));
+      s.material.opacity = (o.alpha || 0.9) * (0.35 + 0.65 * k);
+      return true;
+    };
+    beacons[key] = { s, a };
+    anims.add(a);
+    start();
+  }
+  function clearBeacons() { Object.keys(beacons).forEach((k) => beacon(k, null)); }
+  /* Cells that fade away (lost after seizures): v 1 = as they are, toward 0 = gone. */
+  function fadeCells(keys, v) {
+    for (const k of keys) {
+      const c = byKey.cells[k];
+      if (!c) continue;
+      c.mesh.material.uniforms.dim.value = v;
+      c.mesh.material.depthWrite = v > 0.5;
+    }
+    dirty = true;
   }
   /* Persistent drawn bundles (the medial perforant path, the temporoammonic
      path): ccf polylines drawn as tubes, shown or hidden, pulsed by events. */
@@ -2291,6 +2388,7 @@ export function create(host, opts) {
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
     focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
+    setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd,
     ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
     snapshot, record, theme, dispose,
     pause: stop, resume: () => { dirty = true; start(); },

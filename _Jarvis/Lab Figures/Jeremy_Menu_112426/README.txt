@@ -5,7 +5,7 @@ cover every mouse in the Strict Root Canal workflow, with a summary table and an
 Exploratory: one number per mouse, generous tests, no correction. Built on the DS story menu of 2026-11-23
 (../DS_Story_Menu_112326); where a page recaps a menu result it says so.
 
-Jeremy_Menu_112426.pdf    the eleven pages in one file; page 1 lists every question with its one-line answer, and a key
+Jeremy_Menu_112426.pdf    the fourteen pages in one file (eleven, plus three supplement pages added 2026-11-25); page 1 lists every question with its one-line answer, and a key
 
 The answers in one line
   1  Does the %KO cause changes in synaptic efficacy for dentate spikes
@@ -42,9 +42,16 @@ pages/  each page as PDF (vector) and PNG (300 dpi)
   03_q2_ds1_ds2                who makes both DS types; DS1 and DS2 rates, mix, timing, separation and position
   04_q3_mml_oml_sink           MML and OML sinks of each blade against % knockout and by IED status
   05_q4_dominant_frequency     the DS's own dominant frequency, and where its fast power sits, per layer
+  05b_q4_supp_how_layers_are_defined   supplement (CONCERN / RESOLVE, added 2026-11-25): how MML and OML of each blade
+                               are found from each recording's own DS, shown on all 16 recordings
+  05c_q4_supp_when_power_is_measured   supplement: question 4's time windows (fast power -25 to +25 ms against -100 to
+                               -50 ms; dominant frequency -50 to +50 ms; sink +-3 ms), worked through on one layer
   06_q5_open_filters           questions 3 and 4 on every filter band (P grid and key panels)
   07_q6_predict_abnormal       which mice make BTs and red events; ROC for % knockout, DS fast power and held-out models
   08_q7_continuum              DS, BT and IED-class events of the same IED+ mice against each other and against control DS
+  08b_q7_supp_classes_and_q4   supplement: how DS, BT and IED class are defined (the two borders and the halo), that
+                               question 4 uses the DS class only, and every comparison including IED+ DS against control
+                               DS (fast power higher, P 1.9e-05; MML current not), which the question 7 page did not draw
   09_q8_q7_open_filters        question 7 on every filter band (P grid and key panels)
   10_every_mouse               all 16 mice in the Strict workflow; m7 framed
   11_table_and_aggregate       one table of every mouse with m7 highlighted, pooled rows, aggregate clouds, per-mouse tests

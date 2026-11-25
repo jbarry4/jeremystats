@@ -6,8 +6,8 @@ Barry Playground/KCNT1 Spreadsheets/KCNT1 mouse 459/Seizure anatomical spread.
     python tools/seahorse/story_m459.py           read the raw once (cached), write the story
     python tools/seahorse/story_m459.py --fresh   read the raw again
 
-Reads the Neuralynx recording on the lab share (64 CSC files, 30 kHz, contacts
-50 um apart; CSC1 shallowest) and writes web/seahorse/story_m459.json:
+Reads the Neuralynx recording on the lab share (64 CSC files, 30 kHz; CSC1
+shallowest; an H3 probe by Cheetah's log, 20 um apart, where the figures say 50) and writes web/seahorse/story_m459.json:
 
   zones   the probe's dendritic zones, cell layers and hilus (the zones of
           figure B), each with the Seahorse layers it paints
@@ -52,7 +52,8 @@ FS_OUT = 50.0
 SPAN = (-12.0, 60.0)
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "Jarvis", "seahorse_raw", "m459_s1_cache.npz")
 OUT = os.path.join(APP, "web", "seahorse", "story_m459.json")
-PITCH_MM = 0.05
+PITCH_MM = 0.02                  # Cheetah's log names the "H3 Acute Video New" config (20 um); the figures say 50.
+                                 # Only the CSD's units depend on it, and every zone is read against its own baseline.
 BAD = [59]                       # CSC59 is bad (figure B): filled from its neighbours
 SORT_CH = list(range(35, 49))    # CSC 35-48: the unit and its neighbours
 
@@ -260,7 +261,7 @@ def figure_crops():
     os.makedirs(IMG_DIR, exist_ok=True)
     out = []
     for k, (x0, x1) in enumerate([(684, 2044), (2235, 3595), (3785, 5145), (5336, 6696)]):
-        box = (x0 - 14, 1700, min(im.width, x1 + 90), 3215)
+        box = (x0 - 14, 1700, min(im.width, x1 + 62), 3215)      # the colored bar in, the next panel's scale out
         c = im.crop(box)
         c = c.resize((620, round(620 * c.height / c.width)), Image.LANCZOS)
         name = "m459_stage%d.jpg" % (k + 1)
@@ -343,15 +344,16 @@ def main():
     if mv is not None:
         rel = mv["t"] - ONSET
         keep = (rel >= SPAN[0]) & (rel <= SPAN[1])
-        if keep.sum() > 100:
+        log("tracker: %d frames, points per frame median %d (range %d-%d)" % (keep.sum(), np.median(mv["n"][keep]) if keep.any() else 0,
+                                                                          mv["n"][keep].min() if keep.any() else 0, mv["n"][keep].max() if keep.any() else 0))
+        # an empty tracker (no point ever passed its threshold: no camera, or no light) says nothing
+        if keep.sum() > 100 and mv["n"][keep].max() > 0:
             move = dict(fps=29.97, t0=round(float(rel[keep][0]), 3),
                         n=[int(v) for v in mv["n"][keep]], step=[round(float(v), 1) for v in mv["step"][keep]])
-            log("tracker: %d frames, points per frame median %d (range %d-%d)" % (keep.sum(), np.median(mv["n"][keep]),
-                                                                              mv["n"][keep].min(), mv["n"][keep].max()))
 
     r2 = lambda arr: [round(float(v), 2) for v in arr]
     story = dict(
-        what="KCNT1 Hom mouse 459, session 1 (2024-12-06), awake head-fixed, 64-contact linear probe 50 um apart",
+        what="KCNT1 Hom mouse 459, session 1 (2024-12-06), awake head-fixed, 64-contact linear probe",
         source="Neuralynx recording " + SESSION.split("\\Jeremy3\\")[-1].replace("\\", "/"),
         built=time.strftime("%Y-%m-%d"), onset_s=ONSET, fs=FS_OUT, t0=SPAN[0], t1=SPAN[1],
         baseline_s=list(BASE), zones=zones, discharges=[t for t in dis if SPAN[0] - 30 <= t <= SPAN[1]],
