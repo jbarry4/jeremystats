@@ -501,8 +501,235 @@ def page_layers():
     save(fig, "04_how_the_layers_are_defined")
 
 
+# ---------------------------------------------------------------- page 5: question 4's windows, confirmed
+def layer_trace(lab, blade, layer):
+    """Mean notch-band CSD of one layer over the DS of one mouse (+-100 ms), as question 4's reads built it."""
+    z = np.load(os.path.join(HERE, "reads", lab + ".npz"), allow_pickle=True)
+    fs = float(z["fs"])
+    kind = z["kind"].astype(str)
+    X = z["notch"][kind == "DS"].astype(float)
+    bad = [int(b) - 1 for b in z["bad"]]
+    good = np.array([i not in bad for i in range(X.shape[1])])
+    for i in bad:
+        gi = np.where(good)[0]
+        X[:, i] = np.array([[np.interp(i, gi, X[e, gi, t]) for t in range(X.shape[2])] for e in range(X.shape[0])])
+    s = X.copy()
+    s[:, 1:-1] = 0.25 * X[:, :-2] + 0.5 * X[:, 1:-1] + 0.25 * X[:, 2:]
+    c = np.full_like(s, np.nan)
+    c[:, 1:-1] = -(s[:, :-2] - 2 * s[:, 1:-1] + s[:, 2:]) / 0.02 ** 2
+    k = J.UP()["recs"][("v6", lab)]["landmarks"]
+    rows = np.arange(X.shape[1])
+    v = (k["GU"] - rows) / (k["GU"] - k["U"]) if blade == "upper" else (rows - k["GL"]) / (k["L"] - k["GL"])
+    lo, hi = SPANS[layer]
+    rr = np.where(good & (v >= lo) & (v < hi) & (rows > 0) & (rows < rows.size - 1))[0]
+    sign = J.FQ()["mice"][lab]["sign"]
+    tr = sign * c[:, rr, :].mean(axis=1)
+    t = (np.arange(X.shape[2]) - X.shape[2] // 2) / fs * 1000.0
+    return t, tr, rr
+
+
+def page_q4():
+    lab, key = "m13", ("lower", "MML")
+    t, tr, rr = layer_trace(lab, *key)
+    Q = J.FQ()["mice"][lab]
+    fr = Q["freqs"]
+    db = np.asarray(Q["bands"]["notch"]["fast_spec"][("DS",) + key + ("csd",)], float)
+    pw = np.asarray(Q["bands"]["notch"]["whole_spec"][("DS",) + key + ("csd",)], float)
+    cen, gain = J.fast_metrics(db)
+    m5 = (fr >= 5) & (fr <= 300)
+    dom = float(fr[m5][np.argmax(pw[m5])])
+    fig, y = header(5, "Confirm the timing of this power analysis for Q4 as well",
+                    "Confirmed from the code: question 4 measures the fast power in the 50 ms centered on the DS peak "
+                    "(−25 to +25 ms) against −100 to −50 ms on the same layer, and the dominant frequency over "
+                    "the 100 ms centered on the peak (−50 to +50 ms).")
+    F.letter(fig, 0.4, y + 0.08, "a", "Question 4's three windows on one layer's signal: m13, lower MML, mean CSD over its "
+             "%d DS" % tr.shape[0], width=7.6)
+    a = F.axes_in(fig, 0.95, y + 0.5, 6.6, 1.5)
+    mu = np.nanmean(tr, axis=0)
+    mu = mu / np.nanmax(np.abs(mu))
+    a.axvspan(-100, -50, color=F.SOFT, alpha=0.18, lw=0)
+    a.axvspan(-25, 25, color=F.C_IED, alpha=0.15, lw=0)
+    a.plot([-50, 50], [1.12, 1.12], color="#2f6db5", lw=3, solid_capstyle="butt")
+    a.plot([-3, 3], [-1.18, -1.18], color=F.INK, lw=3, solid_capstyle="butt")
+    a.plot(t, mu, color=F.INK, lw=1.1)
+    a.axvline(0, color=F.INK, lw=0.5, ls="--")
+    a.text(-75, 0.9, "baseline\n−100 to −50 ms", fontsize=5.8, color=F.SOFT, ha="center", va="top")
+    a.text(0, 0.75, "fast power\n±25 ms", fontsize=5.8, color=F.C_IED, ha="center", va="top",
+           bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none"))
+    a.text(52, 1.12, "dominant frequency ±50 ms", fontsize=5.8, color="#2f6db5", va="center")
+    a.text(5, -1.18, "sink ±3 ms", fontsize=5.8, color=F.INK, va="center")
+    a.set_xlim(-100, 100)
+    a.set_ylim(-1.35, 1.3)
+    a.set_yticks([])
+    a.spines["left"].set_visible(False)
+    a.set_xlabel("Time from the DS peak (ms)")
+    yb = y + 2.6
+    F.letter(fig, 0.4, yb + 0.08, "b", "From the two fast-power windows to the numbers in panels a, c and d of question 4", width=3.6)
+    b = F.axes_in(fig, 0.95, yb + 0.55, 2.9, 1.7)
+    m = (fr >= 60) & (fr <= 500)
+    b.plot(fr[m], db[m], color=F.C_POS, lw=1.1)
+    b.axvspan(250, 500, color=F.C_POS, alpha=0.08, lw=0)
+    b.axvline(cen, color=F.INK, lw=0.7, ls="--")
+    b.text(cen + 6, b.get_ylim()[1], "center of the\nadded power %.0f Hz" % cen, fontsize=5.6, va="top")
+    b.text(375, b.get_ylim()[1], "gain = mean dB,\n250–500 Hz: %.1f" % gain, fontsize=5.6, va="top", ha="center",
+           color=F.C_POS)
+    b.set_xlim(60, 500)
+    b.set_xlabel("Frequency (Hz)")
+    b.set_ylabel("Event (±25 ms) over baseline\n(−100 to −50 ms), dB")
+    F.letter(fig, 4.4, yb + 0.08, "c", "The dominant frequency: the peak of the ±50 ms spectrum", width=3.6)
+    c = F.axes_in(fig, 4.95, yb + 0.55, 2.6, 1.7)
+    m = (fr >= 1) & (fr <= 60)
+    c.plot(fr[m], pw[m] / pw[m5].max(), color="#2f6db5", lw=1.1)
+    c.axvline(dom, color=F.INK, lw=0.7, ls="--")
+    c.text(dom + 1.5, 1.02, "%.0f Hz" % dom, fontsize=5.8, va="bottom")
+    c.set_xlim(0, 60)
+    c.set_xlabel("Frequency (Hz)")
+    c.set_ylabel("Power over ±50 ms\n(peak = 1)")
+    textcol(fig, yb + 2.85, [
+        ("Question 4's measure, step by step", "1. Every DS is read again at 2 kHz, ±100 ms around its peak; the "
+         "signal is broadband with only mains notched out. 2. CSD (and LFP) on each contact; a layer's signal is the average "
+         "over its contacts (MML or OML of either blade, as on page 4). 3. Fast power: the power spectrum of −25 to +25 ms "
+         "over that of −100 to −50 ms on the same layer, in dB at every frequency (Hann window, 2,048-point FFT); "
+         "averaged over the mouse's DS. 4. From that curve: the center of the added power between 100 and 500 Hz (panel c of "
+         "question 4) and the mean gain from 250 to 500 Hz (panel d, on the LFP). 5. Dominant frequency: the peak of the "
+         "event's own spectrum over −50 to +50 ms, between 5 and 300 Hz (panel b of question 4)."),
+        ("Same as Story 1, and where it differs", "The event window is the same (±25 ms around the peak), so both "
+         "measure power during the DS. The baseline differs: Story 1's Root Canal number uses −170 to −130 ms from "
+         "a 5 kHz read and the best single contact; question 4 uses −100 to −50 ms (the 2 kHz reads stop at "
+         "−100 ms) and a layer's contacts. With a 50 ms window, fast-power frequencies are resolved to about 20 Hz; "
+         "with 100 ms, the dominant frequency to about 10 Hz."),
+    ], x=0.5, w=7.5)
+    save(fig, "05_question4_windows")
+
+
+# ---------------------------------------------------------------- page 6: classes, and question 4 against question 7
+def cat_panel(fig, x, y, w, h, vals, ylabel, title):
+    """WT DS (controls) | IED+ DS | BT | IED class, one dot per mouse; every comparison bracketed:
+    WT against each (unpaired), and DS against BT and IED within the IED+ mice (paired)."""
+    a = F.axes_in(fig, x, y, w, h)
+    cats = [("WT", "Control\nDS", F.C_CTL), ("DS", "IED+\nDS", F.C_DS), ("TZ", "IED+\nBT", F.C_PDS), ("IED", "IED+\nIED", F.C_IED)]
+    rng = np.random.RandomState(2)
+    allv = []
+    for i, (c, _w, col) in enumerate(cats):
+        vs = [v for v in vals[c].values() if np.isfinite(v)]
+        a.plot([i - 0.25, i + 0.25], [np.median(vs)] * 2, color=F.INK, lw=1.1, zorder=3)
+        for v in vs:
+            a.scatter([i + rng.uniform(-0.08, 0.08)], [v], s=16, color=col, edgecolor="white", lw=0.4, zorder=4)
+        allv += vs
+    for l in J.IEDP:
+        a.plot([1, 2, 3], [vals[c][l] for c in ("DS", "TZ", "IED")], color=F.C_POS, lw=0.5, alpha=0.5, zorder=2)
+    F.note_y(a, allv)
+    wt = list(vals["WT"].values())
+    pairs = [(0, i, S.two(wt, list(vals[c].values()))["p"]) for i, c in ((1, "DS"), (2, "TZ"), (3, "IED"))]
+    pairs += [(1, i, J.paired_p([vals[c][l] for l in J.IEDP], [vals["DS"][l] for l in J.IEDP])) for i, c in ((2, "TZ"), (3, "IED"))]
+    F.defer_brackets(a, pairs, show_ns=True)
+    a.set_xticks(range(4))
+    a.set_xticklabels([wd for _c, wd, _col in cats], fontsize=5.8)
+    a.tick_params(axis="x", length=0)
+    a.set_xlim(-0.5, 3.5)
+    a.set_ylabel(ylabel, fontsize=6.2)
+    a.set_title(title, fontsize=6.6, loc="left")
+    return {(cats[i][0], cats[j][0]): p for i, j, p in pairs}
+
+
+def page_classes():
+    import pages_b as PB
+    rc = D.rc()
+    h = rc[(rc.wf == "halo") & rc.lab.isin(LABS)]
+    cnt = h.groupby(["kind", "cls"]).size()
+    fig, y = header(6, "Q4: It's saying DS has higher power in IED+ mice. Q7: DS and WT DS are not different, the BT is. "
+                       "Please clarify why that is. Does Q4 include BT? ... How is the BT defined? Which border?",
+                    "Both pages agree: the IED+ mice's DS carry more fast power than control DS, and no more current. Question "
+                    "7's 'only the fast power is higher' was about BTs, and its page never drew the DS against control DS "
+                    "comparison; it is drawn here. Question 4 uses the DS class only, never the BTs.")
+    F.letter(fig, 0.4, y + 0.08, "a", "How every event gets its class: two borders in amplitude, half-width and fast power",
+             width=7.6)
+    views = [(0, 2, "Largest amplitude (µV, log)", "Fast power (dB)"), (1, 2, "Half-width (ms)", "Fast power (dB)")]
+    for j, (i0, i1, xl, yl) in enumerate(views):
+        ax = F.axes_in(fig, 0.95 + j * 2.25, y + 0.5, 1.75, 1.6)
+        cols = {0: np.log10(h.amp), 1: h.hw, 2: h.hf}
+        for kind, s, al in (("DS", 1.2, 0.25), ("far", 5, 0.9), ("TZ", 5, 0.9), ("IED", 5, 0.9)):
+            m = (h.kind == kind).values
+            ax.scatter(np.asarray(cols[i0])[m], np.asarray(cols[i1])[m], s=s, color=F.KIND_COLOR[kind], alpha=al, lw=0)
+        for name, col in (("ds", F.C_DS), ("pspike", F.C_IED)):
+            P = PB._hull_xy(name, i0, i1)
+            P = np.vstack([P, P[:1]])
+            ax.plot(P[:, 0], P[:, 1], color=col, lw=1.0)
+        if i0 == 0:
+            tk = [100, 300, 1000, 3000]
+            ax.set_xticks(np.log10(tk))
+            ax.set_xticklabels([str(t) for t in tk])
+        else:
+            ax.set_xlim(2, 30)
+        ax.set_xlabel(xl, fontsize=6.2)
+        ax.set_ylabel(yl, fontsize=6.2)
+        ax.tick_params(labelsize=5.6)
+    F.put(fig, 5.55, y + 0.5, "The two borders", 2.5, size=6.6, weight="bold")
+    F.put(fig, 5.55, y + 0.7, "DS border (blue): the outline of 2,150 DS from the 9 control recordings (Snap, a convex "
+          "hull, its 5% most outlying corners peeled off).\nIED border (red): the outline of 39 hand-picked IEDs from the "
+          "five IED+ mice (Snap, 5%).\nBoth are drawn on the three numbers Root Canal measures per event; the lines here are "
+          "their flat shadows, so an event can look inside a line and be outside in the third number.", 2.45, size=6.0)
+    yt = y + 2.45
+    rows = [("DS (blue)", "inside the DS border only", int(cnt.get(("DS", "ds"), 0)),
+             "outside both, but within 2× the DS border's size and 1.5× nearer it", int(cnt.get(("DS", "halo_ds"), 0))),
+            ("BT (purple)", "inside BOTH borders", int(cnt.get(("TZ", "both"), 0)),
+             "outside both, within 2× of either, but not 1.5× nearer one", int(cnt.get(("TZ", "halo_amb"), 0))),
+            ("IED class (red)", "inside the IED border only", int(cnt.get(("IED", "pspike"), 0)),
+             "outside both, within 2× the IED border and 1.5× nearer it", int(cnt.get(("IED", "halo_pspike"), 0))),
+            ("Outside (gray)", "beyond both halos", int(cnt.get(("far", "neither"), 0)), "", 0)]
+    F.put(fig, 0.5, yt, "Class", 1.2, size=6.4, weight="bold")
+    F.put(fig, 1.7, yt, "Rule 1 (inside a border)", 2.3, size=6.4, weight="bold")
+    F.put(fig, 4.15, yt, "Rule 2 (the halo, for events outside both)", 3.2, size=6.4, weight="bold")
+    yt += 0.2
+    for nm, r1, n1, r2, n2 in rows:
+        F.put(fig, 0.5, yt, nm, 1.2, size=6.3, weight="bold")
+        F.put(fig, 1.7, yt, "%s: %d" % (r1, n1), 2.4, size=6.3)
+        if r2:
+            F.put(fig, 4.15, yt, "%s: %d" % (r2, n2), 3.8, size=6.3)
+        yt += 0.2
+    # b: the comparison question 7 did not draw
+    med = lambda l, k, c: float(h[(h.lab == l) & (h.kind == k)][c].median())  # noqa: E731
+    refn = J.ref_reads("notch")
+    vf = {"WT": {l: med(l, "DS", "hf") for l in CTL}}
+    for c in ("DS", "TZ", "IED"):
+        vf[c] = {l: med(l, c, "hf") for l in J.IEDP}
+    yb = yt + 0.25
+    F.letter(fig, 0.4, yb + 0.08, "b", "Every comparison, with control DS against the IED+ mice's DS drawn: fast power is higher "
+             "for every IED+ class; MML current is not higher than control for any", width=7.6)
+    p_f = cat_panel(fig, 0.95, yb + 0.6, 1.9, 1.55, vf, "Fast power (dB, Root Canal)", "Fast power (Story 1, question 7a)")
+    sinks = {}
+    for i, key in enumerate([("upper", "MML"), ("lower", "MML")]):
+        vs = {"WT": {l: J.fq(l, "notch", "sink", ("DS",) + key) / refn for l in CTL}}
+        for c in ("DS", "TZ", "IED"):
+            vs[c] = {l: J.fq(l, "notch", "sink", (c,) + key) / refn for l in J.IEDP}
+        sinks[key] = cat_panel(fig, 3.45 + i * 2.25, yb + 0.6, 1.75, 1.55, vs, "Sink (control deepest DS sink = 1)",
+                               "%s %s current (question 7b)" % (key[0].capitalize(), key[1]))
+    textcol(fig, yb + 2.65, [
+        ("Why the two pages read differently", "Question 4 compares the DS of each group: the IED+ mice's DS carry more fast "
+         "power, and it sits higher in frequency (lower-MML center 280 against 207 Hz for control DS, %s). Question 7 "
+         "sorts the IED+ mice's events into classes; its statement 'against a control DS only the fast power is higher' is "
+         "about the BTs: they carry more MML current than the same mice's DS, but not more than a control DS, while their "
+         "fast power is above both. The IED+ mice's DS behave the same way against control DS: fast power higher (%s), "
+         "current not (upper MML %s, lower %s). Question 7's page showed brackets only against BTs and IED-class "
+         "events, which made it look as if DS matched control DS; panel b adds that comparison."
+         % (F.pstr(S.two([J.fast_of(l, "notch", "DS", ("lower", "MML"), "csd", 0) for l in CTL],
+                         [J.fast_of(l, "notch", "DS", ("lower", "MML"), "csd", 0) for l in J.IEDP])["p"]),
+            F.pstr(p_f[("WT", "DS")]), F.pstr(sinks[("upper", "MML")][("WT", "DS")]), F.pstr(sinks[("lower", "MML")][("WT", "DS")]))),
+        ("Does question 4 include BTs?", "No. Questions 1 to 6 use the DS class only: inside the DS border only, plus the "
+         "events outside both borders that the DS halo captured (%d of %d). BTs, IED-class events and events outside both "
+         "halos are left out, in every mouse. The BTs and IED-class events appear only in questions 6, 7 and 8."
+         % (int(cnt.get(("DS", "halo_ds"), 0)), int(cnt.get(("DS", "ds"), 0) + cnt.get(("DS", "halo_ds"), 0)))),
+        ("How a DS inside a control-drawn border can still differ", "The DS border is the outline of the control DS cloud, "
+         "and it is wide. The IED+ mice's DS fall inside it but toward its upper part in fast power (medians 16 to 18 dB "
+         "against 12 to 14 dB for controls), so being classed DS does not make them identical to control DS."),
+    ], x=0.5, w=7.5)
+    save(fig, "06_classes_and_q4_vs_q7")
+
+
 if __name__ == "__main__":
     os.makedirs(os.path.join(DEST, "tables"), exist_ok=True)
+    page_classes()
+    page_q4()
     page_layers()
     page_window().to_csv(os.path.join(DEST, "tables", "measurement_windows.csv"), index=False)
     allcalls, calls, mean = page_heldout()
