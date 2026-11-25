@@ -63,7 +63,7 @@ RUN = {"running": False, "id": None, "steps": [], "started": None, "proc": None,
        "stopped": False}
 _LOCK = threading.Lock()
 HOOKS = {"who": None, "machine": None, "shard": None, "reg": None, "bank": None,
-         "curate": None, "is_test": None, "save": None}
+         "curate": None, "is_test": None, "save": None, "cloud": None}
 
 RULES = """\
 You are "Hater of AI", the in-app helper of Jarvis, a neuroscience lab's
@@ -268,22 +268,7 @@ def gather_data(since):
     except Exception as e:                               # noqa: BLE001
         out["bank"] = {"error": str(e)}
     try:
-        people, models, labels, sets_touched = Counter(), Counter(), Counter(), set()
-        for s in _hook("curate").all():
-            for ev in s.get("events") or []:
-                for rv in (ev or {}).get("reviews") or []:
-                    at = _when((rv or {}).get("at"))
-                    if not at or at < since:
-                        continue
-                    by = str(rv.get("by") or "")
-                    sets_touched.add(s.get("name") or s.get("gid"))
-                    labels[str(rv.get("label"))] += 1
-                    if by.endswith("(AI)"):
-                        models[by] += 1
-                    elif _person(by):
-                        people[by] += 1
-        out["calls"] = {"people": dict(people.most_common()), "models": dict(models.most_common()),
-                        "labels": dict(labels.most_common()), "sets": len(sets_touched)}
+        out["calls"] = _calls(since)
     except Exception as e:                               # noqa: BLE001
         out["calls"] = {"error": str(e)}
     try:
@@ -299,6 +284,55 @@ def gather_data(since):
     out["activity"] = _activity(since)
     out["floss"] = _floss_tickets(since)
     return out
+
+
+def _cloud_reviews(since):
+    """Every curation call made since `since` on ANY computer, from Supabase
+    (2026-11-25: the report counted only the calls this computer had pulled).
+    None when the cloud is not set up or cannot be reached."""
+    try:
+        cl = _hook("cloud")
+        if cl is None or not cl.configured:
+            return None
+        stamp = since.astimezone().isoformat()
+        return cl.select_all("curation_reviews", "at=gte." + stamp,
+                             columns="set_id,event_id,reviewer,label,at")
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _calls(since):
+    """Who made curation calls this week: the cloud's rows from every
+    computer, plus any made here that have not been pushed yet -- each call
+    counted once, keyed by set, event, reviewer and time."""
+    seen = {}
+    for s in _hook("curate").all():
+        sid = "%s__%s" % (s.get("gid"), s.get("kind"))
+        for ev in s.get("events") or []:
+            for rv in (ev or {}).get("reviews") or []:
+                at = _when((rv or {}).get("at"))
+                if not at or at < since or not rv.get("label"):
+                    continue
+                by = str(rv.get("by") or "").strip()
+                seen[(sid, str(ev.get("id")), by, at.replace(microsecond=0))] = str(rv.get("label"))
+    remote = _cloud_reviews(since)
+    for r in remote or []:
+        at = _when(r.get("at"))
+        if not at or at < since:
+            continue
+        by = str(r.get("reviewer") or "").strip()
+        seen[(str(r.get("set_id")), str(r.get("event_id")), by, at.replace(microsecond=0))] = str(r.get("label"))
+    people, models, labels, sets_touched = Counter(), Counter(), Counter(), set()
+    for (sid, _eid, by, _at), lab in seen.items():
+        sets_touched.add(sid)
+        labels[lab] += 1
+        if by.endswith("(AI)"):
+            models[by] += 1
+        elif _person(by):
+            people[by] += 1
+    return {"people": dict(people.most_common()), "models": dict(models.most_common()),
+            "labels": dict(labels.most_common()), "sets": len(sets_touched),
+            "source": "every computer (cloud)" if remote is not None else "this computer only"}
 
 
 def _activity(since):
@@ -1072,10 +1106,10 @@ def status():
 
 
 def install(app, fail, who=None, machine=None, shard=None, reg=None, bank=None, curate=None,
-            is_test=None, save=None):
+            is_test=None, save=None, cloud=None):
     from flask import jsonify, request
     HOOKS.update(who=who, machine=machine, shard=shard, reg=reg, bank=bank, curate=curate,
-                 is_test=is_test, save=save)
+                 is_test=is_test, save=save, cloud=cloud)
     # A printing the server died in the middle of is not left "printing".
     stale = time.time() - TIMEOUT_S - 300
     for p in _glob(REPORTS, "@%s.json" % _shard()):

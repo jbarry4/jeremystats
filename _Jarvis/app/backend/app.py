@@ -31833,7 +31833,9 @@ insidemod.install(app, fail, reg=lambda: REG, bank=lambda: BANK, curate=lambda: 
 weeklymod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user"),
                   machine=_vacc_device, shard=shardsmod_id, reg=lambda: REG,
                   bank=lambda: BANK, curate=lambda: CURATE, is_test=peoplemod.is_test_name,
-                  save=lambda blob, name: save_output(blob, name, subdir="Weekly"))
+                  save=lambda blob, name: save_output(blob, name, subdir="Weekly"),
+                  # Read at print time: CLOUD is made further down this file.
+                  cloud=lambda: CLOUD.cloud)
 # StrataScope Beta's Consult (2026-11-19): the page primes a consult, Claude
 # Code answers it (tools/strata_consult.py), the reply lands over /api/link.
 from . import strataconsult as strataconsultmod               # noqa: E402

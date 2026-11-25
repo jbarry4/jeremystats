@@ -191,6 +191,7 @@ BARRY.shLearn = (function () {
     (extra.rides || []).forEach((r) => add(r.label, 'ride', 'ride', { ride: r.key }, r.blurb + ' ' + (SYN[r.key] || '')));
     Object.entries(extra.events || {}).forEach(([k, e]) => add(e.label, 'play the model', 'event', { event: k }, SYN[k] || ''));
     (extra.tours || []).forEach((t) => add(t.label, 'tour', 'tour', { tour: t.key }, t.blurb));
+    (extra.stories || []).forEach((s) => add(s.label, 'a recorded seizure, click by click', 'story', { story: s.key }, s.blurb + ' seizure ictal postictal tonic clonic kcnt1 459 spread'));
     (extra.views || []).forEach((v) => add(v.name, 'saved view' + (v.by ? ' by ' + v.by : ''), 'view', { view: v.id }, ''));
     return E;
   }
