@@ -11,12 +11,12 @@
     "labels": "2026-11-04T21:28:32.972602+00:00",
     "name": "2026-11-04T21:28:32.972602+00:00",
     "open": "2026-11-20T16:14:24.622675+00:00",
-    "opened_at": "2026-11-20T16:16:21.895712+00:00",
+    "opened_at": "2026-11-20T16:25:00.212415+00:00",
     "opened_by": "2026-11-20T16:14:24.622675+00:00",
     "schema": "2026-11-04T21:28:32.972602+00:00",
     "session_label": "2026-11-04T21:28:32.972602+00:00",
     "source": "2026-11-04T21:28:32.972602+00:00",
-    "updated": "2026-11-20T16:17:55.513027+00:00"
+    "updated": "2026-11-20T16:36:31.395133+00:00"
   },
   "_keys": {
     "events": {
@@ -310,7 +310,7 @@
       ],
       "e1a86a9a3bc": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:36:31.395133+00:00"
       ],
       "e1aaec91469": [
         "set",
@@ -610,7 +610,7 @@
       ],
       "e33228a6adf": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:29:39.383796+00:00"
       ],
       "e33696d446c": [
         "set",
@@ -1394,7 +1394,7 @@
       ],
       "e6e55a22142": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:30:25.295367+00:00"
       ],
       "e6e84adf201": [
         "set",
@@ -3142,7 +3142,7 @@
       ],
       "edad84d95bf": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:30:58.542477+00:00"
       ],
       "edafe9be68c": [
         "set",
@@ -3170,7 +3170,7 @@
       ],
       "edb9d38bcff": [
         "set",
-        "2026-11-20T16:17:55.513027+00:00"
+        "2026-11-20T16:28:26.003078+00:00"
       ],
       "edbcba98578": [
         "set",
@@ -3610,7 +3610,7 @@
       ],
       "ef82b6932e0": [
         "set",
-        "2026-11-04T22:12:27.474337+00:00"
+        "2026-11-20T16:28:50.492019+00:00"
       ],
       "ef85101bcdf": [
         "set",
@@ -3763,7 +3763,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-20T16:17:55.513027+00:00",
+    "at": "2026-11-20T16:36:31.395133+00:00",
     "machine": "desktop-nr2h5o7-8845",
     "schema": 1
   },
@@ -3802,11 +3802,11 @@
     },
     {
       "amplitude": 494.875,
-      "at": "2026-11-20T11:17:55-0500",
+      "at": "2026-11-20T11:28:21-0500",
       "by": "Avery Sullenberger",
       "channel": 38,
       "id": "edb9d38bcff",
-      "label": "flag",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
@@ -3815,43 +3815,53 @@
           "label": "likely_garbage"
         },
         {
-          "at": "2026-11-20T11:17:55-0500",
+          "at": "2026-11-20T11:28:21-0500",
           "by": "Avery Sullenberger",
-          "label": "flag"
+          "label": "garbage"
         }
       ],
       "start": 16.02964
     },
     {
       "amplitude": 473.9424,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T11:28:47-0500",
+      "by": "Avery Sullenberger",
       "channel": 51,
       "id": "ef82b6932e0",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T11:28:47-0500",
+          "by": "Avery Sullenberger",
+          "label": "garbage"
         }
       ],
       "start": 16.07814
     },
     {
       "amplitude": 371.8494,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T11:29:38-0500",
+      "by": "Avery Sullenberger",
       "channel": 53,
       "id": "e33228a6adf",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T11:29:38-0500",
+          "by": "Avery Sullenberger",
+          "label": "garbage"
         }
       ],
       "start": 25.484223
@@ -3875,17 +3885,22 @@
     },
     {
       "amplitude": 438.6609,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T11:30:20-0500",
+      "by": "Avery Sullenberger",
       "channel": 52,
       "id": "e6e55a22142",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T11:30:20-0500",
+          "by": "Avery Sullenberger",
+          "label": "garbage"
         }
       ],
       "start": 36.753321
@@ -3927,11 +3942,11 @@
     },
     {
       "amplitude": 444.0847,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T11:30:50-0500",
+      "by": "Avery Sullenberger",
       "channel": 51,
       "id": "edad84d95bf",
-      "label": "likely_spike",
+      "label": "garbage",
       "origin": "both",
       "pair_t": 74.783153,
       "reviews": [
@@ -3939,6 +3954,11 @@
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_spike"
+        },
+        {
+          "at": "2026-11-20T11:30:50-0500",
+          "by": "Avery Sullenberger",
+          "label": "garbage"
         }
       ],
       "start": 74.784653
@@ -3997,17 +4017,22 @@
     },
     {
       "amplitude": 452.4217,
-      "at": "2026-11-04T17:12:27-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-20T11:36:28-0500",
+      "by": "Avery Sullenberger",
       "channel": 49,
       "id": "e1a86a9a3bc",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
           "at": "2026-11-04T17:12:27-0500",
           "by": "Prospector (AI)",
           "label": "likely_garbage"
+        },
+        {
+          "at": "2026-11-20T11:36:28-0500",
+          "by": "Avery Sullenberger",
+          "label": "garbage"
         }
       ],
       "start": 101.87989
@@ -19848,7 +19873,7 @@
   ],
   "name": "KCNT1 m521 s1 2026-05-04 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "open": true,
-  "opened_at": "2026-11-20T11:16:16-0500",
+  "opened_at": "2026-11-20T11:24:48-0500",
   "opened_by": "Avery Sullenberger",
   "schema": 1,
   "session_label": "KCNT1 m521 s1 2026-05-04",
@@ -19862,8 +19887,8 @@
   },
   "updated": {
     "app_version": "2026.11.19.3",
-    "at": "2026-11-20T11:17:55-05:00",
-    "commit": "d81597fc",
+    "at": "2026-11-20T11:36:31-05:00",
+    "commit": "ac5376c0",
     "email": "asullenb@uvm.edu",
     "machine": "DESKTOP-NR2H5O7",
     "os": "Windows",
