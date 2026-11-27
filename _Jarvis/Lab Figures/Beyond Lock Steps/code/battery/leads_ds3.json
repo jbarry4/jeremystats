@@ -1,0 +1,46 @@
+[
+ {
+  "id": "structure|unscorable_share|v6|winner|eligible",
+  "contrast": "IEDpos_vs_IEDneg",
+  "title": "IED− mice have many events too small to tell DS3 from DS1 or DS2",
+  "plain": "DS3 is scored from the sink at two contacts (outer and middle layer). In three of the four IED− mice, 40 to 72% of events have too little sink at those two contacts to be scored at all; in IED+ mice it is 4 to 9%.",
+  "how": "Classifier: each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). The outer and middle contacts are where DS1's and DS2's average sinks are deepest. An event is too small to tell when the sink at the two contacts together is not bigger than the noise floor (explained under panel c). Per recording: the share of such events. Contrast: IED+ against IED−.",
+  "ylabel": "Share of events too small to tell\n(no DS3 score)",
+  "why": "IED+ against IED− P = 0.029 (Strict set the same). Explains why IED− mice have almost no DS3: their events are either too small at the DS1 contact or all at the middle contact.",
+  "against": "m8 (IED−) is at 10%, with the IED+ mice. In m33, m1 and m7 the outer contact is DS1's far-out sink, which most events do not reach: this is about where the contacts are, not about the events being weaker.",
+  "test": "The same with the outer contact placed at a fixed distance from the cell layer in every mouse."
+ },
+ {
+  "id": "laminar|blade_balance_median|v6|winner|ds3",
+  "contrast": "PTEN_vs_CTL",
+  "title": "DS3 events lean on the lower blade in every PTEN mouse",
+  "plain": "Among DS3 events, the lower blade's sink is the larger one in every PTEN mouse that has DS3 events, and the upper blade's is equal or larger in four of the five controls.",
+  "how": "DS3 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out) (5 or more a recording). Per event: (upper − lower) / (upper + lower) of the sink at the two main-sink rows; negative = lower blade larger. Per recording: median. Contrast: PTEN against control.",
+  "ylabel": "Blade balance of DS3 events\n(− = lower blade larger, median)",
+  "why": "Every PTEN value below every control (P = 0.016; Strict set the same; run 4 P = 0.008).",
+  "against": "Nine mice have 5 or more DS3 events (four controls; one IED−). Over all events the same lean is there in IED+ mice (general lead 2), so this may not be special to DS3. Tracks the year of recording (rho +0.84).",
+  "test": "Blade balance of all events against DS3 events in the same mice; planned in new mice."
+ },
+ {
+  "id": "timing|second_half_share|v6|winner|ds3",
+  "contrast": "KO_dose_all",
+  "title": "Weaker (P above 0.05): DS3 events gather late in controls, not in high-knockout mice",
+  "plain": "In controls 61 to 95% of DS3 events fall in the second half of the recording; in IED+ mice 43 to 71%.",
+  "how": "DS3 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out) (5 or more a recording). Per recording: the share in the second half of the recording. Contrast: rank correlation with % knockout, all mice.",
+  "ylabel": "Share of DS3 events in the second half\n(0.5 = spread evenly)",
+  "why": "All mice rho −0.57, P = 0.11 (Strict set the same; run 4 P = 0.059). Shown because you asked about this one; it is not under 0.05.",
+  "against": "Nine mice. When in the session depends on anesthesia and handling. Over all events there is no such drift.",
+  "test": "Recordings of the same length; DS3 rate by quarter of the session."
+ },
+ {
+  "id": "structure|ds3_share_cut0.5|v6|winner|eligible",
+  "contrast": "PTEN_vs_CTL",
+  "title": "NOT A LEAD: how much DS3 each group has (your question on DS3 lead 1)",
+  "plain": "DS3 share does not differ between groups. It is 0 to 1% in five mice (controls m26, m61; IED− m33, m1, m7) and 34 to 90% in the rest, in controls and PTEN alike.",
+  "how": "DS3 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out): relative sink within ±0.5 among scored events, as a share of all events. Contrast: PTEN against control.",
+  "ylabel": "Share of events that are DS3",
+  "why": "PTEN against control P = 0.95; IED+ against IED− P = 0.31. It looked as if controls had more because the IED− mice include three with almost none.",
+  "against": "The mice with no DS3 are the ones where DS1 is a small group far out (round 11 sanity check): every scored event is at the middle contact, so DS3 never comes up there.",
+  "test": "—"
+ }
+]

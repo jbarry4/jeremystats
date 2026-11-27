@@ -41,6 +41,18 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 32: 2026-11-27 (morning, scheduled), 11-26 08:50 to 11-27 08:50
+
+Covered: Bluebarry's 11-26 report (0 faults, 0 actions, build `2026.11.24.1 b4fe3377`; no 11-26 shard). `git fetch` left `origin/master` at `058efc16`, so no other machine's report or shard arrived; HEAD is still `21774364`. The cloud was not read. No code changed.
+
+Next pass: Bluebarry's 11-27 report; Rain's, Isabella's (Mac and Blackbarry) and Samara's 11-24 and later; Strawbarry's 11-20 and later when git brings them; the cloud from `2026-11-24T13:50Z`. Every open item from pass 29 stands unchanged.
+
+## Pass 31: 2026-11-26 (morning, scheduled), 11-25 08:50 to 11-26 08:50
+
+Covered: Bluebarry's 11-25 report (0 faults, 16 actions, build `2026.11.24.1 b4fe3377`; no 11-24 or 11-25 shard) and, by HEAD's merges (HEAD `21774364`), Isabella's Mac 11-24 report (0 faults, 858 actions, build `2026.11.24.1 5fdc7ced`). `git fetch` moved `origin/master` to `058efc16`; it brings PTEN manuscript handoff code under `Barry Playground/` but no report, shard or app code. The cloud was not read. No code changed.
+
+Next pass: Bluebarry's 11-26 report; Rain's, Isabella's (Mac and Blackbarry) and Samara's 11-24 and later; Strawbarry's 11-20 and later when git brings them; the cloud from `2026-11-24T13:50Z`. Every open item from pass 29 stands unchanged.
+
 ## Pass 30: 2026-11-25 (morning, scheduled), 11-24 08:50 to 11-25 08:50
 
 Covered: Bluebarry's 11-24 report (0 faults, 48 actions, build `2026.11.24.1 8528bd44`; no 11-24 shard). HEAD is `1fc9aa72`; its merges brought Blackbarry's (`lcom549913-e62b`, Isabella) 11-19 to 11-23 reports: 0 faults, 0/6/0/0/521 actions, builds `2026.11.18.2` then `2026.11.23.1`. `git fetch` moved `origin/master` to `6ecec712`; it brings curation, event-bank, prefs and session files but no report, shard or app code. The cloud was not read this pass. No code changed.

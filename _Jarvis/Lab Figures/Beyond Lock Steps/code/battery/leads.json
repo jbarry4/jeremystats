@@ -1,0 +1,101 @@
+[
+ {
+  "id": "laminar|net_between_median|v6||all",
+  "contrast": "KO_dose_all",
+  "title": "The net source between the blades falls as the knockout rises (sink rows left out)",
+  "plain": "Between the two blades the dentate spike is a net source; the more knockout, the smaller that source compared with the sinks. Re-measured without the rows that belong to the sinks.",
+  "how": "Every event (no classifier). Rows: from where the upper blade's sink ends (the recording's average CSD turns positive below it) to where the lower blade's sink begins; the sinks themselves are left out. Per event: mean CSD over those rows at ±3 ms, divided by the event's sink at the two main-sink rows. Positive = net source. Per recording: median. Contrast: rank correlation with % knockout, all mice (controls at 0).",
+  "ylabel": "Net source between the blades\n(sinks left out; over the sink, median)",
+  "why": "All mice rho −0.49 (P = 0.052; Strict set the same). Within PTEN rho −0.68 (P = 0.050). The lead the battery started from, still there once the sink rows are taken out, but now just over 0.05.",
+  "against": "Run 4 had P = 0.042; with the sink rows in it was P = 0.016. m61 (control, 0.99) and m8 (IED−, 1.16) carry much of the spread. Dividing by the sink means a change in sink size moves it too.",
+  "test": "The same number, planned, in new mice; and the source alone in the same rows (without dividing by the sink) on the normalized depth."
+ },
+ {
+  "id": "waveform|lfp_pre_median|v6|winner|ds2x",
+  "contrast": "KO_dose_PTEN",
+  "title": "Before a DS2, the LFP at the source is smaller the higher the knockout",
+  "plain": "In the 10–30 ms before a DS2 peaks, the LFP at the source has already reached 37 to 61% of its peak in the low-knockout (IED−) mice; the higher the knockout, the less it has risen (m5 and m34: 0 to 10%).",
+  "how": "DS2 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out), DS3 taken out. Per event: the LFP at the source rows (baseline = the median more than 30 ms from the peak), its mean from 30 to 10 ms before the peak, divided by its value at the peak. A ratio of two LFP values on the same contacts, so a shared offset cancels. Per recording: median. Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "LFP 30–10 ms before the peak\n(share of the peak, DS2, median)",
+  "why": "Within PTEN rho −0.82 (P = 0.011; Strict set P = 0.0045). Still the strongest dose relation among these leads, but weaker than in run 4 (rho −0.92, P = 0.0013). IED+ against IED− P = 0.063.",
+  "against": "PTEN against control P = 0.53: controls span 0.19 to 0.45, most of the PTEN range. m5 (−0.01) is the lowest of all. An LFP measure: the LFP mixes in activity from farther away than the CSD does.",
+  "test": "The CSD at the source over the same window, and the same ratio in new mice with a planned test within PTEN."
+ },
+ {
+  "id": "timing|theta_rho|v6|winner|ds2",
+  "contrast": "IEDneg_vs_CTL",
+  "title": "IED− mice fire DS2 events more when theta power is high",
+  "plain": "In every IED− mouse the number of DS2 events in a 4-second stretch rises with theta power more than in any control.",
+  "how": "DS2 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). The recording cut into 4 s bins; per bin the number of DS2 events and the theta power (the room's theta timeline). Per recording: rank correlation of the two over bins. Contrast: IED− against control.",
+  "ylabel": "Events per 4 s against theta power\n(rank correlation, DS2)",
+  "why": "IED− 0.38 to 0.54, controls 0.05 to 0.33: still no overlap (P = 0.016; Strict set the same; run 4 P = 0.006). Low knockout against control P = 0.036.",
+  "against": "Five controls have a value now (m2 and m21 do not), which is most of why P rose. IED+ sits with the controls (P = 0.69); so it is not knockout as such. Theta power is from one contact and bins are 4 s; behavior state is not known.",
+  "test": "Theta from the same contact in every mouse, with movement or sleep state scored; DS2 rate in high against low theta, planned."
+ },
+ {
+  "id": "timing|iei_median|v6|winner|ds2",
+  "contrast": "KO_dose_PTEN",
+  "title": "Within PTEN, DS2 events are farther apart the higher the knockout",
+  "plain": "The typical wait between two DS2 events grows with knockout: about 3 s in the lowest-knockout PTEN mice, 25 s or more in m3, m5 and m34.",
+  "how": "DS2 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). Per recording: the median interval between successive DS2 events (s). Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "Interval between DS2 events\n(median, s)",
+  "why": "Within PTEN rho +0.85 (P = 0.006; Strict set P = 0.003).",
+  "against": "Controls span 4 to 50 s, the whole range; PTEN against control P = 0.25. m13 and m28 (IED+, high knockout) are at 3–4 s. Fewer DS2 events can come from the classifier giving more events to DS1.",
+  "test": "All-event rate per minute of quiet rest, against knockout, in new mice; and DS2 share against knockout."
+ },
+ {
+  "id": "laminar|source_over_sink_median|v6|winner|ds1_over_ds2",
+  "contrast": "KO_dose_PTEN",
+  "title": "DS1's source-to-sink ratio, compared with DS2's, falls with knockout",
+  "plain": "In low-knockout PTEN mice DS1 has a larger source for its sink than DS2 does; in high-knockout mice it has a smaller one.",
+  "how": "Each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). Per event: the source between the blades (source rows) over the sink at the main-sink rows, at ±3 ms. Per recording: the DS1 median divided by the DS2 median (1 = the same). Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "Source over sink, DS1 over DS2\n(1 = the same)",
+  "why": "Within PTEN rho −0.89 (P = 0.012; Strict set P = 0.034).",
+  "against": "Seven PTEN mice have a value (m1 and m7 do not: their DS1 has no sink at the main-sink rows). m33 (5.1) is far out. Controls span 0.6 to 1.3.",
+  "test": "Needs mice where DS1 and DS2 both have a sink at the main rows; planned in new mice."
+ },
+ {
+  "id": "waveform|lfp_fwhm_median|v6|winner|ds1",
+  "contrast": "IEDneg_vs_CTL",
+  "title": "DS1's LFP lasts longer in IED− mice",
+  "plain": "At the source, the LFP of a DS1 event is wider in time in IED− mice (10 to 27 ms) than in most controls (2.5 to 10 ms).",
+  "how": "DS1 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). Per event: the LFP at the source rows and its full width at half its peak (ms). Per recording: median. Contrast: IED− against control.",
+  "ylabel": "LFP duration at the source, DS1\n(full width at half height, median, ms)",
+  "why": "IED− against control P = 0.014 (Strict set P = 0.0095). Low knockout against control P = 0.028.",
+  "against": "An LFP measure (it mixes in activity from farther away than the CSD). DS1 is a small group in most mice. m60 (10 ms) is just under m1 (10.5 ms); m61 and m22 (9 ms) are just below the IED− range.",
+  "test": "DS1 duration on the CSD; DS1 picked the same way in new mice."
+ },
+ {
+  "id": "timing|t_frac_median|v6|winner|ds1x",
+  "contrast": "IEDpos_vs_IEDneg",
+  "title": "IED+ mice's DS1 events come earlier in the recording than IED− mice's",
+  "plain": "The typical DS1 event falls at 39 to 57% of the way through the recording in IED+ mice and at 60 to 79% in IED− mice.",
+  "how": "DS1 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out), DS3 taken out. Per event: when it happens as a share of the recording (0 = start, 1 = end). Per recording: median. Contrast: IED+ against IED−.",
+  "ylabel": "When DS1 events happen\n(share of the recording, median)",
+  "why": "No overlap between the two (P = 0.016; Strict set the same). IED+ against control P = 0.048.",
+  "against": "This is about when in the session, which depends on anesthesia, handling and recording length; not on the DS itself.",
+  "test": "Recordings of the same length and protocol; DS1 rate in the first against the second half, planned."
+ },
+ {
+  "id": "laminar|net_between_median|v6|winner|ds1",
+  "contrast": "KO_dose_PTEN",
+  "title": "DS1's net source between the blades falls with knockout",
+  "plain": "The same net-source measure as lead 1, over DS1 events only: within PTEN, the higher the knockout, the smaller the source between the blades compared with the sink.",
+  "how": "DS1 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). Per event: mean CSD over the rows between the two blades' sinks (sink rows left out), over the sink at the main-sink rows. Per recording: median. Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "Net source between the blades, DS1\n(sinks left out; over the sink, median)",
+  "why": "Within PTEN rho −0.86 (P = 0.024; Strict set the same).",
+  "against": "Seven PTEN mice (m1 and m7: DS1 has no sink at the main-sink rows). m8 and m33 (IED−, lowest knockout) are far above everyone else and carry the correlation.",
+  "test": "As lead 1."
+ },
+ {
+  "id": "waveform|source_fwhm_median|v6|winner|ds2",
+  "contrast": "KO_dose_PTEN",
+  "title": "Within PTEN, DS2's source is briefer the higher the knockout",
+  "plain": "The source between the blades of a DS2 event lasts about 16 ms in m8 (lowest knockout) and 9 to 11 ms in most of the highest-knockout mice (m3: 13 ms).",
+  "how": "DS2 events of each recording's winning classifier (the one the round 11 quality check marks FINAL OPTIMIZED SEPARATION: best DS1–DS2 separation once DS3 is taken out). Per event: the CSD at the source rows and its full width at half its peak (ms). Per recording: median. Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "Source duration, DS2\n(full width at half height, median, ms)",
+  "why": "Within PTEN rho −0.70 (P = 0.035; Strict set the same; run 4 P = 0.027).",
+  "against": "Whole-millisecond values, so many ties. Controls span 11 to 14 ms. Tracks the year of recording (rho +0.41).",
+  "test": "Duration at 30 kHz on the average DS2 per mouse; planned within PTEN."
+ }
+]
