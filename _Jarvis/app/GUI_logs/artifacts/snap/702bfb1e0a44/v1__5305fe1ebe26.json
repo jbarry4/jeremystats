@@ -1,0 +1,27 @@
+{
+ "definition": {
+  "folder": [
+   "KCNT1 prelim"
+  ],
+  "kind": "ambiguous",
+  "target": {
+   "artifact_id": "39840b662391",
+   "nickname": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)",
+   "version": 1
+  },
+  "uses": {
+   "ds": {
+    "artifact_id": "7fe4bbb98833",
+    "nickname": "KCNT1 prelim WT DS border (Optimized parameters/Snap/10% grace)",
+    "version": 2
+   },
+   "pspike": {
+    "artifact_id": "4e5ce690d4b1",
+    "nickname": "PTEN Baseline (Optimized Parameters/Snap)",
+    "version": 2
+   }
+  }
+ },
+ "run": null,
+ "schema": 1
+}

@@ -1,0 +1,231 @@
+{
+  "_at": {
+    "added": "2026-11-27T22:16:12.138952+00:00",
+    "deleted": "2026-11-27T22:16:12.138952+00:00",
+    "id": "2026-11-27T22:16:12.138952+00:00",
+    "kind": "2026-11-27T22:16:12.138952+00:00",
+    "name": "2026-11-27T22:16:12.138952+00:00",
+    "nickname": "2026-11-27T22:16:12.138952+00:00",
+    "schema": "2026-11-27T22:16:12.138952+00:00",
+    "subject": "2026-11-27T22:16:12.138952+00:00",
+    "subject_key": "2026-11-27T22:16:12.138952+00:00",
+    "version": "2026-11-27T22:16:12.138952+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "fdfa5c615419:4f5d82efd4b3>7fe4bbb98833:2": [
+        "set",
+        "2026-11-27T22:16:12.138952+00:00"
+      ],
+      "fdfa5c615419:4f5d82efd4b3>da17cac45862:2": [
+        "set",
+        "2026-11-27T22:16:12.138952+00:00"
+      ]
+    },
+    "versions": {
+      "4f5d82efd4b3": [
+        "set",
+        "2026-11-27T22:16:12.138952+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-27T22:16:12.138952+00:00",
+    "machine": "desktop-ah45fae-e173",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-27T17:14:47-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Homebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-27T22:15:36+00:00",
+      "by_id": "da17cac45862",
+      "by_version": 2,
+      "digest": "91856d95819a",
+      "id": "fdfa5c615419:4f5d82efd4b3>da17cac45862:2",
+      "version": 1,
+      "version_id": "4f5d82efd4b3"
+    },
+    {
+      "at": "2026-11-27T22:15:42+00:00",
+      "by_id": "7fe4bbb98833",
+      "by_version": 2,
+      "digest": "91856d95819a",
+      "id": "fdfa5c615419:4f5d82efd4b3>7fe4bbb98833:2",
+      "version": 1,
+      "version_id": "4f5d82efd4b3"
+    }
+  ],
+  "deleted": null,
+  "id": "fdfa5c615419",
+  "kind": "rootcanal_pool",
+  "name": "Root Canal pool \u00b7 KCNT1 \u00b7 2 recordings, 2 mice",
+  "nickname": "KCNT1 prelim WT Baseline (Optimized parameters)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s44851809ecd5",
+      "sdcedca6715fb"
+    ],
+    "n_mice": 2,
+    "n_recordings": 2,
+    "name": "Root Canal pool \u00b7 KCNT1 \u00b7 2 recordings, 2 mice",
+    "pool_key": "c2e814e2cb0243d5838494bba813db71",
+    "projects": [
+      "KCNT1"
+    ]
+  },
+  "subject_key": "rootcanal_pool|c2e814e2cb0243d5838494bba813db71",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:14:47-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "91856d95819a",
+      "id": "4f5d82efd4b3",
+      "inputs": [
+        {
+          "banked": false,
+          "entry_id": "ac407abaa569",
+          "key": "u:ac407abaa569:64b4d692a7b8",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "64b4d692a7b8",
+          "rows_digest": "003c4dd58cdf"
+        },
+        {
+          "banked": false,
+          "entry_id": "22749a284641",
+          "key": "u:22749a284641:4c2d452a245b",
+          "params": {
+            "band_hi": 420.0,
+            "band_lo": 240.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 75.0,
+            "drawn": [],
+            "filt": "custom",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 150.0,
+            "k": 2,
+            "lo_hz": 10.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 33.0
+          },
+          "read": "4c2d452a245b",
+          "rows_digest": "42cd783982db"
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "delta_bic": 365.2860398282555,
+        "events": 970,
+        "members": 2,
+        "mice": 2,
+        "stats": null,
+        "switch_rate": 0.08350515463917525,
+        "unbanked": 2
+      },
+      "note": "KCNT1 prelim (2 WT, 2 Het, 2 Hom). Reads made on the VACC (Root Canal batch), measured with the PTEN pools' Optimized parameters.",
+      "params": {
+        "all_ds": false,
+        "band": [
+          240.0,
+          420.0
+        ],
+        "band_pool": false,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "drawn": [],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "margin_mode": null,
+        "measure": {
+          "band_hi": 420.0,
+          "band_lo": 240.0,
+          "cross_ms": 75.0,
+          "filt": "custom",
+          "filter_label": "custom filter, 10\u2013150 Hz, 60 Hz mains out",
+          "hi_hz": 150.0,
+          "lo_hz": 10.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 33.0
+        },
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "fcb1ecc5e687",
+      "v": 1
+    }
+  ]
+}

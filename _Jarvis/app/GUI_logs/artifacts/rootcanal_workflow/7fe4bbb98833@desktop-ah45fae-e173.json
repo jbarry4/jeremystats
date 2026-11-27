@@ -1,0 +1,132 @@
+{
+  "_at": {
+    "added": "2026-11-27T22:16:12.325453+00:00",
+    "deleted": "2026-11-27T22:16:12.325453+00:00",
+    "id": "2026-11-27T22:16:12.325453+00:00",
+    "kind": "2026-11-27T22:16:12.325453+00:00",
+    "name": "2026-11-27T22:16:12.325453+00:00",
+    "nickname": "2026-11-27T22:16:12.325453+00:00",
+    "schema": "2026-11-27T22:16:12.325453+00:00",
+    "subject": "2026-11-27T22:16:12.325453+00:00",
+    "subject_key": "2026-11-27T22:16:12.325453+00:00",
+    "version": "2026-11-27T22:16:12.325453+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "7fe4bbb98833:b5e22d4535a2>702bfb1e0a44:2": [
+        "set",
+        "2026-11-27T22:16:12.325453+00:00"
+      ]
+    },
+    "versions": {
+      "388f61c90abe": [
+        "set",
+        "2026-11-27T22:16:12.325453+00:00"
+      ],
+      "b5e22d4535a2": [
+        "set",
+        "2026-11-27T22:16:12.325453+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-27T22:16:12.325453+00:00",
+    "machine": "desktop-ah45fae-e173",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-27T17:15:37-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Homebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-27T22:15:51+00:00",
+      "by_id": "702bfb1e0a44",
+      "by_version": 2,
+      "digest": "3d312307495d",
+      "id": "7fe4bbb98833:b5e22d4535a2>702bfb1e0a44:2",
+      "version": 2,
+      "version_id": "b5e22d4535a2"
+    }
+  ],
+  "deleted": null,
+  "id": "7fe4bbb98833",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 KCNT1 prelim WT DS border (Optimized parameters/Snap/10% grace)",
+  "nickname": "KCNT1 prelim WT DS border (Optimized parameters/Snap/10% grace)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 KCNT1 prelim WT DS border (Optimized parameters/Snap/10% grace)",
+    "workflow_key": "5f711e3a06c641a8a252a46df6ddbe0d"
+  },
+  "subject_key": "rootcanal_workflow|5f711e3a06c641a8a252a46df6ddbe0d",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:37-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "255991696061",
+      "id": "388f61c90abe",
+      "inputs": [],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.1,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-27T17:15:37-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:42-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "3d312307495d",
+      "id": "b5e22d4535a2",
+      "inputs": [
+        {
+          "artifact_id": "39840b662391",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "fdfa5c615419",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2999,
+        "grace": 0.1,
+        "kept": 2494,
+        "kind": "ds",
+        "ran": true,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.1,
+        "kind": "ds"
+      },
+      "params_hash": "1c47aa863a19",
+      "v": 2
+    }
+  ]
+}
