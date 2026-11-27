@@ -31787,6 +31787,11 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 # or on the VACC. Its routes live in er2routes.py.
 from . import er2routes as er2routesmod                       # noqa: E402
 er2routesmod.install(app, sys.modules[__name__])
+
+# Sextant (Seahorse): where a recording's probe was. Its routes live in
+# backend/sextant/routes.py; the placements are made by tools/sextant/run.py.
+from .sextant import routes as sextantroutesmod                # noqa: E402
+sextantroutesmod.install(app, sys.modules[__name__])
 # PROJECT EVOLVE (2026-11-21): branching labels out of a bank entry and
 # every thing's family (evolveroutes.py, family.py); the Cells -- curated
 # Kilosort units, read, versioned, banked and viewed (cellroutes.py,

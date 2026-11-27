@@ -69,8 +69,9 @@ BARRY.shSextant = (function () {
     ds: [['ds', 'dentate spike'], ['ds_csd', 'its current', 'csd']],
     path: [['ps_csd', 'P-spike current', 'csd'], ['bt_csd', 'BT current', 'csd']],
     below: [['mua', 'multiunit'], ['theta', 'theta amplitude']],
-    both: [['mua', 'multiunit'], ['theta', 'theta amplitude'], ['ds_csd', 'dentate spike current', 'csd'], ['spw_csd', 'sharp-wave current', 'csd']],
+    both: [['ripple_theta', 'ripples ÷ theta'], ['theta', 'theta'], ['ds_csd', 'DS current', 'csd'], ['spw_csd', 'sharp wave', 'csd']],
   };
+  CURVES.brain = CURVES.both;
   const LM_OF = {
     ca1: ['sp', 'spw_rev', 'sp_above'], spw: ['sr_sink', 'slm_src'], theta: ['fissure'],
     ds: ['ml_a', 'ml_b', 'dg_core', 'dg_end', 'hil_gam'], path: ['ps_ml_a', 'ps_ml_b', 'ps_dg_core', 'bt_ml_a', 'bt_ml_b', 'bt_dg_core'],
@@ -135,6 +136,20 @@ BARRY.shSextant = (function () {
     return s.join(' ');
   }
 
+  /* a lane's title in its lane: 11 px, down to 9 px, then on two lines */
+  function fitTitle(g, text, x, w, font) {
+    for (const px of [11, 10, 9]) {
+      g.font = px + 'px ' + font;
+      if (g.measureText(text).width <= w) { g.fillText(text, x, 14); return; }
+    }
+    const words = text.split(' ');
+    let a = words.slice(0, Math.ceil(words.length / 2)).join(' '), b = words.slice(Math.ceil(words.length / 2)).join(' ');
+    g.font = '9px ' + font;
+    g.fillText(a, x, 8);
+    g.fillText(b, x, 18);
+    g.font = '11px ' + font;
+  }
+
   /* ---------- the card's evidence panel ----------
      Depth runs down (contact 1 at the top, 64 at the bottom). Each curve is
      drawn in its own lane, scaled to its own range; a current (CSD) is drawn
@@ -151,7 +166,7 @@ BARRY.shSextant = (function () {
     g.clearRect(0, 0, W, H);
     g.font = '11px ' + o.font;
     const curves = (CURVES[stop.id] || []).filter(([k]) => D.evidence.curves[k]);
-    const stripW = 54, top = 22, bot = 10, left = 28;
+    const stripW = 54, top = 24, bot = 10, left = 28;
     const plotW = W - left - stripW - 18;
     const laneW = curves.length ? plotW / curves.length : plotW;
     const y = (c) => top + (c / 63) * (H - top - bot);       // c: 0-based contact
@@ -167,7 +182,7 @@ BARRY.shSextant = (function () {
       g.fillRect(x0 - 3, top, w + 6, H - top - bot);
       g.fillStyle = o.ink2;
       g.textAlign = 'center';
-      g.fillText(name, x0 + w / 2, 14);
+      fitTitle(g, name, x0 + w / 2, w + 6, o.font);
       if (kind === 'csd') {
         const xm = x0 + w / 2;
         g.strokeStyle = o.ink1; g.beginPath(); g.moveTo(xm, top); g.lineTo(xm, H - bot); g.stroke();

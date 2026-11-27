@@ -36,7 +36,7 @@ def _r(x, d=1):
 
 
 def _line(pose):
-    pts = A.contacts(pose["centre"], pose["dir"], pose["scale"])
+    pts = F.pose_points(pose)
     return [_r(pts[0]), _r(pts[-1])]
 
 
@@ -103,6 +103,7 @@ def build(atl, rec, ev, lms, notes, out, bad):
         "tilt_ml": rng([e["tilt_ml"] for e in eps]),
         "tilt_ap": rng([e["tilt_ap"] for e in eps]),
         "scale": rng([e["scale"] for e in eps]),
+        "k": rng([e.get("k", 1.0) for e in eps]),
     }
     words = {"ap": _word(ranges["entry_ap"]["half"], "ap"),
              "ml": _word(ranges["entry_ml"]["half"], "ml"),
@@ -124,6 +125,7 @@ def build(atl, rec, ev, lms, notes, out, bad):
     for st in out["stops"]:
         stops.append({"id": st["id"], "title": st["title"], "landmarks": st["landmarks"],
                       "profiles": st["profiles"], "best": _line(st["best"]),
+                      "k": round(float(st["best"].get("k") or 1.0), 3),
                       "cloud": [_line(p) for p in st["cloud"][:60]]})
     layers = d["layers"]
     return {
@@ -143,6 +145,8 @@ def build(atl, rec, ev, lms, notes, out, bad):
             "line": _line(best), "entry": d["entry"], "contact1": d["contact1"], "contact64": d["contact64"],
             "depth_um": d["depth_um"], "tilt_ml": d["tilt_ml"], "tilt_ap": d["tilt_ap"], "scale": d["scale"],
             "layers": layers, "strata": [TO_STRATA.get(k) for k in layers],
+            "stretch": ({"k": round(float(best.get("k") or 1.0), 3), "hinge": round(float(out["hinge"]), 2)}
+                        if out.get("hinge") is not None else None),
             "ranges": ranges, "words": words,
         },
         "methods": {k: {"line": _line(out[k]["pose"]), "chi2_a": round(out[k]["chi2_a"], 2),

@@ -224,7 +224,7 @@ def profiles(ev, bad):
     return out
 
 
-def score(codes, offsets, scales, prof, bad, n_contacts=64):
+def score(codes, offsets, scales, prof, bad, n_contacts=64, ks=None, hinge=None):
     """Method B's log-likelihood for every line x offset x scale.
 
     codes (n, T); offsets (o,) um of contact 1 from the reference point;
@@ -235,7 +235,11 @@ def score(codes, offsets, scales, prof, bad, n_contacts=64):
     V, ind = bases(codes)
     x = np.arange(n_contacts, dtype=np.float32)
     O, S = np.meshgrid(offsets, scales, indexing="ij")
-    tc = (O[..., None] + F.PITCH * S[..., None] * x).reshape(-1, n_contacts)   # (m, 64)
+    if ks is not None and hinge is not None:
+        _O, Kk = np.meshgrid(offsets, ks, indexing="ij")
+        tc = (O[..., None] + F.t_of_x(x[None, None, :], S[..., None], hinge, Kk[..., None])).reshape(-1, n_contacts)
+    else:
+        tc = (O[..., None] + F.PITCH * S[..., None] * x).reshape(-1, n_contacts)   # (m, 64)
     tc = np.broadcast_to(tc[None], (n,) + tc.shape)
     good_all = ~np.asarray(bad, bool)
     Dop = csd_operator(bad).astype(np.float32)

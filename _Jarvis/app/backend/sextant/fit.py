@@ -64,6 +64,28 @@ DV_REF = 1900.0               # lines are indexed by where they cross this DV
 T0, T1, DT = -1700.0, 2700.0, 10.0
 SCALE_PRIOR = (1.0, 0.15)
 SCALE_RANGE = (0.6, 1.5)
+# The dentate's own stretch (PTEN mice): below the hinge -- the fissure, where
+# CA1 ends and the dentate begins -- contacts are k times as far apart in the
+# atlas as above it. Controls are placed with k = 1; k's spread over them
+# (fitted only to learn it) is what normal looks like.
+K_RANGE = (0.8, 1.8)
+
+
+def t_of_x(x, s, h=None, k=None):
+    """Distance along the line (um) of contact x from contact 1."""
+    x = np.asarray(x, float)
+    if h is None or k is None:
+        return PITCH * s * x
+    return np.where(x <= h, PITCH * s * x, PITCH * s * h + PITCH * s * k * (x - h))
+
+
+def x_of_t(t, s, h=None, k=None):
+    """Contact index at distance t (um) along the line from contact 1."""
+    t = np.asarray(t, float)
+    if h is None or k is None:
+        return t / (PITCH * s)
+    th = PITCH * s * h
+    return np.where(t <= th, t / (PITCH * s), h + (t - th) / (PITCH * s * k))
 PRIOR = {"ap_sd_mm": 0.6, "ml_sd_mm": 0.5, "tilt_sd_deg": 10.0}
 
 
@@ -171,9 +193,12 @@ def atlas_landmarks(codes, t):
 
 
 # ---------------------------------------------------------------- Method A
-def method_a(lms, alm, n_contacts=NC):
+def method_a(lms, alm, n_contacts=NC, hinge=None, k_sd=None):
     """Score every line: returns dict with o (um), s, chi2 (n,), and the
-    per-landmark residuals (contacts)."""
+    per-landmark residuals (contacts). With a hinge (contact index) the
+    dentate below it gets its own stretch k (prior N(1, k_sd))."""
+    if hinge is not None:
+        return _method_a_hinge(lms, alm, n_contacts, float(hinge), float(k_sd or 0.35))
     keys = [l for l in lms if l["key"] in MATCH and l.get("fit", True)]
     n = next(iter(alm.values())).size
     if len(keys) < 2:
@@ -223,6 +248,60 @@ def method_a(lms, alm, n_contacts=NC):
             "n_used": have.sum(1)}
 
 
+def _method_a_hinge(lms, alm, n_contacts, h, k_sd):
+    """Method A with the dentate stretched: L = o + pitch*s*a + pitch*q*b,
+    a = min(x, h), b = max(x - h, 0), q = s*k; a weighted least-squares
+    solve for (o, s, q) per line, with the priors on s and k as pseudo
+    observations."""
+    keys = [l for l in lms if l["key"] in MATCH and l.get("fit", True)]
+    n = next(iter(alm.values())).size
+    X = np.array([l["x"] for l in keys])
+    S = np.array([math.hypot(l["sigma"], MATCH[l["key"]][1]) for l in keys])
+    side = np.array([{"above": -1, "below": 1}.get(l.get("side"), 0) for l in keys])
+    L = np.stack([alm[MATCH[l["key"]][0]] for l in keys], 1)
+    have = np.isfinite(L)
+    w = np.where(have & (side[None, :] == 0), 1.0 / S[None, :] ** 2, 0.0)
+    a = np.minimum(X, h)
+    b = np.maximum(X - h, 0.0)
+    R = np.stack([np.ones_like(X), PITCH * a, PITCH * b], 1)          # (m, 3)
+    Lz = np.where(have, L, 0.0)
+    M = np.einsum("nj,ja,jb->nab", w, R, R)
+    r = np.einsum("nj,ja,nj->na", w, R, Lz)
+    s0, ssd = SCALE_PRIOR
+    cs, ck = 1.0 / ssd ** 2, 1.0 / k_sd ** 2
+    M[:, 1, 1] += cs + ck
+    r[:, 1] += cs * s0
+    M[:, 2, 2] += ck
+    M[:, 1, 2] -= ck
+    M[:, 2, 1] -= ck
+    M += 1e-9 * np.eye(3)
+    u = np.linalg.solve(M, r[..., None])[..., 0]
+    o, s, q = u[:, 0], u[:, 1], u[:, 2]
+    s = np.clip(np.where(np.isfinite(s), s, s0), *SCALE_RANGE)
+    with np.errstate(all="ignore"):
+        k = np.clip(np.where(np.isfinite(q / s), q / s, 1.0), *K_RANGE)
+    sw = np.maximum(w.sum(1), 1e-12)
+    o = np.where(w.sum(1) > 0, (w * (Lz - PITCH * s[:, None] * a[None, :] - PITCH * (s * k)[:, None] * b[None, :])).sum(1) / sw, o)
+    with np.errstate(all="ignore"):
+        pred = x_of_t(L - o[:, None], s[:, None], h, k[:, None])
+        Xb = np.broadcast_to(X, L.shape)
+        res = np.where(have, (pred - Xb) / S[None, :], 0.0)
+    res = np.where(side[None, :] < 0, np.maximum(res, 0.0), res)
+    res = np.where(side[None, :] > 0, np.minimum(res, 0.0), res)
+    chi2 = (res ** 2).sum(1) + ((s - s0) / ssd) ** 2 + ((k - 1.0) / k_sd) ** 2
+    chi2 += MISS * ((~have) & (side[None, :] == 0)).sum(1)
+    found = {MATCH[l["key"]][0] for l in keys}
+    for ak, pen in UNSEEN.items():
+        if ak in found:
+            continue
+        with np.errstate(all="ignore"):
+            x = x_of_t(alm[ak] - o, s, h, k)
+        on = np.isfinite(x) & (x > 1) & (x < n_contacts - 2)
+        chi2 += pen * on
+    return {"o": o, "s": s, "k": k, "chi2": chi2, "res": res, "keys": [l["key"] for l in keys],
+            "n_used": have.sum(1)}
+
+
 # ---------------------------------------------------------------- the prior
 def log_prior(ap, ml, tml, tap, prior=PRIOR):
     c = A.from_bregma(CRANIOTOMY["ap_mm"], CRANIOTOMY["ml_mm"])
@@ -243,14 +322,16 @@ def grid(ap=(6700, 8700, 50), ml=(5900, 8100, 50), tilt=(-15, 15, 5)):
     return G[:, 0], G[:, 1], G[:, 2], G[:, 3]
 
 
-def score_lines(atl, lms, ap, ml, tml, tap, chunk=6000):
-    out = {k: [] for k in ("o", "s", "chi2", "n_used")}
+def score_lines(atl, lms, ap, ml, tml, tap, chunk=6000, hinge=None, k_sd=None):
+    out = {k: [] for k in ("o", "s", "k", "chi2", "n_used")}
     alms = {k: [] for k in ATLAS_KEYS}
     for i in range(0, ap.size, chunk):
         sl = slice(i, i + chunk)
         codes, t = lines_codes(atl, ap[sl], ml[sl], tml[sl], tap[sl])
         alm = atlas_landmarks(codes, t)
-        r = method_a(lms, alm)
+        r = method_a(lms, alm, hinge=hinge, k_sd=k_sd)
+        if "k" not in r:
+            r["k"] = np.ones_like(r["s"])
         for k in out:
             out[k].append(r[k])
         for k in ATLAS_KEYS:
@@ -261,11 +342,11 @@ def score_lines(atl, lms, ap, ml, tml, tap, chunk=6000):
     return out
 
 
-def search(atl, lms, coarse=None, refine_top=60, log=print):
+def search(atl, lms, coarse=None, refine_top=60, log=print, hinge=None, k_sd=None):
     """Coarse grid, then a finer grid around the best lines. Returns every
     scored line (both passes) with its posterior log-weight."""
     ap, ml, tml, tap = grid(**(coarse or {}))
-    r1 = score_lines(atl, lms, ap, ml, tml, tap)
+    r1 = score_lines(atl, lms, ap, ml, tml, tap, hinge=hinge, k_sd=k_sd)
     lw = -0.5 * r1["chi2"] + r1["lp"]
     best = np.argsort(-lw)[:refine_top]
     log("   coarse: %d lines, best chi2 %.2f" % (ap.size, float(r1["chi2"][best[0]])))
@@ -278,12 +359,13 @@ def search(atl, lms, coarse=None, refine_top=60, log=print):
         g = np.stack(np.meshgrid(s[0] + d_ap, s[1] + d_ap, s[2] + d_t, s[3] + d_t, indexing="ij"), -1).reshape(-1, 4)
         R.append(g)
     R = np.unique(np.round(np.concatenate(R), 3), axis=0)
-    r2 = score_lines(atl, lms, R[:, 0], R[:, 1], R[:, 2], R[:, 3])
+    r2 = score_lines(atl, lms, R[:, 0], R[:, 1], R[:, 2], R[:, 3], hinge=hinge, k_sd=k_sd)
     cat = lambda a, b: np.concatenate([a, b])                  # noqa: E731
     res = {"ap": cat(ap, R[:, 0]), "ml": cat(ml, R[:, 1]), "tml": cat(tml, R[:, 2]),
            "tap": cat(tap, R[:, 3])}
-    for k in ("o", "s", "chi2", "n_used", "lp"):
+    for k in ("o", "s", "k", "chi2", "n_used", "lp"):
         res[k] = cat(r1[k], r2[k])
+    res["hinge"] = hinge
     res["alm"] = {k: cat(r1["alm"][k], r2["alm"][k]) for k in ATLAS_KEYS}
     res["fine"] = cat(np.zeros(ap.size, bool), np.ones(R.shape[0], bool))
     log("   refined: %d lines, best chi2 %.2f" % (R.shape[0], float(np.min(r2["chi2"]))))
@@ -297,14 +379,25 @@ def pose_of(res, i):
     o, s = float(res["o"][i]), float(res["s"][i])
     c1 = p_ref + o * d                                         # contact 1
     centre = c1 + (NC - 1) / 2.0 * PITCH * s * d
-    return {"centre": centre, "dir": d, "scale": s, "o": o,
+    k = float(res["k"][i]) if "k" in res else 1.0
+    h = res.get("hinge")
+    return {"centre": centre, "dir": d, "scale": s, "o": o, "c1": c1, "k": k, "hinge": h,
             "tilt_ml": float(res["tml"][i]), "tilt_ap": float(res["tap"][i])}
+
+
+def pose_points(pose, n=NC):
+    """The contacts of a pose (CCF um, (n, 3), contact 1 first), with the
+    dentate's stretch when the pose has one."""
+    if pose.get("c1") is not None and pose.get("hinge") is not None and pose.get("k") not in (None, 1.0):
+        t = t_of_x(np.arange(n), pose["scale"], pose["hinge"], pose["k"])
+        return np.asarray(pose["c1"], float)[None, :] + t[:, None] * np.asarray(pose["dir"], float)[None, :]
+    return A.contacts(pose["centre"], pose["dir"], pose["scale"], n, PITCH)
 
 
 def describe(atl, pose, hemisphere=None):
     """Bregma numbers for a pose: entry point, tip, depths, and the layer
     under every contact."""
-    pts = A.contacts(pose["centre"], pose["dir"], pose["scale"], NC, PITCH)
+    pts = pose_points(pose)
     codes = atl.codes_at(pts)
     entry, _ = A.entry_point(atl, pts[0], pose["dir"])
     eb = A.to_bregma(entry, hemisphere)
@@ -319,6 +412,7 @@ def describe(atl, pose, hemisphere=None):
         "depth_um": {"contact1": round(depth_top), "contact64": round(depth_tip)},
         "tilt_ml": round(pose["tilt_ml"], 1), "tilt_ap": round(pose["tilt_ap"], 1),
         "scale": round(pose["scale"], 3),
+        "k": round(float(pose.get("k") or 1.0), 3),
         "layers": [atl.key.get(int(c), "?") for c in codes],
         "ccf": [[round(float(x), 1) for x in p] for p in pts[[0, NC - 1]]],
     }

@@ -34,6 +34,8 @@ from . import fit as F
 from . import forward as B
 
 W_B = 6.0 / 64.0
+K_SD = 0.35               # the dentate's stretch, prior sd (PTEN; and controls when learning normal)
+KS = np.array([0.9, 1.05, 1.25, 1.5])
 OFFSETS = np.arange(-1500.0, 501.0, 25.0)
 SCALES = np.array([0.85, 0.95, 1.05, 1.15])
 N_TOP_COARSE, N_TOP_FINE, N_RANDOM = 1200, 300, 600
@@ -50,7 +52,7 @@ FAMILIES = [
 ]
 
 
-def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None):
+def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None, Ks=None, hinge=None):
     """Method A's chi-square for each line (rows of alm) at every offset and
     scale: (n, no, ns). `keep`: the landmark keys to use (None = all)."""
     keys = [l for l in lms if l["key"] in F.MATCH and l.get("fit", True)
@@ -59,7 +61,15 @@ def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None):
     out = np.zeros((n, O.size, Sc.size), np.float32)
     s0, ssd = F.SCALE_PRIOR
     out += (((Sc - s0) / ssd) ** 2)[None, None, :]
+    stretch = Ks is not None and hinge is not None
+    if stretch:
+        out += (((np.asarray(Ks) - 1.0) / K_SD) ** 2)[None, None, :]
     den = (F.PITCH * Sc)[None, None, :]
+
+    def to_x(Lk):
+        if stretch:
+            return F.x_of_t(Lk - O[None, :, None], Sc[None, None, :], hinge, np.asarray(Ks)[None, None, :])
+        return (Lk - O[None, :, None]) / den
     found = set()
     for l in keys:
         ak = F.MATCH[l["key"]][0]
@@ -68,7 +78,7 @@ def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None):
         Lk = alm[ak][:, None, None]
         have = np.isfinite(Lk)
         with np.errstate(all="ignore"):
-            pred = (Lk - O[None, :, None]) / den
+            pred = to_x(Lk)
         r = (pred - l["x"]) / sig
         side = l.get("side")
         if side == "above":
@@ -88,7 +98,7 @@ def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None):
                 continue
             Lk = alm[ak][:, None, None]
             with np.errstate(all="ignore"):
-                x = (Lk - O[None, :, None]) / den
+                x = to_x(Lk)
             out += pen * (np.isfinite(x) & (x > 1) & (x < F.NC - 2))
     return out
 
@@ -96,8 +106,11 @@ def _chi2_a_grid(lms, alm, O, Sc, keep=None, unseen=True, found_all=None):
 class Solution:
     """The candidates, their scores, and how to turn an index into a pose."""
 
-    def __init__(self, res, cand, q, lms, ll_parts, chi_full):
+    def __init__(self, res, cand, q, lms, ll_parts, chi_full, grid_s=None, grid_k=None, hinge=None):
         self.res, self.cand, self.q = res, cand, q
+        self.grid_s = SCALES if grid_s is None else grid_s
+        self.grid_k = grid_k
+        self.hinge = hinge
         self.lms, self.ll_parts, self.chi_full = lms, ll_parts, chi_full
         self.ap, self.ml = res["ap"][cand], res["ml"][cand]
         self.tml, self.tap = res["tml"][cand], res["tap"][cand]
@@ -107,10 +120,12 @@ class Solution:
     def pose(self, li, oi, si):
         d = A.direction(self.tml[li], self.tap[li])
         p_ref = np.array([self.ap[li], F.DV_REF, self.ml[li]])
-        o, s = OFFSETS[oi], SCALES[si]
+        o, s = OFFSETS[oi], self.grid_s[si]
+        k = float(self.grid_k[si]) if self.grid_k is not None else 1.0
         c1 = p_ref + o * d
         centre = c1 + (F.NC - 1) / 2.0 * F.PITCH * s * d
-        return {"centre": centre, "dir": d, "scale": float(s), "o": float(o),
+        return {"centre": centre, "dir": d, "scale": float(s), "o": float(o), "c1": c1,
+                "k": k, "hinge": self.hinge if self.grid_k is not None else None,
                 "tilt_ml": float(self.tml[li]), "tilt_ap": float(self.tap[li])}
 
     def total(self, keep_lm=None, keep_prof=None, unseen=True, wb=W_B):
@@ -120,8 +135,8 @@ class Solution:
         else:
             found_all = {F.MATCH[l["key"]][0] for l in self.lms
                          if l["key"] in F.MATCH and l.get("fit", True)}
-            chi = _chi2_a_grid(self.lms, alm, OFFSETS, SCALES, keep=keep_lm, unseen=unseen,
-                               found_all=found_all)
+            chi = _chi2_a_grid(self.lms, alm, OFFSETS, self.grid_s, keep=keep_lm, unseen=unseen,
+                               found_all=found_all, Ks=self.grid_k, hinge=self.hinge)
         llb = np.zeros_like(chi)
         for k, v in self.ll_parts.items():
             if keep_prof is None or k in keep_prof:
@@ -143,16 +158,34 @@ class Solution:
         return [np.unravel_index(int(j), T.shape) for j in pick]
 
 
-def place(atl, ev, lms, bad, log=print, rng=None):
+def hinge_of(lms):
+    """Where CA1 ends and the dentate begins on the shank (contact index):
+    the fissure (theta's peak) when found, else 3 contacts above the upper
+    molecular-layer sink."""
+    for l in lms:
+        if l["key"] == "fissure":
+            return float(l["x"])
+    for l in lms:
+        if l["key"] == "ml_a":
+            return float(l["x"]) - 3.0
+    return None
+
+
+def place(atl, ev, lms, bad, log=print, rng=None, stretch=False):
     rng = rng or np.random.default_rng(0)
-    res = F.search(atl, lms, log=log)
+    hinge = hinge_of(lms) if stretch else None
+    if stretch and hinge is None:
+        log("   no fissure or dentate sink: no hinge, placed without stretch")
+    res = F.search(atl, lms, log=log, hinge=hinge, k_sd=K_SD if hinge is not None else None)
     lw = -0.5 * res["chi2"] + res["lp"]
     coarse_idx = np.flatnonzero(~res["fine"])
     fine_idx = np.flatnonzero(res["fine"])
-    top_c = coarse_idx[np.argsort(-lw[coarse_idx])[:N_TOP_COARSE]]
-    top_f = fine_idx[np.argsort(-lw[fine_idx])[:N_TOP_FINE]]
+    # with the stretch the grid is four times as deep, so half the lines
+    ntc, ntf, nr = (N_TOP_COARSE, N_TOP_FINE, N_RANDOM) if hinge is None else (600, 150, 300)
+    top_c = coarse_idx[np.argsort(-lw[coarse_idx])[:ntc]]
+    top_f = fine_idx[np.argsort(-lw[fine_idx])[:ntf]]
     rest = np.setdiff1d(coarse_idx, top_c)
-    rand = rng.choice(rest, size=min(N_RANDOM, rest.size), replace=False)
+    rand = rng.choice(rest, size=min(nr, rest.size), replace=False)
     cand = np.concatenate([top_c, rand, top_f])
     q = np.concatenate([np.ones(top_c.size), np.full(rand.size, rand.size / max(rest.size, 1)),
                         np.ones(top_f.size)])
@@ -160,17 +193,22 @@ def place(atl, ev, lms, bad, log=print, rng=None):
     log("   Method B: %d lines x %d depths x %d sizes; profiles: %s" % (
         cand.size, OFFSETS.size, SCALES.size, ", ".join(prof)))
     alm = {k: res["alm"][k][cand] for k in F.ATLAS_KEYS}
-    chi_full = _chi2_a_grid(lms, alm, OFFSETS, SCALES)
+    if hinge is not None:
+        grid_s = np.repeat(SCALES, KS.size)
+        grid_k = np.tile(KS, SCALES.size)
+    else:
+        grid_s, grid_k = SCALES, None
+    chi_full = _chi2_a_grid(lms, alm, OFFSETS, grid_s, Ks=grid_k, hinge=hinge)
     ll_parts = {k: np.zeros(chi_full.shape, np.float32) for k in prof}
     ap, ml, tml, tap = (res[k][cand] for k in ("ap", "ml", "tml", "tap"))
     step = 100
     for i in range(0, cand.size, step):
         sl = slice(i, i + step)
         codes, _t = F.lines_codes(atl, ap[sl], ml[sl], tml[sl], tap[sl])
-        _tot, parts = B.score(codes, OFFSETS, SCALES, prof, bad)
+        _tot, parts = B.score(codes, OFFSETS, grid_s, prof, bad, ks=grid_k, hinge=hinge)
         for k, v in parts.items():
             ll_parts[k][sl] = v
-    sol = Solution(res, cand, q, lms, ll_parts, chi_full)
+    sol = Solution(res, cand, q, lms, ll_parts, chi_full, grid_s=grid_s, grid_k=grid_k, hinge=hinge)
     tot, chi, llb = sol.total()
     out = {"profiles": list(prof), "candidates": int(cand.size)}
     for name, T in (("consolidated", tot), ("A", -0.5 * chi + sol.lp[:, None, None]),
@@ -209,5 +247,6 @@ def place(atl, ev, lms, bad, log=print, rng=None):
         T, _c, _b = sol.total(keep_prof=set(ll_parts) - {key})
         drops.append({"kind": "profile", "key": key, "pose": sol.pose(*sol.best(T))})
     out["drops"] = drops
+    out["hinge"] = hinge
     out["sol"] = sol
     return out

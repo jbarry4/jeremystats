@@ -254,7 +254,8 @@ def detect(ev):
         notes.append("No theta maximum below the cell layer.")
 
     # ---- dentate events: DS, then P-spikes and BTs ------------------------
-    floor = (int(round(lms[0]["x"])) + 8) if (lms and lms[0]["key"] == "sp") else 4
+    sp_l = [l for l in lms if l["key"] == "sp"]
+    floor = (int(round(sp_l[0]["x"])) + 8) if sp_l else 4
     for kind, tag, sig in (("ds", "", 1.5), ("ps", "ps_", 2.0), ("bt", "bt_", 2.5)):
         if kind + "_peak" not in ev or ev.get("n_" + kind, 0) < (20 if kind == "ds" else 8):
             continue
@@ -318,66 +319,4 @@ def detect(ev):
     return lms, notes
 
 
-def _dentate_pattern(peak, bad, floor):
-    """(upper sink, core source, lower sink, end) of a dentate event's CSD at
-    its peak, as sub-contact positions (None where absent).
-
-    The two blades are the two LARGEST sinks below `floor` (8 contacts under
-    CA1's cell layer), at least 5 contacts apart with a source between them
-    and the second at least 35% of the first -- not the first two in order:
-    dentate spikes also carry smaller sinks in CA1's lacunosum-moleculare
-    (seen in m59), which would otherwise be taken for a blade."""
-    c = _smooth(E.csd(peak, bad), 1)
-    if not np.isfinite(c).any():
-        return None
-    lo = max(1, int(floor))
-    seg = c[lo:]
-    if not np.isfinite(seg).any():
-        return None
-    depth = np.nanmax(np.abs(seg))
-    if not np.isfinite(depth) or depth <= 0:
-        return None
-    mins = [k for k in range(lo, N - 1)
-            if np.isfinite(c[k]) and c[k] < -0.2 * depth and c[k] <= np.nanmin(c[max(lo, k - 3):k + 4])]
-    if not mins:
-        return None
-    mins.sort(key=lambda k: c[k])                     # deepest first
-    s1 = mins[0]
-    s2 = None
-    for k in mins[1:]:
-        if abs(k - s1) < 5 or c[k] > 0.35 * c[s1]:
-            continue
-        a_, b_ = sorted((s1, k))
-        if np.nanmax(c[a_:b_ + 1]) > 0:
-            s2 = k
-            break
-    a = min(s1, s2) if s2 is not None else s1
-    b = max(s1, s2) if s2 is not None else None
-    ax, _l, a_hi = _centroid(-c, a, 0.4)
-    core = None
-    if b is not None:
-        bx, b_lo, b_hi = _centroid(-c, b, 0.4)
-        kq = a + int(np.nanargmax(c[a:b + 1]))
-        if c[kq] > 0:
-            core, _l2, _h2 = _centroid(c, kq, 0.4)
-    else:
-        bx, b_hi = None, a_hi
-        seg = c[a_hi:min(N, a_hi + 10)]
-        if np.isfinite(seg).any():
-            kq = a_hi + int(np.nanargmax(seg))
-            if c[kq] > 0:
-                core, _l2, _h2 = _centroid(c, kq, 0.4)
-    # where the last sink's current has ended: back within 10% of the peak,
-    # past the source that follows it
-    end = None
-    last_hi = b_hi if b is not None else a_hi
-    seen_src = False
-    for k in range(last_hi, N - 1):
-        if not np.isfinite(c[k]):
-            continue
-        if c[k] > 0.1 * depth:
-            seen_src = True
-        if seen_src and abs(c[k]) < 0.1 * depth:
-            end = float(k)
-            break
-    return ax, core, bx, end
+_dentate_pattern = E.dentate_pattern
