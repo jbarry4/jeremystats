@@ -1,0 +1,297 @@
+{
+ "id": "20261127-150004-e966",
+ "shard": "desktop-4h65ai7-d565",
+ "machine": "Bluebarry",
+ "who": "Shahriar Tafti",
+ "at": "2026-11-27T15:00:04-05:00",
+ "since": "2026-11-20T15:00:04-05:00",
+ "until": "2026-11-27T15:00:04-05:00",
+ "status": "printed",
+ "numbers": {
+  "versions": 6,
+  "commits": 91,
+  "lines_added": 221693,
+  "lines_removed": 4526,
+  "files": 678,
+  "events_banked": 28545,
+  "entries_banked": 15,
+  "bank_versions": 79,
+  "calls_people": 832,
+  "calls_models": 3752,
+  "recordings_new": 0,
+  "procedures": 6,
+  "people": 5,
+  "bench_people": 2
+ },
+ "code": {
+  "commits": 91,
+  "authors": {
+   "maliajaff": 25,
+   "SkylerDY": 25,
+   "isabellapiatek": 14,
+   "Shahriar Akhavan Tafti": 9,
+   "Rain Younger": 6,
+   "samarasahagian": 5,
+   "TheShanri": 2,
+   "asullenberger": 2,
+   "jbarry4": 2,
+   "angelinawoychosky": 1
+  },
+  "areas": {
+   "elsewhere": {
+    "added": 196555,
+    "removed": 16,
+    "files": 589
+   },
+   "the interface": {
+    "added": 17024,
+    "removed": 4172,
+    "files": 34
+   },
+   "the server": {
+    "added": 4228,
+    "removed": 137,
+    "files": 26
+   },
+   "the scripts": {
+    "added": 2800,
+    "removed": 187,
+    "files": 19
+   },
+   "the checks": {
+    "added": 794,
+    "removed": 14,
+    "files": 8
+   },
+   "the notes and docs": {
+    "added": 292,
+    "removed": 0,
+    "files": 2
+   }
+  },
+  "files": 678,
+  "added": 221693,
+  "removed": 4526,
+  "records_changed": 804,
+  "uncommitted": 393
+ },
+ "versions": [
+  {
+   "v": "2026.11.20.1",
+   "day": "2026-11-20",
+   "title": "A recording that paused is as long as its clock says"
+  },
+  {
+   "v": "2026.11.20.2",
+   "day": "2026-11-20",
+   "title": "Curation: notes, a Save you can see, View only, and fewer stray copies"
+  },
+  {
+   "v": "2026.11.21.1",
+   "day": "2026-11-21",
+   "title": "Extraction Room 2.0: pressing \"bring answers home\" twice no longer fails"
+  },
+  {
+   "v": "2026.11.21.2",
+   "day": "2026-11-21",
+   "title": "Project Evolve, phases 2, 3 and 7: family trees, bundles everywhere, and the Cells"
+  },
+  {
+   "v": "2026.11.23.1",
+   "day": "2026-11-23",
+   "title": "Sync: a request dropped at start-up is no longer filed as a fault"
+  },
+  {
+   "v": "2026.11.24.1",
+   "day": "2026-11-24",
+   "title": "A pause says so; Doppler runs can be banked by hand; Incisor's list has a search"
+  }
+ ],
+ "data": {
+  "bank": {
+   "entries": 15,
+   "events": {
+    "pooled": 3761,
+    "ied": 769,
+    "ds": 3559,
+    "rcbundle": 20456
+   },
+   "versions": 79,
+   "by": {
+    "Rain Younger": 48,
+    "Shahriar Tafti": 18,
+    "Isabella Piatek": 10,
+    "Prospector (AI)": 3
+   }
+  },
+  "calls": {
+   "people": {
+    "Angelina Woychosky": 384,
+    "Rain Younger": 213,
+    "Samara Sahagian": 211,
+    "Shahriar Tafti": 24
+   },
+   "models": {
+    "Prospector (AI)": 3752
+   },
+   "labels": {
+    "likely_garbage": 2339,
+    "spike": 1035,
+    "likely_spike": 807,
+    "garbage": 383,
+    "flag": 20
+   },
+   "sets": 10,
+   "source": "this computer only"
+  },
+  "recordings": {},
+  "activity": {
+   "people": {
+    "Shahriar Tafti": 940
+   },
+   "areas": {
+    "link": 154,
+    "mode": 147,
+    "curation": 134,
+    "bank": 129,
+    "cells": 61,
+    "session": 58,
+    "window": 49,
+    "events": 46,
+    "client": 37,
+    "spotter": 28,
+    "panning": 24,
+    "braces": 16
+   },
+   "actions": 940
+  },
+  "floss": {}
+ },
+ "bench": {
+  "events": [
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1656",
+    "cage": "CC-30818-1",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1665",
+    "cage": "CC-30797-2",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-20",
+    "what": "Active avoidance",
+    "mouse": "1667",
+    "cage": "CC-30798-2",
+    "lead": "Angelina, Maddie",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-21",
+    "what": "Active avoidance #2",
+    "mouse": "1656",
+    "cage": "CC-30818-1",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-21",
+    "what": "Active avoidance #2",
+    "mouse": "1665",
+    "cage": "CC-30797-2",
+    "lead": "Angelina",
+    "sessions": ""
+   },
+   {
+    "day": "2026-11-21",
+    "what": "Active avoidance #2",
+    "mouse": "1667",
+    "cage": "CC-30798-2",
+    "lead": "Angelina",
+    "sessions": ""
+   }
+  ],
+  "colony": {
+   "alive": 80,
+   "roles": {
+    "Stock": 76,
+    "Mating": 4
+   }
+  },
+  "procedures": [
+   "Tail Snip #1",
+   "Inject",
+   "Active avoidance",
+   "Active avoidance #2",
+   "Headplate",
+   "H3 probe (L)",
+   "H3 probe (R)",
+   "H10 probe (L)",
+   "H10 probe (R)",
+   "H10 opto (L)",
+   "H10 opto (R)",
+   "Perfuse",
+   "Euthanize",
+   "Tail Snip #2",
+   "Hippocampus Sectioning",
+   "M2 Sectioning"
+  ],
+  "url": "https://docs.google.com/spreadsheets/d/1SDXG1GpRhkjq2aKri3n06nOuR8TGio9QuQsyN656ERo/edit#gid=1444923131",
+  "counts": {
+   "Active avoidance": 3,
+   "Active avoidance #2": 3
+  },
+  "leads": {
+   "Angelina": 6,
+   "Maddie": 3
+  }
+ },
+ "note": {
+  "headline": "A productive week: 6 versions of Jarvis shipped, 28,545 events banked, and 832 calls made by people.",
+  "summary": "Work went in on the code all week: 91 commits changed 226,219 lines across 678 files. The most recent changes: Project Evolve, phases 2, 3 and 7: family trees, bundles everywhere, and the Cells; Sync: a request dropped at start-up is no longer filed as a fault; A pause says so; Doppler runs can be banked by hand; Incisor's list has a search. The data grew alongside it, and every call in the curation sets is kept with who made it.",
+  "progress": [
+   "A recording that paused is as long as its clock says (v2026.11.20.1).",
+   "Curation: notes, a Save you can see, View only, and fewer stray copies (v2026.11.20.2).",
+   "Extraction Room 2.0: pressing \"bring answers home\" twice no longer fails (v2026.11.21.1).",
+   "Project Evolve, phases 2, 3 and 7: family trees, bundles everywhere, and the Cells (v2026.11.21.2).",
+   "Sync: a request dropped at start-up is no longer filed as a fault (v2026.11.23.1).",
+   "A pause says so; Doppler runs can be banked by hand; Incisor's list has a search (v2026.11.24.1)."
+  ],
+  "bench": [
+   "Active avoidance: 3 entries, on 3 mice, led by Angelina and Maddie.",
+   "Active avoidance #2: 3 entries, on 3 mice, led by Angelina.",
+   "The colony stands at 80 live mice."
+  ],
+  "data": [
+   "15 new bank entries, and 79 new versions of entries already banked.",
+   "Calls in the curation sets: 832 by people and 3,752 by models, across 10 sets."
+  ],
+  "next": [],
+  "watch": []
+ },
+ "writer": "Jarvis",
+ "why_plain": "Hater of AI could not finish: Failed to authenticate: OAuth token revoked. Please log in again or contact your administrator.",
+ "run": {
+  "model": "sonnet",
+  "turns": 1,
+  "cost_usd": 0,
+  "seconds": 2.4
+ },
+ "emailed": [
+  {
+   "at": "2026-11-27T15:00:44-05:00",
+   "list": "lab",
+   "n": 4,
+   "ok": true,
+   "error": null,
+   "by": "Shahriar Tafti"
+  }
+ ]
+}

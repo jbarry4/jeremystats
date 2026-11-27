@@ -161,6 +161,7 @@ BARRY.strataSteps = (function () {
     H.render();
     watchElsewhere();
     if (BARRY.strataConsult) BARRY.strataConsult.enter(H.gid);
+    if (BARRY.strataSextant) BARRY.strataSextant.enter(H.gid);
   }
 
   /* A read or ICA of this recording still running -- started before
@@ -220,6 +221,7 @@ BARRY.strataSteps = (function () {
 
   function leave() {
     if (BARRY.strataConsult) BARRY.strataConsult.leave();
+    if (BARRY.strataSextant) BARRY.strataSextant.leave();
     if (saveTimer) { clearTimeout(saveTimer); flushStates(); }
     publish({ off: true });
     const body = document.getElementById('xfBody');
@@ -517,6 +519,10 @@ BARRY.strataSteps = (function () {
     // StrataScope Beta: [Steps | Beta] and, in Beta, Consult (strataconsult.js).
     if (BARRY.strataConsult) {
       for (const b of BARRY.strataConsult.rowBits()) row.appendChild(b);
+    }
+    // Sextant's placement as a proposal (stratasextant.js)
+    if (BARRY.strataSextant) {
+      for (const b of BARRY.strataSextant.rowBits()) row.appendChild(b);
     }
     if (status && status.scanned && status.current) {
       row.appendChild(el('button', {
@@ -1789,6 +1795,9 @@ BARRY.strataSteps = (function () {
   /* What Accept would write in the open step: channel -> region. Drawn
      hatched on the traces and the CSD until it is accepted. */
   function proposedLabels() {
+    // Sextant's layers, while its switch is on, are the proposal drawn
+    const sx = BARRY.strataSextant && BARRY.strataSextant.proposedLabels();
+    if (sx) return sx;
     if (!open || open === '0' || open === '4' || !sug || !ghost
         || ghost.step !== open) return null;
     const [a, b] = stepSpan(open, ghost.lines);

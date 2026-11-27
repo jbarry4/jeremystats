@@ -1,0 +1,117 @@
+def _hull_xy(name, i, j):
+    """The border's outline in one projection: the convex hull of its vertices on two of the three numbers
+    (columns: 0 = log10 amplitude, 1 = half-width, 2 = fast power)."""
+    from scipy.spatial import ConvexHull
+    tri = _hull(name)
+    P = np.unique(np.vstack(tri), axis=0)[:, [i, j]]
+    hh = ConvexHull(P)
+    return P[hh.vertices]
+
+
+def story_e():
+    fig, y = F.page("Borderline transients (BTs): an in-between kind of event, rare in every control and common in every IED+ mouse",
+                    "STORY 5 · FROM DS TOWARD IED · BORDERLINE TRANSIENTS", number=7)
+    F.legend_mice(fig, 0.55, y + 0.02)
+    y += 0.4
+    rc = D.rc()
+    h = rc[(rc.wf == "halo") & (~rc.lab.isin(["m6", "m51"]))]
+    F.letter(fig, 0.4, y + 0.08, "a", "Every candidate event, on all three Root Canal numbers (shaded: the DS and IED borders)")
+    grp = {g: h[h.lab.isin([l for l in F.LABS if F.subgroup(l) == g])] for g in ("CTL", "IED-", "IED+")}
+
+    def counts(e):
+        return "%d DS · %d BT · %d IED" % ((e.kind == "DS").sum(), (e.kind == "TZ").sum(), (e.kind == "IED").sum())
+    scatter3d(fig, (0.4, y + 0.4, 3.25, 2.75), grp["IED+"], "PTEN IED+ (5 mice): " + counts(grp["IED+"]), big=True)
+    scatter3d(fig, (3.9, y + 0.4, 1.75, 1.25), grp["IED+"], "IED+, turned 90°", view=(20, 32))
+    scatter3d(fig, (3.9, y + 1.9, 1.75, 1.25), grp["CTL"], "Control (7 mice): " + counts(grp["CTL"]), hulls=False)
+    W, H = fig.get_size_inches()
+    from matplotlib.lines import Line2D
+    hs = [Line2D([], [], ls="", marker="o", ms=4, mfc=F.KIND_COLOR[k], mec="none", label=F.KIND_WORD[k]) for k in ("DS", "TZ", "IED", "far")]
+    fig.legend(handles=hs, loc="upper left", bbox_to_anchor=(0.8 / W, 1 - (y + 3.12) / H), ncol=4, frameon=False, fontsize=6.3)
+    F.put(fig, 3.95, y + 3.17, "Small plots: same three axes. PTEN IED− (4 mice): " + counts(grp["IED-"]) + ", not drawn (looks like control).",
+          1.75, size=5.2, color=F.SOFT)
+    # a, lower row: the three flat views of the IED+ cloud
+    e = grp["IED+"]
+    cols = {"amp": np.log10(e.amp), "hw": e.hw, "hf": e.hf}
+    views = [("amp", "hf", 0, 2, "Largest amplitude (µV)", "Fast power (dB)"),
+             ("amp", "hw", 0, 1, "Largest amplitude (µV)", "Half-width (ms)"),
+             ("hw", "hf", 1, 2, "Half-width (ms)", "Fast power (dB)")]
+    lims = {"amp": (2.0, 3.7), "hw": (2, 30), "hf": (-12, 50)}
+    for k, (xa, ya, i, j, xl, yl) in enumerate(views):
+        a = F.axes_in(fig, 0.8 + k * 1.6, y + 3.62, 1.25, 1.0)
+        for name, col, al in (("ds", F.C_DS, 0.10), ("pspike", F.C_IED, 0.14)):
+            poly = _hull_xy(name, i, j)
+            a.fill(poly[:, 0], poly[:, 1], color=col, alpha=al, lw=0)
+            a.plot(np.r_[poly[:, 0], poly[:1, 0]], np.r_[poly[:, 1], poly[:1, 1]], color=col, lw=0.5, alpha=0.6)
+        for kind, s, al in (("DS", 1.2, 0.25), ("TZ", 3.5, 0.9), ("IED", 3.5, 0.9)):
+            sel = (e.kind == kind).to_numpy()
+            a.scatter(cols[xa][sel], cols[ya][sel], s=s, color=F.KIND_COLOR[kind], alpha=al, lw=0, rasterized=True)
+        a.set_xlim(*lims[xa])
+        a.set_ylim(*lims[ya])
+        if xa == "amp":
+            a.set_xticks([2, 2.5, 3, 3.5])
+            a.set_xticklabels(["100", "316", "1000", "3162"])
+        a.set_xlabel(xl, fontsize=6)
+        a.set_ylabel(yl, fontsize=6)
+        a.tick_params(labelsize=5.5)
+    # b: BTs per minute
+    tz = "rootcanal|tz_rate|v6||"
+    F.letter(fig, 0.4, y + 5.08, "b", "BTs per minute of recording, per mouse")
+    F.three_ways(fig, 0.8, y + 5.5, 4.6, 0.9, D.values(tz), "BTs per minute", D.res(tz), name_groups={"IED+"})
+    # c: BT vs IED share
+    F.letter(fig, 0.4, y + 6.95, "c", "BTs and IEDs rise together")
+    a = F.axes_in(fig, 0.8, y + 7.3, 1.6, 0.85)
+    vt = D.values("rootcanal|tz_share|v6||")
+    vi = D.values("rootcanal|ied_share|v6||")
+    for l in vt:
+        a.scatter(vi[l], vt[l], s=22 if l != "m7" else 26, color=F.color_of(l), marker=F.marker_of(l), edgecolor="white", lw=0.5, zorder=3)
+        if F.subgroup(l) == "IED+":
+            a.text(vi[l] + 0.35, vt[l], l, fontsize=4.8, color=F.SOFT, va="center")
+    x_ = np.array([vi[l] for l in vt])
+    y_ = np.array([vt[l] for l in vt])
+    r_all = st.pearsonr(x_, y_)
+    a.set_xlabel("IED events (% of all events)")
+    a.set_ylabel("BTs (% of all)")
+    a.set_title("all 16 mice: r %.2f, P %.1e" % (r_all[0], r_all[1]), fontsize=5.8, color=F.SOFT, loc="left")
+    # d: the remaining DS lean toward / away from the IED border
+    gb = "rootcanal|ds_gb_median|v6||"
+    F.letter(fig, 2.7, y + 6.95, "d", "The other DS: distance to the IED border")
+    b = F.axes_in(fig, 3.05, y + 7.3, 2.35, 0.85)
+    v = D.values(gb)
+    F.dots(b, v, {l: F.subgroup(l) for l in v}, ["CTL", "IED-", "IED+"], ylabel="Border sizes", xlabels=["Control", "IED−", "IED+"],
+           show_names=False)
+    F.group_brackets(b, v, {l: F.subgroup(l) for l in v}, ["CTL", "IED-", "IED+"],
+                     [("IEDneg_vs_CTL", "CTL", "IED-"), ("IEDpos_vs_CTL", "CTL", "IED+"), ("IEDpos_vs_IEDneg", "IED-", "IED+")], D.res(gb))
+    pr = D.p(tz, "IEDpos_vs_CTL")
+    p3 = D.p(tz, "IED3")
+    pg1 = D.p(gb, "IEDpos_vs_CTL")
+    pg2 = D.p(gb, "IEDneg_vs_CTL")
+    textcol(fig, 1.55, [
+        ("What a BT is", "A borderline transient: an event that passed DS detection but falls between the two Root Canal "
+                         "borders, inside both the DS border (drawn around 2,148 control DS) and the IED border (drawn "
+                         "around the hand-sorted IEDs), or in the halo zone near both. Formerly the Twilight Zone class. "
+                         "Like a borderline blood-pressure reading, one means little; a steady rate of them means "
+                         "something. BTs are left out of the Halo and Strict DS sets."),
+        ("How to read it", "a: one dot per event in the space of the three numbers the borders use: largest amplitude "
+                           "(10–150 Hz, log scale), half-width, and fast power (240–420 Hz over its own "
+                           "baseline). The shaded solids are the borders as applied (5% grace); BTs and IEDs also cast a "
+                           "faint shadow on the floor. The lower row shows the same IED+ cloud flat, two numbers at a "
+                           "time, with each border's outline. b: BTs per minute, one dot per mouse, three groupings. c: "
+                           "BT and IED-class shares per mouse. d: for the DS that remain, how far each sits from the IED "
+                           "border in units of that border's own size; median per mouse."),
+        ("What it shows", "BTs: 0.56 to 1.89 per minute in every IED+ mouse; at most 0.075 in any control or IED− "
+                          "mouse, and none in m7 (IED+ against control %s; three IED groups %s). In a, BTs fill the gap "
+                          "where the two borders meet: shorter half-width and higher fast power than DS. BTs and IEDs "
+                          "rise together across mice (c). The remaining DS of IED+ mice sit nearer the IED border (%s) "
+                          "and those of IED− mice farther from it (%s)."
+                          % (F.pstr(pr[0]), F.pstr(p3[0]), F.pstr(pg1[0]), F.pstr(pg2[0]))),
+        ("Why it matters", "Controls have a handful; every IED+ mouse has at least seven times the highest control rate. "
+                           "Between DS and IEDs there is a third group that is common only where IEDs exist, which is what "
+                           "a continuum from DS to IED would look like, and it makes the BT rate a candidate marker for an "
+                           "IED-prone network."),
+        ("Caveats", "The borders were drawn on these same recordings (controls for the DS border, IED+ mice for the "
+                    "IED border), so BT counts are defined by them. Per-mouse rates rest on 12 to 59 events."),
+        ("To replicate", "Apply the same two borders, frozen, to new mice and count BTs per minute blind to genotype."),
+    ])
+    F.save(fig, OUT, "07_story5_borderline_transients")
+
+

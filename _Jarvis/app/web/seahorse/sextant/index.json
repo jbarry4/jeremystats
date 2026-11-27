@@ -1,0 +1,567 @@
+{
+ "schema": 1,
+ "made": "2026-11-27 15:45",
+ "recordings": [
+  {
+   "gid": "s79ba9ba163c4",
+   "mouse": "m2",
+   "group": "CTL",
+   "side": "R",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7670.1,
+     1730.2,
+     6820.1
+    ],
+    [
+     7874.9,
+     2891.6,
+     7024.9
+    ]
+   ],
+   "entry": {
+    "ap": -1.998,
+    "dv": -0.145,
+    "ml": 0.848
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 10.0,
+   "tilt_ap": 10.0
+  },
+  {
+   "gid": "s37c7c8edfe10",
+   "mouse": "m21",
+   "group": "CTL",
+   "side": "L",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7673.9,
+     1627.1,
+     6876.1
+    ],
+    [
+     7580.9,
+     2690.0,
+     6969.1
+    ]
+   ],
+   "entry": {
+    "ap": -2.401,
+    "dv": -0.154,
+    "ml": -1.049
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 5.0,
+   "tilt_ap": -5.0
+  },
+  {
+   "gid": "s0a9e96cf1739",
+   "mouse": "m22",
+   "group": "CTL",
+   "side": "R",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7550.0,
+     1525.4,
+     7056.4
+    ],
+    [
+     7550.0,
+     2721.2,
+     7004.1
+    ]
+   ],
+   "entry": {
+    "ap": -2.15,
+    "dv": -0.085,
+    "ml": 1.412
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": -2.5,
+   "tilt_ap": 0.0
+  },
+  {
+   "gid": "s016e132432c8",
+   "mouse": "m26",
+   "group": "CTL",
+   "side": "L",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7621.9,
+     1457.2,
+     6999.3
+    ],
+    [
+     7851.5,
+     2758.9,
+     6942.5
+    ]
+   ],
+   "entry": {
+    "ap": -2.01,
+    "dv": -0.075,
+    "ml": -1.352
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": -2.5,
+   "tilt_ap": 10.0
+  },
+  {
+   "gid": "sd94396e874c7",
+   "mouse": "m51",
+   "group": "CTL",
+   "side": "R",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7650.0,
+     1750.6,
+     6763.1
+    ],
+    [
+     7650.0,
+     2943.0,
+     6658.7
+    ]
+   ],
+   "entry": {
+    "ap": -2.25,
+    "dv": -0.126,
+    "ml": 1.198
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": -5.0,
+   "tilt_ap": 0.0
+  },
+  {
+   "gid": "sd42a6992b76c",
+   "mouse": "m59",
+   "group": "CTL",
+   "side": "R",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7770.0,
+     1500.0,
+     7280.0
+    ],
+    [
+     7770.0,
+     2697.0,
+     7280.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.37,
+    "dv": -0.072,
+    "ml": 1.58
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": 0.0
+  },
+  {
+   "gid": "s8d7f397b9708",
+   "mouse": "m60",
+   "group": "CTL",
+   "side": "L",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7771.8,
+     1651.0,
+     7000.0
+    ],
+    [
+     7678.4,
+     2717.9,
+     7000.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.497,
+    "dv": -0.116,
+    "ml": -1.3
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": -5.0
+  },
+  {
+   "gid": "s43b16cd74bcb",
+   "mouse": "m61",
+   "group": "CTL",
+   "side": "R",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7679.5,
+     1551.7,
+     7014.8
+    ],
+    [
+     7794.7,
+     2868.4,
+     7072.3
+    ]
+   ],
+   "entry": {
+    "ap": -2.163,
+    "dv": -0.114,
+    "ml": 1.257
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 2.5,
+   "tilt_ap": 5.0
+  },
+  {
+   "gid": "s45bae70722f2",
+   "mouse": "m1",
+   "group": "PTEN",
+   "side": "L",
+   "ko": 5.18,
+   "pspikes": false,
+   "line": [
+    [
+     7623.6,
+     1525.4,
+     6890.0
+    ],
+    [
+     7681.4,
+     2847.1,
+     6890.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.167,
+    "dv": -0.115,
+    "ml": -1.19
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": 2.5
+  },
+  {
+   "gid": "sd0d0bded958b",
+   "mouse": "m3",
+   "group": "PTEN",
+   "side": "L",
+   "ko": 24.57,
+   "pspikes": true,
+   "line": [
+    [
+     6873.9,
+     1627.1,
+     7026.1
+    ],
+    [
+     6780.9,
+     2690.0,
+     7119.1
+    ]
+   ],
+   "entry": {
+    "ap": -1.588,
+    "dv": -0.015,
+    "ml": -1.212
+   },
+   "words": {
+    "ap": "likely",
+    "ml": "guess",
+    "depth": "likely",
+    "tilt": "guess"
+   },
+   "tilt_ml": 5.0,
+   "tilt_ap": -5.0
+  },
+  {
+   "gid": "sc74c98b2495d",
+   "mouse": "m5",
+   "group": "PTEN",
+   "side": "R",
+   "ko": 27.64,
+   "pspikes": true,
+   "line": [
+    [
+     6943.3,
+     1087.5,
+     5950.0
+    ],
+    [
+     6685.5,
+     2549.6,
+     5950.0
+    ]
+   ],
+   "entry": {
+    "ap": -1.663,
+    "dv": 0.076,
+    "ml": 0.25
+   },
+   "words": {
+    "ap": "likely",
+    "ml": "likely",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": -10.0
+  },
+  {
+   "gid": "s500a5aec223e",
+   "mouse": "m7",
+   "group": "PTEN",
+   "side": "L",
+   "ko": 24.12,
+   "pspikes": false,
+   "line": [
+    [
+     7806.0,
+     1076.6,
+     6934.0
+    ],
+    [
+     7742.8,
+     2522.8,
+     6997.2
+    ]
+   ],
+   "entry": {
+    "ap": -2.445,
+    "dv": -0.144,
+    "ml": -1.195
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 2.5,
+   "tilt_ap": -2.5
+  },
+  {
+   "gid": "sba57286bdee3",
+   "mouse": "m8",
+   "group": "PTEN",
+   "side": "L",
+   "ko": 3.89,
+   "pspikes": false,
+   "line": [
+    [
+     7252.4,
+     1494.6,
+     7127.8
+    ],
+    [
+     7686.3,
+     2686.6,
+     6752.0
+    ]
+   ],
+   "entry": {
+    "ap": -1.456,
+    "dv": 0.072,
+    "ml": -1.772
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "likely"
+   },
+   "tilt_ml": -17.5,
+   "tilt_ap": 20.0
+  },
+  {
+   "gid": "s38b9e61c5684",
+   "mouse": "m13",
+   "group": "PTEN",
+   "side": "L",
+   "ko": 18.87,
+   "pspikes": true,
+   "line": [
+    [
+     6740.8,
+     1433.9,
+     6082.2
+    ],
+    [
+     6616.4,
+     2855.7,
+     5831.5
+    ]
+   ],
+   "entry": {
+    "ap": -1.441,
+    "dv": -0.046,
+    "ml": -0.585
+   },
+   "words": {
+    "ap": "likely",
+    "ml": "likely",
+    "depth": "likely",
+    "tilt": "likely"
+   },
+   "tilt_ml": -10.0,
+   "tilt_ap": -5.0
+  },
+  {
+   "gid": "s4a67210fc7ac",
+   "mouse": "m28",
+   "group": "PTEN",
+   "side": "R",
+   "ko": 20.19,
+   "pspikes": true,
+   "line": [
+    [
+     7828.7,
+     1700.4,
+     7061.3
+    ],
+    [
+     7782.0,
+     2769.3,
+     7108.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.494,
+    "dv": -0.119,
+    "ml": 1.296
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 2.5,
+   "tilt_ap": -2.5
+  },
+  {
+   "gid": "s6cdd64d005c4",
+   "mouse": "m33",
+   "group": "PTEN",
+   "side": "R",
+   "ko": 4.41,
+   "pspikes": false,
+   "line": [
+    [
+     7834.7,
+     1703.0,
+     7150.0
+    ],
+    [
+     7648.8,
+     2757.8,
+     7150.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.695,
+    "dv": -0.106,
+    "ml": 1.45
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": -10.0
+  },
+  {
+   "gid": "s14510e30e1bd",
+   "mouse": "m34",
+   "group": "PTEN",
+   "side": "R",
+   "ko": 28.43,
+   "pspikes": true,
+   "line": [
+    [
+     7720.0,
+     1450.0,
+     7130.0
+    ],
+    [
+     7720.0,
+     2773.0,
+     7130.0
+    ]
+   ],
+   "entry": {
+    "ap": -2.32,
+    "dv": -0.102,
+    "ml": 1.43
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 0.0,
+   "tilt_ap": 0.0
+  }
+ ]
+}

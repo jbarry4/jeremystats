@@ -1,0 +1,12 @@
+m1 read 188 of 188 DS in 168 s; bad [59]
+m2 read 110 of 110 DS in 94 s; bad [59]
+m21 read 70 of 70 DS in 62 s; bad [8, 41, 59]
+m22 read 226 of 226 DS in 120 s; bad [8, 41, 59]
+m26 read 273 of 273 DS in 201 s; bad [8, 41, 59]
+m33 read 217 of 217 DS in 119 s; bad [8, 41, 59]
+m59 read 492 of 492 DS in 264 s; bad [59]
+m60 read 562 of 562 DS in 224 s; bad [59]
+m61 read 189 of 189 DS in 131 s; bad [59]
+m7 read 125 of 125 DS in 72 s; bad [55, 59]
+m8 read 363 of 363 DS in 186 s; bad [57, 59]
+done

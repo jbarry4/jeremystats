@@ -1,0 +1,86 @@
+IH = 6.3
+iy = section(M, TOP, C1W, IH, "INTRODUCTION", "Introduction")
+draft(M + 0.35, iy + 0.3, C1W - 0.7, IH - 1.15 - 0.6, "Introduction", [
+    [n("Interictal epileptiform discharges (IEDs) mark a pathological hippocampus, while dentate spikes (DS) are normal "
+       "population events in the dentate gyrus driven by entorhinal input. Mosaic PTEN loss in dentate neurons produces "
+       "IEDs in some mice but not in others.")],
+    [n("Here we ask whether IEDs grow out of the dentate spike: does the DS change with the share of knocked-out cells, "
+       "and do events between a normal DS and an IED mark the mice that have IEDs?")]], "Introduction", size=22)
+
+my = TOP + IH + G
+pw = 7.0
+ph = pw * 1094 / 1000
+hw = C1W - 0.7
+hh = hw * 692 / 1757
+mh = 1.15 + 0.35 + ph + 0.35 + hh + 0.35
+cy = section(M, my, C1W, mh, "METHODS", "Methods")
+s.shapes.add_picture(os.path.join(IMG, "pathway_only.png"), Inches(M + 0.35), Inches(cy + 0.35), width=Inches(pw), height=Inches(ph))
+tx = M + 0.35 + pw + 0.4
+rich(tx, cy + 0.3, M + C1W - 0.35 - tx, ph + 0.1, [
+    [b("PTEN loss "), n("raises PI3K/AKT/mTOR signaling, driving neuronal overgrowth and burst firing.")],
+    [b("Mosaic knockout: "), n("Pten flx/flx mice received a Cre virus at P7; the share of knocked-out cells (% KO) "
+                               "varies by mouse.")],
+    [b("Groups: "), n("7 controls and 9 PTEN mice, 5 with IEDs (IED+) and 4 without (IED−).")],
+    [b("Recording: "), n("from 21 days after injection, a 64-contact silicon probe (20 µm spacing) across dorsal CA1 "
+                         "and dentate gyrus in awake, head-fixed mice.")],
+    [b("CNO: "), ("[chemogenetic construct, dose and timing]", {"c": PH_LINE, "b": True})]], 22, space=12, name="Methods text")
+hy = cy + 0.35 + ph + 0.35
+s.shapes.add_picture(os.path.join(IMG, "Picture_42.png"), Inches(M + 0.35), Inches(hy), width=Inches(hw), height=Inches(hh))
+
+by = my + mh + G
+bh = BOT - by
+cy = section(M, by, C1W, bh, "ISOLATING BIOMARKERS", "Isolating biomarkers")
+rich(M + 0.4, cy + 0.3, C1W - 0.8, 1.3, [[n("Terabytes of continuous recordings were catalogued on the Vermont Advanced Computing "
+                                            "Core (VACC) and run through one custom pipeline:")]], 22, name="Biomarkers intro")
+steps = [("Detect", "two independent automated detectors flag candidate events in every recording; their hits are pooled."),
+         ("Curate", "trained reviewers mark each candidate as a real event or an artifact."),
+         ("Align", "each event's current source density (CSD) is placed along the dentate layers by its own sinks and "
+                   "sources, not by hand-drawn layer labels."),
+         ("Classify", "events are mapped by amplitude, half-width and fast (240–420 Hz) power; borders drawn around "
+                      "control DS and around IEDs sort them into DS, borderline transients (BTs) and IEDs.")]
+sy = cy + 0.3 + 1.25
+step_h = (by + bh - 0.7 - sy) / len(steps)
+for k, (head, body) in enumerate(steps):
+    yy = sy + k * step_h
+    box(M + 0.4, yy + 0.02, 0.7, 0.7, GOLD, shape=MSO_SHAPE.OVAL, name="Step %d circle" % (k + 1))
+    text(M + 0.4, yy + 0.02, 0.7, 0.7, str(k + 1), 28, GREEN, True, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE, name="Step %d number" % (k + 1))
+    rich(M + 1.4, yy, C1W - 1.8, step_h, [[b(head + ": "), n(body)]], 22, name="Step %d text" % (k + 1))
+rich(M + 0.4, by + bh - 0.6, C1W - 0.8, 0.45, [[("Thanks to Bennet Fauber for VACC technical support.", {"i": True, "c": MUTED})]],
+     18, name="Acknowledgment")
+
+# ---------- right area: results ----------
+rh1 = 8.7
+half = (RW - G) / 2
+for k, (title, fig, note, paras) in enumerate([
+        ("THETA CSD", "Theta CSD", "Theta-band CSD by group and % KO",
+         [[n("[Finding 1: does the theta sink follow % KO or IED status?]")], [n("[Finding 2]")]]),
+        ("BEHAVIOR", "Behavior", "Task, measure and groups",
+         [[n("[Finding 1: what the task shows by group]")], [n("[Finding 2]")]])]):
+    xx = RX + k * (half + G)
+    cy = section(xx, TOP, half, rh1, title, title.title())
+    fh = rh1 - 1.15 - 0.3 - 2.3 - 0.3 - 0.3
+    figure_slot(xx + 0.35, cy + 0.3, half - 0.7, fh, fig, note, title.title())
+    draft(xx + 0.35, cy + 0.3 + fh + 0.3, half - 0.7, 2.3, title.title() + " findings", paras, title.title())
+
+iy2 = TOP + rh1 + G
+ih = 13.6
+cy = section(RX, iy2, RW, ih, "IEDs AND DENTATE SPIKES: THE BIG PICTURE", "IED DS story")
+pw2 = (RW - 0.7 - 0.4) / 2
+inner = ih - 1.15 - 0.6
+dh_ = 4.4
+for k, (fig, note, label, paras) in enumerate([
+        ("IEDs before / after CNO", "IED rate, depth profile and theta, baseline against CNO",
+         "IEDs before and after CNO", [
+             [n("From the Jan-26 poster, to update: CNO lowered theta CSD magnitude but did not stop IEDs "
+                "(8.2 ± 1.8 per 30 min at baseline, 26.2 ± 8.3 after CNO), and IED propagation was unchanged.")],
+             [n("Theta at the lower granule layer predicted the IED mice at baseline (AUC 0.82), much less after CNO (AUC 0.61).")]]),
+        ("Big picture IED / DS story", "DS, borderline transients and IEDs on one map, by mouse",
+         "Big picture IED / DS story", [
+             [n("From the DS analysis, to choose from: DS fast power separates the mice; every IED+ mouse is above every "
+                "control and every IED− mouse is below.")],
+             [n("In IED+ mice, BTs carry more MML current than the same mice's DS, and far more fast power.")],
+             [n("% KO alone predicts which mice have IEDs (AUC 0.90); the one miss is a high-KO mouse without IEDs.")]])]):
+    xx = RX + 0.35 + k * (pw2 + 0.4)
+    fh = inner - dh_ - 0.3
+    figure_slot(xx, cy + 0.3, pw2, fh, fig, note, "IED panel %d" % (k + 1), size=44)
+    draft(xx, cy + 0.3 + fh + 0.3, pw2, dh_, label, paras, "IED panel %d" % (k + 1))

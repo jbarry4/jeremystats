@@ -1,0 +1,5 @@
+[["location.href = '/extraction.html'", "document.querySelector('[data-sub=er2]')", 2],
+ ["1", "document.querySelector('[data-sub=er2]')", 2],
+ ["document.querySelector('[data-sub=er2]').click()", "document.querySelectorAll('#er2Root .card').length >= 5", 4],
+ ["(function(){var t=[...document.querySelectorAll('#er2Root tr')].find(function(x){return x.style.cursor==='pointer'}); if(t) t.click(); return 1})()", "document.querySelector('#er2Open h3')", 3],
+ ["window.scrollTo(0, document.getElementById('erSubs').getBoundingClientRect().top + window.scrollY - 10)", "1", 1]]

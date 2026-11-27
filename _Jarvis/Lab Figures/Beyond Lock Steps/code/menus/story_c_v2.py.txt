@@ -1,0 +1,102 @@
+def story_c():
+    import pickle
+    import stats_lib as S
+    fig, y = F.page("Where it happens: in IED+ mice the dentate spike's balance tips toward the lower (infrapyramidal) blade",
+                    "STORY 3 · PLACE · WHICH BLADE", number=5)
+    F.legend_mice(fig, 0.55, y + 0.02)
+    y += 0.4
+    U = pickle.load(open(os.path.join(HERE, "uprof.pkl"), "rb"))
+    G = U["UGRID"]
+    recs = {lab: U["recs"][("v6", lab)] for lab in F.LABS if ("v6", lab) in U["recs"]}
+    # coarse anatomy from the lab's labels: median over mice of where each boundary falls on the registered axis
+    bnd = {k: float(np.nanmedian([r["bounds"].get(k, np.nan) for r in recs.values()])) for k in ("fissure", "gcl1_end", "gcl2_start", "oml2_end")}
+    regions = [("CA1", G[0], bnd["fissure"]), ("Upper blade", bnd["fissure"], bnd["gcl1_end"]), ("Hilus", bnd["gcl1_end"], bnd["gcl2_start"]),
+               ("Lower blade", bnd["gcl2_start"], bnd["oml2_end"])]
+    shade = {"CA1": "#f3f5f9", "Upper blade": "#fdf1e6", "Hilus": "#f4f4ef", "Lower blade": "#fdf1e6"}
+    F.letter(fig, 0.4, y + 0.08, "a", "DS current at its peak, each mouse aligned on its own two sink peaks and scaled to its deepest sink")
+    for k, (g, word) in enumerate((("CTL", "Control"), ("IED-", "PTEN IED−"), ("IED+", "PTEN IED+"))):
+        a = F.axes_in(fig, 0.95 + k * 1.55, y + 0.5, 1.3, 2.75)
+        for name, lo, hi in regions:
+            a.axhspan(lo, hi, color=shade[name], zorder=0, lw=0)
+        labs = [l for l in recs if F.subgroup(l) == g]
+        curves = np.array([recs[l]["u_peak"] for l in labs])
+        for l, c in zip(labs, curves):
+            a.plot(c, G, color=F.color_of(l), lw=0.6, alpha=0.65, ls="--" if l == "m7" else "-", zorder=2)
+        m = np.nanmean(curves, axis=0)
+        se = np.nanstd(curves, axis=0) / np.sqrt(np.sum(np.isfinite(curves), axis=0))
+        a.fill_betweenx(G, m - se, m + se, color=F.INK, alpha=0.15, lw=0, zorder=3)
+        a.plot(m, G, color=F.INK, lw=1.6, zorder=4)
+        a.axvline(0, color=F.FAINT, lw=0.5, zorder=1)
+        for uu in (0, 1):
+            a.axhline(uu, color=F.SOFT, lw=0.5, ls=":", zorder=1)
+        a.set_ylim(2.0, -1.3)
+        a.set_xlim(-1.25, 0.95)
+        a.set_xlabel("CSD at the DS peak\n(deepest sink = −1)")
+        a.set_title("%s (n %d)" % (word, len(labs)), fontsize=6.8, loc="left")
+        if k == 0:
+            a.set_yticks([(max(lo, -1.3) + min(hi, 2.0)) / 2 for _n, lo, hi in regions] + [0, 1])
+            a.set_yticklabels([n for n, _lo, _hi in regions] + ["upper sink peak", "lower sink peak"], fontsize=6)
+            for t_ in a.get_yticklabels()[-2:]:
+                t_.set_color(F.SOFT)
+                t_.set_fontsize(5.3)
+        else:
+            a.set_yticks([])
+    # b: one number per mouse per region
+    F.letter(fig, 0.4, y + 3.95, "b", "Mean scaled current in each region at the DS peak, one dot per mouse")
+    names = [n for n, _lo, _hi in regions]
+    per = {}
+    for l, r in recs.items():
+        per[l] = [float(np.nanmean(r["u_peak"][(G >= lo) & (G < hi)])) for _n, lo, hi in regions]
+    ptxt = []
+    for j, name in enumerate(names):
+        a = F.axes_in(fig, 0.85 + j * 1.2, y + 4.45, 0.95, 1.25)
+        vals = {l: per[l][j] for l in per}
+        F.dots(a, vals, {l: F.subgroup(l) for l in vals}, ["CTL", "IED-", "IED+"], ylabel="Scaled CSD" if j == 0 else "",
+               xlabels=["Ctl", "IED−", "IED+"], show_names=False)
+        rows = []
+        for cid, ga, gb in (("IEDneg_vs_CTL", "CTL", "IED-"), ("IEDpos_vs_CTL", "CTL", "IED+"), ("IEDpos_vs_IEDneg", "IED-", "IED+")):
+            A_ = [vals[l] for l in vals if F.subgroup(l) == ga and np.isfinite(vals[l])]
+            B_ = [vals[l] for l in vals if F.subgroup(l) == gb and np.isfinite(vals[l])]
+            rr = S.two(A_, B_)
+            rows.append((["CTL", "IED-", "IED+"].index(ga), ["CTL", "IED-", "IED+"].index(gb), rr["p"]))
+            ptxt.append((name, cid, rr["p"]))
+        lo_, hi_ = a.get_ylim()
+        F.brackets(a, rows, np.nanmax(list(vals.values())), hi_ - lo_)
+        a.set_title(name, fontsize=6.8, loc="left")
+        a.axhline(0, color=F.FAINT, lw=0.5, zorder=0)
+    # c: blade balance three ways
+    bb = "laminar|blade_balance_mean|v6||all"
+    F.letter(fig, 0.4, y + 6.35, "c", "Blade balance per event: (upper sink − lower sink) / (upper + lower), mean per mouse")
+    F.three_ways(fig, 0.85, y + 6.95, 4.6, 1.15, D.values(bb), "Blade balance\n(− = lower blade larger)", D.res(bb))
+    pb = D.p(bb, "IEDpos_vs_CTL")
+    ph = D.p(bb, "highKO_vs_CTL")
+    pk = D.p(bb, "KO_dose_all")
+    p3 = D.p("laminar|blade_balance_median|v6|winner|ds3", "PTEN_vs_CTL")
+    up_pos = [p for n, c, p in ptxt if n == "Upper blade" and c == "IEDpos_vs_CTL"][0]
+    lo_pos = [p for n, c, p in ptxt if n == "Lower blade" and c == "IEDpos_vs_CTL"][0]
+    textcol(fig, 1.55, [
+        ("The claim", "In IED+ mice the dentate spike's balance tips toward the lower (infrapyramidal) blade: scaled to "
+                      "its deepest sink, the upper blade carries less of the spike than in controls. The lower blade is "
+                      "where the IEDs start (hilus and GCL2 in the old IED analysis), where theta current is largest, and "
+                      "where the histology showed the most knockout cells."),
+        ("How to read it", "a: each mouse's mean CSD at the DS peak. Depth is registered on the spike itself: 0 is where "
+                           "that mouse's upper-blade sink peaks and 1 where its lower-blade sink peaks, so the peaks line "
+                           "up across mice; the current is scaled so the deepest sink is −1. The four shaded regions "
+                           "are coarse anatomy: CA1, upper blade, hilus and lower blade, placed at the median (over "
+                           "mice) of where the lab's labels put their borders on this axis. b: the mean of a in each "
+                           "region, one dot per mouse; brackets mark P < 0.05 (* < 0.05, ** < 0.01, *** < 0.001)."),
+        ("What it shows", "Upper blade, IED+ against control %s; lower blade %s. Blade balance per event: IED+ against "
+                          "control %s, high knockout against control %s, against knockout over all mice ρ %+.2f "
+                          "(%s); the Strict set agrees. DS3 events lean on the lower blade in every PTEN mouse (%s)."
+                          % (F.pstr(up_pos), F.pstr(lo_pos), F.pstr(pb[0]), F.pstr(ph[0]), pk[2], F.pstr(pk[0]), F.pstr(p3[0]))),
+        ("Why it matters", "It gives the 'place' step of the framework: the change is not spread evenly but sits on the "
+                           "blade that also starts the IEDs. Blade input is asymmetric (about two thirds lateral entorhinal "
+                           "to the upper blade, medial to the lower), so a lower-blade shift may also be an input story."),
+        ("Caveats", "Which blade the probe crosses more squarely changes the balance, and the shank angle is not known. "
+                    "The region borders are the lab's channel labels (imported from the feeder sheet into Jarvis), used "
+                    "only coarsely here."),
+        ("To replicate", "Histology of the track and of knockout cells in each blade, in the same mice."),
+    ])
+    F.save(fig, OUT, "05_story3_lower_blade")
+
+

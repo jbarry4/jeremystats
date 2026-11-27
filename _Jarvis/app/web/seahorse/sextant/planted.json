@@ -1,0 +1,57 @@
+{
+ "made": "2026-11-27 15:55",
+ "n": 1,
+ "seed": 3,
+ "summary": {
+  "ap": {
+   "median_abs": 0.134,
+   "p90_abs": 0.134,
+   "covered": 1.0
+  },
+  "ml": {
+   "median_abs": 0.205,
+   "p90_abs": 0.205,
+   "covered": 1.0
+  },
+  "depth": {
+   "median_abs": 0.131,
+   "p90_abs": 0.131,
+   "covered": 1.0
+  },
+  "tilt_ml": {
+   "median_abs": 2.1,
+   "p90_abs": 2.1,
+   "covered": 1.0
+  },
+  "tilt_ap": {
+   "median_abs": 1.3,
+   "p90_abs": 1.3,
+   "covered": 1.0
+  }
+ },
+ "plants": [
+  {
+   "ap": {
+    "err": -0.134,
+    "covered": true
+   },
+   "ml": {
+    "err": 0.205,
+    "covered": true
+   },
+   "depth": {
+    "err": -0.131,
+    "covered": true
+   },
+   "tilt_ml": {
+    "err": -2.1,
+    "covered": true
+   },
+   "tilt_ap": {
+    "err": -1.3,
+    "covered": true
+   }
+  }
+ ],
+ "note": "Inference precision when the atlas and pathway model are right; a floor, not a guarantee."
+}

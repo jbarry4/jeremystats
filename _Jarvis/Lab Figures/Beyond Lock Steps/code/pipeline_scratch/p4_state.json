@@ -1,0 +1,22 @@
+{
+ "Halo": {
+  "old": "xm-f6c45faefb",
+  "new": "xm-f9ba0085e4",
+  "workflow": "6fa7fef7b7a3",
+  "version": 5,
+  "name": "Ambiguous Dataset (Optimized Parameters/Snap/Halo) \u00b7 data rich, less specific \u00b7 fixed 2026-11-19",
+  "room_artifact": "980b57eab496",
+  "room_version": 9,
+  "old_room_version": 6
+ },
+ "No P-spikes": {
+  "old": "xm-1d6cfcdd3d",
+  "new": "xm-320ab6681b",
+  "workflow": "a7eee6a6ca9f",
+  "version": 4,
+  "name": "PTEN and CTL Baseline (Optimized Paramters/Snap/10% Grace[Extraction Room; No P-spikes])) \u00b7 fixed 2026-11-19",
+  "old_room_version": 8,
+  "room_artifact": "980b57eab496",
+  "room_version": 10
+ }
+}
