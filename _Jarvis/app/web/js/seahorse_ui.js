@@ -57,6 +57,7 @@ BARRY.shUI = (function () {
     plus: '<path d="M12 5.5v13M5.5 12h13"/>',
     note: '<path d="M5.5 5.5h13v9l-4 4h-9z"/><path d="M14.5 18.5v-4h4"/>',
     // a trace that stumbles, bursts and falls quiet: the seizure story
+    sextant: '<path d="M4 19.5L12 4.5l8 15"/><path d="M6.4 15.2a9 9 0 0 1 11.2 0"/><circle cx="12" cy="4.5" r="1.2" fill="currentColor" stroke="none"/><path d="M12 4.5l3.2 11.4"/>',
     burst: '<path d="M2.5 13h2.4l1-1.6 1 3 1.2-4.6 1.4 7.2 1.6-10.4 1.6 12.4 1.6-11 1.4 7.6 1.1-3.8.9 1.2h2.3"/>',
   };
   function icon(name, size) {

@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "made": "2026-11-27 15:05",
+ "recordings": [
+  {
+   "gid": "s37c7c8edfe10",
+   "mouse": "m21",
+   "group": "CTL",
+   "side": "L",
+   "ko": 0.0,
+   "pspikes": false,
+   "line": [
+    [
+     7673.9,
+     1627.1,
+     6876.1
+    ],
+    [
+     7580.9,
+     2690.0,
+     6969.1
+    ]
+   ],
+   "entry": {
+    "ap": -2.401,
+    "dv": -0.154,
+    "ml": -1.049
+   },
+   "words": {
+    "ap": "guess",
+    "ml": "guess",
+    "depth": "guess",
+    "tilt": "guess"
+   },
+   "tilt_ml": 5.0,
+   "tilt_ap": -5.0
+  }
+ ]
+}

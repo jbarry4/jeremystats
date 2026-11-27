@@ -85,8 +85,9 @@ BARRY.views.seahorse = (function () {
   const isRide = () => !!(S.play && S.play.kind === 'ride');
   const isEvent = () => !!(S.play && S.play.kind === 'event');
   const isStory = () => !!(S.play && S.play.kind === 'story');
+  const isSext = () => !!(S.play && S.play.kind === 'sextant');
   /* a ride or a story has the stage to itself: the navigator and the tools step away */
-  const cinematic = () => isRide() || isStory();
+  const cinematic = () => isRide() || isStory() || isSext();
   function regionOfLayer(k) {
     if (!k) return null;
     if (/^(oml|mml|iml|gcl)/.test(k) || k === 'hil') return 'dg';
@@ -96,7 +97,7 @@ BARRY.views.seahorse = (function () {
     if (k === 'sub' || k === 'pros') return 'sub';
     return null;
   }
-  function refText(k) { return (S.kb && S.kb.refs[k]) || (S.rides && S.rides.refs[k]) || (BARRY.shStory && BARRY.shStory.REFS[k]) || k; }
+  function refText(k) { return (S.kb && S.kb.refs[k]) || (S.rides && S.rides.refs[k]) || (BARRY.shStory && BARRY.shStory.REFS[k]) || (BARRY.shSextant && BARRY.shSextant.REFS[k]) || k; }
   /* "Wong RKS, Traub RD (1983) ..." -> "Wong & Traub 1983"; three or more
      authors -> "Amaral et al. 2007". */
   function refShort(k) {
@@ -302,7 +303,7 @@ BARRY.views.seahorse = (function () {
       for (const n of want) {
         win.start(n);
         if (n === 'three') {
-          S.three = await import('./seahorse3d.js?v=6');
+          S.three = await import('./seahorse3d.js?v=7');
           win.bytes(n, 700000, 700000);
         } else if (n === 'rides.json') {
           S.rides = await getJSON('rides.json');
@@ -671,7 +672,7 @@ BARRY.views.seahorse = (function () {
      ================================================================== */
   async function setMode(m) {
     if (isRide() && m !== '3d') stopPlay();
-    if (isStory() && !S.play.moving && m !== S.mode) stopPlay();       // you took the wheel: the story ends
+    if ((isStory() || isSext()) && !S.play.moving && m !== S.mode) stopPlay();       // you took the wheel: the story ends
     UI.closeAll();
     const changed = S.mode !== m;
     S.mode = m;
@@ -697,7 +698,7 @@ BARRY.views.seahorse = (function () {
       if (!ok2) return;
       S.stage.setView('slice');
       S.stage.setSliceMode(S.slice.layer);
-      S.stage.mini = S.slice.mini && !isStory();
+      S.stage.mini = S.slice.mini && !isStory() && !isSext();
       if (!S.slice.C) sliceZoom('hippocampus'); else pushSlice();
       ensureCrowd();
     }
@@ -775,7 +776,7 @@ BARRY.views.seahorse = (function () {
   function placeMini() {
     const f = $('.sh-miniframe'), cap = $('.sh-minicap');
     if (!f) return;
-    const on = S.mode === 'slice' && S.slice.mini && S.stage && S.stage.view === 'slice' && S.stage.miniRect && !isStory();
+    const on = S.mode === 'slice' && S.slice.mini && S.stage && S.stage.view === 'slice' && S.stage.miniRect && !isStory() && !isSext();
     f.classList.toggle('on', !!on);
     cap.classList.toggle('on', !!on);
     if (!on) return;
@@ -940,6 +941,7 @@ BARRY.views.seahorse = (function () {
     camT = setTimeout(updateHere, 160);
     if (S.mode === 'slice') syncLadder();
     if (isStory()) { storyOverlay(true); return; }
+    if (isSext()) { sextOverlay(true); return; }
     const lb = $('.sh-labels');
     if (lb && S.mode === '3d') lb.classList.add('moving');
     clearTimeout(labT);
@@ -1547,6 +1549,7 @@ BARRY.views.seahorse = (function () {
     if (sel.type === 'quiz') return renderQuiz(card);
     if (sel.type === 'event') return renderEventCard(card);
     if (sel.type === 'story') return renderStoryCard(card);
+    if (sel.type === 'sextant') return renderSextantCard(card);
     if (sel.type === 'allen') return renderAllen(card, sel);
     return renderAbout(card);
   }
@@ -1994,6 +1997,7 @@ BARRY.views.seahorse = (function () {
   }
   function syncProbe() {
     if (!S.stage) return;
+    if (isSext()) { sextStage(S.play); updateLabels(); return; }
     // a story draws its own probe (the recorded one) on the section
     const pr = S.probe.on && !isStory() ? probeForStage() : null;
     // the ribbon beside the shank: each contact in its layer's color
@@ -2009,6 +2013,7 @@ BARRY.views.seahorse = (function () {
   }
   const probeSave = () => ({ on: S.probe.on, ap: S.probe.ap, ml: S.probe.ml, depth: S.probe.depth, angML: S.probe.angML, angAP: S.probe.angAP });
   function onProbeDrag(ccf, end) {
+    if (isSext() && S.play.review) { sextDrag(ccf, end); return; }
     if (end) { store.set({ probe: probeSave() }); select({ type: 'probe' }); return; }
     if (!ccf) return;
     // keep the angle, slide the tip: the entry follows along the shank
@@ -2305,14 +2310,15 @@ BARRY.views.seahorse = (function () {
     }
     if (p.kind === 'event') { stopEventAnim(); if (S.stage && S.stage.setPulse) S.stage.setPulse(null); }
     if (p.kind === 'story') endStory(p);
+    if (p.kind === 'sextant') endSextant(p);
     S.play = null;
     if (p.kind === 'event' || p.kind === 'story') applyHighlights();      // the paint goes with it
     hideInset();
     // an event's model panel and a story's card belong to them: give the card back
-    if (($('.sh-card .sh-lam') || $('.sh-card .sh-story-head')) && !(S.quiz && S.quiz.open)) showCard(S.sel);
+    if (($('.sh-card .sh-lam') || $('.sh-card .sh-story-head') || $('.sh-card .sh-sext-head')) && !(S.quiz && S.quiz.open)) showCard(S.sel);
     const rt = $('.sh-ridetag'); if (rt) rt.remove();
     showExtras();
-    if (p.kind === 'story') { syncProbe(); placeMini(); renderNav(); renderTools(); renderDock(); renderRail(); applyCut(); updateLabels(); }
+    if (p.kind === 'story' || p.kind === 'sextant') { syncProbe(); placeMini(); renderNav(); renderTools(); renderDock(); renderRail(); applyCut(); updateLabels(); }
     if (!quiet) {
       S.focus = S.sel ? focusFor(S.sel) : null;
       applyFocusAll();
@@ -2798,11 +2804,12 @@ BARRY.views.seahorse = (function () {
     return { C: [ap, cy + (H / 2 - yWant) * k, cx], k };
   }
   let glideRaf = 0;
+  const overlayNow = () => { if (isSext()) sextOverlay(true); else storyOverlay(true); };
   function glideSlice(C1, k1, ms) {
     cancelAnimationFrame(glideRaf);
     const A = S.slice.custom || sliceAxes();
     const C0 = S.slice.C ? S.slice.C.slice() : C1.slice(), k0 = S.slice.k || k1;
-    if (!S.stage || reducedMotion() || !ms) { S.slice.C = C1; S.slice.k = k1; pushSlice(); syncLadder(); storyOverlay(true); return Promise.resolve(); }
+    if (!S.stage || reducedMotion() || !ms) { S.slice.C = C1; S.slice.k = k1; pushSlice(); syncLadder(); overlayNow(); return Promise.resolve(); }
     return new Promise((done) => {
       const t0 = performance.now();
       const step = (now) => {
@@ -2811,7 +2818,7 @@ BARRY.views.seahorse = (function () {
         S.slice.C = C0.map((x, i) => x + (C1[i] - x) * e);
         S.slice.k = Math.exp(Math.log(k0) + (Math.log(k1) - Math.log(k0)) * e);       // zoom evenly
         if (S.stage) S.stage.setSlice({ N: A.N, U: A.U, V: A.V, C: S.slice.C, k: S.slice.k });
-        storyOverlay(true);
+        overlayNow();
         if (u < 1) glideRaf = requestAnimationFrame(step);
         else { glideRaf = 0; pushSlice(); syncLadder(); done(); }
       };
@@ -3277,6 +3284,425 @@ BARRY.views.seahorse = (function () {
   }
 
   /* ==================================================================
+     Sextant: where was the probe? One recording placed in the atlas from its
+     own signals, click by click. seahorse_sextant.js has the words and the
+     card's drawing; backend/sextant/ did the work, into
+     web/seahorse/sextant/<gid>.json. The section is the coronal one through
+     the answer; the cloud is every probe still plausible at that stop.
+     ================================================================== */
+  const SX = () => BARRY.shSextant;
+  let sextIdx = null;
+  async function sextIndex(force) {
+    if (sextIdx && !force) return sextIdx;
+    try { sextIdx = await getJSON('sextant/index.json'); } catch (err) { sextIdx = { recordings: [] }; }
+    return sextIdx;
+  }
+  const sideWord = (s) => (s === 'L' ? 'left' : s === 'R' ? 'right' : 'side unknown');
+  async function sextMenu(anchor) {
+    const idx = await sextIndex();
+    const rows = idx.recordings || [];
+    if (!rows.length) { toast('No placements yet. Make them with: python tools/sextant/run.py --all', 'err', 8000); return; }
+    const item = (r) => ({ label: r.mouse + ' · ' + (r.group === 'CTL' ? 'control' : 'PTEN') + ' · ' + sideWord(r.side),
+      sub: SX().ap(r.entry.ap) + ', ' + SX().ml(Math.abs(r.entry.ml), r.side) + ' mm from bregma · AP ' + r.words.ap + ', ML ' + r.words.ml,
+      icon: 'sextant', on: () => startSextant(r.gid) });
+    UI.menu(anchor, [
+      { title: 'Controls', items: rows.filter((r) => r.group === 'CTL').map(item) },
+      { title: 'PTEN', items: rows.filter((r) => r.group !== 'CTL').map(item) },
+    ].filter((g) => g.items.length), { where: 'above-center', width: 420 });
+  }
+  const lineMid = (l) => l[0].map((x, i) => (x + l[1][i]) / 2);
+  const lineAt = (l, x) => l[0].map((v, i) => v + (l[1][i] - v) * (x / 63));       // contact x (0-based) on a 64-contact line
+  /* the layer under each of the 64 contacts of a line (the atlas's 10 um laminae) */
+  function layersAlong(l) {
+    const out = [];
+    for (let c = 0; c < 64; c++) { const p = lineAt(l, c); const s = sampleAt(p[0], p[1], p[2]); const lam = s.lam ? lamByCode(s.lam) : null; out.push(lam ? lam.key : ''); }
+    return out;
+  }
+  async function startSextant(gid, o) {
+    o = o || {};
+    endTour();
+    stopPlay(true);
+    UI.closeAll();
+    const ok = await need(['three', 'mesh_brain.shb.gz', 'mesh_hpf.shb.gz', 'mesh_lamina.shb.gz', 'cells.shb.gz', 'brain50.shb.gz', 'hip20.shb.gz', 'fine10.shb.gz'],
+      'Getting Sextant ready', 'The section the probe went through, and the hippocampus around it.');
+    if (!ok) return;
+    let D;
+    try { D = await getJSON('sextant/' + gid + '.json'); } catch (err) {
+      toast('This placement is missing (web/seahorse/sextant/' + gid + '.json). Make it with: python tools/sextant/run.py', 'err', 8000);
+      return;
+    }
+    const stops = D.stops.slice();
+    stops.push({ id: 'brain', title: 'In the brain', landmarks: [], profiles: [], best: D.answer.line, cloud: D.cloud });
+    const P = { kind: 'sextant', gid, D, stops, i: -1, stop: null, seq: 0, moving: false, review: null, accepted: null,
+                ap: lineMid(D.answer.line)[0] };
+    S.play = P;
+    sextAccepted(P);
+    await runSextStop(o.at || 0);
+  }
+  async function runSextStop(i) {
+    const P = S.play;
+    if (!P || P.kind !== 'sextant') return;
+    i = Math.max(0, Math.min(P.stops.length - 1, i));
+    const st = P.stops[i];
+    P.i = i; P.stop = st; P.seq++;
+    const seq = P.seq;
+    if (st.id !== 'both') P.review = null;
+    st.layers = st.layers || layersAlong(st.best);
+    S.focus = null;
+    renderDock();
+    showCard({ type: 'sextant' });
+    renderRail();
+    P.moving = true;
+    try { await sextView(P, st); } finally { P.moving = false; }
+    if (S.play !== P || P.seq !== seq || !S.stage) return;
+    S.stage.mini = false;
+    placeMini();
+    syncProbe();
+    renderNav();
+    renderTools();
+    sextOverlay(true);
+    updateLabels();
+  }
+  function sextGo(i) { const P = S.play; if (P && P.kind === 'sextant') runSextStop(i); }
+  function sextNext() {
+    const P = S.play;
+    if (!P || P.kind !== 'sextant') return;
+    if (P.i >= P.stops.length - 1) stopPlay(); else runSextStop(P.i + 1);
+  }
+  /* the section through the answer, framed on what the stop's cloud spans --
+     wide while the evidence is thin, closer as it narrows; the last stop
+     stands back in 3D */
+  async function sextView(P, st) {
+    if (st.id === 'brain') {
+      if (S.mode !== '3d') { S.level = 'hpf'; await setMode('3d'); } else if (S.level !== 'hpf') await setLevel('hpf');
+      if (!S.stage) return;
+      S.stage.setCut({ kind: 'coronal', pos: P.ap });
+      const c = S.three.W(...lineMid(P.D.answer.line));
+      const dir = [0.78, 0.42, -0.46], n = Math.hypot(...dir), d = 7.5;
+      S.stage.fly(c.map((x, k) => x + dir[k] / n * d), c, 1600);
+      return;
+    }
+    const fr = sextFrame(P, st);
+    const same = S.mode === 'slice' && S.slice.plane === 'coronal' && Math.abs(S.slice.pos - P.ap) < 1 && !S.slice.tiltA && !S.slice.tiltB && !S.slice.custom;
+    S.slice.plane = 'coronal'; S.slice.pos = P.ap; S.slice.tiltA = 0; S.slice.tiltB = 0; S.slice.custom = null;
+    if (S.mode !== 'slice') { S.slice.C = fr.C; S.slice.k = fr.k; await setMode('slice'); }
+    else await glideSlice(fr.C, fr.k, same ? 1100 : 0);
+  }
+  function sextFrame(P, st) {
+    const host = $('.sh-host').getBoundingClientRect();
+    const W = Math.max(240, host.width), H = Math.max(240, host.height);
+    const dock = $('.sh-dock');
+    const dockH = dock ? dock.getBoundingClientRect().height : 190;
+    const room = Math.max(180, H - dockH - 2 * 16 - 24);
+    const pts = [st.best].concat(st.cloud.slice(0, 40)).flatMap((l) => l);
+    let m0 = Infinity, m1 = -Infinity, d0 = Infinity, d1 = -Infinity;
+    pts.forEach((p) => { m0 = Math.min(m0, p[2]); m1 = Math.max(m1, p[2]); d0 = Math.min(d0, p[1]); d1 = Math.max(d1, p[1]); });
+    const wUm = Math.max(1800, m1 - m0 + 900), hUm = Math.max(1500, d1 - d0 + 700);
+    const k = Math.max(wUm / (W * 0.92), hUm / room);
+    const yWant = 16 + room / 2;
+    const cx = (m0 + m1) / 2, cy = (d0 + d1) / 2;
+    return { C: [P.ap, cy + (H / 2 - yWant) * k, cx], k };
+  }
+  /* the probe as the stage draws it: the H3 from contact 64 up, its ribbon the
+     layer under each contact */
+  function sextProbeSpec(l, layers) {
+    const d = [0, 1, 2].map((i) => l[1][i] - l[0][i]);
+    const len = Math.hypot(...d), u = d.map((x) => x / len);
+    const pitch = len / 63, first = 50 * pitch / 20;
+    const tip = l[1].map((x, i) => x + u[i] * first);
+    const ribbon = [];
+    for (let i = 0; i < 64; i++) { const k = layers[63 - i]; ribbon.push(k ? lamColor(k) : '#8a8a8a'); }
+    return { tip, dir: u, contacts: 64, pitch, first, length: 3200, ribbon };
+  }
+  /* what the 3D stage holds during Sextant: in 3D the answer and its cloud; on
+     the section only the probe you are moving (the rest is the overlay) */
+  function sextStage(P) {
+    if (!S.stage || !P || !P.stop) return;
+    if (S.mode === '3d') {
+      S.stage.setProbe(sextProbeSpec(P.D.answer.line, P.D.answer.layers));
+      if (S.stage.setCloud) S.stage.setCloud(P.stop.cloud, { color: tok('--accent', '#e5a823'), opacity: 0.16 });
+    } else {
+      if (S.stage.setCloud) S.stage.setCloud(null);
+      S.stage.setProbe(P.review ? sextProbeSpec(P.review.line, P.review.layers) : null);
+    }
+  }
+  function sextSeen(P) {
+    const seen = new Set();
+    for (let j = 0; j <= P.i; j++) (SX().LM_OF[P.stops[j].id] || []).forEach((k) => seen.add(k));
+    if (P.stop && (P.stop.id === 'both' || P.stop.id === 'brain')) P.D.landmarks.forEach((l) => seen.add(l.key));
+    return seen;
+  }
+  function sextOverlay(rebuild) {
+    const P = S.play;
+    let box = $('.sh-sext-over');
+    const on = P && P.kind === 'sextant' && P.stop && P.stop.id !== 'brain' && S.mode === 'slice' && S.stage && S.stage.view === 'slice';
+    if (!on) { if (box) box.remove(); return; }
+    const B = stageBox();
+    if (!B) return;
+    if (!box) { box = el('div', { class: 'sh-sext-over', 'aria-hidden': 'true' }); $('.sh-stage').appendChild(box); rebuild = true; }
+    if (rebuild) buildSextOverlay(box, P, B);
+  }
+  function buildSextOverlay(box, P, B) {
+    const st = P.stop, D = P.D;
+    const px = (p) => S.stage.ccfToSlicePx(p);
+    const svg = el('svg', { class: 'sh-svg', width: B.W, height: B.H, viewBox: '0 0 ' + B.W + ' ' + B.H });
+    // the cloud: every plausible probe, fainter the farther it runs from this section
+    const g = el('g', { class: 'sext-cloud' });
+    st.cloud.forEach((l) => {
+      const a = px(l[0]), b = px(l[1]);
+      const off = (Math.abs(a[2]) + Math.abs(b[2])) / 2;
+      const op = 0.08 + 0.42 * Math.max(0, 1 - off / 700);
+      g.appendChild(el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], style: 'opacity:' + op.toFixed(3) }));
+    });
+    svg.appendChild(g);
+    const line = P.review ? P.review.line : st.best;
+    const lay = P.review ? P.review.layers : st.layers;
+    const a = px(line[0]), b = px(line[1]);
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;                      // across the shank
+    if (!P.review) {
+      svg.appendChild(el('line', { class: 'shank-halo', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }));
+      svg.appendChild(el('line', { class: 'shank', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }));
+    }
+    // the layer ribbon beside the shank, contact by contact
+    const rib = el('g', { class: 'sext-ribbon' });
+    for (let c = 0; c < 64; c++) {
+      if (!lay[c]) continue;
+      const p0 = px(lineAt(line, c - 0.5)), p1 = px(lineAt(line, c + 0.5));
+      rib.appendChild(el('line', { x1: p0[0] + nx * 7, y1: p0[1] + ny * 7, x2: p1[0] + nx * 7, y2: p1[1] + ny * 7, style: 'stroke:' + lamColor(lay[c]) }));
+    }
+    svg.appendChild(rib);
+    // contact 1 and 64
+    [[0, '1'], [63, '64']].forEach(([c, t]) => {
+      const p = px(lineAt(line, c));
+      svg.appendChild(el('text', { class: 'sext-cno', x: p[0] - nx * 10 - (nx > 0 ? 14 : 0), y: p[1] - ny * 10 + 4 }, [t]));
+    });
+    // the landmarks found so far, on the shank, named in a column beside it
+    const seen = sextSeen(P), mine = new Set(SX().LM_OF[st.id] || []);
+    const rows = D.landmarks.filter((l) => seen.has(l.key) && l.fit !== false).map((l) => {
+      const p = px(lineAt(line, Math.max(0, Math.min(63, l.x))));
+      return { l, x: p[0], y: p[1], mine: mine.has(l.key) };
+    }).sort((u, v) => u.y - v.y);
+    const lx = Math.max(a[0], b[0]) + 40, gap = 16;
+    const ys = rows.map((r) => r.y);
+    for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + gap);
+    const over = ys.length ? ys[ys.length - 1] - (B.H - 18) : 0;
+    if (over > 0) for (let i = ys.length - 1; i >= 0; i--) { ys[i] -= over; if (i && ys[i - 1] > ys[i] - gap) ys[i - 1] = ys[i] - gap; }
+    rows.forEach((r, i) => {
+      const y = ys[i], cls = r.mine ? ' mine' : '';
+      svg.appendChild(el('circle', { class: 'sext-lm' + cls, cx: r.x, cy: r.y, r: r.mine ? 4.2 : 3 }));
+      svg.appendChild(el('path', { class: 'lead' + cls, d: 'M' + (r.x + 6) + ',' + r.y + ' C' + (r.x + 20) + ',' + r.y + ' ' + (lx - 16) + ',' + y + ' ' + (lx - 4) + ',' + y }));
+      svg.appendChild(el('text', { class: 'sext-lmlabel' + cls, x: lx, y: y + 4 }, [(SX().LM_WORDS[r.l.key] || r.l.key) + ' · ' + (r.l.side ? 'above 1' : (r.l.x + 1).toFixed(1))]));
+    });
+    box.innerHTML = '';
+    box.appendChild(svg);
+    Object.assign(box.style, { left: B.ox + 'px', top: B.oy + 'px', width: B.W + 'px', height: B.H + 'px' });
+  }
+  function endSextant(P) {
+    P.seq++;
+    cancelAnimationFrame(glideRaf);
+    const n = $('.sh-sext-over'); if (n) n.remove();
+    if (S.stage) {
+      if (S.stage.setCloud) S.stage.setCloud(null);
+      S.stage.setProbe(null);
+      S.stage.mini = S.slice.mini;
+    }
+  }
+
+  /* ---------- the dock ---------- */
+  function sextAnswerWords(D) {
+    const a = D.answer, r = a.ranges, w = a.words;
+    const lean = (v, pos, neg) => (Math.abs(v) < 1 ? '' : Math.abs(v).toFixed(1) + '° ' + (v > 0 ? pos : neg));
+    const leans = [lean(a.tilt_ml, 'lateral', 'medial'), lean(a.tilt_ap, 'back', 'forward')].filter(Boolean);
+    return 'In at ' + SX().ap(a.entry.ap) + ', ' + SX().ml(Math.abs(a.entry.ml), D.side) + ' mm from bregma' +
+      (leans.length ? ', leaning ' + leans.join(' and ') : ', straight down') +
+      '; contact 1 ' + (a.depth_um.contact1 / 1000).toFixed(2) + ' mm deep, contact 64 ' + (a.depth_um.contact64 / 1000).toFixed(2) + ' mm. ' +
+      'AP ' + w.ap + ' (±' + r.entry_ap.half.toFixed(2) + ' mm), ML ' + w.ml + ' (±' + r.entry_ml.half.toFixed(2) + '), depth ' + w.depth + ' (±' + Math.round(r.depth1.half) + ' µm), tilt ' + w.tilt + '.';
+  }
+  function fillSextant(box) {
+    const P = S.play, st = P.stop, D = P.D;
+    if (!st) return;
+    const n = P.stops.length;
+    box.appendChild(trHead('Sextant', D.mouse + ' · ' + (D.group === 'CTL' ? 'control' : 'PTEN' + (D.ko != null ? ' ' + D.ko + '% knockout' : '')) + ' · ' + sideWord(D.side) + ' hemisphere',
+      [ofN('Stop', P.i + 1, n), P.accepted ? el('span', { class: 'sh-sext-acc', title: 'Accepted ' + (P.accepted.at || '').slice(0, 16).replace('T', ' ') + (P.accepted.by ? ' by ' + P.accepted.by : ''), text: 'Accepted' }) : null]));
+    const prev = P.i > 0 ? P.stops[P.i - 1] : null;
+    let words = st.id === 'brain' ? sextAnswerWords(D) : SX().say(D, st, prev);
+    if (P.review) words = P.review.say || 'Grab the probe’s tip on the section and move it. When you let go, Sextant refits around where you put it, and says how well that fits against its own answer.';
+    box.appendChild(el('div', { class: 'sh-tr-say' }, [el('b', { text: (P.review ? 'Your probe' : st.title) + '. ' }), words]));
+    box.appendChild(el('div', { class: 'sh-tr-dots sh-sext-dots' }, P.stops.map((s, i) => el('button', { type: 'button', tabindex: '-1',
+      class: (i < P.i ? 'done' : i === P.i ? 'now' : ''), title: s.title, 'aria-label': 'Stop ' + (i + 1) + ': ' + s.title, onclick: () => sextGo(i) }))));
+    const last = P.i >= n - 1;
+    const ctl = el('div', { class: 'sh-tr-ctl' }, [
+      UI.button({ icon: 'prev', cls: 'icon quiet', aria: 'Back a stop', title: 'Back a stop (←)', disabled: P.i <= 0, onclick: () => sextGo(P.i - 1) }),
+      el('span', { class: 'grow' }),
+    ]);
+    if (st.id === 'both' || st.id === 'brain') {
+      ctl.appendChild(UI.seg('Probe', [['answer', 'Sextant’s', 'Sextant’s answer, from the recording alone'], ['review', 'Yours', 'Move the probe yourself; Sextant refits around it']],
+        P.review ? 'review' : 'answer', (v) => sextReview(v === 'review'), { small: true }));
+      ctl.appendChild(UI.button({ icon: 'check', text: P.review && P.review.state === 'refit' ? 'Accept yours' : 'Accept', cls: 'sm',
+        title: 'Keep this placement for ' + D.mouse + ' (StrataScope then offers its layers as a proposal)', onclick: () => sextAccept() }));
+    }
+    ctl.appendChild(UI.button({ icon: 'next', text: last ? 'Finish' : 'Next', cls: 'sm sh-next solid sh-ready', title: (last ? 'Finish' : 'Next stop') + ' (→)', onclick: () => sextNext() }));
+    box.appendChild(ctl);
+    const ctl2 = el('div', { class: 'sh-tr-ctl' }, [
+      el('span', { class: 'sh-small', text: P.stop.id === 'prior' ? 'Faint lines: every probe still plausible. Solid: the best so far.' : 'Faint: still plausible. Solid: the best. Dots: what the recording found.' }),
+      el('span', { class: 'grow' }),
+      UI.button({ text: 'End', cls: 'sm quiet', title: 'End (Esc)', onclick: () => stopPlay() }),
+    ]);
+    box.appendChild(ctl2);
+  }
+
+  /* ---------- review: you move it, Sextant refits ---------- */
+  function sextReview(on) {
+    const P = S.play;
+    if (!P || P.kind !== 'sextant') return;
+    if (!on) { P.review = null; renderDock(); sextStage(P); sextOverlay(true); showCard({ type: 'sextant' }); return; }
+    P.review = { line: P.D.answer.line.map((p) => p.slice()), layers: P.D.answer.layers.slice(), state: 'answer', say: null };
+    const go = () => { renderDock(); sextStage(P); sextOverlay(true); showCard({ type: 'sextant' }); };
+    const both = P.stops.findIndex((s) => s.id === 'both');
+    if (P.stop.id === 'brain') runSextStop(both).then(() => { P.review = P.review || { line: P.D.answer.line.map((p) => p.slice()), layers: P.D.answer.layers.slice(), state: 'answer' }; go(); });
+    else go();
+  }
+  function sextDrag(ccf, end) {
+    const P = S.play;
+    if (!P || !P.review) return;
+    if (!end) {
+      if (!ccf) return;
+      const l = P.review.line;
+      const len = Math.hypot(...l[1].map((x, i) => x - l[0][i]));
+      const u = l[1].map((x, i) => (x - l[0][i]) / len);
+      const pitch = len / 63, first = 50 * pitch / 20;
+      const c64 = ccf.map((x, i) => x - u[i] * first);
+      P.review.line = [c64.map((x, i) => x - u[i] * len), c64];
+      P.review.layers = layersAlong(P.review.line);
+      P.review.state = 'moved';
+      sextStage(P);
+      sextOverlay(true);
+      return;
+    }
+    sextRefit(P);
+  }
+  async function sextRefit(P) {
+    const seq = P.seq;
+    P.review.say = 'Refitting around where you put it…';
+    renderDock();
+    try {
+      const res = await apiPost('/api/sextant/' + encodeURIComponent(P.gid) + '/refit', { line: P.review.line });
+      if (S.play !== P || P.seq !== seq || !P.review) return;
+      P.review.line = res.line;
+      P.review.layers = layersAlong(res.line);
+      P.review.state = 'refit';
+      P.review.res = res;
+      const d = res.delta;
+      P.review.say = 'Sextant refitted around where you put it (it moved ' + Math.round(res.moved_um) + ' µm to fit). ' +
+        (d > -2 ? 'It fits about as well as Sextant’s own answer: the recording cannot tell the two apart.' :
+          'It fits worse than Sextant’s own answer by ' + Math.abs(d).toFixed(1) + ' (log-likelihood): ' + (res.worst ? res.worst + ' disagree most.' : ''));
+      sextStage(P);
+      sextOverlay(true);
+      renderDock();
+      showCard({ type: 'sextant' });
+    } catch (err) {
+      P.review.say = 'The refit needs Jarvis’s server (' + err.message + ').';
+      renderDock();
+    }
+  }
+  async function sextAccepted(P) {
+    try {
+      const res = await apiPost('/api/sextant/' + encodeURIComponent(P.gid) + '/accepted', {});
+      if (S.play === P && res && res.accepted) { P.accepted = res.accepted; renderDock(); }
+    } catch (err) { /* no server: nothing accepted to show */ }
+  }
+  async function sextAccept() {
+    const P = S.play;
+    if (!P || P.kind !== 'sextant') return;
+    const line = P.review ? P.review.line : P.D.answer.line;
+    try {
+      const res = await apiPost('/api/sextant/' + encodeURIComponent(P.gid) + '/accept',
+        { line, source: P.review ? P.review.state : 'sextant', layers: P.review ? P.review.layers : P.D.answer.layers });
+      P.accepted = res.accepted;
+      toast('Accepted for ' + P.D.mouse + '. StrataScope now offers these layers as a proposal on this recording.', 'ok', 7000);
+      renderDock();
+    } catch (err) { toast('Not accepted: ' + err.message, 'err', 8000); }
+  }
+
+  /* ---------- the card ---------- */
+  function renderSextantCard(card) {
+    const P = S.play;
+    if (!P || P.kind !== 'sextant' || !P.stop) return renderAbout(card);
+    const st = P.stop, D = P.D, R = SX();
+    const head = cardHead([el('span', { class: 'sh-evtag rec', text: st.id === 'prior' ? 'Before' : st.id === 'both' || st.id === 'brain' ? 'The answer' : 'On the probe' }),
+      el('span', { text: D.mouse + ' · ' + (D.label || D.gid) })], st.title, {});
+    head.classList.add('sh-sext-head');
+    card.appendChild(head);
+    const prev = P.i > 0 ? P.stops[P.i - 1] : null;
+    card.appendChild(el('p', { class: 'sh-lede', text: st.id === 'brain' ? sextAnswerWords(D) : R.say(D, st, prev) }));
+    if (st.id !== 'prior') card.appendChild(el('div', { class: 'sh-story-panel' }, [el('canvas', { class: 'sh-sext-cv' }),
+      el('div', { class: 'sh-small', text: 'Down the shank, contact 1 at the top. Each curve on its own scale; currents as bars (sinks red, to the left; sources blue). Lines cross at what the recording found; the strip is the layer the atlas puts under each contact for the best probe.' })]));
+    const keys = new Set(R.LM_OF[st.id] || []);
+    const found = D.landmarks.filter((l) => keys.has(l.key));
+    if (found.length) {
+      card.appendChild(el('h3', { text: 'What the recording found' }));
+      card.appendChild(el('div', { class: 'sh-probe-table' }, found.map((l) => el('div', {}, [
+        el('span', { class: 'ch', text: l.side ? 'above 1' : 'contact ' + (l.x + 1).toFixed(1) }),
+        el('span', { text: (R.LM_WORDS[l.key] || l.key) + (l.fit === false ? ' (shown, not fitted)' : '') + ': ' + l.why + ' (' + l.source + ').' }),
+      ]))));
+    }
+    if (st.id === 'both' || st.id === 'brain') {
+      const a = D.answer, r = a.ranges;
+      const row = (k, v, rr, w) => el('div', {}, [el('span', { class: 'ch', text: k }), el('span', { text: v + (rr ? '  [' + rr + ']' : '') }), w ? el('span', { class: 'sh-sext-word ' + w, text: w }) : null]);
+      card.appendChild(el('h3', { text: 'The answer' }));
+      card.appendChild(el('div', { class: 'sh-probe-table sh-sext-nums' }, [
+        row('Entry AP', R.mm(a.entry.ap) + ' mm', R.mm(r.entry_ap.lo) + ' to ' + R.mm(r.entry_ap.hi), a.words.ap),
+        row('Entry ML', (D.side === 'L' ? '−' : '+') + Math.abs(a.entry.ml).toFixed(2) + ' mm', r.entry_ml.lo.toFixed(2) + ' to ' + r.entry_ml.hi.toFixed(2), a.words.ml),
+        row('Contact 1', (a.depth_um.contact1 / 1000).toFixed(2) + ' mm deep', (r.depth1.lo / 1000).toFixed(2) + ' to ' + (r.depth1.hi / 1000).toFixed(2), a.words.depth),
+        row('Contact 64', (a.depth_um.contact64 / 1000).toFixed(2) + ' mm deep', (r.depth64.lo / 1000).toFixed(2) + ' to ' + (r.depth64.hi / 1000).toFixed(2), null),
+        row('Tilt', a.tilt_ml.toFixed(1) + '° lateral, ' + a.tilt_ap.toFixed(1) + '° back', null, a.words.tilt),
+        row('Size', '×' + a.scale.toFixed(2) + ' the atlas along the shank', r.scale.lo.toFixed(2) + ' to ' + r.scale.hi.toFixed(2), null),
+      ]));
+      card.appendChild(el('p', { class: 'sh-small', text: 'Ranges are 95% of the cloud. Sure: within ±0.15 mm (±60 µm in depth, ±4° tilt); likely: within ±0.35 mm (±150 µm, ±9°); wider is a guess. AP is the hardest from one shank: the hippocampus changes slowly front to back.' }));
+      const M = D.methods;
+      const gap = (x, y) => Math.round(1000 * Math.hypot(x.entry.ap - y.entry.ap, Math.abs(x.entry.ml) - Math.abs(y.entry.ml)));
+      card.appendChild(el('h3', { text: 'Each method alone' }));
+      card.appendChild(el('div', { class: 'sh-probe-table' }, [
+        row('Landmarks', R.ap(M.A.entry.ap) + ', ' + R.ml(Math.abs(M.A.entry.ml), D.side), gap(M.A, M.consolidated) + ' µm from the answer', null),
+        row('Simulated', R.ap(M.B.entry.ap) + ', ' + R.ml(Math.abs(M.B.entry.ml), D.side), gap(M.B, M.consolidated) + ' µm from the answer', null),
+      ]));
+      card.appendChild(el('p', { class: 'sh-small', text: 'Landmarks (Method A): where each layer’s signal was found, against where the atlas puts that layer on each candidate probe. Simulated (Method B): each pathway’s current laid on the atlas layers of a candidate probe, turned into voltage at all 64 contacts, and matched to the recording’s dentate spikes, sharp waves and theta as currents. The answer adds the two.' }));
+      card.appendChild(el('h3', { text: 'Drop one signal' }));
+      card.appendChild(el('div', { class: 'sh-probe-table' }, D.drops.map((d) => el('div', {}, [
+        el('span', { class: 'ch', text: d.kind === 'profile' ? 'curve' : 'landmark' }),
+        el('span', { text: (R.LM_WORDS[d.key] || { ds: 'dentate spikes', ps: 'P-spikes', bt: 'borderline transients', spw: 'sharp wave', theta: 'theta', mua: 'multiunit', rip: 'ripple power' }[d.key] || d.key) + ': the answer moves ' + d.move_um + ' µm' }),
+        d.fragile ? el('span', { class: 'sh-sext-word guess', text: 'leans on it' }) : null,
+      ]))));
+      card.appendChild(el('p', { class: 'sh-small', text: 'Each signal taken out in turn and the probe found again. "Leans on it": without that one signal the answer moves farther than the cloud is wide.' }));
+    }
+    const refs = (R.FAMILY[st.id] || {}).refs || [];
+    if (refs.length) card.appendChild(el('div', { class: 'sh-actions' }, [citeChips(refs)]));
+    card.appendChild(el('h3', { text: 'Every stop (' + P.stops.length + ')' }));
+    card.appendChild(el('div', { class: 'sh-story-toc' }, P.stops.map((s, i) => el('button', { type: 'button', class: 'sh-story-tocrow' + (i === P.i ? ' on' : ''), onclick: () => sextGo(i) }, [
+      el('i', { class: 'rec' }), el('span', { text: s.title })]))));
+    card.appendChild(el('h3', { text: 'About Sextant' }));
+    const c = D.evidence.counts;
+    card.appendChild(el('div', { class: 'sh-src' }, [
+      el('div', {}, [el('b', { text: 'The recording. ' }), (D.label || D.gid) + '. ' + c.ripples + ' ripples, ' + c.troughs + ' theta cycles, ' + c.ds + ' dentate spikes' + (c.ps ? ', ' + c.ps + ' P-spikes' : '') + (c.bt ? ', ' + c.bt + ' borderline transients' : '') + ' (Root Canal’s Halo run). ' + Math.round(D.evidence.walk_s) + ' s of theta walking (' + (D.evidence.states === 'painted' ? 'painted in StrataScope' : 'found by StrataScope’s finder') + '). Contacts left out: ' + (D.bad.length ? D.bad.join(', ') : 'none') + '.']),
+      el('div', { text: 'The probe: an H3, 64 contacts 20 µm apart, contact 1 at the top. Recorded in the ' + sideWord(D.side) + ' hemisphere (the lab’s feeder sheet); drawn on the right, where the layer atlas is.' }),
+      el('div', { text: 'The atlas: Allen CCFv3 (2017) at 10 µm, with Seahorse’s derived CA strata and molecular-layer thirds. Bregma is the International Brain Laboratory’s (AP 5400, DV 332 µm in the CCF); the CCF has no official one.' }),
+      el('div', { text: 'Never used: the lab’s layer labels, as evidence or as a check. The craniotomy (AP −2.2, ML ±1.4 mm) is a loose prior (±0.6 mm AP, ±0.5 mm ML).' }),
+    ].concat((D.notes || []).map((t) => el('div', { text: t })))));
+    requestAnimationFrame(() => drawSextPanels(P));
+  }
+  function drawSextPanels(P) {
+    const cv = $('.sh-card canvas.sh-sext-cv');
+    if (!cv || !P.stop) return;
+    const tx = hexRgb(tok('--text', '#222'));
+    const ink = (a) => 'rgba(' + tx[0] + ',' + tx[1] + ',' + tx[2] + ',' + a + ')';
+    const st = P.review ? Object.assign({}, P.stop, { layers: P.review.layers }) : P.stop;
+    SX().drawEvidence(cv, P.D, st, { font: tok('--sans', 'sans-serif'), ink1: ink(0.1), ink2: ink(0.62), ink3: ink(0.42), soft: ink(0.05),
+      line: tok('--text', '#222'), accent: tok('--accent', '#e5a823'), sink: SINK, source: SOURCE, seen: sextSeen(P),
+      layerColor: (k) => (k ? lamColor(k) : null), layerShort: (k) => (k ? ((lamOf(k) || {}).label || k) : '—') });
+  }
+
+  /* ==================================================================
      Tours, and the pathways hop by hop
      ================================================================== */
   function startTour(key) {
@@ -3371,6 +3797,7 @@ BARRY.views.seahorse = (function () {
     else if (kind === 'event') fillEvent(box);
     else if (kind === 'path') fillPath(box);
     else if (kind === 'story') fillStory(box);
+    else if (kind === 'sextant') fillSextant(box);
     updateLabels();
   }
   function fillLauncher(box) {
@@ -3387,6 +3814,8 @@ BARRY.views.seahorse = (function () {
     box.appendChild(b('tour', 'Take a tour', 'Guided tours, and the pathways hop by hop', tourMenu));
     box.appendChild(el('span', { class: 'sep' }));
     box.appendChild(b('burst', 'Watch a seizure', 'A recorded seizure, click by click: where the circuit first fails, how it spreads, what follows', storyMenu));
+    box.appendChild(el('span', { class: 'sep' }));
+    box.appendChild(b('sextant', 'Place a probe', 'Sextant: where a recording\u2019s probe was, from its own signals, click by click', sextMenu));
   }
   function storyMenu(anchor) {
     UI.menu(anchor, [{ title: 'Recorded, then explained', items: ST().stories().map((s) => ({ label: s.label, sub: s.blurb, icon: 'burst', on: () => startStory(s.key) })) }],
@@ -3759,6 +4188,10 @@ BARRY.views.seahorse = (function () {
       if (e.key === 'ArrowRight') { e.preventDefault(); storyNext(); return; }
       if (e.key === 'ArrowLeft') { e.preventDefault(); storyGo(P.i - 1); return; }
     }
+    if (P && P.kind === 'sextant') {
+      if (e.key === 'ArrowRight' || (e.key === ' ' && !P.review)) { e.preventDefault(); sextNext(); return; }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); sextGo(P.i - 1); return; }
+    }
     if (e.key === 'Escape') {
       if (UI.current()) return;
       if (S.tour) { endTour(); stopPlay(); }
@@ -3821,5 +4254,5 @@ BARRY.views.seahorse = (function () {
 
   // _do: the tab's own verbs, for the screenshot harnesses (tools/ui_shots.py --steps)
   return { onShow, onHide, onReturn, _state: S,
-           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz, startStory, storyGo } };
+           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz, startStory, storyGo, startSextant, sextGo, sextReview } };
 })();

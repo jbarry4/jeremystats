@@ -321,6 +321,31 @@
 .sh-story-over .ulabel { font-size: 10.5px; font-weight: 550; text-anchor: end; fill: #cfd8d4; }
 .sh-story-over .unit { stroke: rgba(255, 255, 255, 0.92); stroke-width: 1.4; transition: r 0.08s; }
 .sh-story-over .unit-halo { stroke: none; }
+/* Sextant: the placed probe, the cloud of probes still plausible, what the recording found */
+.sh-sext-over { position: absolute; z-index: 4; pointer-events: none; animation: sh-fade 0.4s var(--sh-ease) both; }
+.sh-sext-over svg { position: absolute; inset: 0; overflow: visible; }
+.sh-sext-over .sext-cloud line { stroke: var(--accent); stroke-width: 1.2; stroke-linecap: round; transition: opacity 0.3s; }
+.sh-sext-over .shank-halo { stroke: rgba(4, 7, 10, 0.6); stroke-width: 5; stroke-linecap: round; }
+.sh-sext-over .shank { stroke: #f2ead8; stroke-width: 1.8; stroke-linecap: round; }
+.sh-sext-over .sext-ribbon line { stroke-width: 5; stroke-linecap: butt; opacity: 0.94; }
+.sh-sext-over .sext-cno { fill: #ece5d6; font: 600 10px var(--sans); paint-order: stroke; stroke: rgba(5, 8, 12, 0.85); stroke-width: 3px; stroke-linejoin: round; }
+.sh-sext-over .sext-lm { fill: #ece5d6; stroke: rgba(4, 7, 10, 0.85); stroke-width: 1; }
+.sh-sext-over .sext-lm.mine { fill: var(--accent); }
+.sh-sext-over .lead { fill: none; stroke: rgba(233, 225, 207, 0.3); stroke-width: 1; }
+.sh-sext-over .lead.mine { stroke: color-mix(in srgb, var(--accent) 70%, transparent); }
+.sh-sext-over .sext-lmlabel { fill: #ece5d6; font: 600 11px var(--sans); letter-spacing: 0.01em; paint-order: stroke; stroke: rgba(5, 8, 12, 0.88); stroke-width: 3.6px; stroke-linejoin: round; }
+.sh-sext-over .sext-lmlabel.mine { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
+.sh-sext-dots { display: flex; gap: 3px; }
+.sh-sext-dots button { flex: 1; height: 6px; padding: 0; border: 0; border-radius: 3px; background: var(--sh-ink-2); cursor: pointer; transition: background-color var(--dur-3, .24s); }
+.sh-sext-dots button.done { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.sh-sext-dots button.now { background: var(--accent); }
+.sh-sext-dots button:focus-visible { outline: var(--focus-ring, 2px solid var(--accent-line)); outline-offset: 1px; }
+.sh-sext-cv { display: block; width: 100%; border-radius: 10px; }
+.sh-sext-word { flex: none; font-size: 10.5px; font-weight: 650; padding: 1px 7px; border-radius: 999px; margin-left: auto; }
+.sh-sext-word.sure { color: var(--ok); background: var(--ok-soft); }
+.sh-sext-word.likely { color: var(--warn); background: var(--warn-soft); }
+.sh-sext-word.guess { color: var(--text-3); background: var(--sh-ink-1); }
+.sh-sext-acc { color: var(--ok); font-weight: 650; }
 .sh-story-words { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .sh-story-words .sh-sword {
   left: 0; top: 0; color: #f4eee2; font-size: 11.5px;
@@ -733,7 +758,7 @@
 @keyframes sh-rise { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .sh-load-head svg, .sh-svg .flow, .sh-svg .sinkrect.sink, .sh-load-steps li.now .mark, .sh-pop-in, .sh-fade-in, .sh-svg .here-ring,
-  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready, .sh-story-over { animation: none !important; }
+  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready, .sh-story-over, .sh-sext-over { animation: none !important; }
   .sh-svg .flow { stroke-dasharray: none; }
 }
 [data-motion="calm"] #view-seahorse .sh-card > *, [data-motion="calm"] #view-seahorse .sh-word { animation: none; }

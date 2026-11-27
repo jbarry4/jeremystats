@@ -250,9 +250,14 @@ def gather(logs_dir, rec, log=print):
     out["theta_cx"] = vfull
     out["theta_cx_frac"] = frac
 
-    # ripples on the CA1 cell-layer contact (StrataScope's pick_sp)
-    i_ref = prof.get("ref_row")
-    sp_ch = prof["channels"][i_ref] if i_ref is not None else None
+    # Ripples on the CA1 cell-layer contact. Not StrataScope's pick_sp (the
+    # ripple maximum above the theta maximum): in these mice raw ripple-band
+    # power climbs into the dentate (dentate-spike energy), so that pick lands
+    # one contact above the theta peak. Here: the topmost clear local maximum
+    # of ripple / theta power in still time (Toothy's ratio), checked against
+    # multiunit activity -- the pyramidal layer is where both peak.
+    sp_k = sp_contact(out)
+    sp_ch = (sp_k + 1) if sp_k is not None else None
     out["sp_channel"] = sp_ch or 0
     out["n_ripples"] = 0
     if sp_ch:
@@ -306,6 +311,44 @@ def gather(logs_dir, rec, log=print):
         "ripples", out["n_ripples"], "troughs", out["n_troughs"],
         "DS", out["n_ds"], "P", out["n_ps"], "BT", out["n_bt"])
     return out
+
+
+def _local_max(v, k, w=2):
+    lo, hi = max(0, k - w), min(v.size, k + w + 1)
+    seg = v[lo:hi]
+    return np.isfinite(v[k]) and v[k] >= np.nanmax(seg)
+
+
+def _z(v):
+    v = np.asarray(v, float)
+    m, s = np.nanmedian(v), np.nanstd(v)
+    return (v - m) / s if s > 0 else v * 0
+
+
+def sp_contact(ev):
+    """0-based contact of CA1's pyramidal layer, or None: above the walking
+    theta maximum (the cell layer is always above the fissure), the contact
+    where ripple / theta power in still time (Toothy's ratio) and multiunit
+    activity together stand highest. Not the topmost peak: a probe that
+    starts in radiatum has a high ratio at its top edge that is not a peak
+    of anything."""
+    bad = ev["is_bad"]
+    with np.errstate(all="ignore"):
+        r = np.log(ev["c_ripple"] / ev["c_theta_still"])
+    r = np.where(bad, np.nan, r)
+    th = np.where(bad, np.nan, ev["c_theta"])
+    if not np.isfinite(th).any() or not np.isfinite(r).any():
+        return None
+    k_th = int(np.nanargmax(th))
+    n = max(k_th - 2, 4)
+    top = r[:n]
+    mua = np.where(bad, np.nan, ev["c_mua"])[:n]
+    if not np.isfinite(top).any():
+        return None
+    score = _z(top) + 0.7 * np.nan_to_num(_z(mua))
+    score = np.where(np.isfinite(top), score, np.nan)
+    k = int(np.nanargmax(score))
+    return k
 
 
 def _event_csds(b, times, rows, is_bad, t0_ms, max_events=400):

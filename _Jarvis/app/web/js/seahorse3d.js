@@ -607,7 +607,8 @@ export function create(host, opts) {
   const G = { brain: new THREE.Group(), hpf: new THREE.Group(), lamina: new THREE.Group(), caps: new THREE.Group(),
               cells: new THREE.Group(), crowd: new THREE.Group(), probe: new THREE.Group(), fx: new THREE.Group(), plane: new THREE.Group() };
   ['brain', 'hpf', 'lamina', 'caps', 'plane'].forEach((k) => sceneT.add(G[k]));
-  ['cells', 'crowd', 'probe', 'fx'].forEach((k) => sceneC.add(G[k]));
+  G.cloud = new THREE.Group();
+  ['cells', 'crowd', 'probe', 'fx', 'cloud'].forEach((k) => sceneC.add(G[k]));
   const byKey = { brain: {}, hpf: {}, lamina: {}, cells: {} };
   const outlines = [];
   const S = {
@@ -1581,6 +1582,22 @@ export function create(host, opts) {
     dirty = true;
   }
 
+  /* ---------- a cloud of probes (Sextant): thin lines between CCF-um ends ---------- */
+  function setCloud(lines, o) {
+    while (G.cloud.children.length) { const x = G.cloud.children.pop(); x.geometry.dispose(); x.material.dispose(); }
+    if (lines && lines.length) {
+      const pos = new Float32Array(lines.length * 6);
+      lines.forEach((l, i) => { const a = wv(l[0]), b = wv(l[1]); pos.set([a.x, a.y, a.z, b.x, b.y, b.z], i * 6); });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const m = new THREE.LineBasicMaterial({ color: (o && o.color) || '#e5a823', transparent: true, opacity: (o && o.opacity) || 0.18, depthTest: false });
+      const ls = new THREE.LineSegments(g, m);
+      ls.renderOrder = 39;
+      G.cloud.add(ls);
+    }
+    dirty = true;
+  }
+
   /* ---------- fx: flares, volleys, drawn paths ---------- */
   function flare(p, color, ms) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: color || '#fff4c2', transparent: true, depthTest: false, opacity: 1,
@@ -2390,6 +2407,7 @@ export function create(host, opts) {
     addBrain, addHpf, addLamina, addCells, setVolumes, setLuts, setHighlights, setSliceMode,
     setLevel, setCut, setView, setSlice, sliceToCcf, ccfToSlicePx,
     focus, glowCells, markArbor, hoverGlow, highlight, setPulse, setPath, pulsePath, screenToSection, setVisible, setStory, setCrowd, showCrowd, explode, setProbe,
+    setCloud,
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
     setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd, setPulseSide,
     ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
