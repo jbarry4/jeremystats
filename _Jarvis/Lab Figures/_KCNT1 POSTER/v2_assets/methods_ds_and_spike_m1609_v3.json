@@ -1,0 +1,40 @@
+{
+ "recording": "m1609",
+ "npz": "windows_m1609.npz",
+ "events": [
+  {
+   "panel": "Dentate spike",
+   "t_s": 1716.611,
+   "window_index": 58,
+   "csd_color_limit_mV_mm2": 225.02164341439936,
+   "trace_gain_uV": 823.0277076974879,
+   "filter": "5-100 Hz + 60 Hz notch",
+   "spectrogram_db_max": 18
+  },
+  {
+   "panel": "Spike (IED)",
+   "t_s": 959.321438,
+   "window_index": 12,
+   "csd_color_limit_mV_mm2": 593.1397067819734,
+   "trace_gain_uV": 2417.7391407449836,
+   "filter": "60 Hz notch only, baseline -150..-60 ms removed",
+   "spectrogram_db_max": 30
+  }
+ ],
+ "spectrogram_channels": [
+  10,
+  34,
+  40,
+  56
+ ],
+ "depth": "ds_landmarks",
+ "ds_landmarks": {
+  "upper_sink": 34,
+  "source": 40,
+  "lower_sink": 56,
+  "n_ds": 30
+ },
+ "layers": null,
+ "csd": "-d2V/dz2 over even contacts, 40 um apart, ends duplicated (Vaknin 1988); bad CSC59 replaced by neighbours where even",
+ "spectrogram": "complex Morlet, 3 cycles at 2 Hz rising to 10 at 800 Hz; dB relative to the median power per frequency over 20 random 2-s windows of the same recording"
+}

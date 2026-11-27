@@ -133,13 +133,15 @@ BARRY.views.seahorse = (function () {
 
   /* ==================================================================
      The palette. Regions are clay in 3D and the accent bar of their box in
-     the circuit; layers and cells are data (kb.json). One plate: the
-     dentate in teal-blues, CA3 brick, CA2 terracotta, CA1 rose, the
-     subiculum sand, the entorhinal cortex blue (medial) and orchid
-     (lateral), the para-hippocampal rim in lavender and stone.
+     the circuit; layers and cells are data (kb.json). One plate, the KCNT1
+     poster's (v8, 2026-11-26): CA1 green, the dentate's granule cell blades
+     pink (the lower blade lighter), the hilus amber like its SST cells, PV
+     cells blue; around them CA3 teal, CA2 sea green, the subiculum sand,
+     the entorhinal cortex blue (medial) and periwinkle (lateral), the
+     para-hippocampal rim in stone.
      ================================================================== */
-  const REGION_COLORS = { DG: '#3d9a8f', CA1: '#cc5f80', CA2: '#d98a63', CA3: '#bd4e52', SUB: '#d2b06c', ProS: '#c4a364',
-    ENTl: '#c785b0', ENTm: '#5f8acb', PRE: '#a196cc', POST: '#968bc4', PAR: '#8d9ccc', PERI: '#b3b292', ECT: '#a7a68c', VISpor: '#86aab4' };
+  const REGION_COLORS = { DG: '#e5838a', CA1: '#9fd062', CA2: '#7cc6a2', CA3: '#45b0a8', SUB: '#d2b06c', ProS: '#c4a364',
+    ENTl: '#8f8fe0', ENTm: '#5f8acb', PRE: '#a9a6b9', POST: '#9d9aae', PAR: '#b3b0c3', PERI: '#b3b292', ECT: '#a7a68c', VISpor: '#86aab4' };
   /* the circuit's boxes (kb region keys) in the same colors */
   const SCHEM_COLORS = { ctx: '#a9b2ae', per: REGION_COLORS.PERI, por: REGION_COLORS.VISpor, lec2: REGION_COLORS.ENTl, mec2: REGION_COLORS.ENTm,
     ec3: '#9aa3cb', ec5: '#8c95b8', dg: REGION_COLORS.DG, ca3: REGION_COLORS.CA3, ca2: REGION_COLORS.CA2, ca1: REGION_COLORS.CA1,
@@ -302,7 +304,7 @@ BARRY.views.seahorse = (function () {
       for (const n of want) {
         win.start(n);
         if (n === 'three') {
-          S.three = await import('./seahorse3d.js?v=6');
+          S.three = await import('./seahorse3d.js?v=7');
           win.bytes(n, 700000, 700000);
         } else if (n === 'rides.json') {
           S.rides = await getJSON('rides.json');
@@ -1347,7 +1349,8 @@ BARRY.views.seahorse = (function () {
     markReach();
   }
   /* Paint the selection, the hover and any event into the sections. */
-  const SINK = '#d8453a', SOURCE = '#3a76d6';
+  /* sinks blue, sources red: the KCNT1 poster's convention (v8), and Jarvis's */
+  const SINK = '#3a76d6', SOURCE = '#d8453a';
   function applyHighlights() {
     if (!S.stage || !S.volumesUp) return;
     const acc = hexRgb(tok('--accent', '#e5a823'));
@@ -2612,11 +2615,21 @@ BARRY.views.seahorse = (function () {
       }
       S.storyData = Object.assign(S.storyData || {}, { [key]: D });
     }
-    const P = { kind: 'story', key, story, D, i: -1, stop: null, t: 0, speed: 1, paused: true, held: false, levels: {}, extra: null,
-                fxN: {}, timers: [], words: [], moving: false, speeds: {}, seq: 0 };
+    // the card's picture of the probe; the story still plays without it, and says how to build it
+    if (story.blob && !S.blobs[story.blob]) {
+      try { S.blobs[story.blob] = unpack(await gunzip(await fetchBytes(story.blob))); } catch (err) {
+        toast('The probe\'s picture is missing (web/seahorse/' + story.blob + '). Build it with: python tools/seahorse/story_m459.py', 'err');
+      }
+    }
+    const P = { kind: 'story', key, story, D, B: (story.blob && S.blobs[story.blob]) || null, i: -1, stop: null, t: 0, speed: 1, paused: true, held: false,
+                levels: {}, extra: null, fxN: {}, timers: [], words: [], moving: false, speeds: {}, seq: 0, pic: null };
     P.geo = storyGeo(story, D);
     S.play = P;
     allenCentres();
+    // the 3D stops cut the hippocampus open at the probe: get those programs compiled now, in the
+    // background, while the first stops play in the section; and the story keeps full resolution
+    if (S.stage && S.stage.prewarm) S.stage.prewarm({ kind: 'coronal', pos: P.geo.ap });
+    if (S.stage && S.stage.holdFull) S.stage.holdFull(true);
     await runStop(o.at || 0);
     startStoryClock();
   }
@@ -2688,6 +2701,7 @@ BARRY.views.seahorse = (function () {
     P.i = i; P.stop = st; P.seq++;
     const seq = P.seq;
     P.levels = {}; P.extra = null; P.fxN = {}; P.bump = {}; P.fxT0 = performance.now(); P.drawAt = 0; P.schemAt = 0;
+    P.paintSig = null; P.paintAt = 0; P.schemSig = null; P.timeText = null;
     if (st.clip) {
       P.t = st.clip[0];
       P.speed = P.speeds[st.key] || st.speed || 1;
@@ -2846,12 +2860,14 @@ BARRY.views.seahorse = (function () {
       S.stage.setDark(false);
       if (S.stage.setPulse) S.stage.setPulse(null);
       if (S.stage.setPulseSide) S.stage.setPulseSide(0);
+      if (S.stage.holdFull) S.stage.holdFull(false);
       S.stage.mini = S.slice.mini;
       S.stage.focus(null);
     }
     ['.sh-story-over', '.sh-story-words'].forEach((q) => { const n = $(q); if (n) n.remove(); });
     const svg = $('.sh-map svg');
     if (svg && BARRY.shSchem.heat) BARRY.shSchem.heat(svg, new Map());
+    if (P.pic) { P.pic.ro.disconnect(); P.pic = null; }
   }
 
   /* ---------- the story's clock ---------- */
@@ -2895,10 +2911,30 @@ BARRY.views.seahorse = (function () {
       P.modelPaint = m;
     }
     if (st.fx && S.mode !== 'schematic' && S.stage) storyFx(P, now - P.fxT0);
-    applyHighlights();
-    paintStoryOverlay(P);
-    if (now - P.drawAt > 33) { P.drawAt = now; drawStoryPanels(P); syncStoryTime(P); }
-    if (now - P.schemAt > 120) { P.schemAt = now; storySchemHeat(P); }
+    // The section and the probe on it are repainted only when what they show has changed
+    // enough to see, at most 30 times a second. Repainted every frame, paused or not, they
+    // kept a laptop's graphics redrawing a still picture at 60 a second (11-25).
+    const sig = storySig(P);
+    if (sig !== P.paintSig && now - P.paintAt >= 32) {
+      P.paintSig = sig; P.paintAt = now;
+      applyHighlights();
+      paintStoryOverlay(P);
+    }
+    paintProbe(P);
+    if (now - P.drawAt > 33) { P.drawAt = now; syncStoryTime(P); }
+    if (now - P.schemAt > 120 && P.schemSig !== P.paintSig) { P.schemAt = now; P.schemSig = P.paintSig; storySchemHeat(P); }
+  }
+  /* What the section shows at this moment, coarsely (1/48 of each zone's light):
+     the same signature means nothing anyone could see has changed. */
+  function storySig(P) {
+    const q = (v) => Math.round((v || 0) * 48);
+    let s = '';
+    if (P.stop.measure) for (const z of P.D.zones) s += q(P.levels[z.key]) + ',';
+    else if (P.extra) for (const [k, v] of P.extra) s += k + q(v) + ',';
+    else if (P.modelPaint) for (const [k, v] of P.modelPaint) s += k + q(v) + ',';
+    if (P.light != null) s += 'L' + q(P.light);
+    if (P.stop.unit) s += 'U' + ST().unitRate(P.D, P.t);
+    return s;
   }
   function toggleStoryPause() {
     const P = S.play;
@@ -2914,8 +2950,11 @@ BARRY.views.seahorse = (function () {
     b.replaceWith(playBtn(!P.paused, toggleStoryPause));
   }
   function syncStoryTime(P) {
+    const text = fmtStoryT(P.t, P.stop.clip ? P.stop.clip[1] - P.stop.clip[0] : 0);
+    if (text === P.timeText) return;              // nothing to write: the dock stays as it is
+    P.timeText = text;
     const t = $('.sh-story-t b');
-    if (t) t.textContent = fmtStoryT(P.t, P.stop.clip ? P.stop.clip[1] - P.stop.clip[0] : 0);
+    if (t) t.textContent = text;
     const sc = $('.sh-tr-scrub');
     if (sc && sc.set && !sc.matches(':active')) sc.set(P.t);
   }
@@ -3200,16 +3239,18 @@ BARRY.views.seahorse = (function () {
   }
 
   /* ---------- the card ---------- */
+  /* The same order at every stop: what kind of claim it is and its title, the
+     probe's picture (one picture for the whole story, so it never moves), then
+     the words. */
   function renderStoryCard(card) {
     const P = S.play;
     if (!P || P.kind !== 'story' || !P.stop) return renderAbout(card);
     const st = P.stop, R = ST(), tag = R.TAGS[st.tag] || R.TAGS.recorded;
-    const act = R.ACTS.find((a) => a.key === st.act) || { label: '' };
     const head = cardHead([el('span', { class: 'sh-evtag ' + tag.cls, text: tag.label }), el('span', { text: tag.sub })], st.title, {});
     head.classList.add('sh-story-head');
     card.appendChild(head);
+    card.appendChild(probePanel(P));
     card.appendChild(el('p', { class: 'sh-lede', text: st.lede || '' }));
-    (st.panels || []).forEach((p) => { const n = storyPanel(P, st, p); if (n) card.appendChild(n); });
     (st.more || []).forEach((t) => card.appendChild(el('p', { text: t })));
     if (st.refs && st.refs.length) card.appendChild(el('div', { class: 'sh-actions' }, [citeChips(st.refs)]));
     card.appendChild(el('h3', { text: 'Every stop (' + P.story.stops.length + ')' }));
@@ -3220,60 +3261,139 @@ BARRY.views.seahorse = (function () {
         el('button', { type: 'button', class: 'sh-story-tocrow' + (i === P.i ? ' on' : ''), onclick: () => storyGo(i) }, [
           el('i', { class: (R.TAGS[s.tag] || {}).cls }), el('span', { text: s.title })]))));
     })));
-    const D = P.D;
+    const D = P.D, B = P.B;
     card.appendChild(el('h3', { text: 'The recording' }));
     card.appendChild(el('div', { class: 'sh-src' }, [
       el('div', {}, [el('b', { text: D.what + '. ' }), 't = 0 is the hilar onset, ' + D.onset_s + ' s into the session; quiet baseline ' + D.baseline_s[0] + ' to ' + D.baseline_s[1] + ' s.']),
       el('div', { text: D.source + '. Built by tools/seahorse/story_m459.py (' + D.built + ').' }),
+      B ? el('div', { text: 'The picture is figure A\'s recipe (m459_panelA_v6.py) run on the raw: the current source density of CSC ' + B.header.csd.csc[0] + '–' +
+        B.header.csd.csc[B.header.csd.csc.length - 1] + ' (60 Hz low-pass, smoothed over 1.2 contacts and 4 ms; colour limit the 98.5th percentile of its four stages), the 1–300 Hz potentials of every fourth contact (2 mV to four contacts), and the interneuron sorted on CSC 35–48.' }) : null,
       el('div', { text: 'The section places each zone where its layers are in the atlas, on a probe line at AP −1.80, ML +1.40 mm; the zones themselves are the recorded contacts.' }),
-      el('div', { text: 'No video: the session\'s camera file tracked nothing, and no movie was saved.' }),
+      el('div', { text: 'No video: the session saved no movie (no VT1.mpg), and its tracker file (VT1.nvt) found nothing to follow in any of its 64,128 frames.' }),
     ]));
-    requestAnimationFrame(() => drawStoryPanels(P, true));
   }
-  function storyPanel(P, st, kind) {
+
+  /* ---------- the probe's picture in the card ---------- */
+  /* One element for the whole story, moved into each stop's card and redrawn
+     for it: a canvas drawn once per stop (seahorse_story.js), and over it a
+     cursor and a veil on what is still to come, moved by transform while a
+     clip plays. */
+  function probePanel(P) {
     const R = ST();
-    if (kind === 'zones') {
-      return el('div', { class: 'sh-probe-table' }, P.D.zones.map((z) => el('div', {
-        onpointerenter: () => setHover({ type: 'lamina', key: z.layers[0] }, 'card'), onpointerleave: () => setHover(null, 'card') }, [
-        el('span', { class: 'ch', text: 'ch ' + z.csc[0] + '–' + z.csc[1] }),
-        el('span', { class: 'sh-sw sq', style: 'background:' + lamColor(z.layers[0]) }),
-        el('span', { text: R.ZONE_WORDS[z.key][0] }),
-      ])));
+    let g = P.pic;
+    if (!g) {
+      g = P.pic = {};
+      g.el = el('figure', { class: 'sh-probe' });
+      g.head = el('div', { class: 'sh-probe-head' });
+      g.box = el('div', { class: 'sh-probe-box' });
+      g.cv = el('canvas', { class: 'sh-probe-cv', role: 'img' });
+      g.veil = el('i', { class: 'veil' }); g.cur = el('i', { class: 'cur' }); g.ocur = el('i', { class: 'cur' });
+      g.plot = el('div', { class: 'sh-probe-plot' }, [g.veil, g.cur]);
+      g.ov = el('div', { class: 'sh-probe-ov' }, [g.ocur]);
+      g.box.append(g.cv, g.plot, g.ov);
+      g.cap = el('figcaption', { class: 'sh-probe-cap' });
+      g.el.append(g.head, g.box, g.cap);
+      wireProbe(P, g);
+      g.ro = new ResizeObserver(() => { if (g.geo && Math.abs(g.box.clientWidth - g.geo.w) > 1) drawPic(P); });
+      g.ro.observe(g.box);
     }
-    if (kind === 'figure' && st.figure != null) {
-      const bar = ['red', 'green', 'blue', 'purple'][st.figure];
-      const s = (x) => (x < 0 ? '−' : '') + String(+Math.abs(x).toFixed(2));
-      return el('figure', { class: 'sh-story-fig' }, [
-        el('img', { src: BASE + P.story.figures[st.figure], alt: 'Figure A, stage ' + (st.figure + 1) + ': current source density on every contact over one second', loading: 'lazy' }),
-        el('figcaption', { text: 'Figure A, stage ' + (st.figure + 1) + ' (' + s(st.win[0]) + ' to ' + s(st.win[1]) + ' s): red sink, blue source, the potentials drawn over them; the ' + bar + ' bar marks the zone.' }),
-      ]);
-    }
-    const cap = {
-      timeline: st.measure === 'mua' ? 'Each zone\'s firing against its own quiet level, top of the probe to bottom.' : 'Each zone\'s current density against its own quiet level, top of the probe to bottom (figure A\'s measure).',
-      unit: 'The hilar interneuron on contact ' + P.D.unit.csc + ' (spike ' + P.D.unit.width_ms + ' ms wide): its firing in 0.25 s bins, 10 s before to 90 s after the onset.',
-      raster: 'Every discharge in the 40 s before the onset, one tick each.',
-      offs: 'How long each zone kept firing after the onset.',
-    }[kind];
-    if (!cap) return null;
-    return el('div', { class: 'sh-story-panel' }, [el('canvas', { class: 'sh-story-cv', 'data-k': kind }), el('div', { class: 'sh-small', text: cap })]);
+    const st = P.stop, v = R.picOf(st);
+    g.v = v; g.x = null;
+    g.box.classList.toggle('live', v.live);
+    g.cap.textContent = P.B ? v.note : 'The probe\'s picture is not built yet: python tools/seahorse/story_m459.py writes web/seahorse/' + (P.story.blob || '') + '.';
+    g.head.innerHTML = '';
+    g.where = el('span', { class: 'where', text: picWindow(v.win) });
+    g.head.append(el('b', { text: 'Mouse 459\'s probe' }), g.where, el('span', { class: 'grow' }), g.key = el('span', { class: 'key' }));
+    g.cv.setAttribute('aria-label', 'Current source density on every contact, ' + picWindow(v.win) + (v.zones.length ? '; marked: ' + v.zones.map((k) => R.ZONE_WORDS[k][0]).join(', ') : ''));
+    requestAnimationFrame(() => drawPic(P));
+    return g.el;
   }
-  function drawStoryPanels(P, force) {
-    const cvs = $$('.sh-card canvas.sh-story-cv');
-    if (!cvs.length || !P.stop) return;
-    const R = ST(), st = P.stop;
+  const picT = (t) => (t < 0 ? '−' : '') + String(+Math.abs(t).toFixed(2));
+  const picWindow = (w) => picT(w[0]) + ' to ' + picT(w[1]) + ' s';
+  /* Draw the picture for the stop now showing (and again when the card is resized or the theme changes). */
+  function drawPic(P) {
+    const g = P.pic;
+    if (!g || !P.B || !g.el.isConnected || !P.stop) return;
+    const R = ST(), v = g.v, dark = isDarkTheme();
     const tx = hexRgb(tok('--text', '#222'));
     const ink = (a) => 'rgba(' + tx[0] + ',' + tx[1] + ',' + tx[2] + ',' + a + ')';
-    const o = { ink: tok('--text', '#222'), ink1: ink(0.06), ink2: ink(0.62), ink3: ink(0.42), soft: ink(0.07), accent: tok('--accent', '#e5a823'), font: tok('--sans', 'sans-serif'),
-                hot: 'rgb(' + R.ramp(0.55).join(',') + ')', cellColor: (cellOf('hipp') || {}).color || '#3d9a8f', cursor: st.clip ? P.t : null, win: st.clip || null };
-    cvs.forEach((cv) => {
-      const k = cv.dataset.k;
-      if (k === 'timeline') {
-        const span = st.key === 'stumble' ? [-12, 0.5] : st.measure === 'mua' ? [0, 50] : [-0.5, 6.5];
-        R.drawTimeline(cv, P.D, Object.assign({}, o, { t0: span[0], t1: span[1], measure: st.measure || 'absx', win: st.win || null, stage: st.figure != null ? st.figure + 1 : '' }));
-      } else if (k === 'unit') R.drawUnit(cv, P.D, o);
-      else if (k === 'raster') R.drawRaster(cv, P.D, o);
-      else if (k === 'offs') R.drawOffs(cv, P.D, o);
+    const bg = hexRgb(tok('--bg-2', dark ? '#181c20' : '#f4f4f2'));
+    const zero = dark ? bg.map((x) => Math.round(x * 0.72)) : [247, 247, 247];
+    const c = {
+      text: tok('--text', '#222'), text2: tok('--text-2', '#555'), text3: tok('--text-3', '#888'), accent: tok('--accent', '#e5a823'),
+      zero, line: ink(dark ? 0.2 : 0.26), frame: ink(0.16), onset: ink(dark ? 0.45 : 0.4), tick: ink(0.55), band: ink(0.05), hatch: ink(0.17),
+      trace: dark ? [236, 241, 246] : [26, 26, 26], halo: dark ? 'rgba(4, 6, 9, 0.75)' : 'rgba(255, 255, 255, 0.85)',
+      dim: dark ? 'rgba(6, 9, 12, 0.55)' : 'rgba(255, 255, 255, 0.6)', cell: (cellOf('hipp') || {}).color || '#3d9a8f',
+      label: dark ? 'rgb(' + zero.join(',') + ')' : '#ffffff',
+    };
+    const L = R.drawProbe(g.cv, P.D, P.B, { win: v.win, zones: v.zones, marks: v.marks, offs: v.offs, dark, c, font: tok('--sans', 'sans-serif'),
+      unitLit: !!P.stop.unit, zoneColor: (k) => { const z = P.D.zones.find((x) => x.key === k); return lamColor(z ? z.layers[0] : k); } });
+    g.geo = L;
+    const pw = L.x1 - L.x0;
+    Object.assign(g.plot.style, { left: L.x0 + 'px', top: (L.y0 - 1) + 'px', width: pw + 'px', height: (L.u1 - L.y0 + 2) + 'px' });
+    Object.assign(g.ov.style, { left: L.x0 + 'px', top: (L.o0 - 2) + 'px', width: pw + 'px', height: (L.o1 - L.o0 + 4) + 'px' });
+    g.box.style.setProperty('--veil', dark ? 'rgba(' + zero.join(',') + ',0.66)' : 'rgba(255, 255, 255, 0.66)');
+    g.key.innerHTML = '';
+    g.key.append(el('span', { text: 'sink' }), el('i', { style: 'background:' + R.lutCss(P.B._lut.lut, 9) }), el('span', { text: 'source' }));
+    g.x = null;
+    paintProbe(P, true);
+  }
+  /* The cursor and the veil follow the clip: a transform each, nothing redrawn. */
+  function paintProbe(P, force) {
+    const g = P.pic;
+    if (!g || !g.geo || !g.v || !g.v.live) return;
+    const L = g.geo, pw = L.x1 - L.x0;
+    const x = (Math.max(L.t0, Math.min(L.t1, P.t)) - L.t0) / (L.t1 - L.t0) * pw;
+    if (!force && g.x != null && Math.abs(g.x - x) < 0.25) return;
+    g.x = x;
+    g.veil.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+    g.cur.style.transform = 'translateX(' + (x - 1).toFixed(1) + 'px)';
+    g.ocur.style.transform = 'translateX(' + ((P.t - L.T0) / (L.T1 - L.T0) * pw - 0.5).toFixed(1) + 'px)';
+  }
+  /* Point at the picture to read where and when; on a stop that plays, press
+     and drag along it to move through the clip. */
+  function wireProbe(P, g) {
+    const R = ST();
+    const zoneAt = (csc) => P.D.zones.find((z) => csc >= z.csc[0] && csc <= z.csc[1]);
+    const at = (e) => {
+      const L = g.geo;
+      if (!L) return null;
+      const r = g.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      if (x < L.x0 || x > L.x1) return null;
+      const f = (x - L.x0) / (L.x1 - L.x0);
+      if (y >= L.y0 - 8 && y <= L.u1 + 2) return { t: L.t0 + f * (L.t1 - L.t0), csc: y < L.y1 ? R.cscAt(P.B, L, y) : null, unit: y >= L.u0 - 1 };
+      if (y >= L.o0 - 3 && y <= L.o1 + 3) return { t: L.T0 + f * (L.T1 - L.T0), whole: true };
+      return null;
+    };
+    const say = (h) => {
+      if (!g.where || !g.v) return;
+      if (!h) { g.where.textContent = picWindow(g.v.win); g.where.classList.remove('on'); return; }
+      const z = h.csc != null ? zoneAt(h.csc) : null;
+      g.where.textContent = picT(Math.round(h.t * 100) / 100) + ' s' + (h.csc != null ? ' · ' + (z ? R.ZONE_WORDS[z.key][1] : 'between zones') + ', ch ' + h.csc
+        : h.unit ? ' · the interneuron' : h.whole ? ' · the whole seizure' : '');
+      g.where.classList.add('on');
+    };
+    let drag = false;
+    const scrub = (h) => {
+      const st = P.stop;
+      if (!h || h.whole || !st || !st.clip || S.play !== P) return false;
+      P.paused = true;
+      P.t = Math.max(st.clip[0], Math.min(st.clip[1], h.t));
+      syncStoryPlay();
+      paintProbe(P, true);
+      return true;
+    };
+    g.box.addEventListener('pointermove', (e) => { const h = at(e); say(h); if (drag) scrub(h); });
+    g.box.addEventListener('pointerleave', () => { if (!drag) say(null); });
+    g.box.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || !scrub(at(e))) return;
+      drag = true;
+      g.box.setPointerCapture(e.pointerId);
+      g.box.classList.add('drag');
     });
+    const up = () => { if (!drag) return; drag = false; g.box.classList.remove('drag'); say(null); };
+    g.box.addEventListener('pointerup', up);
+    g.box.addEventListener('pointercancel', up);
   }
 
   /* ==================================================================
@@ -3490,7 +3610,7 @@ BARRY.views.seahorse = (function () {
     box.appendChild(trHead('Tour', T.label, [ofN('Stop', T.i + 1, T.beats.length)]));
     box.appendChild(el('div', { class: 'sh-tr-say' }, [el('b', { text: b.title + '. ' }), b.say || '']));
     if (P && P.kind === 'ride' && P.step) box.appendChild(el('div', { class: 'sh-tr-lab' }, [el('b', { text: P.step.title + ': ' }), P.step.say || '']));
-    if (P && P.kind === 'event') box.appendChild(el('div', { class: 'sh-tr-lab' }, [el('b', { text: P.ev.label + ', a model: ' }), 'the layers light red where the current sinks and blue where it returns.']));
+    if (P && P.kind === 'event') box.appendChild(el('div', { class: 'sh-tr-lab' }, [el('b', { text: P.ev.label + ', a model: ' }), 'the layers light blue where the current sinks and red where it returns.']));
     box.appendChild(el('div', { class: 'sh-tr-dots', 'aria-hidden': 'true' }, T.beats.map((x, i) => el('i', { class: i < T.i ? 'done' : i === T.i ? 'now' : '', title: x.title }))));
     const ctl = el('div', { class: 'sh-tr-ctl' });
     if (P && P.kind === 'ride') { rideButtons(P, S.stage && S.stage.rideState).forEach((b) => ctl.appendChild(b)); ctl.appendChild(el('span', { class: 'sep-v' })); }
@@ -3768,6 +3888,7 @@ BARRY.views.seahorse = (function () {
   }
   function themeChanged() {
     if (S.stage) { S.stage.theme(stageColors()); applyHighlights(); }
+    if (isStory()) drawPic(S.play);
     S.schemShown = null;
     renderRail();
     if (S.mode === 'schematic') renderSchemFull();

@@ -32,8 +32,8 @@
   --sh-r: 14px;
   --sh-r-sm: 9px;
   --sh-pad: 16px;
-  --sh-sink: #d8453a;
-  --sh-source: #3a76d6;
+  --sh-sink: #3a76d6;
+  --sh-source: #d8453a;
   --sh-ease: cubic-bezier(.22, .61, .36, 1);
   --sh-spring: cubic-bezier(.2, 1.2, .4, 1);
 }
@@ -176,6 +176,13 @@
   --on-accent: #0d1217; --warn-soft: rgba(237, 139, 51, 0.18); --ok-soft: rgba(92, 201, 141, 0.16);
   color: var(--text);
 }
+/* On the dark stage the night glass does not blur what is behind it: a ride or a story
+   repaints the stage many times a second, and the blur under the dock has to be redone
+   every time (11-25). Near-solid instead, which on a dark stage looks the same. */
+.sh-stage.night :is(.sh-dock .sh-glass, .sh-inset, .sh-tip) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  --sh-glass: rgba(13, 18, 23, 0.92);
+}
 .sh-dock, .sh-inset { transition: color 0.6s; }
 .sh-tr, .sh-inset { transition: background-color 0.8s var(--sh-ease), border-color 0.8s, box-shadow 0.8s; }
 .sh-schem-full { position: absolute; inset: 0; z-index: 3; display: none; padding: 72px 24px 24px; }
@@ -264,8 +271,15 @@
 .sh-tr-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sh-tr-ctl .grow { flex: 1; }
 .sh-tr-ctl .sep-v { width: 1px; height: 20px; background: var(--sh-glass-line); margin: 0 2px; }
-.sh-btn.sh-ready { animation: sh-ready 1.6s ease-in-out infinite; }
-@keyframes sh-ready { 50% { box-shadow: 0 0 0 5px var(--accent-soft); } }
+/* "ready": a ring that breathes on its own layer (opacity only), so the page is not
+   repainted, and the stage's glass not blurred again, 60 times a second to show it */
+.sh-btn.sh-ready { position: relative; }
+.sh-btn.sh-ready::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 5px var(--accent-soft); opacity: 0; will-change: opacity;
+  animation: sh-ready 1.6s ease-in-out infinite;
+}
+@keyframes sh-ready { 50% { opacity: 1; } }
 .sh-tr-ctl .sh-btn.icon { width: 32px; }
 .sh-tr-play { width: 38px !important; height: 38px; min-height: 38px !important; border-radius: 50% !important; padding: 0 !important; }
 .sh-tr-play .sh-ico { width: 17px; height: 17px; }
@@ -327,12 +341,28 @@
   text-shadow: 0 0 2px rgba(4, 7, 10, 0.95), 0 0 4px rgba(4, 7, 10, 0.9), 0 0 10px rgba(4, 7, 10, 0.8);
 }
 .sh-story-words .sh-sword.cool { color: #a6e6ff; }
-/* the card's panels: figure A's own snapshot, and the recording drawn small */
-.sh-story-fig { margin: 0; display: flex; flex-direction: column; gap: 6px; }
-.sh-story-fig img { display: block; width: 100%; height: auto; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--line-soft); }
-.sh-story-fig figcaption { font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
-.sh-story-panel { display: flex; flex-direction: column; gap: 6px; }
-.sh-story-cv { display: block; width: 100%; border-radius: 10px; }
+/* the card's picture of the probe, the same at every stop (seahorse_story.js draws it):
+   it stays put while the words around it change, so it does not rise in with them */
+.sh-card > .sh-probe { animation: none; }
+.sh-probe { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sh-probe-head { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--text-3); min-height: 16px; }
+.sh-probe-head b { color: var(--text-2); font-weight: 650; }
+.sh-probe-head .where { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sh-probe-head .where.on { color: var(--text); }
+.sh-probe-head .grow { flex: 1; }
+.sh-probe-head .key { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sh-probe-head .key i { width: 56px; height: 8px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--sh-glass-line); }
+.sh-probe-box { position: relative; }
+.sh-probe-box.live { cursor: ew-resize; }
+.sh-probe-box.drag { cursor: grabbing; }
+.sh-probe-cv { display: block; }
+.sh-probe-plot, .sh-probe-ov { position: absolute; overflow: hidden; pointer-events: none; display: none; }
+.sh-probe-box.live :is(.sh-probe-plot, .sh-probe-ov) { display: block; }
+/* what is still to come: veiled, and drawn back as the clip plays (moved, never repainted) */
+.sh-probe-plot .veil { position: absolute; inset: 0; background: var(--veil); will-change: transform; }
+.sh-probe-plot .cur, .sh-probe-ov .cur { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--accent); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); will-change: transform; }
+.sh-probe-ov .cur { width: 1px; }
+.sh-probe-cap { font-size: 11.5px; color: var(--text-2); line-height: 1.5; }
 .sh-story-toc { display: flex; flex-direction: column; gap: 10px; }
 .sh-story-tocact { display: flex; flex-direction: column; gap: 1px; }
 .sh-story-tocact .k { font-size: 10.5px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); padding: 0 8px 3px; }
@@ -675,8 +705,8 @@
 .sh-svg .ec-box { fill: color-mix(in srgb, var(--text) 3.5%, transparent); stroke: color-mix(in srgb, var(--text) 9%, transparent); stroke-width: 1; }
 .sh-svg .ec-label { fill: var(--text-3); letter-spacing: 0.16em; font-weight: 650; }
 .sh-svg .sinkrect { pointer-events: none; }
-.sh-svg .sinkrect.sink { fill: var(--sh-sink, #d8453a); opacity: 0.55; animation: sh-sink 1.4s ease-in-out infinite; }
-.sh-svg .sinkrect.source { fill: var(--sh-source, #3a76d6); opacity: 0.32; }
+.sh-svg .sinkrect.sink { fill: var(--sh-sink, #3a76d6); opacity: 0.55; animation: sh-sink 1.4s ease-in-out infinite; }
+.sh-svg .sinkrect.source { fill: var(--sh-source, #d8453a); opacity: 0.32; }
 @keyframes sh-sink { 50% { opacity: 0.22; } }
 .sh-svg .trail { fill: var(--accent); }
 .sh-svg .here-ring { fill: none; stroke: var(--accent); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: sh-ring 2.2s ease-out infinite; }
@@ -733,7 +763,7 @@
 @keyframes sh-rise { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .sh-load-head svg, .sh-svg .flow, .sh-svg .sinkrect.sink, .sh-load-steps li.now .mark, .sh-pop-in, .sh-fade-in, .sh-svg .here-ring,
-  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready, .sh-story-over { animation: none !important; }
+  .sh-pop, .sh-tr, .sh-card > *, .sh-word, .sh-load, .sh-rec-on .sh-ico, .sh-host.sh-swap, .sh-btn.sh-ready::after, .sh-story-over { animation: none !important; }
   .sh-svg .flow { stroke-dasharray: none; }
 }
 [data-motion="calm"] #view-seahorse .sh-card > *, [data-motion="calm"] #view-seahorse .sh-word { animation: none; }

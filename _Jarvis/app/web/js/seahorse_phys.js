@@ -162,7 +162,7 @@ BARRY.shPhys = (function () {
     return { key, ev, n, T, dt, csd, lfp, cmax: cm, layers };
   }
 
-  /* The panel: CSD as a colour sheet (red sink, blue source; contacts top
+  /* The panel: CSD as a colour sheet (blue sink, red source; contacts top
      to bottom from the shallowest), LFP traces over it, a time cursor. */
   function draw(cv, m, o) {
     o = o || {};
@@ -181,7 +181,7 @@ BARRY.shPhys = (function () {
     const iw = img.width, ih = img.height;
     // the sink and source colors the stage paints with (so the panel and the sections agree)
     const rgb = (h, f) => { if (!h || h[0] !== '#') return f; const n = parseInt(h.slice(1, 7), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-    const SK = rgb(o.sink, [214, 54, 46]), SR = rgb(o.source, [46, 112, 214]);
+    const SK = rgb(o.sink, [46, 112, 214]), SR = rgb(o.source, [214, 54, 46]);
     for (let y = 0; y < ih; y++) {
       const ci = n - 1 - Math.min(n - 1, Math.floor(y / ih * n));     // shallowest at the top
       for (let x = 0; x < iw; x++) {

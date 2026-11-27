@@ -1,0 +1,81 @@
+Watching a seizure spread (KCNT1 mouse 459): every word on screen, with its time in the film
+1920x1080, 30 fps, 3:13, silent (a silent audio track for players that want one)
+
+TITLE CARD
+0:00.0-0:06.5  A KCNT1 SEIZURE, RECORDED
+               Watching a seizure spread
+               Inside the hippocampus of a mouse with a KCNT1 variant
+               Epilepsy Cognition Development Lab, University of Vermont
+
+THE BRAIN
+0:06.8-0:10.8  This is a mouse brain, about a centimeter long.
+             (A 3D reconstruction from the Allen Mouse Brain Atlas)
+0:11.1-0:15.3  Inside it, in color: the hippocampus, one on each side.
+
+THE HIPPOCAMPUS
+0:16.0-0:20.9  The hippocampus helps us form memories.
+             (Its name means “seahorse,” after its curled shape.)
+0:21.2-0:26.3  It is also one of the brain's most seizure-prone circuits.
+
+THE MODEL (card)
+0:26.5-0:39.0  Mice with a KCNT1 variant
+               1  They carry a change found in people with KCNT1 epilepsy.
+                  (Kcnt1 Y777H in mice; KCNT1 Y796H in people)
+               2  It makes a potassium channel overactive.
+                  (The sodium-activated K+ channel KNa1.1, or Slack)
+               3  That quiets inhibitory neurons, the brain's brakes.
+               4  Mice with two copies have frequent seizures, many of them in sleep.
+                  (Shore et al., Cell Reports 2020)
+
+HOW WE LISTEN
+0:39.5-0:47.8  To listen in, we lower a thin probe with 64 recording sites through the hippocampus.
+             (A silicon probe, in an awake mouse)
+0:48.6-0:56.3  Each site hears its own layer, from CA1 at the top down through the dentate gyrus.
+
+CELLS AND LAYERS
+0:56.9-1:00.7  Granule cells are the gatekeepers: they catch the signals that arrive from the cortex.
+1:01.0-1:04.9  In the hilus, inhibitory cells are the brakes: they keep the granule cells from firing all at once.
+             (KCNT1 variants weaken inhibitory cells like these.)
+1:05.3-1:09.3  What gets through goes on to CA3, then CA1, and out of the hippocampus.
+1:10.0-1:18.8  Each kind of cell keeps its body in its own layer, and our probe passes through them all.
+
+A SEIZURE, RECORDED
+1:19.0-1:22.6  (card) MOUSE 459 / One seizure, recorded / Kcnt1 Y777H, two copies, awake, December 6, 2024
+1:23.1-1:30.0  Each line is the voltage at one depth of the probe; the colors show current flowing into the cells (red) and out of them (blue).
+1:30.4-1:38.4  Then, at zero, the whole hippocampus erupts, and keeps seizing for about 40 seconds.
+1:39.0-1:47.6  In the half-minute before, the circuit stumbles: small discharges come faster and faster.
+             (Each flash of the layers is one of them, as recorded.)
+1:48.2-1:57.0  Meanwhile a brake cell in the hilus fires harder and harder, nearly 60 times a second, right up to the start.
+             (Its narrow spikes (0.85 ms) mark it as a likely inhibitory interneuron.)
+
+HOW IT SPREADS
+1:57.5-2:05.5  Slowed down five times: the seizure starts in the hilus…
+             (Red: current flowing into cells · blue: flowing out · white lines: voltage)
+2:05.7-2:12.0  …sweeps through the upper blade of the dentate gyrus…
+             (Red: current flowing into cells · blue: flowing out · white lines: voltage)
+2:12.2-2:22.0  …then the lower blade, as the brake cell falls silent…
+             (Red: current flowing into cells · blue: flowing out · white lines: voltage)
+2:22.2-2:29.5  …and reaches CA1 last, about four seconds after it began.
+             (Red: current flowing into cells · blue: flowing out · white lines: voltage)
+
+BEYOND THE PROBE
+2:30.2-2:35.0  Beyond the probe, this is our hypothesis.
+             (Nothing past the probe was recorded.)
+2:35.3-2:41.1  The activity loops back into the dentate gyrus, and with its brakes failing, each lap returns stronger.
+2:41.8-2:51.7  From there it can spread to the rest of the brain: a local failure becomes a full seizure.
+
+WHAT'S NEXT
+2:52.4-3:00.3  Our next question: if we pace these brake cells with light, can we keep a stumble from becoming a seizure?
+
+END CARD
+3:00.5-3:13.0  SEE YOU IN DENVER
+               Come chat with us
+               at the 2026 KCNT1 Family & Professional Conference
+               December 3-4, 2026, Grand Hyatt Denver
+               Scientific Roundtable Dec 3, Family Conference Dec 4
+               Epilepsy Cognition Development Lab, Larner College of Medicine, University of Vermont
+               [the conference's "Rising Higher Together" artwork, from kcnt1epilepsy.org]
+               Credits: Recording: Kcnt1 Y777H mouse 459 (two copies), awake, 64-contact silicon probe
+               through CA1 and the dentate gyrus. Beyond the probe: our hypothesis, drawn, not recorded.
+               Anatomy: Allen Mouse Brain Common Coordinate Framework (CCFv3). Neuron tracings: Janelia
+               MouseLight and NeuroMorpho.Org. Made with Seahorse.

@@ -150,27 +150,48 @@ const SLICE_FS = `
     ivec3 c = clamp(v, ivec3(0), ivec3(dim) - 1);
     return texelFetch(t, ivec3(c.z, c.y, c.x), 0).r;
   }
-  // soft label: the eight voxels vote with their trilinear weights
+  // soft label: the eight voxels vote with their trilinear weights.
+  // Written out in scalars, with no arrays and no loops: ANGLE's Direct3D
+  // compiler kept the arrays as memory-backed temporaries, and on a laptop's
+  // Intel graphics one redraw of a 2x section took 30-50 ms (11-25). Inside
+  // a structure, which is most of every section, the eight agree and the
+  // vote is skipped: same label, same margin.
+  #define VOTE(l) ((l == l0 ? w0 : 0.0) + (l == l1 ? w1 : 0.0) + (l == l2 ? w2 : 0.0) + (l == l3 ? w3 : 0.0) + (l == l4 ? w4 : 0.0) + (l == l5 ? w5 : 0.0) + (l == l6 ? w6 : 0.0) + (l == l7 ? w7 : 0.0))
   void soft(vec3 p, usampler3D t, vec3 org, float um, vec3 dim, out uint best, out float margin) {
     vec3 q = (p - org) / um - 0.5;
-    vec3 b = floor(q); vec3 f = q - b;
-    uint L[8]; float Wt[8];
-    for (int i = 0; i < 8; i++) {
-      ivec3 o = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-      L[i] = fetchL(t, ivec3(b) + o, dim);
-      vec3 w3 = mix(1.0 - f, f, vec3(o));
-      Wt[i] = w3.x * w3.y * w3.z;
+    vec3 b = floor(q); vec3 f = q - b; vec3 g = 1.0 - f;
+    ivec3 v = ivec3(b);
+    uint l0 = fetchL(t, v, dim), l1 = fetchL(t, v + ivec3(1, 0, 0), dim);
+    uint l2 = fetchL(t, v + ivec3(0, 1, 0), dim), l3 = fetchL(t, v + ivec3(1, 1, 0), dim);
+    uint l4 = fetchL(t, v + ivec3(0, 0, 1), dim), l5 = fetchL(t, v + ivec3(1, 0, 1), dim);
+    uint l6 = fetchL(t, v + ivec3(0, 1, 1), dim), l7 = fetchL(t, v + ivec3(1, 1, 1), dim);
+    float w0 = g.x * g.y * g.z, w1 = f.x * g.y * g.z, w2 = g.x * f.y * g.z, w3 = f.x * f.y * g.z;
+    float w4 = g.x * g.y * f.z, w5 = f.x * g.y * f.z, w6 = g.x * f.y * f.z, w7 = f.x * f.y * f.z;
+    if (l0 == l1 && l0 == l2 && l0 == l3 && l0 == l4 && l0 == l5 && l0 == l6 && l0 == l7) {
+      best = l0; margin = w0 + w1 + w2 + w3 + w4 + w5 + w6 + w7;
+      return;
     }
-    float A[8]; int bi = 0;
-    for (int i = 0; i < 8; i++) {
-      float a = 0.0;
-      for (int j = 0; j < 8; j++) a += (L[j] == L[i]) ? Wt[j] : 0.0;
-      A[i] = a;
-      if (a > A[bi]) bi = i;
-    }
+    float a0 = VOTE(l0), a1 = VOTE(l1), a2 = VOTE(l2), a3 = VOTE(l3);
+    float a4 = VOTE(l4), a5 = VOTE(l5), a6 = VOTE(l6), a7 = VOTE(l7);
+    // the first of the strongest wins, as the loop's strict > had it
+    uint bl = l0; float ba = a0;
+    if (a1 > ba) { ba = a1; bl = l1; }
+    if (a2 > ba) { ba = a2; bl = l2; }
+    if (a3 > ba) { ba = a3; bl = l3; }
+    if (a4 > ba) { ba = a4; bl = l4; }
+    if (a5 > ba) { ba = a5; bl = l5; }
+    if (a6 > ba) { ba = a6; bl = l6; }
+    if (a7 > ba) { ba = a7; bl = l7; }
     float second = 0.0;
-    for (int i = 0; i < 8; i++) if (L[i] != L[bi]) second = max(second, A[i]);
-    best = L[bi]; margin = A[bi] - second;
+    if (l0 != bl) second = max(second, a0);
+    if (l1 != bl) second = max(second, a1);
+    if (l2 != bl) second = max(second, a2);
+    if (l3 != bl) second = max(second, a3);
+    if (l4 != bl) second = max(second, a4);
+    if (l5 != bl) second = max(second, a5);
+    if (l6 != bl) second = max(second, a6);
+    if (l7 != bl) second = max(second, a7);
+    best = bl; margin = ba - second;
   }
   float nis(vec3 p, sampler3D t, vec3 org, float um, vec3 dim) {
     vec3 q = (p - org) / um / dim;
@@ -307,6 +328,9 @@ function crowdMaterial() {
       uniform float uScale; uniform float uOrtho; uniform float uPx;
       varying vec3 vC; varying float vFade; varying float vA;
       #include <clipping_planes_pars_vertex>
+      #if NUM_CLIPPING_PLANES > 0
+        uniform vec4 clippingPlanes[ NUM_CLIPPING_PLANES ];
+      #endif
       void main() {
         vC = col; vA = a;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -316,6 +340,15 @@ function crowdMaterial() {
         gl_PointSize = clamp(s, 1.0, 26.0);
         gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
+        #if NUM_CLIPPING_PLANES > 0
+          // A point is kept or clipped whole (its one vertex carries the clip position), so the
+          // fragment's test is made here, once, and a clipped point is not drawn at all. The
+          // crowd is clipped to a thin sheet, and rasterizing all of it only to discard nearly
+          // every pixel cost a 3D story frame 15 ms on a laptop's graphics (11-25).
+          for (int i = 0; i < UNION_CLIPPING_PLANES; i++) {
+            if (dot(vClipPosition, clippingPlanes[i].xyz) > clippingPlanes[i].w) { gl_PointSize = 0.0; gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }
+          }
+        #endif
       }`,
     fragmentShader: `
       uniform float alpha; varying vec3 vC; varying float vFade; varying float vA;
@@ -626,12 +659,21 @@ export function create(host, opts) {
   /* ---------- sizing, and auto quality ---------- */
   // When frames run slower than ~40 fps while something moves, draw at a
   // lower resolution without outlines; put them back once things stop.
-  const quality = { low: false, ema: 16, last: 0, still: 0 , maxDraw: 0, maxAt: 0 };
+  // holdFull (a story) keeps full resolution whatever the frame rate: its
+  // animations never stop, so one slow transition used to leave every 3D stop
+  // after it blurred until the story ended, and its section stops, most of
+  // it, now draw at 60 fps at full resolution (11-25).
+  const quality = { low: false, hold: false, ema: 16, gaps: [], last: 0, still: 0, maxDraw: 0, maxAt: 0 };
   function setLow(v) {
     if (quality.low === v) return;
     quality.low = v;
+    quality.gaps.length = 0; quality.last = 0;      // the new resolution is judged on its own frames
     outlines.forEach((o) => { o.visible = !v; });
     size();
+  }
+  function holdFull(v) {
+    quality.hold = !!v;
+    if (quality.hold && quality.low) { setLow(false); quality.ema = 16; dirty = true; }
   }
   let Wpx = 10, Hpx = 10;
   function size() {
@@ -857,10 +899,18 @@ export function create(host, opts) {
     if (S.ride) { rideTick(now); dirty = true; }
     if (dirty || moving) {
       const gap = quality.last ? now - quality.last : 16;
-      if (gap < 250) quality.ema = quality.ema * 0.88 + gap * 0.12;
+      if (gap < 250) {
+        quality.ema = quality.ema * 0.88 + gap * 0.12;
+        quality.gaps.push(gap);
+        if (quality.gaps.length > 24) quality.gaps.shift();
+      }
       quality.last = now;
       quality.still = now;
-      if (!quality.low && quality.ema > 25 && (moving || S.ride || anims.size)) setLow(true);
+      // Decided on the median of the last frames, not their running mean: a lone slow frame
+      // (a long task, or the resize a switch itself costs) is not a slow stage, and a lower
+      // resolution would not have made it any faster.
+      const med = quality.gaps.length >= 12 ? quality.gaps.slice().sort((a, b) => a - b)[quality.gaps.length >> 1] : 16;
+      if (!quality.low && !quality.hold && med > 25 && (moving || S.ride || anims.size)) setLow(true);
       const d0 = performance.now();
       draw();
       const dd = performance.now() - d0;
@@ -871,6 +921,7 @@ export function create(host, opts) {
     } else {
       quality.last = 0;
       if (quality.low && now - quality.still > 700) { setLow(false); quality.ema = 16; dirty = true; }
+      quality.gaps.length = 0;                       // a pause is not a slow frame
     }
     raf = requestAnimationFrame(frame);
   }
@@ -1094,6 +1145,64 @@ export function create(host, opts) {
     scheduleGlyphs(crowd && crowd.visible ? crowdPlanes : null);
     if (glyphs) glyphs.visible = !!(crowd && crowd.visible);
     dirty = true;
+  }
+  /* Compile ahead, in the background, the programs the 3D views need the
+     first time they draw: the tissue whole and cut open (one clipping plane),
+     the crowd at a cut (two), the cells, the dendrite glyphs, and the fx
+     (lines, sparks, glows), which were otherwise made at their first volley.
+     On a laptop's Intel graphics (Direct3D) those first compiles, all at
+     once, froze a story for 2-10 s at its first 3D stop (11-25).
+
+     three.js's compile() keys each program by the renderer's clipping state
+     as the last render left it, not by the material's own planes; so each
+     batch first renders an empty scene, off screen, with that many global
+     planes (a program depends on how many planes, not whose). A material
+     keeps every program it has had, and the fx keepers hold theirs, so
+     nothing here is compiled twice and nothing on screen changes. */
+  const warm = { rt: null, empty: null, keep: null, busy: null };
+  // never drawn: these hold the fx programs, so the first volley finds them made
+  function warmKeepers() {
+    if (warm.keep) return warm.keep;
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0.001, 0)]);
+    warm.keep = [new THREE.Line(geo, new THREE.LineBasicMaterial({ transparent: true, depthTest: false })),
+      new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.1, transparent: true, depthTest: false })),
+      new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, depthTest: false })),
+      new THREE.LineSegments(geo, glyphMaterial())];
+    return warm.keep;
+  }
+  function prewarm(cut) {
+    if (warm.busy || !renderer.compileAsync || !volumesReady) return warm.busy;
+    if (!warm.rt) { warm.rt = new THREE.WebGLRenderTarget(1, 1); warm.empty = new THREE.Scene(); }
+    const jobs = [];
+    const far = () => new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e4);
+    const twin = (o) => new o.constructor(o.geometry, o.material);
+    const batch = (nPlanes, objects, target) => {
+      if (!objects.length) return;
+      const root = new THREE.Group();
+      objects.forEach((o) => root.add(o));
+      const prev = renderer.getRenderTarget();
+      renderer.clippingPlanes = Array.from({ length: nPlanes }, far);
+      renderer.setRenderTarget(warm.rt);
+      renderer.render(warm.empty, camera);           // draws nothing; leaves the clipping state at nPlanes
+      renderer.setRenderTarget(prev);
+      try { jobs.push(renderer.compileAsync(root, camera, target).catch(() => {})); } catch (e) { /* compiled on first draw instead */ }
+    };
+    const tissue = [];
+    for (const g of [G.brain, G.hpf, G.lamina]) g.traverse((o) => { if (o.isMesh && o.material) tissue.push(o); });
+    const cells = Object.values(byKey.cells).map((c) => c.mesh);
+    try {
+      batch(0, warmKeepers().concat(cells.map(twin)), sceneC);
+      batch(0, tissue.map(twin), sceneT);
+      if (cut && cut.kind && cut.kind !== 'none') {
+        batch(1, tissue.map(twin), sceneT);
+        if (crowd) batch(2, [twin(crowd)], sceneC);
+      }
+    } finally {
+      renderer.clippingPlanes = [];
+    }
+    dirty = true;
+    warm.busy = Promise.all(jobs);
+    return warm.busy;
   }
   /* The section faces: a quad on each cut plane, painted by the slice shader. */
   function rebuildCaps() {
@@ -1346,14 +1455,24 @@ export function create(host, opts) {
     applyClipping();
   }
   /* One kind of soma fading out of the crowd (kind: its index in the crowd's
-     kinds; v 0..1); fadeCrowd(null) brings every dot back. */
+     kinds; v x its own alpha); fadeCrowd(null) brings every dot back. A story
+     calls it every frame, so the whole crowd's alpha is rewritten and sent to
+     the graphics card again only when the change could be seen (1/64), at most
+     20 times a second: every frame, it held the stops that fade the hilar
+     cells to 8-12 fps on a laptop (11-25). */
   let crowdA0 = null;
+  let crowdFade = null;
   function fadeCrowd(kind, v) {
     if (!crowd || !crowdData || !crowdData.kind) return;
     const a = crowd.geometry.attributes.a;
     if (!crowdA0) { if (kind == null) return; crowdA0 = Float32Array.from(a.array); }
+    const now = performance.now(), q = kind == null ? null : Math.round(v * 64) / 64;
+    const f = crowdFade;
+    if (f && f.kind === kind && f.q === q) return;
+    if (f && kind != null && f.kind === kind && now - f.at < 50) return;      // the next frame's call will catch up
+    crowdFade = { kind, q, at: now };
     const K = crowdData.kind;
-    for (let i = 0; i < K.length; i++) a.array[i] = kind != null && K[i] === kind ? crowdA0[i] * v : crowdA0[i];
+    for (let i = 0; i < K.length; i++) a.array[i] = kind != null && K[i] === kind ? crowdA0[i] * q : crowdA0[i];
     a.needsUpdate = true;
     dirty = true;
   }
@@ -1412,7 +1531,22 @@ export function create(host, opts) {
     if (!sig) { dropGlyphs(); return; }
     glyphT = setTimeout(() => buildGlyphs(planes), 140);
   }
-  function dropGlyphs() { if (glyphs) { G.crowd.remove(glyphs); glyphs.geometry.dispose(); glyphs.material.dispose(); glyphs = null; dirty = true; } }
+  // one material for every set of glyphs: a fresh one per rebuild threw its program
+  // away and compiled it again each time the plane moved
+  let glyphMat = null;
+  function glyphMaterial() {
+    if (glyphMat) return glyphMat;
+    glyphMat = new THREE.ShaderMaterial({
+      uniforms: { reveal: { value: glyphReveal } },
+      vertexShader: `attribute vec4 col; varying vec4 vC;
+        void main() { vC = col; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform float reveal; varying vec4 vC;
+        void main() { if (reveal < 0.01) discard; gl_FragColor = vec4(vC.rgb, vC.a * reveal); }`,
+      transparent: true, depthWrite: false, depthTest: false,
+    });
+    return glyphMat;
+  }
+  function dropGlyphs() { if (glyphs) { G.crowd.remove(glyphs); glyphs.geometry.dispose(); glyphs = null; dirty = true; } }
   let glyphMs = 0, glyphN = 0;
   function buildGlyphs(planes) {
     const t0 = performance.now();
@@ -1459,14 +1593,8 @@ export function create(host, opts) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('col', new THREE.Float32BufferAttribute(col, 4));
-    const m = new THREE.ShaderMaterial({
-      uniforms: { reveal: { value: glyphReveal } },
-      vertexShader: `attribute vec4 col; varying vec4 vC;
-        void main() { vC = col; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform float reveal; varying vec4 vC;
-        void main() { if (reveal < 0.01) discard; gl_FragColor = vec4(vC.rgb, vC.a * reveal); }`,
-      transparent: true, depthWrite: false, depthTest: false,
-    });
+    const m = glyphMaterial();
+    m.uniforms.reveal.value = glyphReveal;
     glyphs = new THREE.LineSegments(g, m);
     glyphs.renderOrder = 19;
     glyphs.frustumCulled = false;
@@ -1766,8 +1894,14 @@ export function create(host, opts) {
     const c = byKey.cells[key];
     if (!c) return;
     const u = c.mesh.material.uniforms;
-    let maxL = 0;
-    for (let i = 0; i < c.plen.length; i++) if (c.type[i] === 2 && c.plen[i] > maxL) maxL = c.plen[i];
+    // the axon's length, measured once: scanning a whole tracing on every pulse cost a story's
+    // loop 60 ms a volley, enough to drop the stage to low resolution (11-25)
+    if (c.maxAxon == null) {
+      let m = 0;
+      for (let i = 0; i < c.plen.length; i++) if (c.type[i] === 2 && c.plen[i] > m) m = c.plen[i];
+      c.maxAxon = m;
+    }
+    const maxL = c.maxAxon;
     const dur = ms || 2600, t0 = performance.now();
     if (reduced()) { u.flash.value = 0.6; setTimeout(() => { u.flash.value = 0; dirty = true; }, dur); dirty = true; return; }
     u.pulseW.value = Math.max(60, maxL / 25);
@@ -2393,7 +2527,7 @@ export function create(host, opts) {
     flare, flareAt: (c, col, ms) => flare(new THREE.Vector3(c[0], c[1], c[2]), col, ms), volley, pulseCell, fly, frameOn, getCam, setCam, project, cellSomaW, cellBounds, centroid, bounds, camDir,
     setHeat, glowBrain, beacon, clearBeacons, fadeCells, fadeCrowd, setPulseSide,
     ride, pauseRide, stepRide, setRideAuto, stopRide, settle, reframe, setDark,
-    snapshot, record, theme, dispose,
+    snapshot, record, theme, dispose, prewarm, holdFull,
     pause: stop, resume: () => { dirty = true; start(); },
     has: (k) => Object.keys(byKey[k] || {}).length > 0,
     get level() { return S.level; }, get view() { return S.view; }, get slice() { return S.slice; },
