@@ -3,8 +3,8 @@
 Seahorse's review lets a person drag the probe on the section. When they let
 go, the page sends the line (contact 1 and contact 64, CCF um) here; Sextant
 searches a small neighbourhood of it -- 100 um either way in AP and ML at the
-reference depth, 4 degrees of tilt, 80 um along the shank, the size factor
-+-0.08 -- with both methods, exactly as the full placement scores, and
+reference depth (50 um steps), 4 degrees of tilt, 80 um along the shank, the
+size factor +-0.08 -- with both methods, exactly as the full placement scores, and
 answers with the best pose there and how its score compares with Sextant's
 own answer. A placement the recording cannot tell from the answer is said to
 be as good; a worse one says which landmarks disagree most.
@@ -42,19 +42,26 @@ def _load(logs_dir, web_dir, gid):
     prof = B.profiles(ev, bad)
     with open(os.path.join(web_dir, gid + ".json"), encoding="utf-8") as f:
         rep = json.load(f)
-    got = {"lms": lms, "bad": bad, "prof": prof, "answer": rep["answer"]["line"]}
+    got = {"lms": lms, "bad": bad, "prof": prof, "answer": rep["answer"]["line"],
+           "stretch": rep["answer"].get("stretch")}
     with _LOCK:
         _CACHE[gid] = got
     return got
 
 
-def line_pose(line):
-    """(ap_ref, ml_ref, tilt_ml, tilt_ap, o, s) of a 64-contact line."""
+def line_pose(line, stretch=None):
+    """(ap_ref, ml_ref, tilt_ml, tilt_ap, o, s) of a 64-contact line (with a
+    stretched dentate, s is CA1's size: contact 64 sits at
+    pitch * s * (h + k (63 - h)) from contact 1)."""
     p1, p64 = np.asarray(line[0], float), np.asarray(line[1], float)
     v = p64 - p1
     L = float(np.linalg.norm(v))
     d = v / L
-    s = L / ((F.NC - 1) * F.PITCH)
+    if stretch:
+        h, k = float(stretch["hinge"]), float(stretch["k"])
+        s = L / (F.PITCH * (h + k * (F.NC - 1 - h)))
+    else:
+        s = L / ((F.NC - 1) * F.PITCH)
     t_ref = (F.DV_REF - p1[1]) / d[1]
     p_ref = p1 + t_ref * d
     return (float(p_ref[0]), float(p_ref[2]), math.degrees(math.atan2(d[2], d[1])),
@@ -64,26 +71,34 @@ def line_pose(line):
 def _score(atl, got, ap, ml, tml, tap, offsets, scales):
     codes, t = F.lines_codes(atl, ap, ml, tml, tap)
     alm = F.atlas_landmarks(codes, t)
-    chi = SV._chi2_a_grid(got["lms"], alm, offsets, scales)
-    _tot, parts = B.score(codes, offsets, scales, got["prof"], got["bad"])
+    st = got.get("stretch")
+    ks = np.full(np.asarray(scales).size, float(st["k"])) if st else None
+    h = float(st["hinge"]) if st else None
+    chi = SV._chi2_a_grid(got["lms"], alm, offsets, scales, Ks=ks, hinge=h)
+    _tot, parts = B.score(codes, offsets, scales, got["prof"], got["bad"], ks=ks, hinge=h)
     llb = sum(parts.values()) if parts else np.zeros_like(chi)
     return -0.5 * chi + SV.W_B * llb, chi, alm
 
 
-def _line_of(ap, ml, tml, tap, o, s):
+def _line_of(ap, ml, tml, tap, o, s, stretch=None):
     d = A.direction(tml, tap)
     p_ref = np.array([ap, F.DV_REF, ml])
     c1 = p_ref + o * d
-    c64 = c1 + (F.NC - 1) * F.PITCH * s * d
+    if stretch:
+        c64 = c1 + float(F.t_of_x(F.NC - 1, s, float(stretch["hinge"]), float(stretch["k"]))) * d
+    else:
+        c64 = c1 + (F.NC - 1) * F.PITCH * s * d
     return [[round(float(x), 1) for x in c1], [round(float(x), 1) for x in c64]]
 
 
 def local(logs_dir, web_dir, gid, line):
     atl = A.load()
     got = _load(logs_dir, web_dir, gid)
-    ap0, ml0, tm0, ta0, o0, s0 = line_pose(line)
-    dd = np.arange(-100.0, 100.1, 25.0)
-    dt = np.arange(-4.0, 4.1, 2.0)
+    ap0, ml0, tm0, ta0, o0, s0 = line_pose(line, got.get("stretch"))
+    # 50 um and 4 degrees: a review is a drag and a look, and another drag
+    # refines it; the full search's grid would keep the person waiting
+    dd = np.arange(-100.0, 100.1, 50.0)
+    dt = np.arange(-4.0, 4.1, 4.0)
     G = np.stack(np.meshgrid(ap0 + dd, ml0 + dd, tm0 + dt, ta0 + dt, indexing="ij"), -1).reshape(-1, 4)
     offsets = o0 + np.arange(-80.0, 80.1, 20.0)
     scales = np.clip(s0 + np.array([-0.08, 0.0, 0.08]), *F.SCALE_RANGE)
@@ -94,9 +109,9 @@ def local(logs_dir, web_dir, gid, line):
         T, C, _alm = _score(atl, got, G[sl, 0], G[sl, 1], G[sl, 2], G[sl, 3], offsets, scales)
         tot[sl], chi[sl] = T, C
     li, oi, si = np.unravel_index(int(np.argmax(tot)), tot.shape)
-    best = _line_of(G[li, 0], G[li, 1], G[li, 2], G[li, 3], offsets[oi], scales[si])
+    best = _line_of(G[li, 0], G[li, 1], G[li, 2], G[li, 3], offsets[oi], scales[si], got.get("stretch"))
     # the answer, scored the same way (its own pose, nothing searched)
-    a = line_pose(got["answer"])
+    a = line_pose(got["answer"], got.get("stretch"))
     Ta, _Ca, _ = _score(atl, got, np.array([a[0]]), np.array([a[1]]), np.array([a[2]]), np.array([a[3]]),
                         np.array([a[4]]), np.array([a[5]]))
     best_score = float(tot[li, oi, si])
@@ -114,7 +129,8 @@ def local(logs_dir, web_dir, gid, line):
         if not np.isfinite(Lk):
             worst.append((99.0, l["key"]))
             continue
-        x = (Lk - o) / (F.PITCH * s)
+        st = got.get("stretch")
+        x = float(F.x_of_t(Lk - o, s, float(st["hinge"]), float(st["k"]))) if st else (Lk - o) / (F.PITCH * s)
         worst.append((abs(x - l["x"]) / l["sigma"], l["key"]))
     worst.sort(reverse=True)
     words = {"sp": "CA1's cell layer", "spw_rev": "the sharp wave's reversal", "sr_sink": "radiatum",

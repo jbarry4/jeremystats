@@ -15,6 +15,45 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.27.1 - Sextant: where was the probe?
+
+Needs a restart and a reload.
+
+- **Seahorse > Place a probe.** Sextant estimates where a recording's H3 sat
+  in the brain from the recording's own signals:
+  - where it entered (AP and ML from bregma);
+  - how deep each contact was;
+  - its two tilts;
+  - for PTEN mice, how stretched the dentate is.
+
+  It never uses the lab's layer labels. The 8 control and 9 PTEN recordings
+  of the Extraction Room are placed (web/seahorse/sextant/).
+- **Click by click.** Each stop adds one kind of evidence, and the cloud of
+  plausible probes narrows on the section:
+  - the craniotomy;
+  - CA1's cell layer;
+  - the sharp wave;
+  - theta;
+  - dentate spikes;
+  - P-spikes and BTs;
+  - the thalamus below;
+  - both methods together;
+  - the probe in 3D.
+- **Two methods, one answer.**
+  - Landmarks against the atlas (Method A).
+  - Each pathway's current simulated on the atlas layers and matched to the
+    recording's dentate spikes, sharp waves and theta (Method B).
+
+  Every answer says how far it moves when each signal is dropped.
+- **Review.** Choose Yours and drag the probe's tip. Sextant refits around
+  where you put it and says how that compares. **Accept** keeps a placement
+  on the recording's layer sheet (synced).
+- **StrataScope offers Sextant's layers as a proposal**: a "Sextant / Shown"
+  switch in the step row hatches every lane, and "Accept Sextant's layers"
+  writes them.
+- How it works and what it rests on: docs/sextant-literature.md. To make
+  placements: python tools/sextant/run.py --all.
+
 ## 2026.11.24.1 - A pause says so; Doppler runs can be banked by hand; Incisor's list has a search
 
 Needs a restart and a reload.

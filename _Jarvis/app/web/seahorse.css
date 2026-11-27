@@ -345,6 +345,8 @@
 .sh-sext-word.sure { color: var(--ok); background: var(--ok-soft); }
 .sh-sext-word.likely { color: var(--warn); background: var(--warn-soft); }
 .sh-sext-word.guess { color: var(--text-3); background: var(--sh-ink-1); }
+.sh-sext-word.outside { color: var(--warn); background: var(--warn-soft); }
+.sh-sext-word.normal:not(.outside) { color: var(--ok); background: var(--ok-soft); }
 .sh-sext-acc { color: var(--ok); font-weight: 650; }
 .sh-story-words { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .sh-story-words .sh-sword {
