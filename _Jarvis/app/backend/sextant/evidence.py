@@ -250,9 +250,32 @@ def gather(logs_dir, rec, log=print):
     out["theta_cx"] = vfull
     out["theta_cx_frac"] = frac
 
-    # ripples on the CA1 cell-layer contact (StrataScope's pick_sp)
-    i_ref = prof.get("ref_row")
-    sp_ch = prof["channels"][i_ref] if i_ref is not None else None
+    # dentate events from Root Canal
+    ev = rc_events(logs_dir, gid)
+    for kind in ("ds", "ps", "bt"):
+        t = ev.get(kind, np.zeros(0))
+        out["n_" + kind] = int(t.size)
+        if t.size >= 5:
+            avg, t_ms, n = _triggered(b, t, order, bad, half_ms=60.0)
+            full = np.vstack([_full(avg[:, i], rows) for i in range(avg.shape[1])]).T
+            pk, t0 = _peak_profile(full, t_ms, is_bad)
+            out[kind + "_avg"] = full
+            out[kind + "_t"] = t_ms
+            out[kind + "_peak"] = pk
+            out[kind + "_peak_ms"] = t0
+            # the spread of single events' sinks: each event's CSD at its own
+            # peak, so a mixture of sink depths (DS1 vs DS2) shows as two
+            # clusters even when the mean has one
+            if kind == "ds":
+                out["ds_event_csd"] = _event_csds(b, t, rows, is_bad, t0)
+    # Ripples on the CA1 cell-layer contact. Not StrataScope's pick_sp (the
+    # ripple maximum above the theta maximum): in these mice raw ripple-band
+    # power climbs into the dentate (dentate-spike energy), so that pick lands
+    # one contact above the theta peak. Here: the topmost clear local maximum
+    # of ripple / theta power in still time (Toothy's ratio), checked against
+    # multiunit activity -- the pyramidal layer is where both peak.
+    sp_k = sp_contact(out)
+    sp_ch = (sp_k + 1) if sp_k is not None else None
     out["sp_channel"] = sp_ch or 0
     out["n_ripples"] = 0
     if sp_ch:
@@ -284,28 +307,178 @@ def gather(logs_dir, rec, log=print):
         m = np.abs(t_ms) <= 8
         out["trough"] = np.nanmean(out["trough_avg"][:, m], axis=1)
 
-    # dentate events from Root Canal
-    ev = rc_events(logs_dir, gid)
-    for kind in ("ds", "ps", "bt"):
-        t = ev.get(kind, np.zeros(0))
-        out["n_" + kind] = int(t.size)
-        if t.size >= 5:
-            avg, t_ms, n = _triggered(b, t, order, bad, half_ms=60.0)
-            full = np.vstack([_full(avg[:, i], rows) for i in range(avg.shape[1])]).T
-            pk, t0 = _peak_profile(full, t_ms, is_bad)
-            out[kind + "_avg"] = full
-            out[kind + "_t"] = t_ms
-            out[kind + "_peak"] = pk
-            out[kind + "_peak_ms"] = t0
-            # the spread of single events' sinks: each event's CSD at its own
-            # peak, so a mixture of sink depths (DS1 vs DS2) shows as two
-            # clusters even when the mean has one
-            if kind == "ds":
-                out["ds_event_csd"] = _event_csds(b, t, rows, is_bad, t0)
     log("   evidence:", gid, "walk %.0fs still %.0fs (%s)" % (out["walk_s"], out["still_s"], how),
         "ripples", out["n_ripples"], "troughs", out["n_troughs"],
         "DS", out["n_ds"], "P", out["n_ps"], "BT", out["n_bt"])
     return out
+
+
+def _local_max(v, k, w=2):
+    lo, hi = max(0, k - w), min(v.size, k + w + 1)
+    seg = v[lo:hi]
+    return np.isfinite(v[k]) and v[k] >= np.nanmax(seg)
+
+
+def _z(v):
+    v = np.asarray(v, float)
+    m, s = np.nanmedian(v), np.nanstd(v)
+    return (v - m) / s if s > 0 else v * 0
+
+
+def sp_contact(ev):
+    """0-based contact of CA1's pyramidal layer, or None: the contact where
+    ripple / theta power in still time (Toothy's ratio) and multiunit
+    activity together stand highest, ABOVE THE DENTATE -- six contacts above
+    the dentate spikes' upper sink when there are dentate spikes, else above
+    the walking-theta maximum. Not the topmost peak: a probe that starts in
+    radiatum has a high ratio at its top edge that is not a peak of anything.
+
+    The dentate comes first because in a PTEN dentate theta can peak deep in
+    the hilus and units fire there hardest (m5): bounded by theta alone, the
+    "cell layer" was found in the hilus."""
+    bad = ev["is_bad"]
+    k_ds = None
+    if "ds_peak" in ev and ev.get("n_ds", 0) >= 20:
+        pat = dentate_pattern(ev["ds_peak"], bad, 4)
+        if pat:
+            k_ds = int(round(pat[0])) - 6
+    with np.errstate(all="ignore"):
+        r = np.log(ev["c_ripple"] / ev["c_theta_still"])
+    r = np.where(bad, np.nan, r)
+    th = np.where(bad, np.nan, ev["c_theta"])
+    if not np.isfinite(th).any() or not np.isfinite(r).any():
+        return None
+    k_th = int(np.nanargmax(th))
+    n = max(k_th - 2, 4) if k_ds is None else max(k_ds, 3)
+    top = r[:n]
+    mua = np.where(bad, np.nan, ev["c_mua"])[:n]
+    if not np.isfinite(top).any():
+        return None
+    score = _z(top) + 0.7 * np.nan_to_num(_z(mua))
+    score = np.where(np.isfinite(top), score, np.nan)
+    sm = _smooth(score, 1)
+    # a real peak: higher than two contacts either side, and standing at
+    # least 0.6 (z units) above the lowest point within 8 contacts on each
+    # side -- not the edge of the search, where the ratio only climbs toward
+    # the dentate (m7), and not a lone noisy contact
+    best, best_v = None, -np.inf
+    for k in range(1, n - 1):
+        v = sm[k]
+        if not np.isfinite(v):
+            continue
+        nb = sm[max(0, k - 2):k + 3]
+        if v < np.nanmax(nb):
+            continue
+        lo_l = np.nanmin(sm[max(0, k - 8):k]) if k > 0 else v
+        lo_r = np.nanmin(sm[k + 1:min(n, k + 9)]) if k + 1 < n else v
+        prom = v - max(lo_l if np.isfinite(lo_l) else -np.inf, lo_r if np.isfinite(lo_r) else -np.inf)
+        if prom >= 0.6 and k + 2 < n and v > best_v:
+            best, best_v = k, v
+    if best is None:
+        # the top contact standing highest: the layer is above the shank
+        return 0 if np.isfinite(sm[0]) and sm[0] >= np.nanmax(sm[:min(n, 6)]) else None
+    return best
+
+
+def _smooth(v, w=1):
+    if w <= 0:
+        return v
+    k = np.ones(2 * w + 1)
+    x = np.where(np.isfinite(v), v, 0.0)
+    m = np.isfinite(v).astype(float)
+    num = np.convolve(x, k, "same")
+    den = np.convolve(m, k, "same")
+    with np.errstate(invalid="ignore"):
+        out = num / den
+    out[den == 0] = np.nan
+    return out
+
+
+def _centroid(v, k, frac=0.5):
+    """Centroid of the lobe around k of a positive-going v (above frac of
+    its height)."""
+    h = v[k] * frac
+    lo = k
+    while lo - 1 >= 0 and np.isfinite(v[lo - 1]) and v[lo - 1] > h:
+        lo -= 1
+    hi = k
+    while hi + 1 < v.size and np.isfinite(v[hi + 1]) and v[hi + 1] > h:
+        hi += 1
+    w = np.clip(v[lo:hi + 1] - h, 0, None)
+    if w.sum() <= 0:
+        return float(k), lo, hi
+    return float((w * np.arange(lo, hi + 1)).sum() / w.sum()), lo, hi
+
+
+def dentate_pattern(peak, bad, floor):
+    """(upper sink, core source, lower sink, end) of a dentate event's CSD at
+    its peak, as sub-contact positions (None where absent).
+
+    The two blades are the two LARGEST sinks below `floor` (8 contacts under
+    CA1's cell layer), at least 5 contacts apart with a source between them
+    and the second at least 35% of the first -- not the first two in order:
+    dentate spikes also carry smaller sinks in CA1's lacunosum-moleculare
+    (seen in m59), which would otherwise be taken for a blade."""
+    c = _smooth(csd(peak, bad), 1)
+    if not np.isfinite(c).any():
+        return None
+    lo = max(1, int(floor))
+    seg = c[lo:]
+    if not np.isfinite(seg).any():
+        return None
+    depth = np.nanmax(np.abs(seg))
+    if not np.isfinite(depth) or depth <= 0:
+        return None
+    mins = [k for k in range(lo, N - 1)
+            if np.isfinite(c[k]) and c[k] < -0.2 * depth and c[k] <= np.nanmin(c[max(lo, k - 3):k + 4])]
+    if not mins:
+        return None
+    mins.sort(key=lambda k: c[k])                     # deepest first
+    s1 = mins[0]
+    s2 = None
+    for k in mins[1:]:
+        if abs(k - s1) < 5 or c[k] > 0.2 * c[s1]:
+            continue
+        a_, b_ = sorted((s1, k))
+        between = np.nanmax(c[a_:b_ + 1])
+        # a weaker blade (PTEN: the lower blade can carry four times the
+        # current of the upper, m13, m3) counts when the granule cells' return
+        # current between the two is strong; a sink that weak without one is
+        # something else
+        weak = c[k] > 0.35 * c[s1]            # under 35% of the deeper sink
+        if between > (0.5 if weak else 0.05) * abs(c[s1]):
+            s2 = k
+            break
+    a = min(s1, s2) if s2 is not None else s1
+    b = max(s1, s2) if s2 is not None else None
+    ax, _l, a_hi = _centroid(-c, a, 0.4)
+    core = None
+    if b is not None:
+        bx, b_lo, b_hi = _centroid(-c, b, 0.4)
+        kq = a + int(np.nanargmax(c[a:b + 1]))
+        if c[kq] > 0:
+            core, _l2, _h2 = _centroid(c, kq, 0.4)
+    else:
+        bx, b_hi = None, a_hi
+        seg = c[a_hi:min(N, a_hi + 10)]
+        if np.isfinite(seg).any():
+            kq = a_hi + int(np.nanargmax(seg))
+            if c[kq] > 0:
+                core, _l2, _h2 = _centroid(c, kq, 0.4)
+    # where the last sink's current has ended: back within 10% of the peak,
+    # past the source that follows it
+    end = None
+    last_hi = b_hi if b is not None else a_hi
+    seen_src = False
+    for k in range(last_hi, N - 1):
+        if not np.isfinite(c[k]):
+            continue
+        if c[k] > 0.1 * depth:
+            seen_src = True
+        if seen_src and abs(c[k]) < 0.1 * depth:
+            end = float(k)
+            break
+    return ax, core, bx, end
 
 
 def _event_csds(b, times, rows, is_bad, t0_ms, max_events=400):

@@ -123,10 +123,14 @@ REGION_ORDER = {r["id"]: i for i, r in enumerate(REGIONS)}
 #   strata_signed      {by, at, v} for the last sign-off
 STRATA_FIELDS = ("strata_states", "strata_wheel", "strata_params",
                  "strata_confidence", "strata_steps", "strata_anchors",
-                 "strata_checks", "strata_signed")
+                 "strata_checks", "strata_signed",
+                 # Sextant's kept placement (Seahorse's Accept): the probe's
+                 # line in the atlas and the layer under each contact, which
+                 # StrataScope offers as a proposal (backend/sextant/routes.py)
+                 "strata_sextant")
 STRATA_MAPS = ("strata_params", "strata_confidence", "strata_steps",
                "strata_anchors")
-STRATA_DICTS = STRATA_MAPS + ("strata_states", "strata_signed")
+STRATA_DICTS = STRATA_MAPS + ("strata_states", "strata_signed", "strata_sextant")
 CONFIDENCE = ("sure", "likely", "guess")
 
 
