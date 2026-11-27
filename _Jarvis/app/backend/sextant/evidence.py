@@ -275,6 +275,10 @@ def gather(logs_dir, rec, log=print):
     # of ripple / theta power in still time (Toothy's ratio), checked against
     # multiunit activity -- the pyramidal layer is where both peak.
     sp_k = sp_contact(out)
+    if sp_k is None:
+        # no clear cell layer: ripples are still read where they stand
+        # highest against theta above the dentate (they reach 100 um or more)
+        sp_k = ripple_contact(out)
     sp_ch = (sp_k + 1) if sp_k is not None else None
     out["sp_channel"] = sp_ch or 0
     out["n_ripples"] = 0
@@ -325,6 +329,22 @@ def _z(v):
     return (v - m) / s if s > 0 else v * 0
 
 
+def ripple_contact(ev):
+    """Where to detect ripples when no cell layer stands out: the contact
+    with the highest ripple / theta ratio above the dentate."""
+    bad = ev["is_bad"]
+    with np.errstate(all="ignore"):
+        r = np.log(ev["c_ripple"] / ev["c_theta_still"])
+    r = np.where(bad, np.nan, r)
+    n = N
+    if "ds_peak" in ev and ev.get("n_ds", 0) >= 20:
+        pat = dentate_pattern(ev["ds_peak"], bad, 4)
+        if pat:
+            n = max(3, int(round(pat[0])) - 6)
+    seg = r[:n]
+    return int(np.nanargmax(seg)) if np.isfinite(seg).any() else None
+
+
 def sp_contact(ev):
     """0-based contact of CA1's pyramidal layer, or None: the contact where
     ripple / theta power in still time (Toothy's ratio) and multiunit
@@ -354,26 +374,27 @@ def sp_contact(ev):
     mua = np.where(bad, np.nan, ev["c_mua"])[:n]
     if not np.isfinite(top).any():
         return None
-    score = _z(top) + 0.7 * np.nan_to_num(_z(mua))
-    score = np.where(np.isfinite(top), score, np.nan)
-    sm = _smooth(score, 1)
-    # a real peak: higher than two contacts either side, and standing at
-    # least 0.6 (z units) above the lowest point within 8 contacts on each
-    # side -- not the edge of the search, where the ratio only climbs toward
-    # the dentate (m7), and not a lone noisy contact
-    best, best_v = None, -np.inf
+    # Measured on the ratio's own scale (log power), not z-scores of the
+    # search region: z-scoring a short region turns a flat stretch's ripples
+    # into peaks (m22's 18th contact).
+    sm = _smooth(top, 1)
+    zm = _smooth(np.where(np.isfinite(mua), mua, np.nan), 1)
+    best, best_p = None, 0.0
     for k in range(1, n - 1):
         v = sm[k]
-        if not np.isfinite(v):
+        if not np.isfinite(v) or v < np.nanmax(sm[max(0, k - 2):k + 3]):
             continue
-        nb = sm[max(0, k - 2):k + 3]
-        if v < np.nanmax(nb):
+        lo_l = np.nanmin(sm[max(0, k - 8):k])
+        lo_r = np.nanmin(sm[k + 1:min(n, k + 9)]) if k + 1 < n else np.nan
+        sides = [x for x in (lo_l, lo_r) if np.isfinite(x)]
+        if len(sides) < 2 or k + 2 >= n:
             continue
-        lo_l = np.nanmin(sm[max(0, k - 8):k]) if k > 0 else v
-        lo_r = np.nanmin(sm[k + 1:min(n, k + 9)]) if k + 1 < n else v
-        prom = v - max(lo_l if np.isfinite(lo_l) else -np.inf, lo_r if np.isfinite(lo_r) else -np.inf)
-        if prom >= 0.6 and k + 2 < n and v > best_v:
-            best, best_v = k, v
+        prom = v - max(sides)
+        # a cell layer: the ratio stands 35% (0.3 in log) above both sides,
+        # and units fire at least a little more there than around it
+        mua_up = np.isfinite(zm[k]) and zm[k] >= np.nanmedian(zm[max(0, k - 8):min(n, k + 9)])
+        if prom >= 0.3 and mua_up and prom > best_p:
+            best, best_p = k, prom
     if best is None:
         # the top contact standing highest: the layer is above the shank
         return 0 if np.isfinite(sm[0]) and sm[0] >= np.nanmax(sm[:min(n, 6)]) else None
@@ -446,7 +467,7 @@ def dentate_pattern(peak, bad, floor):
         # current between the two is strong; a sink that weak without one is
         # something else
         weak = c[k] > 0.35 * c[s1]            # under 35% of the deeper sink
-        if between > (0.5 if weak else 0.05) * abs(c[s1]):
+        if between > (0.3 if weak else 0.05) * abs(c[s1]):
             s2 = k
             break
     a = min(s1, s2) if s2 is not None else s1

@@ -3311,11 +3311,24 @@ BARRY.views.seahorse = (function () {
     ].filter((g) => g.items.length), { where: 'above-center', width: 420 });
   }
   const lineMid = (l) => l[0].map((x, i) => (x + l[1][i]) / 2);
-  const lineAt = (l, x) => l[0].map((v, i) => v + (l[1][i] - v) * (x / 63));       // contact x (0-based) on a 64-contact line
+  /* contact x (0-based) on a 64-contact line; with a stretch {k, hinge} the
+     dentate below the hinge is k times as spread out in the atlas (PTEN) */
+  function lineAt(l, x, st) {
+    let f = x / 63;
+    if (st && st.k && st.hinge != null && Math.abs(st.k - 1) > 1e-3) {
+      const h = st.hinge, k = st.k;
+      f = (x <= h ? x : h + k * (x - h)) / (h + k * (63 - h));
+    }
+    return l[0].map((v, i) => v + (l[1][i] - v) * f);
+  }
+  const sextStretch = (P, st) => {
+    const a = P && P.D && P.D.answer.stretch;
+    return a ? { k: (st && st.k) || a.k, hinge: a.hinge } : null;
+  };
   /* the layer under each of the 64 contacts of a line (the atlas's 10 um laminae) */
-  function layersAlong(l) {
+  function layersAlong(l, st) {
     const out = [];
-    for (let c = 0; c < 64; c++) { const p = lineAt(l, c); const s = sampleAt(p[0], p[1], p[2]); const lam = s.lam ? lamByCode(s.lam) : null; out.push(lam ? lam.key : ''); }
+    for (let c = 0; c < 64; c++) { const p = lineAt(l, c, st); const s = sampleAt(p[0], p[1], p[2]); const lam = s.lam ? lamByCode(s.lam) : null; out.push(lam ? lam.key : ''); }
     return out;
   }
   async function startSextant(gid, o) {
@@ -3337,6 +3350,7 @@ BARRY.views.seahorse = (function () {
                 ap: lineMid(D.answer.line)[0] };
     S.play = P;
     sextAccepted(P);
+    getJSON('sextant/planted.json').then((pl) => { P.planted = pl; if (S.play === P && (P.stop || {}).id === 'both') showCard({ type: 'sextant' }); }).catch(() => {});
     await runSextStop(o.at || 0);
   }
   async function runSextStop(i) {
@@ -3347,7 +3361,7 @@ BARRY.views.seahorse = (function () {
     P.i = i; P.stop = st; P.seq++;
     const seq = P.seq;
     if (st.id !== 'both') P.review = null;
-    st.layers = st.layers || layersAlong(st.best);
+    st.layers = st.layers || layersAlong(st.best, sextStretch(P, st));
     S.focus = null;
     renderDock();
     showCard({ type: 'sextant' });
@@ -3457,6 +3471,7 @@ BARRY.views.seahorse = (function () {
     svg.appendChild(g);
     const line = P.review ? P.review.line : st.best;
     const lay = P.review ? P.review.layers : st.layers;
+    const stx = sextStretch(P, P.review ? null : st);
     const a = px(line[0]), b = px(line[1]);
     const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
     const nx = -dy / L, ny = dx / L;                      // across the shank
@@ -3468,19 +3483,19 @@ BARRY.views.seahorse = (function () {
     const rib = el('g', { class: 'sext-ribbon' });
     for (let c = 0; c < 64; c++) {
       if (!lay[c]) continue;
-      const p0 = px(lineAt(line, c - 0.5)), p1 = px(lineAt(line, c + 0.5));
+      const p0 = px(lineAt(line, c - 0.5, stx)), p1 = px(lineAt(line, c + 0.5, stx));
       rib.appendChild(el('line', { x1: p0[0] + nx * 7, y1: p0[1] + ny * 7, x2: p1[0] + nx * 7, y2: p1[1] + ny * 7, style: 'stroke:' + lamColor(lay[c]) }));
     }
     svg.appendChild(rib);
     // contact 1 and 64
     [[0, '1'], [63, '64']].forEach(([c, t]) => {
-      const p = px(lineAt(line, c));
+      const p = px(lineAt(line, c, stx));
       svg.appendChild(el('text', { class: 'sext-cno', x: p[0] - nx * 10 - (nx > 0 ? 14 : 0), y: p[1] - ny * 10 + 4 }, [t]));
     });
     // the landmarks found so far, on the shank, named in a column beside it
     const seen = sextSeen(P), mine = new Set(SX().LM_OF[st.id] || []);
     const rows = D.landmarks.filter((l) => seen.has(l.key) && l.fit !== false).map((l) => {
-      const p = px(lineAt(line, Math.max(0, Math.min(63, l.x))));
+      const p = px(lineAt(line, Math.max(0, Math.min(63, l.x)), stx));
       return { l, x: p[0], y: p[1], mine: mine.has(l.key) };
     }).sort((u, v) => u.y - v.y);
     const lx = Math.max(a[0], b[0]) + 40, gap = 16;
@@ -3574,7 +3589,7 @@ BARRY.views.seahorse = (function () {
       const pitch = len / 63, first = 50 * pitch / 20;
       const c64 = ccf.map((x, i) => x - u[i] * first);
       P.review.line = [c64.map((x, i) => x - u[i] * len), c64];
-      P.review.layers = layersAlong(P.review.line);
+      P.review.layers = layersAlong(P.review.line, sextStretch(P, null));
       P.review.state = 'moved';
       sextStage(P);
       sextOverlay(true);
@@ -3590,7 +3605,7 @@ BARRY.views.seahorse = (function () {
       const res = await apiPost('/api/sextant/' + encodeURIComponent(P.gid) + '/refit', { line: P.review.line });
       if (S.play !== P || P.seq !== seq || !P.review) return;
       P.review.line = res.line;
-      P.review.layers = layersAlong(res.line);
+      P.review.layers = layersAlong(res.line, sextStretch(P, null));
       P.review.state = 'refit';
       P.review.res = res;
       const d = res.delta;
@@ -3658,8 +3673,16 @@ BARRY.views.seahorse = (function () {
         row('Contact 64', (a.depth_um.contact64 / 1000).toFixed(2) + ' mm deep', (r.depth64.lo / 1000).toFixed(2) + ' to ' + (r.depth64.hi / 1000).toFixed(2), null),
         row('Tilt', a.tilt_ml.toFixed(1) + '° lateral, ' + a.tilt_ap.toFixed(1) + '° back', null, a.words.tilt),
         row('Size', '×' + a.scale.toFixed(2) + ' the atlas along the shank', r.scale.lo.toFixed(2) + ' to ' + r.scale.hi.toFixed(2), null),
-      ]));
+      ].concat(a.stretch ? [row('Dentate', '×' + a.stretch.k.toFixed(2) + ' as thick as CA1’s size says' + (a.stretch.normal ? ' (controls ×' + a.stretch.normal.lo.toFixed(2) + ' to ×' + a.stretch.normal.hi.toFixed(2) + ')' : ''),
+        r.k ? r.k.lo.toFixed(2) + ' to ' + r.k.hi.toFixed(2) : null, a.stretch.normal ? (a.stretch.outside ? 'outside normal' : 'normal') : null)] : [])));
       card.appendChild(el('p', { class: 'sh-small', text: 'Ranges are 95% of the cloud. Sure: within ±0.15 mm (±60 µm in depth, ±4° tilt); likely: within ±0.35 mm (±150 µm, ±9°); wider is a guess. AP is the hardest from one shank: the hippocampus changes slowly front to back.' }));
+      const pl = P.planted && P.planted.summary;
+      if (pl) {
+        const pc = (k) => Math.round(100 * pl[k].covered) + '%';
+        card.appendChild(el('p', { class: 'sh-small', text: 'Found again: ' + P.planted.n + ' probes planted at known places near the craniotomy, their evidence made from the atlas with each detector’s own scatter, and searched for blind. Sextant was off by a median ' +
+          pl.ap.median_abs.toFixed(2) + ' mm in AP, ' + pl.ml.median_abs.toFixed(2) + ' mm in ML, ' + Math.round(1000 * pl.depth.median_abs) + ' µm in depth and ' + pl.tilt_ml.median_abs.toFixed(1) + '° in tilt; the 95% ranges held the plant ' +
+          pc('ap') + ' (AP), ' + pc('ml') + ' (ML), ' + pc('depth') + ' (depth) of the time. That is the method’s own precision when the atlas is right; a real brain that differs from the atlas adds to it.' }));
+      }
       const M = D.methods;
       const gap = (x, y) => Math.round(1000 * Math.hypot(x.entry.ap - y.entry.ap, Math.abs(x.entry.ml) - Math.abs(y.entry.ml)));
       card.appendChild(el('h3', { text: 'Each method alone' }));
@@ -4254,5 +4277,5 @@ BARRY.views.seahorse = (function () {
 
   // _do: the tab's own verbs, for the screenshot harnesses (tools/ui_shots.py --steps)
   return { onShow, onHide, onReturn, _state: S,
-           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz, startStory, storyGo, startSextant, sextGo, sextReview } };
+           _do: { select, pick, showCard, setMode, setLevel, playEvent, startRide, stopPlay, startTour, startPath, openQuiz, startStory, storyGo, startSextant, sextGo, sextReview, sextDrag } };
 })();

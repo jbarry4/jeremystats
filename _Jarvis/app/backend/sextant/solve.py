@@ -35,7 +35,7 @@ from . import forward as B
 
 W_B = 6.0 / 64.0
 K_SD = 0.35               # the dentate's stretch, prior sd (PTEN; and controls when learning normal)
-KS = np.array([0.9, 1.05, 1.25, 1.5])
+KS = np.array([0.95, 1.15, 1.35, 1.6])
 OFFSETS = np.arange(-1500.0, 501.0, 25.0)
 SCALES = np.array([0.85, 0.95, 1.05, 1.15])
 N_TOP_COARSE, N_TOP_FINE, N_RANDOM = 1200, 300, 600
@@ -194,8 +194,9 @@ def place(atl, ev, lms, bad, log=print, rng=None, stretch=False):
         cand.size, OFFSETS.size, SCALES.size, ", ".join(prof)))
     alm = {k: res["alm"][k][cand] for k in F.ATLAS_KEYS}
     if hinge is not None:
-        grid_s = np.repeat(SCALES, KS.size)
-        grid_k = np.tile(KS, SCALES.size)
+        sc = np.array([0.9, 1.0, 1.1])         # three sizes with the stretch, to keep the grid's cost
+        grid_s = np.repeat(sc, KS.size)
+        grid_k = np.tile(KS, sc.size)
     else:
         grid_s, grid_k = SCALES, None
     chi_full = _chi2_a_grid(lms, alm, OFFSETS, grid_s, Ks=grid_k, hinge=hinge)
