@@ -356,8 +356,28 @@ def sp_contact(ev):
         return None
     score = _z(top) + 0.7 * np.nan_to_num(_z(mua))
     score = np.where(np.isfinite(top), score, np.nan)
-    k = int(np.nanargmax(score))
-    return k
+    sm = _smooth(score, 1)
+    # a real peak: higher than two contacts either side, and standing at
+    # least 0.6 (z units) above the lowest point within 8 contacts on each
+    # side -- not the edge of the search, where the ratio only climbs toward
+    # the dentate (m7), and not a lone noisy contact
+    best, best_v = None, -np.inf
+    for k in range(1, n - 1):
+        v = sm[k]
+        if not np.isfinite(v):
+            continue
+        nb = sm[max(0, k - 2):k + 3]
+        if v < np.nanmax(nb):
+            continue
+        lo_l = np.nanmin(sm[max(0, k - 8):k]) if k > 0 else v
+        lo_r = np.nanmin(sm[k + 1:min(n, k + 9)]) if k + 1 < n else v
+        prom = v - max(lo_l if np.isfinite(lo_l) else -np.inf, lo_r if np.isfinite(lo_r) else -np.inf)
+        if prom >= 0.6 and k + 2 < n and v > best_v:
+            best, best_v = k, v
+    if best is None:
+        # the top contact standing highest: the layer is above the shank
+        return 0 if np.isfinite(sm[0]) and sm[0] >= np.nanmax(sm[:min(n, 6)]) else None
+    return best
 
 
 def _smooth(v, w=1):
@@ -417,10 +437,16 @@ def dentate_pattern(peak, bad, floor):
     s1 = mins[0]
     s2 = None
     for k in mins[1:]:
-        if abs(k - s1) < 5 or c[k] > 0.35 * c[s1]:
+        if abs(k - s1) < 5 or c[k] > 0.2 * c[s1]:
             continue
         a_, b_ = sorted((s1, k))
-        if np.nanmax(c[a_:b_ + 1]) > 0:
+        between = np.nanmax(c[a_:b_ + 1])
+        # a weaker blade (PTEN: the lower blade can carry four times the
+        # current of the upper, m13, m3) counts when the granule cells' return
+        # current between the two is strong; a sink that weak without one is
+        # something else
+        weak = c[k] > 0.35 * c[s1]            # under 35% of the deeper sink
+        if between > (0.5 if weak else 0.05) * abs(c[s1]):
             s2 = k
             break
     a = min(s1, s2) if s2 is not None else s1
