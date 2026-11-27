@@ -1,0 +1,57 @@
+[
+ {
+  "id": "filter|halo_kept_by_grace_share|v6||filter",
+  "contrast": "KO_dose_all",
+  "title": "The stricter border keeps fewer PTEN events (it was drawn around the controls)",
+  "plain": "The 10% grace border keeps 89–94% of a control's Halo events but 70–90% of a PTEN mouse's.",
+  "how": "Halo set = the loosest event border (4,824 events). 10% grace set = a border drawn around the control pool with 10% grace (4,201 events). Each Halo event is looked for in the 10% grace set by its time (within 5 ms). Per recording: the share kept.",
+  "ylabel": "Share of Halo events\nthe 10% grace border keeps",
+  "why": "Every high-knockout mouse is below every control (P = 0.001); rho −0.75 with knockout; q (family) = 0.04, one of the few numbers that pass a correction within its family. It says PTEN dentate spikes more often fall outside the control-shaped cloud.",
+  "against": "Largely by construction: the border was fitted to control events, so anything unlike controls is dropped. Tracks the year of recording (rho +0.64): the 2025 controls helped define the border. It shows PTEN events differ, not how.",
+  "test": "Draw the border on half the controls and test the held-out controls against PTEN; or draw it on the pooled data blind to group."
+ },
+ {
+  "id": "filter|blade_balance_dropped_median|v6||dropped",
+  "contrast": "trend_CTL_IEDneg_IEDpos",
+  "title": "The events the border drops are the lower-blade-heavy ones in IED+",
+  "plain": "What the stricter border throws away in IED+ mice is mostly events whose lower blade's sink is much larger than the upper's.",
+  "how": "Halo events outside the 10% grace border (matched by time). Per event: blade balance (upper − lower) / (upper + lower) of the sinks at the two blade sink rows, ±3 ms. Per recording: median over the dropped events.",
+  "ylabel": "Blade balance of the dropped events\n(below 0 = lower blade's sink larger)",
+  "why": "IED+ −0.68 to −0.12 against controls −0.14 to +0.13 (IED+ against control P = 0.010; trend P = 0.008). So the border partly removes exactly the events that carry leads 2 and 7: those leads are not made by the loose border, and a strict border weakens them.",
+  "against": "A border drawn around control events will drop events unlike controls; this shows which ones. Tracks the year of recording (rho +0.48).",
+  "test": "Run leads 2 and 7 on all detected events with no border."
+ },
+ {
+  "id": "filter|net_between_dropped_median|v6||dropped",
+  "contrast": "KO_dose_PTEN",
+  "title": "The dropped events also carry the weaker source with knockout",
+  "plain": "Among the events the stricter border drops, the net source between the blades falls with knockout, as it does over all events (lead 5).",
+  "how": "Halo events outside the 10% grace border. Per event: mean CSD over the rows between the blade sink rows, ±3 ms, divided by the sink size. Per recording: median over the dropped events. Contrast: rank correlation with knockout within PTEN.",
+  "ylabel": "Net CSD between the blades / sink size\n(dropped events, median)",
+  "why": "Within PTEN rho = −0.80 (P = 0.014), the same as over kept events (rho −0.77): lead 5 does not depend on which border is used.",
+  "against": "Dropped events are few in some mice (6–30% of a recording). Nine PTEN mice in two knockout clusters.",
+  "test": "As lead 5: intermediate-knockout mice."
+ },
+ {
+  "id": "filter|pspike_removed_share|v6||filter",
+  "contrast": "trend_CTL_IEDneg_IEDpos",
+  "title": "The P-spike filter removes events almost only in IED+ mice",
+  "plain": "The few events that also sit inside the P-spike border (24 in all) come mostly from IED+ mice.",
+  "how": "10% grace set against No P-spikes set: an event is removed when it also lies inside the P-spike (IED) border. Per recording: the share of the 10% grace events removed.",
+  "ylabel": "Share of events removed as P-spikes",
+  "why": "4 of 5 IED+ mice lose events (0.8–3.4%), against 1 of 7 controls and 1 of 4 IED− mice; IED+ against control P = 0.030. A sanity check that the lab's IED label and the P-spike border agree, and a hint that in IED+ mice some dentate spikes grade into P-spikes.",
+  "against": "24 events in total; most mice lose none, so ranks are full of ties.",
+  "test": "Count P-spike-like dentate spikes on all detected events with one fixed P-spike rule."
+ },
+ {
+  "id": "waveform|source_fwhm_median|v6|opt_curve|ds2nx",
+  "contrast": "KO_dose_PTEN",
+  "title": "With no minimum type size, DS2's source is briefer with knockout (DS3 removed)",
+  "plain": "Dropping the 5% minimum type size makes lead 8 stronger: the source of DS2 events is briefer the higher the knockout.",
+  "how": "No-cutoff filter: the optimized-curve classifier is used however small its smaller type is, and a type counts with any number of events. DS2 events, DS3 taken out. Per event: the source trace (CSD at the source rows) and its width at half height (ms). Per recording: median. Contrast: rank correlation with knockout within PTEN.",
+  "ylabel": "Source duration, DS2 without DS3\n(no minimum type size; median, ms)",
+  "why": "Within PTEN rho = −0.99 (P = 0.000004; other event set P = 0.00007); under P 0.05 with 15 of 20 classifiers; q (family) = 0.06. The strongest dose relation in the battery.",
+  "against": "Over all events the relation is not there (P = 0.84). Whole-millisecond durations, so ties decide ranks. Tracks the year of recording (rho +0.49). Eight PTEN mice have a value.",
+  "test": "Duration on the mean DS2 per mouse at 30 kHz; one planned Spearman test within PTEN in new mice."
+ }
+]

@@ -1,0 +1,84 @@
+{
+ "runs": [
+  {
+   "name": "Halo \u00b7 DS1 vs DS2",
+   "rid": "r008",
+   "n": 35,
+   "resubmitted": false,
+   "done": true,
+   "last": "r008 Halo \u00b7 DS1 vs DS2: 35/35 answered {'done': 35, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  },
+  {
+   "name": "Halo \u00b7 DS1 minus DS2 per mouse",
+   "rid": "r009",
+   "n": 150,
+   "resubmitted": false,
+   "done": true,
+   "last": "r009 Halo \u00b7 DS1 minus DS2 per mouse: 150/150 answered {'done': 150, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  },
+  {
+   "name": "Halo \u00b7 one DS type at a time",
+   "rid": "r010",
+   "n": 735,
+   "resubmitted": true,
+   "done": true,
+   "last": "r010 Halo \u00b7 one DS type at a time: 665/735 answered {'done': 665, 'running': 0, 'queued': 0, 'failed': 70, 'unknown': 0}"
+  },
+  {
+   "name": "Halo \u00b7 random twins (yardstick)",
+   "rid": "r011",
+   "n": 735,
+   "resubmitted": true,
+   "done": true,
+   "last": "r011 Halo \u00b7 random twins (yardstick): 665/735 answered {'done': 665, 'running': 0, 'queued': 0, 'failed': 70, 'unknown': 0}"
+  },
+  {
+   "name": "Strict \u00b7 DS1 vs DS2",
+   "rid": "r012",
+   "n": 35,
+   "resubmitted": false,
+   "done": true,
+   "last": "r012 Strict \u00b7 DS1 vs DS2: 35/35 answered {'done': 35, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  },
+  {
+   "name": "Strict \u00b7 DS1 minus DS2 per mouse",
+   "rid": "r013",
+   "n": 150,
+   "resubmitted": false,
+   "done": true,
+   "last": "r013 Strict \u00b7 DS1 minus DS2 per mouse: 150/150 answered {'done': 150, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  },
+  {
+   "name": "Strict \u00b7 one DS type at a time",
+   "rid": "r014",
+   "n": 735,
+   "resubmitted": true,
+   "done": true,
+   "last": "r014 Strict \u00b7 one DS type at a time: 665/735 answered {'done': 665, 'running': 0, 'queued': 0, 'failed': 70, 'unknown': 0}"
+  },
+  {
+   "name": "Strict \u00b7 random twins (yardstick)",
+   "rid": "r015",
+   "n": 735,
+   "resubmitted": true,
+   "done": true,
+   "last": "r015 Strict \u00b7 random twins (yardstick): 665/735 answered {'done': 665, 'running': 0, 'queued': 0, 'failed': 70, 'unknown': 0}"
+  },
+  {
+   "name": "Halo \u00b7 all events, with the raw event",
+   "rid": "r016",
+   "n": 295,
+   "resubmitted": true,
+   "done": true,
+   "last": "r016 Halo \u00b7 all events, with the raw event: 295/295 answered {'done': 295, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  },
+  {
+   "name": "Strict \u00b7 all events, with the raw event",
+   "rid": "r017",
+   "n": 295,
+   "resubmitted": false,
+   "done": true,
+   "last": "r017 Strict \u00b7 all events, with the raw event: 295/295 answered {'done': 295, 'running': 0, 'queued': 0, 'failed': 0, 'unknown': 0}"
+  }
+ ]
+}

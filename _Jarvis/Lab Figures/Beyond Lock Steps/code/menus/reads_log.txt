@@ -1,0 +1,16 @@
+m34 read 209 of 209 ({'DS': np.int64(182), 'TZ': np.int64(12), 'IED': np.int64(11), 'far': np.int64(4)}) in 106 s; bad [8, 41, 59]
+m28 read 439 of 439 ({'DS': np.int64(335), 'IED': np.int64(56), 'TZ': np.int64(44), 'far': np.int64(4)}) in 215 s; bad [8, 41, 59]
+m13 read 471 of 471 ({'DS': np.int64(353), 'TZ': np.int64(59), 'IED': np.int64(55), 'far': np.int64(4)}) in 175 s; bad [55, 59]
+m5 read 749 of 749 ({'DS': np.int64(689), 'TZ': np.int64(37), 'IED': np.int64(22), 'far': np.int64(1)}) in 287 s; bad [59]
+m2 read 1 of 1 ({'TZ': np.int64(1)}) in 5 s; bad [59]
+m21 nothing to read
+m22 read 2 of 2 ({'far': np.int64(1), 'TZ': np.int64(1)}) in 7 s; bad [8, 41, 59]
+m26 read 2 of 2 ({'far': np.int64(1), 'IED': np.int64(1)}) in 6 s; bad [8, 41, 59]
+m59 read 6 of 6 ({'far': np.int64(4), 'TZ': np.int64(2)}) in 10 s; bad [59]
+m60 read 3 of 3 ({'TZ': np.int64(3)}) in 7 s; bad [59]
+m61 read 2 of 2 ({'far': np.int64(2)}) in 7 s; bad [59]
+m8 read 1 of 1 ({'far': np.int64(1)}) in 6 s; bad [57, 59]
+m33 read 3 of 3 ({'far': np.int64(2), 'TZ': np.int64(1)}) in 7 s; bad [8, 41, 59]
+m1 read 3 of 3 ({'TZ': np.int64(2), 'IED': np.int64(1)}) in 8 s; bad [59]
+m7 nothing to read
+done
