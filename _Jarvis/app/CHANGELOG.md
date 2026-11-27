@@ -19,6 +19,10 @@ This file is the only place the version is written. The app reads it.
 
 Needs a restart and a reload.
 
+- **The weekly report counts every computer's curation.** "Last 7 days"
+  counted only the calls this computer had pulled. It now reads the week's
+  calls from the cloud, adds any made here that are not pushed yet, and counts
+  each call once.
 - **A recording that paused shows the pause.** KCNT1 m529 s1 stopped at 6:15
   for 33 minutes. Since 2026.11.20.1 the recording is its full 74:57, but the
   overview strip drew those 33 minutes as a flat line -- each empty bin

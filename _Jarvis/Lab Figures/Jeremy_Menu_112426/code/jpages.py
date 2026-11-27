@@ -37,6 +37,9 @@ _B = None
 _FQ = None
 _UP = None
 
+PAGE_OF = {1: 2, 2: 3, 3: 4, 4: 5, 5: 8, 6: 9, 7: 10, 8: 12}          # page numbers, with the supplements after 4 and 7
+PAGE_COL = {k: str(v) for k, v in PAGE_OF.items()}
+PAGE_COL.update({4: "5–7", 7: "10–11"})
 QUESTIONS = {
     1: "Does the %KO cause changes in synaptic efficacy for dentate spikes",
     2: "Are there group differences in DS1 vs DS2 (do they make both)",
@@ -82,7 +85,7 @@ def jpage(num, results, kicker=None, number=None):
         y += F.put(fig, 0.5, y, "Jeremy Asked: \u201c%s\u201d" % QUESTIONS[num], 7.5, size=8.6, color=F.SOFT, style="italic") + 0.06
     y += F.put(fig, 0.5, y, "Results show: " + results, 7.5, size=12, weight="bold")
     fig._hdr_y = max(1.55, y + 0.12)
-    fig.text(1 - 0.5 / 8.5, 1 - 10.72 / 11, "%s" % (number if number is not None else num + 1), fontsize=6.5, color=F.FAINT, ha="right",
+    fig.text(1 - 0.5 / 8.5, 1 - 10.72 / 11, "%s" % (number if number is not None else PAGE_OF[num]), fontsize=6.5, color=F.FAINT, ha="right",
              va="bottom")
     fig.text(0.5 / 8.5, 1 - 10.72 / 11, "Jeremy menu \u00b7 exploratory, P values uncorrected \u00b7 %s" % DATE, fontsize=6.5,
              color=F.FAINT, ha="left", va="bottom")
@@ -627,7 +630,7 @@ def every():
     fig, y = jpage(9, "Every mouse has undecided events, mostly wider than its DS; IED+ mice have more, mostly with more fast "
                       "power than a DS. m7, the one high-knockout mouse without IEDs, has as many (%s%%), but %d of its %d carry "
                       "less." % (sig2(m7r.pct), m7r.lo, m7r.und),
-                   kicker="ADDED · EVERY MOUSE IN ROOT CANAL (STRICT WORKFLOW)", number=10)
+                   kicker="ADDED · EVERY MOUSE IN ROOT CANAL (STRICT WORKFLOW)", number=13)
     F.put(fig, 0.5, y - 0.02, "From " + STRICT_NAME + ", the target's 5,100 events (CTL & PTEN Baseline v2, Optimized parameters, "
           "v4). Each mouse on its own: largest amplitude across, fast power up, the DS border (blue) and the IED border (red) "
           "as applied; under each, how many of its events are undecided (inside both borders, or outside both).", 5.2, size=6.4,
@@ -707,7 +710,7 @@ def table():
     m7r = T[T.mouse == "m7"].iloc[0]
     fig, y = jpage(10, "Pooled, undecided events are twice as common in IED+ mice as in controls and most carry more fast power "
                        "than a DS; in the low-knockout mice and m7 most carry less. m7 matches the IED+ mice in how many it has, and "
-                       "the low-knockout mice in where they fall.", kicker="ADDED · SUMMARY TABLE AND AGGREGATE", number=11)
+                       "the low-knockout mice in where they fall.", kicker="ADDED · SUMMARY TABLE AND AGGREGATE", number=14)
     W, H = fig.get_size_inches()
     shp, _n_und, _n_both = strict_shape()
     y += 0.15
@@ -1326,9 +1329,9 @@ def cover():
     for x, w, t in cols:
         F.put(fig, x, y, t, w, size=6.8, weight="bold", color=F.SOFT)
     y += 0.25
-    rows = [(str(k), "“%s”" % QUESTIONS[k], SHORT.get(k, ""), str(k + 1)) for k in range(1, 9)]
+    rows = [(str(k), "“%s”" % QUESTIONS[k], SHORT.get(k, ""), PAGE_COL[k]) for k in range(1, 9)]
     rows += [("+", "Added: every mouse in Root Canal (Strict workflow), with a summary table and an aggregate", SHORT.get("every", ""),
-              "10–11")]
+              "13–14")]
     for row in rows:
         hs = []
         for (x, w, _t), val in zip(cols, row):
@@ -1339,7 +1342,7 @@ def cover():
     y += 0.15
     y += F.put(fig, 0.6, y, "Built on the DS story menu of 2026-11-23 (Lab Figures, DS_Story_Menu_112326); where a page recaps a "
                "menu result it says so. Depth everywhere comes from each recording's own dentate spike, never the lab's layer "
-               "labels; groups are always compared on one common scale. Tables of every number are in the tables folder.",
+               "labels; groups are always compared on one common scale. Tables of every number are in the tables folder. Questions 4 and 7 each have supplement pages (CONCERN / RESOLVE) added on 2026-11-25 to answer follow-up questions.",
                7.3, size=6.6, color=F.SOFT) + 0.4
     F.put(fig, 0.6, y, "Words and marks used on every page", 7.3, size=7.6, weight="bold", color=F.INK)
     y += 0.32

@@ -91,7 +91,7 @@ T.rename(columns={"n": "events", "ds": "DS", "ied": "IED_class", "both": "inside
 
 for f in ("jpages.py", "j1_battery.py", "j2_freq.py", "m10_reads_all.py", "m2_extract.py", "m7_uprof.py", "m3_profiles.py", "figlib.py",
           "menu_data.py", "stats_lib.py", "outlier.py", "pages_a.py", "j_package.py", "j_merge.py", "j_check_ied.py",
-          "j_check_und.py", "j_check_und2.py"):
+          "j_check_und.py", "j_check_und2.py", "jfollow.py"):
     p = os.path.join(HERE, f)
     if os.path.exists(p):
         shutil.copy2(p, os.path.join(DEST, "code", f))

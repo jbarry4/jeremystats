@@ -1,0 +1,197 @@
+layers,result,band,p,effect
+old,"Upper MML sink, IED− vs control",5-100,0.024242424242424242,-1.0799133286476763
+old,"Upper MML sink, IED− vs control",notch,0.015442726579436785,-1.3936103650911784
+old,"Upper MML sink, IED− vs control",1-100,0.024242424242424242,-1.0686540049641557
+old,"Upper MML sink, IED− vs control",1-300,0.024242424242424242,-1.0696675404127316
+old,"Upper MML sink, IED− vs control",5-300,0.012121212121212121,-1.0739619524687476
+old,"Upper MML sink, IED− vs control",5-50,0.024242424242424242,-1.0467377666835949
+old,"Upper MML sink, IED− vs control",10-40,0.024242424242424242,-1.0099538591211028
+old,"Lower MML sink, IED− vs control",5-100,0.0334126987138342,-1.4373106225191452
+old,"Lower MML sink, IED− vs control",notch,0.022967412254613972,-1.4635693556310239
+old,"Lower MML sink, IED− vs control",1-100,0.020758261629260893,-1.545330368037012
+old,"Lower MML sink, IED− vs control",1-300,0.021512376816093966,-1.5297257998626639
+old,"Lower MML sink, IED− vs control",5-300,0.031630420015729806,-1.45645585288699
+old,"Lower MML sink, IED− vs control",5-50,0.03718674527912601,-1.364979491656181
+old,"Lower MML sink, IED− vs control",10-40,0.043974495803233746,-1.3336836937048921
+old,Upper MML sink vs % KO (PTEN),5-100,0.6436397707231041,0.18333333333333335
+old,Upper MML sink vs % KO (PTEN),notch,0.7080687830687831,0.15
+old,Upper MML sink vs % KO (PTEN),1-100,0.7004147180976475,0.15
+old,Upper MML sink vs % KO (PTEN),1-300,0.7069295237667379,0.15
+old,Upper MML sink vs % KO (PTEN),5-300,0.6436397707231041,0.18333333333333335
+old,Upper MML sink vs % KO (PTEN),5-50,0.5517085537918871,0.2333333333333333
+old,Upper MML sink vs % KO (PTEN),10-40,0.5517085537918871,0.2333333333333333
+old,Upper OML sink vs % KO (PTEN),5-100,0.761414241622575,0.11666666666666665
+old,Upper OML sink vs % KO (PTEN),notch,0.5950491420842056,-0.18333333333333335
+old,Upper OML sink vs % KO (PTEN),1-100,0.6528528859857667,0.11666666666666665
+old,Upper OML sink vs % KO (PTEN),1-300,0.6519665645123741,0.11666666666666665
+old,Upper OML sink vs % KO (PTEN),5-300,0.7346572529038251,0.11666666666666665
+old,Upper OML sink vs % KO (PTEN),5-50,0.7165317689404017,0.11666666666666665
+old,Upper OML sink vs % KO (PTEN),10-40,0.43662367724867723,0.3
+old,Lower MML sink vs % KO (PTEN),5-100,0.45313769287687505,0.08333333333333334
+old,Lower MML sink vs % KO (PTEN),notch,0.44498193987638796,0.08333333333333334
+old,Lower MML sink vs % KO (PTEN),1-100,0.4794216820422166,0.13333333333333333
+old,Lower MML sink vs % KO (PTEN),1-300,0.4773217950691966,0.08333333333333334
+old,Lower MML sink vs % KO (PTEN),5-300,0.45179086601727636,0.08333333333333334
+old,Lower MML sink vs % KO (PTEN),5-50,0.44779845660944934,0.13333333333333333
+old,Lower MML sink vs % KO (PTEN),10-40,0.5054844078477423,0.08333333333333334
+old,Lower OML sink vs % KO (PTEN),5-100,0.35848765432098767,-0.31666666666666665
+old,Lower OML sink vs % KO (PTEN),notch,0.2911926807760141,-0.39999999999999997
+old,Lower OML sink vs % KO (PTEN),1-100,0.2911926807760141,-0.39999999999999997
+old,Lower OML sink vs % KO (PTEN),1-300,0.2911926807760141,-0.39999999999999997
+old,Lower OML sink vs % KO (PTEN),5-300,0.35848765432098767,-0.31666666666666665
+old,Lower OML sink vs % KO (PTEN),5-50,0.35848765432098767,-0.31666666666666665
+old,Lower OML sink vs % KO (PTEN),10-40,0.43662367724867723,-0.3
+old,Upper MML dominant frequency vs % KO (PTEN),5-100,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),notch,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),1-100,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),1-300,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),5-300,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),5-50,0.8382944507110304,-0.07979927648983971
+old,Upper MML dominant frequency vs % KO (PTEN),10-40,0.4734867010262834,-0.27524094128159016
+old,Upper OML dominant frequency vs % KO (PTEN),5-100,0.7367870436916688,-0.10639903531978628
+old,Upper OML dominant frequency vs % KO (PTEN),notch,0.6119682517607358,-0.12996881122750908
+old,Upper OML dominant frequency vs % KO (PTEN),1-100,0.7354306858417758,0.13176156917368248
+old,Upper OML dominant frequency vs % KO (PTEN),1-300,0.7354306858417758,0.13176156917368248
+old,Upper OML dominant frequency vs % KO (PTEN),5-300,0.6119682517607358,-0.12996881122750908
+old,Upper OML dominant frequency vs % KO (PTEN),5-50,0.7367870436916688,-0.10639903531978628
+old,Upper OML dominant frequency vs % KO (PTEN),10-40,0.5160029354435863,0.21468918330397693
+old,Lower MML dominant frequency vs % KO (PTEN),5-100,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),notch,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),1-100,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),1-300,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),5-300,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),5-50,0.5866352955731045,0.1732050807568877
+old,Lower MML dominant frequency vs % KO (PTEN),10-40,0.620577767556357,-0.13043729868748774
+old,Lower OML dominant frequency vs % KO (PTEN),5-100,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),notch,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),1-100,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),1-300,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),5-300,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),5-50,0.43670003072275765,-0.26352313834736496
+old,Lower OML dominant frequency vs % KO (PTEN),10-40,0.7429281209204346,0.12130422381234181
+old,Upper MML fast-power center vs % KO (all),5-100,,
+old,Upper MML fast-power center vs % KO (all),notch,0.016902250884859422,0.5495867774452773
+old,Upper MML fast-power center vs % KO (all),1-100,,
+old,Upper MML fast-power center vs % KO (all),1-300,0.5562788894361868,0.10746110173511007
+old,Upper MML fast-power center vs % KO (all),5-300,0.5560124052627393,0.10746110173511007
+old,Upper MML fast-power center vs % KO (all),5-50,,
+old,Upper MML fast-power center vs % KO (all),10-40,,
+old,Upper OML fast-power center vs % KO (all),5-100,,
+old,Upper OML fast-power center vs % KO (all),notch,0.012182730947471415,0.531164874290687
+old,Upper OML fast-power center vs % KO (all),1-100,,
+old,Upper OML fast-power center vs % KO (all),1-300,0.3050420195416077,0.20878156908535672
+old,Upper OML fast-power center vs % KO (all),5-300,0.30435396995475616,0.20878156908535672
+old,Upper OML fast-power center vs % KO (all),5-50,,
+old,Upper OML fast-power center vs % KO (all),10-40,,
+old,Lower MML fast-power center vs % KO (all),5-100,,
+old,Lower MML fast-power center vs % KO (all),notch,8.090059616346003e-05,0.8259153247641318
+old,Lower MML fast-power center vs % KO (all),1-100,,
+old,Lower MML fast-power center vs % KO (all),1-300,0.04056428661950185,0.38378964905396457
+old,Lower MML fast-power center vs % KO (all),5-300,0.04064257451001017,0.38378964905396457
+old,Lower MML fast-power center vs % KO (all),5-50,,
+old,Lower MML fast-power center vs % KO (all),10-40,,
+old,Lower OML fast-power center vs % KO (all),5-100,,
+old,Lower OML fast-power center vs % KO (all),notch,0.005103416046579934,0.6631885135652508
+old,Lower OML fast-power center vs % KO (all),1-100,,
+old,Lower OML fast-power center vs % KO (all),1-300,0.3930696983811389,0.15965649400644927
+old,Lower OML fast-power center vs % KO (all),5-300,0.39346927836500273,0.15965649400644927
+old,Lower OML fast-power center vs % KO (all),5-50,,
+old,Lower OML fast-power center vs % KO (all),10-40,,
+tight,"Upper MML sink, IED− vs control",5-100,0.060206158604518535,-0.9807290154928574
+tight,"Upper MML sink, IED− vs control",notch,0.038063448263723224,-1.1127276855131385
+tight,"Upper MML sink, IED− vs control",1-100,0.053472064322082805,-1.0147941717264688
+tight,"Upper MML sink, IED− vs control",1-300,0.05295249847577436,-1.0173201324480188
+tight,"Upper MML sink, IED− vs control",5-300,0.060467955644409925,-0.9784908298036069
+tight,"Upper MML sink, IED− vs control",5-50,0.06177473199566501,-0.9751906486864714
+tight,"Upper MML sink, IED− vs control",10-40,0.06023039478070687,-0.9817433026517834
+tight,"Lower MML sink, IED− vs control",5-100,0.09985388418662589,-1.0510091817825677
+tight,"Lower MML sink, IED− vs control",notch,0.04242424242424242,-1.136413793191453
+tight,"Lower MML sink, IED− vs control",1-100,0.0715332221746929,-1.1701871588419361
+tight,"Lower MML sink, IED− vs control",1-300,0.07274911040010247,-1.1642118908911434
+tight,"Lower MML sink, IED− vs control",5-300,0.09493567339376992,-1.0691995986440526
+tight,"Lower MML sink, IED− vs control",5-50,0.09158685760254971,-1.082098234431035
+tight,"Lower MML sink, IED− vs control",10-40,0.09470964500421554,-1.0700566408765158
+tight,Upper MML sink vs % KO (PTEN),5-100,0.6134038800705467,-0.19999999999999998
+tight,Upper MML sink vs % KO (PTEN),notch,0.6134038800705467,-0.19999999999999998
+tight,Upper MML sink vs % KO (PTEN),1-100,0.6134038800705467,-0.19999999999999998
+tight,Upper MML sink vs % KO (PTEN),1-300,0.6134038800705467,-0.19999999999999998
+tight,Upper MML sink vs % KO (PTEN),5-300,0.6134038800705467,-0.19999999999999998
+tight,Upper MML sink vs % KO (PTEN),5-50,0.5206349206349207,-0.25
+tight,Upper MML sink vs % KO (PTEN),10-40,0.8431823192239859,-0.08333333333333334
+tight,Upper OML sink vs % KO (PTEN),5-100,0.4072683044609505,0.25
+tight,Upper OML sink vs % KO (PTEN),notch,0.3719077008898563,0.31666666666666665
+tight,Upper OML sink vs % KO (PTEN),1-100,0.400714213748561,0.31666666666666665
+tight,Upper OML sink vs % KO (PTEN),1-300,0.39887934691507126,0.31666666666666665
+tight,Upper OML sink vs % KO (PTEN),5-300,0.4087035770854744,0.25
+tight,Upper OML sink vs % KO (PTEN),5-50,0.4307994142824418,0.25
+tight,Upper OML sink vs % KO (PTEN),10-40,0.42218089783604146,0.18333333333333335
+tight,Lower MML sink vs % KO (PTEN),5-100,0.6596821594649438,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),notch,0.6196330071574674,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),1-100,0.6180664527618764,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),1-300,0.6242159126935064,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),5-300,0.6590477665489951,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),5-50,0.6218806788520677,0.03333333333333333
+tight,Lower MML sink vs % KO (PTEN),10-40,0.6059168898961335,0.03333333333333333
+tight,Lower OML sink vs % KO (PTEN),5-100,0.2200233241041499,0.3
+tight,Lower OML sink vs % KO (PTEN),notch,0.21485014249298645,0.3
+tight,Lower OML sink vs % KO (PTEN),1-100,0.22497902540591624,0.3
+tight,Lower OML sink vs % KO (PTEN),1-300,0.224183466752043,0.3666666666666667
+tight,Lower OML sink vs % KO (PTEN),5-300,0.22422114257844286,0.3
+tight,Lower OML sink vs % KO (PTEN),5-50,0.22496444459699932,0.3
+tight,Lower OML sink vs % KO (PTEN),10-40,0.21366717376764593,0.3
+tight,Upper MML dominant frequency vs % KO (PTEN),5-100,0.4083083723731078,0.2608745973749755
+tight,Upper MML dominant frequency vs % KO (PTEN),notch,0.5753530764008791,0.1684651392563283
+tight,Upper MML dominant frequency vs % KO (PTEN),1-100,0.5753530764008791,0.1684651392563283
+tight,Upper MML dominant frequency vs % KO (PTEN),1-300,0.5753530764008791,0.1684651392563283
+tight,Upper MML dominant frequency vs % KO (PTEN),5-300,0.4083083723731078,0.2608745973749755
+tight,Upper MML dominant frequency vs % KO (PTEN),5-50,0.4083083723731078,0.2608745973749755
+tight,Upper MML dominant frequency vs % KO (PTEN),10-40,0.7561915700328445,0.018633899812498248
+tight,Upper OML dominant frequency vs % KO (PTEN),5-100,0.49798835245732653,0.25993762245501817
+tight,Upper OML dominant frequency vs % KO (PTEN),notch,0.49798835245732653,0.25993762245501817
+tight,Upper OML dominant frequency vs % KO (PTEN),1-100,0.49798835245732653,0.25993762245501817
+tight,Upper OML dominant frequency vs % KO (PTEN),1-300,0.49798835245732653,0.25993762245501817
+tight,Upper OML dominant frequency vs % KO (PTEN),5-300,0.4384721333422771,0.26504440762199816
+tight,Upper OML dominant frequency vs % KO (PTEN),5-50,0.49798835245732653,0.25993762245501817
+tight,Upper OML dominant frequency vs % KO (PTEN),10-40,0.561837466483922,0.2242713067862651
+tight,Lower MML dominant frequency vs % KO (PTEN),5-100,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),notch,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),1-100,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),1-300,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),5-300,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),5-50,0.5866352955731045,0.1732050807568877
+tight,Lower MML dominant frequency vs % KO (PTEN),10-40,0.20848359485057846,-0.27386127875258304
+tight,Lower OML dominant frequency vs % KO (PTEN),5-100,0.643144101176558,0.06810052246069989
+tight,Lower OML dominant frequency vs % KO (PTEN),notch,0.6042034278805251,0.08439494725697222
+tight,Lower OML dominant frequency vs % KO (PTEN),1-100,0.6042034278805251,0.08439494725697222
+tight,Lower OML dominant frequency vs % KO (PTEN),1-300,0.6042034278805251,0.08439494725697222
+tight,Lower OML dominant frequency vs % KO (PTEN),5-300,0.643144101176558,0.06810052246069989
+tight,Lower OML dominant frequency vs % KO (PTEN),5-50,0.643144101176558,0.06810052246069989
+tight,Lower OML dominant frequency vs % KO (PTEN),10-40,0.50136741630097,0.25877458475338283
+tight,Upper MML fast-power center vs % KO (all),5-100,,
+tight,Upper MML fast-power center vs % KO (all),notch,0.13915036071828218,0.3592271115145108
+tight,Upper MML fast-power center vs % KO (all),1-100,,
+tight,Upper MML fast-power center vs % KO (all),1-300,0.8134601481488016,-0.03377348911674888
+tight,Upper MML fast-power center vs % KO (all),5-300,0.8134601481488016,-0.03377348911674888
+tight,Upper MML fast-power center vs % KO (all),5-50,,
+tight,Upper MML fast-power center vs % KO (all),10-40,,
+tight,Upper OML fast-power center vs % KO (all),5-100,,
+tight,Upper OML fast-power center vs % KO (all),notch,0.01231305223796109,0.5772196321771628
+tight,Upper OML fast-power center vs % KO (all),1-100,,
+tight,Upper OML fast-power center vs % KO (all),1-300,0.1745683362249293,0.19650030031562987
+tight,Upper OML fast-power center vs % KO (all),5-300,0.17478677758851455,0.19650030031562987
+tight,Upper OML fast-power center vs % KO (all),5-50,,
+tight,Upper OML fast-power center vs % KO (all),10-40,,
+tight,Lower MML fast-power center vs % KO (all),5-100,,
+tight,Lower MML fast-power center vs % KO (all),notch,0.00017194987737580137,0.8044231044171096
+tight,Lower MML fast-power center vs % KO (all),1-100,,
+tight,Lower MML fast-power center vs % KO (all),1-300,0.011453838659811939,0.5342351914831186
+tight,Lower MML fast-power center vs % KO (all),5-300,0.01148084948539305,0.5342351914831186
+tight,Lower MML fast-power center vs % KO (all),5-50,,
+tight,Lower MML fast-power center vs % KO (all),10-40,,
+tight,Lower OML fast-power center vs % KO (all),5-100,,
+tight,Lower OML fast-power center vs % KO (all),notch,0.002533427240113157,0.7000323198744314
+tight,Lower OML fast-power center vs % KO (all),1-100,,
+tight,Lower OML fast-power center vs % KO (all),1-300,0.3632226164754841,0.19957061750806157
+tight,Lower OML fast-power center vs % KO (all),5-300,0.36370951208114516,0.19957061750806157
+tight,Lower OML fast-power center vs % KO (all),5-50,,
+tight,Lower OML fast-power center vs % KO (all),10-40,,

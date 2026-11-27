@@ -1,0 +1,15 @@
+# This folder sits inside a git tree and contains ~130 MB of binaries.
+# Nothing here is source except the code and the markdown; everything else
+# is a build product or a cache and can be regenerated (see README.md §5).
+#
+# Delete these lines if you deliberately want the whole package versioned.
+
+data/derived/
+report/figsv/
+report/figsv3/
+report/*.docx
+report/*.pdf
+report/*.xlsx
+code/inputs/
+**/__pycache__/
+.DS_Store
