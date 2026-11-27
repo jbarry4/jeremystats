@@ -106,58 +106,58 @@ REGIONS = [
 
 # ----- cells -----
 CELLS = [
-    {'key': 'gc', 'label': 'Granule cell', 'short': 'GC', 'color': '#2a9d8f', 'region': 'dg', 'sign': 'exc',
+    {'key': 'gc', 'label': 'Granule cell', 'short': 'GC', 'color': '#d65f6a', 'region': 'dg', 'sign': 'exc',
      'soma': 'GCL', 'dend': 'molecular layer (IML, MML, OML), cone-shaped, spiny',
      'axon': 'mossy fiber: collaterals in the hilus, then stratum lucidum of CA3 with giant boutons',
      'markers': 'Prox1, Calbindin', 'about': 'The principal cell of the dentate. Very sparse firing; reads the perforant path on its spines and passes a sparse code to CA3 through some of the largest synapses in the brain.',
      'refs': ['amaral2007', 'henze2000', 'acsady1998']},
-    {'key': 'sgc', 'label': 'Semilunar granule cell', 'short': 'SGC', 'color': '#7fd1c7', 'region': 'dg', 'sign': 'exc',
+    {'key': 'sgc', 'label': 'Semilunar granule cell', 'short': 'SGC', 'color': '#ee9fb8', 'region': 'dg', 'sign': 'exc',
      'soma': 'inner molecular layer', 'dend': 'wide, half-moon fan through the molecular layer',
      'axon': 'like a GC: hilus and CA3, plus IML collaterals', 'markers': '(excitatory; no unique marker)',
      'about': 'A granule-cell relative with its soma out in the inner molecular layer and a broad dendritic fan. Persistent firing after perforant-path input; drives hilar cells.',
      'refs': ['williams2007']},
-    {'key': 'mc', 'label': 'Mossy cell', 'short': 'MC', 'color': '#6ab04c', 'region': 'dg', 'sign': 'exc',
+    {'key': 'mc', 'label': 'Mossy cell', 'short': 'MC', 'color': '#b48be0', 'region': 'dg', 'sign': 'exc',
      'soma': 'hilus', 'dend': 'thick, mostly in the hilus, covered proximally in thorny excrescences (where mossy-fiber boutons land)',
      'axon': 'to the inner molecular layer, mostly at other septotemporal levels and the other side (associational/commissural)',
      'markers': 'GluR2/3, calretinin (ventral, in mouse)',
      'about': 'The excitatory cell of the hilus. Takes mossy-fiber input on its thorns and feeds it back to granule cells (and interneurons) far along the hippocampus, landing on the proximal dendrites in the IML.',
      'refs': ['scharfman2016', 'scharfmanmyers2013', 'buckmaster1996', 'amaral1978', 'senzai2017']},
-    {'key': 'hipp', 'label': 'HIPP cell', 'short': 'HIPP', 'color': '#8e6bbf', 'region': 'dg', 'sign': 'inh',
+    {'key': 'hipp', 'label': 'HIPP cell', 'short': 'HIPP', 'color': '#d99a00', 'region': 'dg', 'sign': 'inh',
      'soma': 'hilus', 'dend': 'in the hilus, spiny', 'axon': 'outer two-thirds of the molecular layer, where the perforant path lands',
      'markers': 'SST+ (somatostatin), NPY',
      'about': 'Hilar Perforant-Path-associated interneuron. Inhibits granule-cell distal dendrites right where the entorhinal input arrives: feedback inhibition of the perforant-path synapse.',
      'refs': ['han1993', 'freund1996', 'hosp2014']},
-    {'key': 'pvbc', 'label': 'PV+ basket cell', 'short': 'PV+ BC', 'color': '#e9a23b', 'region': 'dg', 'sign': 'inh',
+    {'key': 'pvbc', 'label': 'PV+ basket cell', 'short': 'PV+ BC', 'color': '#6f86d6', 'region': 'dg', 'sign': 'inh',
      'soma': 'granule cell layer / hilus border', 'dend': 'up through the molecular layer and down into the hilus',
      'axon': 'basket of terminals around granule-cell somata in the GCL', 'markers': 'PV+ (parvalbumin), fast-spiking',
      'about': 'Perisomatic inhibition: wraps granule-cell bodies in terminals. Fed forward by the perforant path and back by granule cells; sets the timing of granule-cell output.',
      'refs': ['freund1996', 'hosp2014', 'acsady1998']},
-    {'key': 'aac', 'label': 'Axo-axonic cell', 'short': 'AAC', 'color': '#e76f51', 'region': 'dg', 'sign': 'inh',
+    {'key': 'aac', 'label': 'Axo-axonic cell', 'short': 'AAC', 'color': '#56b4e9', 'region': 'dg', 'sign': 'inh',
      'soma': 'granule cell layer / hilus border', 'dend': 'through the molecular layer',
      'axon': 'cartridges on granule-cell axon initial segments at the GCL-hilus border', 'markers': 'PV+ (most)',
      'about': 'Chandelier cell. Its terminals line up on the axon initial segments of granule cells: the last word on whether a granule cell fires.',
      'refs': ['soriano1989', 'freund1996']},
-    {'key': 'stel', 'label': 'MEC stellate cell', 'short': 'ECII M', 'color': '#3d7dd8', 'region': 'mec2', 'sign': 'exc',
+    {'key': 'stel', 'label': 'MEC stellate cell', 'short': 'ECII M', 'color': '#4f86d8', 'region': 'mec2', 'sign': 'exc',
      'soma': 'MEC layer II', 'dend': 'several primary dendrites spreading in layers I-II',
      'axon': 'medial perforant path: middle molecular layer of the DG, and CA3 slm', 'markers': 'Reelin',
      'about': 'Grid-cell territory. Layer II stellate cells of the medial entorhinal cortex give the medial perforant path, which lands on the middle third of the dentate molecular layer.',
      'refs': ['klink1997', 'tamamaki1993', 'witter2007']},
-    {'key': 'fan', 'label': 'LEC fan cell', 'short': 'ECII L', 'color': '#d16ba5', 'region': 'lec2', 'sign': 'exc',
+    {'key': 'fan', 'label': 'LEC fan cell', 'short': 'ECII L', 'color': '#8a8fe6', 'region': 'lec2', 'sign': 'exc',
      'soma': 'LEC layer II (IIa)', 'dend': 'fan of dendrites up into layer I, little basal tree',
      'axon': 'lateral perforant path: outer molecular layer of the DG, and CA3 slm', 'markers': 'Reelin',
      'about': 'The object/context side of the entorhinal cortex. Layer IIa fan cells of the lateral entorhinal cortex give the lateral perforant path, which lands on the outer third of the molecular layer.',
      'refs': ['leitner2016', 'witter2007', 'tamamaki1993']},
-    {'key': 'ca3', 'label': 'CA3 pyramidal cell', 'short': 'CA3 PC', 'color': '#b8323c', 'region': 'ca3', 'sign': 'exc',
+    {'key': 'ca3', 'label': 'CA3 pyramidal cell', 'short': 'CA3 PC', 'color': '#2f9f97', 'region': 'ca3', 'sign': 'exc',
      'soma': 'CA3 stratum pyramidale', 'dend': 'basal in oriens, apical through lucidum (mossy-fiber thorns), radiatum and lacunosum-moleculare',
      'axon': 'recurrent collaterals in CA3, Schaffer collaterals to CA1 radiatum/oriens, commissural to the other side; some back to the hilus',
      'markers': '', 'about': 'The recurrent network. Takes mossy fibers proximally, its own collaterals in the middle, and entorhinal input distally; sends Schaffer collaterals to CA1.',
      'refs': ['ishizuka1990', 'amaralwitter1989']},
-    {'key': 'ca1', 'label': 'CA1 pyramidal cell', 'short': 'CA1 PC', 'color': '#c2185b', 'region': 'ca1', 'sign': 'exc',
+    {'key': 'ca1', 'label': 'CA1 pyramidal cell', 'short': 'CA1 PC', 'color': '#5f9e2f', 'region': 'ca1', 'sign': 'exc',
      'soma': 'CA1 stratum pyramidale', 'dend': 'basal in oriens, apical through radiatum (Schaffer input) to a tuft in lacunosum-moleculare (EC layer III input)',
      'axon': 'through the alveus to the subiculum and deep entorhinal cortex', 'markers': '',
      'about': 'The main output of the hippocampus proper. Compares CA3 input in radiatum with direct entorhinal input in lacunosum-moleculare.',
      'refs': ['amaral1991', 'naber2001', 'klausberger2008']},
-    {'key': 'olm', 'label': 'O-LM cell', 'short': 'O-LM', 'color': '#5c6bc0', 'region': 'ca1', 'sign': 'inh',
+    {'key': 'olm', 'label': 'O-LM cell', 'short': 'O-LM', 'color': '#d9a441', 'region': 'ca1', 'sign': 'inh',
      'soma': 'CA1 stratum oriens', 'dend': 'horizontal in oriens', 'axon': 'up across the layers to lacunosum-moleculare',
      'markers': 'SST+ (somatostatin), Chrna2',
      'about': 'Oriens-lacunosum moleculare cell. Driven by CA1 pyramidal cells, inhibits their distal tufts where the entorhinal input lands: the CA1 counterpart of the HIPP cell.',
@@ -363,16 +363,17 @@ DS = [
      'refs': ['bragin1995', 'penttonen1997', 'dvorak2021']},
 ]
 
-# lamina colors for slices and 3D (the shared code: molecular-layer thirds in
-# teal-blues darkening outward, granule layer the palest, hilus sage green, CA
-# strata in reds with the pyramidal layer strongest; tones harmonized like a
-# textbook plate in the 11-24 rebuild)
+# lamina colors for slices and 3D, in the KCNT1 poster's plate (v8, 11-26):
+# the dentate pink, its molecular-layer thirds darkening outward and the
+# granule layer the palest, the upper blade warmer and the lower one lighter
+# and cooler; the hilus amber, like its SST cells; CA1's strata green, CA2's sea
+# green and CA3's teal, each with the pyramidal layer strongest
 LAMINA_COLORS = {
-    'oml1': '#3b7f8c', 'mml1': '#4f9ca0', 'iml1': '#82c0b4', 'gcl1': '#b7e0d3', 'hil': '#a8c98a',
-    'gcl2': '#b7e0d3', 'iml2': '#82c0b4', 'mml2': '#4f9ca0', 'oml2': '#3b7f8c',
-    'ca1so': '#f0c3cb', 'ca1sp': '#cf5b78', 'ca1sr': '#e59aab', 'ca1slm': '#bf7ea3',
-    'ca2so': '#f4cfbb', 'ca2sp': '#d97b55', 'ca2sr': '#ebb193', 'ca2slm': '#c99aa6',
-    'ca3so': '#efc2bb', 'ca3sp': '#bf4a4e', 'ca3slu': '#e2a58f', 'ca3sr': '#de9590', 'ca3slm': '#b77d99',
+    'oml1': '#b65a63', 'mml1': '#d3737a', 'iml1': '#e8959a', 'gcl1': '#f5c0c0', 'hil': '#f2c45a',
+    'gcl2': '#f8c8da', 'iml2': '#eba3bf', 'mml2': '#d885a8', 'oml2': '#ba6a8e',
+    'ca1so': '#dcefc6', 'ca1sp': '#9fd062', 'ca1sr': '#c4e3a0', 'ca1slm': '#a9c491',
+    'ca2so': '#d3ecdf', 'ca2sp': '#6fbf9a', 'ca2sr': '#b0dcc6', 'ca2slm': '#97bdab',
+    'ca3so': '#c9e9e5', 'ca3sp': '#4db3aa', 'ca3slu': '#8fd0c8', 'ca3sr': '#a9dcd6', 'ca3slm': '#8bb6b1',
     'sub': '#d4b36f', 'pros': '#c7a566', 'fc': '#a9c0cf', 'ig': '#a9c0cf', 'alv': '#e6e0d3', 'fi': '#ddd5c4',
 }
 

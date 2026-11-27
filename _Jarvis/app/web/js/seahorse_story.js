@@ -13,9 +13,12 @@
    plus a model (the healthy dentate spike) and the literature where they
    set the scene. Nothing moves on to the next stop without a click.
 
-   The numbers come from web/seahorse/story_m459.json, built from the raw
-   Neuralynx files by tools/seahorse/story_m459.py. This file holds the
-   words, the stops and the drawings for the card; seahorse.js plays them.
+   The numbers come from web/seahorse/story_m459.json, and the card's
+   picture of the probe (figure A's CSD with the potentials over it, the
+   same at every stop) from web/seahorse/story_m459_probe.shb.gz, both built
+   from the raw Neuralynx files by tools/seahorse/story_m459.py. This file
+   holds the words, the stops and the drawings for the card; seahorse.js
+   plays them.
    ========================================================================== */
 'use strict';
 
@@ -70,66 +73,84 @@ BARRY.shStory = (function () {
   /* views: 'probe' (the section through the probe), 'dentate' (closer),
      'hpf' (3D, the hippocampal formation cut at the probe), 'brain-septum',
      'brain' (3D, the whole brain). paint: what the section shows.
-     clip: [from, to] s of the recording around the onset, played at speed. */
+     clip: [from, to] s of the recording around the onset, played at speed.
+     pic: what the card's picture of the probe shows at this stop. Every
+     stop has one, so the card looks the same from stop to stop:
+       win     the window, s from the onset (a stop with a clip shows its clip)
+       zones   the zones it is about: a bar beside them, their names lit
+       marks   [from, to, label] brackets over the picture (figure A's stages)
+       offs    a tick where each zone fell quiet (the zones' off_s)
+       note    one line under it: what to look at */
+  const DG_ZONES = ['supd', 'supp', 'supg', 'hil', 'infg', 'infp', 'infd'];
+  const STAGE_MARKS = [[0, 1, '1'], [1.3, 2.3, '2'], [2.6, 3.6, '3'], [4.6, 5.6, '4']];
   const STOPS = [
-    { key: 'intro', act: 'open', tag: 'recorded', view: 'probe', map: 'dentate', panels: ['zones'],
+    { key: 'intro', act: 'open', tag: 'recorded', view: 'probe', map: 'dentate',
+      pic: { win: [-1, 7], marks: STAGE_MARKS, note: 'The seizure\'s first seconds as the probe saw them, figure A\'s four stages numbered. Blue is a sink (current flowing into the cells), red a source.' },
       title: 'Where the circuit first fails',
       say: 'One seizure in KCNT1 mouse 459, recorded on a 64-contact probe from CA1 down through the dentate gyrus. Step through what the probe saw, then what we think happened beyond it.',
       lede: 'We are not arguing where in the brain this seizure began. We are asking where, on this probe, the circuit first fails, and how the failure spreads until the whole brain is seizing.',
       more: ['Two kinds of stop. On the probe: recorded in mouse 459, its own currents and its own cells. Beyond the probe: our hypothesis, what the circuits we know would do next. Every stop waits for your click.',
         'The probe\'s contacts are grouped into the zones of the figure. In the section each zone sits where its layers are in the atlas.'] },
 
-    { key: 'gate', act: 'before', tag: 'model', view: 'dentate', map: 'dentate', model: 'ds2', panels: [],
+    { key: 'gate', act: 'before', tag: 'model', view: 'dentate', map: 'dentate', model: 'ds2',
+      pic: { win: [-12, -4], zones: DG_ZONES, note: 'The model is on the stage. Here, for comparison, is the recording it stands for: the run-up, where each stripe across the dentate is one discharge (ticked above).' },
       focus: { conns: ['mpp', 'lpp', 'hipp_gc', 'pv_gc'] },
       title: 'A dentate spike: the gate holds',
-      say: 'A volley from the entorhinal cortex lands on the granule cells\' dendrites (red: where current flows in). The hilar interneurons keep the cell layer quiet: the gate holds.',
+      say: 'A volley from the entorhinal cortex lands on the granule cells\' dendrites (blue: where current flows in). The hilar interneurons keep the cell layer quiet: the gate holds.',
       lede: 'The dentate gyrus sits between the entorhinal cortex and the rest of the hippocampus, and lets little through: it is a gate.',
       more: ['Somatostatin interneurons in the hilus keep the gate. HIPP cells inhibit the granule cells\' outer dendrites, where the volleys land; HIL cells also send their axons back to the medial septum. The septum times them, and the entorhinal cortex too.',
         'A dentate spike is one volley arriving: a sink in the molecular layer, a brief moment the gate contains. Shown here with Seahorse\'s model of a DS2, from the medial perforant path.'],
       refs: ['heinemann1992', 'krook2015', 'han1993', 'yuan2017', 'freund1988'] },
 
-    { key: 'stumble', act: 'before', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-12, -4], speed: 1, measure: 'absx', panels: ['raster', 'timeline'],
+    { key: 'stumble', act: 'before', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-12, -4], speed: 1, measure: 'absx',
+      pic: { zones: DG_ZONES, note: 'Each stripe across the dentate is one discharge (ticked above): 33 in these 8 s, closer and closer together.' },
       title: 'Tripping over its own skis',
       say: 'In the 36 s before the seizure, the dentate fired 69 discharges, faster and faster: one every few seconds at first, five or six a second by the end. Each flash is one of them, recorded.',
       lede: 'Dentate spikes and P-spikes are the seizure\'s pattern in a lesser degree. Each is the circuit tripping over its own skis; usually it catches itself.',
-      more: ['Each zone lights by how far its current density moved from its own quiet baseline (figure A\'s measure). Here: the last 12 to 4 s before onset, in real time.',
+      more: ['In the section, each zone lights by how far its current density moved from its own quiet baseline (figure A\'s measure). Here: the last 12 to 4 s before onset, in real time.',
         'Discharges per 4 s, from 40 s before onset: 1, 3, 0, 1, 2, 3, 6, 9, 24, 20 (the dentate\'s summed current density above 15 robust deviations of its quiet baseline).'] },
 
-    { key: 'pushed', act: 'before', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-4, 0.3], speed: 0.5, measure: 'absx', unit: true, panels: ['unit'],
+    { key: 'pushed', act: 'before', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-4, 0.3], speed: 0.5, measure: 'absx', unit: true,
+      pic: { zones: ['hil'], note: 'The interneuron\'s spikes are the ticks under the picture: closer and closer together until the onset.' },
       title: 'Pushed too hard',
       say: 'In the last 3 s a hilar interneuron, on contact 41, fires at about 60 Hz: nearly five times its rate over the half-minute before. Within 3 s of the onset it falls silent.',
       lede: 'We don\'t know which interneuron this is. Its narrow spike (0.85 ms) and its place in the hilus fit the somatostatin cells we suspect: HIPP or HIL.',
-      more: ['Its firing in 0.25 s bins: 6 Hz from 10 to 4 s before onset; 66, 59 and 49 Hz in the last three seconds. It dips as the hilus erupts (10 Hz from 0.5 to 1 s), fires again while the upper blade takes over (47 Hz), then stops: 0.5 Hz for the next minute and more.',
+      more: ['Its firing in 0.25 s bins: 6 Hz from 10 to 4 s before onset; 66, 58 and 49 Hz in the last three seconds. It dips as the hilus erupts (10 Hz from 0.5 to 1 s), fires again while the upper blade takes over (50 Hz from 1 to 2 s), then stops: 0.4 Hz for the next minute and more.',
         'KCNT1\'s gain of function makes inhibitory interneurons less excitable than they should be. Here the cell is driven hard before it fails.'],
       refs: ['shore2020'] },
 
-    { key: 'stage1', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-0.3, 1.2], win: [0, 1], speed: 0.2, measure: 'absx', unit: true, figure: 0, panels: ['figure', 'timeline'],
+    { key: 'stage1', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [-0.3, 1.2], win: [0, 1], speed: 0.2, measure: 'absx', unit: true,
+      pic: { zones: ['hil', 'supp'], marks: [STAGE_MARKS[0]], note: 'The hilus (barred) erupts at 0.6 s, the upper blade\'s inner dendrites beside it.' },
       title: '1 · The hilus lets go',
       say: '0 to 1 s. At 0.6 s a large current erupts in the hilus: the kickoff. The upper blade\'s inner layers, right beside it, move with it.',
       lede: 'This is the kickoff: the sink in the hilus. What follows it is a very large sink in the granule cell layer, as if the cell layer had lost its inhibition.',
-      more: ['The figure is stage 1 of figure A: the current source density on every contact (red sink, blue source), the potentials over it, the red bar on the hilus.',
+      more: ['The picture is figure A\'s, drawn over the whole stop: the current source density on every contact (blue sink, red source) with the potentials over it. Its stage 1 is the bracketed second.',
         'In the section, each zone lights by its current density against its own quiet level, played at a fifth of real time.'] },
 
-    { key: 'stage2', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [1.0, 2.6], win: [1.3, 2.3], speed: 0.2, measure: 'absx', unit: true, figure: 1, panels: ['figure', 'timeline'],
+    { key: 'stage2', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [1.0, 2.6], win: [1.3, 2.3], speed: 0.2, measure: 'absx', unit: true,
+      pic: { zones: ['supg', 'supp'], marks: [STAGE_MARKS[1]], note: 'The upper blade\'s cell layer and inner dendrites (barred) take over.' },
       title: '2 · The upper blade fires',
       say: '1.3 to 2.3 s. The upper blade\'s cell layer and inner dendrites take over, with currents up to 100 times their quiet level: the granule cells, disinhibited, fire together.',
       lede: 'The upper blade\'s firing rises with its currents: multi-unit activity in its cell layer reaches 12 times its quiet level at 2.4 s.',
-      more: ['Figure A, stage 2: the green bar marks the upper blade.'] },
+      more: ['Figure A\'s stage 2 is the bracketed second.'] },
 
-    { key: 'stage3', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [2.4, 4.2], win: [2.6, 3.6], speed: 0.2, measure: 'absx', figure: 2, panels: ['figure', 'timeline'],
+    { key: 'stage3', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [2.4, 4.2], win: [2.6, 3.6], speed: 0.2, measure: 'absx',
+      pic: { zones: ['infg', 'infp', 'infd'], marks: [STAGE_MARKS[2]], note: 'The lower blade (barred) lights up, with the strongest currents on the probe.' },
       title: '3 · The lower blade joins',
       say: '2.6 to 3.6 s. The lower blade\'s cell layer and dendrites light up in turn, with the strongest currents on the whole probe.',
       lede: 'The lower blade\'s cell layer reaches 140 times its quiet level, the most anywhere on the probe; its firing follows, to 20 times.',
-      more: ['Figure A, stage 3: the bar marks the lower blade.'] },
+      more: ['Figure A\'s stage 3 is the bracketed second.'] },
 
-    { key: 'stage4', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [4.2, 6.0], win: [4.6, 5.6], speed: 0.2, measure: 'absx', figure: 3, panels: ['figure', 'timeline'],
+    { key: 'stage4', act: 'probe', tag: 'recorded', view: 'probe', map: 'dentate', clip: [4.2, 6.0], win: [4.6, 5.6], speed: 0.2, measure: 'absx',
+      pic: { zones: ['ca1o', 'ca1r'], marks: [STAGE_MARKS[3]], note: 'CA1 (barred), at the top of the probe, joins last.' },
       title: '4 · CA1',
       say: '4.6 to 5.6 s. CA1 joins last. CA3, between the dentate and CA1, is not on the probe; the path runs through it, so it most likely joined in between.',
       lede: 'CA1\'s contacts see the discharge arrive about 4 s after the hilus.',
       more: ['Inferred, not recorded: CA3. Mossy fibers carry the dentate\'s output to CA3, and Schaffer collaterals carry CA3\'s to CA1.',
-        'Figure A, stage 4: the bar marks CA1.'] },
+        'Figure A\'s stage 4 is the bracketed second.'] },
 
     { key: 'loop', act: 'beyond', tag: 'hypothesis', view: 'hpf', map: 'circuit', fx: 'loop',
+      pic: { win: [4, 16], note: 'Meanwhile on the probe (4 to 16 s): every zone discharging, again and again. Beyond the probe, nothing was recorded.' },
       focus: { conns: ['mpp', 'lpp', 'mf_ca3', 'sc', 'ca1_sub', 'sub_ec5', 'ca1_ec5', 'ec5_ec2'], regions: ['dg', 'ca3', 'ca1', 'sub', 'ec5', 'mec2', 'lec2'] },
       title: 'Around the loop',
       say: 'CA1 hands the discharge to the subiculum and the deep entorhinal cortex, whose upper layers send it straight back to the dentate. With the gate broken, each lap comes back stronger.',
@@ -139,6 +160,7 @@ BARRY.shStory = (function () {
       refs: ['pare1992', 'lothman1991'] },
 
     { key: 'septum', act: 'beyond', tag: 'hypothesis', view: 'brain-septum', map: 'circuit', fx: 'septum',
+      pic: { win: [4, 16], note: 'Meanwhile on the probe (4 to 16 s): every zone discharging, again and again. Beyond the probe, nothing was recorded.' },
       focus: { conns: ['hipp_gc', 'mpp', 'lpp'], regions: ['dg', 'mec2', 'lec2'] },
       title: 'The septum keeps time',
       say: 'The medial septum paces both the hilar interneurons and the entorhinal cortex. If it keeps saying all is well while the hilar brake is broken, cortical volleys land on a disinhibited dentate.',
@@ -147,6 +169,7 @@ BARRY.shStory = (function () {
       refs: ['freund1988', 'yuan2017'] },
 
     { key: 'global', act: 'beyond', tag: 'hypothesis', view: 'brain', map: 'circuit', fx: 'global',
+      pic: { win: [4, 16], note: 'Meanwhile on the probe (4 to 16 s): every zone discharging, again and again. Beyond the probe, nothing was recorded.' },
       focus: { conns: ['ec5_ctx', 'ctx_per', 'per_lec', 'ctx_por', 'por_mec'], regions: ['ctx', 'per', 'por', 'ec5'] },
       title: 'Local, focal, global',
       say: 'From the entorhinal cortex the discharge reaches the neocortex, and through the thalamus it can lock the forebrain together: a local failure becomes a focal seizure, then a global one.',
@@ -155,6 +178,7 @@ BARRY.shStory = (function () {
       refs: ['lothman1991'] },
 
     { key: 'clonic', act: 'beyond', tag: 'hypothesis', view: 'brain', map: 'circuit', fx: 'clonic',
+      pic: { win: [4, 16], note: 'Meanwhile on the probe (4 to 16 s): every zone discharging, again and again. Beyond the probe, nothing was recorded.' },
       title: 'Clonic: the motor cortex',
       say: 'When the discharge captures the motor cortex, the body jerks in time with it: forelimb clonus, rearing, falling (Racine stages 3 to 5).',
       lede: 'Forebrain seizures make clonus: rhythmic jerks of the face and forelimbs that follow the cortical discharge.',
@@ -162,27 +186,31 @@ BARRY.shStory = (function () {
       refs: ['racine1972'] },
 
     { key: 'tonic', act: 'beyond', tag: 'hypothesis', view: 'brain', map: 'circuit', fx: 'tonic',
+      pic: { win: [4, 16], note: 'Meanwhile on the probe (4 to 16 s): every zone discharging, again and again. Beyond the probe, nothing was recorded.' },
       title: 'Tonic: the brainstem',
       say: 'Recruit the brainstem and the body stiffens: tonic extension. Forebrain circuits make the clonus; the brainstem makes the tonic phase.',
       lede: 'Brainstem seizure circuits make tonic extension, forebrain circuits make clonus, and a seizure that spreads from the forebrain into the brainstem can show both.',
       more: ['Again the textbook, not this mouse.'],
       refs: ['browning1985'] },
 
-    { key: 'quiet', act: 'after', tag: 'recorded', view: 'probe', map: 'dentate', clip: [16, 46], speed: 2, measure: 'mua', panels: ['offs', 'timeline'],
+    { key: 'quiet', act: 'after', tag: 'recorded', view: 'probe', map: 'dentate', clip: [16, 46], speed: 2, measure: 'mua',
+      pic: { offs: true, note: 'Each zone\'s tick is where its firing stopped: the hilus first, the lower blade\'s cell layer last.' },
       title: 'It stops, out of order',
       say: 'Back on the probe, firing stops layer by layer: the hilus first (23.6 s), the upper blade\'s cell layer (27.5 s), CA1 (36.1 s), the lower blade\'s cell layer last (36.8 s).',
       lede: 'When each zone fell quiet: the last time its multi-unit firing held 6 robust deviations above its quiet baseline for 0.3 s.',
       more: ['The section now shows firing, not current: each zone lights by its multi-unit activity against its quiet level, at twice real time.',
-        'The lower blade\'s inner dendrites keep firing longest, to 41.1 s.'] },
+        'The lower blade\'s inner dendrites keep firing longest, to 41.0 s.'] },
 
-    { key: 'silence', act: 'after', tag: 'recorded', view: 'probe', map: 'dentate', clip: [44, 60], speed: 1, measure: 'mua', unit: true, panels: ['unit'],
+    { key: 'silence', act: 'after', tag: 'recorded', view: 'probe', map: 'dentate', clip: [44, 60], speed: 1, measure: 'mua', unit: true,
+      pic: { zones: ['hil'], note: 'After the seizure: the interneuron\'s ticks, under the picture, are all but gone.' },
       title: 'Post-ictal silence',
-      say: 'Then quiet. The hilar interneuron that fired at 60 Hz now fires at 0.5 Hz, and stays almost silent for more than a minute.',
-      lede: 'Over the half-minute before the seizure it fired at 12.6 Hz; from 3 to 80 s after the onset it averages 0.48 Hz.',
+      say: 'Then quiet. The hilar interneuron that fired at 60 Hz now fires at 0.4 Hz, and stays almost silent for more than a minute.',
+      lede: 'Over the half-minute before the seizure it fired at 12.4 Hz; from 3 to 80 s after the onset it averages 0.42 Hz.',
       more: ['Why it stops, the recording can\'t say: exhausted, blocked by its own depolarization, or held down by its overactive KCNT1 channels, which open further as sodium builds up inside a hard-firing cell. That is a question we can test.'],
       refs: ['ziburkus2006'] },
 
     { key: 'damage', act: 'leaves', tag: 'literature', view: 'dentate', probe: false, map: 'dentate', fx: 'damage',
+      pic: { win: [44, 60], note: 'The probe\'s last view, 44 to 60 s: after the seizure, the hilus and its interneuron quiet.' },
       focus: { conns: ['hipp_gc'], cells: ['hipp'] },
       title: 'Lasting damage',
       say: 'Seizures leave the network changed: hilar somatostatin interneurons are among the first cells to die, and new granule cells wire in wrong. The damage becomes the network\'s.',
@@ -191,6 +219,7 @@ BARRY.shStory = (function () {
       refs: ['sloviter1987', 'pun2012'] },
 
     { key: 'opto', act: 'leaves', tag: 'next', view: 'dentate', probe: false, map: 'dentate', fx: 'opto',
+      pic: { win: [44, 60], note: 'The probe\'s last view, 44 to 60 s: after the seizure, the hilus and its interneuron quiet.' },
       focus: { conns: ['hipp_gc'], cells: ['hipp'] },
       title: 'Keep them happy',
       say: 'If the hilar interneurons trip over their own skis, help them keep their footing: drive them with light at a rhythm they like to burst at, and a stumble may never become a fall.',
@@ -202,8 +231,9 @@ BARRY.shStory = (function () {
 
   const M459 = {
     key: 'm459', label: 'A seizure, from the hilus out', data: 'story_m459.json',
+    // the probe's picture (figure A's CSD and traces, -12 to +60 s), drawn in the card at every stop
+    blob: 'story_m459_probe.shb.gz',
     blurb: 'KCNT1 mouse 459: where the circuit first fails, how it spreads, what follows',
-    figures: ['story/m459_stage1.jpg', 'story/m459_stage2.jpg', 'story/m459_stage3.jpg', 'story/m459_stage4.jpg'],
     // a probe line through the section where the atlas's layers fall in the recorded order
     // (AP -1.80, ML +1.40 mm: every zone, top to bottom, as on the probe)
     probe: { ap: 7200, ml: 7100 },
@@ -262,16 +292,6 @@ BARRY.shStory = (function () {
   const rampCss = () => 'linear-gradient(90deg,' + RAMP.map(([x, c]) => rgba(c, alphaOf(Math.max(0.06, x))) + ' ' + Math.round(x * 100) + '%').join(',') + ')';
 
   /* ---------------------------------------------------------------- drawings for the card */
-  /* A canvas sized for its box and the screen's pixel ratio; returns the 2D context in CSS pixels. */
-  function prep(cv, h) {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(120, Math.round(cv.clientWidth || cv.parentNode.clientWidth || 360));
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px'; }
-    const ctx = cv.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    return { ctx, w, h, dpr };
-  }
   const niceStep = (span, n) => { const raw = span / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
   const fmtT = (t) => (Math.abs(t) < 1e-9 ? '0' : (t < 0 ? '−' : '') + (Math.abs(t) % 1 ? Math.abs(t).toFixed(1) : String(Math.abs(t)))) + ' s';
   function axis(ctx, x0, x1, y, t0, t1, o) {
@@ -283,118 +303,293 @@ BARRY.shStory = (function () {
       ctx.fillText(fmtT(+t.toFixed(3)), x, y + 6);
     }
   }
-  /* The zones down the probe against time, each lit by how far it is from
-     its quiet self (figure A's bottom panel, as a heat strip). Cached: the
-     cursor moves over a picture drawn once. */
-  function drawTimeline(cv, D, o) {
-    const rows = D.zones.length, rowH = 15, top = 18, lab = 98, h = top + rows * rowH + 30;
-    const { ctx, w } = prep(cv, h);
-    const key = [o.t0, o.t1, o.measure, w, o.ink].join('|');
-    const x0 = lab, x1 = w - 8;
-    if (!cv._img || cv._key !== key) {
-      const off = document.createElement('canvas');
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      off.width = Math.round(w * dpr); off.height = Math.round(h * dpr);
-      const c = off.getContext('2d');
-      c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const src = o.measure === 'mua' ? D.mua : D.absx;
-      const cols = Math.max(2, Math.round(x1 - x0));
-      D.zones.forEach((z, r) => {
-        const y = top + r * rowH;
-        c.fillStyle = o.ink1; c.fillRect(x0, y + 1, x1 - x0, rowH - 2);
-        for (let i = 0; i < cols; i++) {
-          const t = o.t0 + (i + 0.5) / cols * (o.t1 - o.t0);
-          const lv = level(at(D, src[z.key], t), o.measure);
-          const a = alphaOf(lv);
-          if (!a) continue;
-          c.fillStyle = rgba(ramp(lv), a);
-          c.fillRect(x0 + i, y + 1, 1.2, rowH - 2);
+  /* ---------------------------------------------------------------- the probe, drawn
+     The card's picture, the same at every stop: figure A's current source
+     density on CSC 2-59 (blue sink, red source, at figure A's colour limit),
+     the 1-300 Hz potentials of every fourth contact drawn over it, the hilar
+     interneuron's spikes under it, and the whole recording in a strip below
+     with this stop's window boxed. It is drawn once per stop; while a clip
+     plays, only a cursor and a veil over what is still to come move
+     (seahorse.js), which costs the page next to nothing.
+
+     B is story_m459_probe.shb.gz unpacked: header {t0, csd: {fs, csc, vmax},
+     lfp: {fs, csc, gap_uv}, unit: {csc, masked}}, arrays {csd: Int16 rows x n,
+     lfp: Int16 traces x n, spikes: Float32 s from the onset}. */
+
+  /* what a stop shows: its window, live while its clip plays, and what it highlights */
+  function picOf(st) {
+    const p = st.pic || {};
+    return { win: p.win || st.clip || [-1, 7], live: !!st.clip, zones: p.zones || [], marks: p.marks || [], offs: !!p.offs, note: p.note || '' };
+  }
+
+  // matplotlib's RdBu turned round, the KCNT1 poster's map (v8; figure A had it the other way):
+  // the deepest sink dark blue, the strongest source dark red, as in Jarvis
+  const RDBU = ['#053061', '#2166ac', '#4393c3', '#92c5de', '#d1e5f0', '#f7f7f7', '#fddbc7', '#f4a582', '#d6604d', '#b2182b', '#67001f'];
+  // the same two hues on a dark ground (a dark theme): quiet is the ground, and a current
+  // grows brighter and more saturated with its size, still blue or still red at its strongest
+  const RDBU_NIGHT = ['#7cc8ff', '#43a0f0', '#2479cc', '#164f8c', '#0d2645', null, '#4a0f1d', '#93192b', '#cf2f33', '#f2503a', '#ff7a45'];
+  const hexRgb3 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  /* 513 colours from -1 (a sink at figure A's limit) to +1 (a source at it) */
+  function csdLut(dark, zero) {
+    const stops = (dark ? RDBU_NIGHT : RDBU).map((c) => (c ? hexRgb3(c) : zero));
+    const lut = new Uint8ClampedArray(513 * 3);
+    for (let i = 0; i <= 512; i++) {
+      const x = i / 512 * (stops.length - 1), k = Math.min(stops.length - 2, Math.floor(x)), f = x - k;
+      for (let c = 0; c < 3; c++) lut[i * 3 + c] = Math.round(stops[k][c] + (stops[k + 1][c] - stops[k][c]) * f);
+    }
+    return lut;
+  }
+  const lutCss = (lut, n) => 'linear-gradient(90deg,' + Array.from({ length: n }, (_, j) => {
+    const k = Math.round(j / (n - 1) * 512) * 3;
+    return 'rgb(' + lut[k] + ',' + lut[k + 1] + ',' + lut[k + 2] + ')';
+  }).join(',') + ')';
+
+  /* The CSD of [t0, t1] as an image one pixel per column and one row per
+     contact. A column wider than a sample keeps its strongest sample (sign
+     and all), so a discharge never falls between two columns. */
+  function csdImage(B, t0, t1, cols, lut) {
+    const H = B.header.csd, A = B.arrays.csd, rows = H.csc.length, n = A.length / rows, fs = H.fs, T0 = B.header.t0, vmax = H.vmax;
+    const img = new ImageData(cols, rows), px = img.data;
+    const spc = (t1 - t0) * fs / cols;
+    for (let c = 0; c < cols; c++) {
+      const ta = (t0 - T0) * fs + c * spc, tb = ta + spc, mid = (ta + tb) / 2;
+      if (mid < 0 || mid > n - 1) continue;
+      for (let r = 0; r < rows; r++) {
+        const base = r * n;
+        let v;
+        if (spc <= 1.5) {
+          const i = Math.min(n - 2, Math.floor(mid)), f = mid - i;
+          v = A[base + i] * (1 - f) + A[base + i + 1] * f;
+        } else {
+          const ia = Math.max(0, Math.floor(ta)), ib = Math.min(n - 1, Math.ceil(tb));
+          v = 0;
+          for (let i = ia; i <= ib; i++) { const s = A[base + i]; if ((s < 0 ? -s : s) > (v < 0 ? -v : v)) v = s; }
         }
-        c.fillStyle = o.ink2; c.font = '10.5px ' + o.font; c.textAlign = 'right'; c.textBaseline = 'middle';
-        c.fillText(ZONE_WORDS[z.key][1], x0 - 8, y + rowH / 2);
-      });
-      // the stage's window, as figure A marks it
-      if (o.win) {
-        const a = x0 + (o.win[0] - o.t0) / (o.t1 - o.t0) * (x1 - x0), b = x0 + (o.win[1] - o.t0) / (o.t1 - o.t0) * (x1 - x0);
-        c.strokeStyle = o.ink2; c.lineWidth = 1.2;
-        c.beginPath(); c.moveTo(a, top - 4); c.lineTo(a, top - 9); c.lineTo(b, top - 9); c.lineTo(b, top - 4); c.stroke();
-        c.fillStyle = o.ink2; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.font = '600 10px ' + o.font;
-        c.fillText('stage ' + o.stage, (a + b) / 2, top - 10);
+        const k = Math.max(0, Math.min(512, Math.round((v / vmax + 1) * 256))) * 3, o = (r * cols + c) * 4;
+        px[o] = lut[k]; px[o + 1] = lut[k + 1]; px[o + 2] = lut[k + 2]; px[o + 3] = 255;
       }
-      if (o.t0 < 0 && o.t1 > 0) { const x = x0 + (0 - o.t0) / (o.t1 - o.t0) * (x1 - x0); c.fillStyle = o.ink3; c.fillRect(Math.round(x), top, 1, rows * rowH); }
-      axis(c, x0, x1, top + rows * rowH + 2, o.t0, o.t1, o);
-      cv._img = off; cv._key = key;
     }
-    ctx.drawImage(cv._img, 0, 0, w, h);
-    if (o.cursor != null && o.cursor >= o.t0 && o.cursor <= o.t1) {
-      const x = x0 + (o.cursor - o.t0) / (o.t1 - o.t0) * (x1 - x0);
-      ctx.fillStyle = o.accent; ctx.fillRect(Math.round(x) - 1, top - 2, 2, rows * rowH + 4);
-    }
+    const cv = document.createElement('canvas');
+    cv.width = cols; cv.height = rows;
+    cv.getContext('2d').putImageData(img, 0, 0);
+    return cv;
   }
-  /* The hilar interneuron's firing, -10 to +90 s, with its earlier rate as a dashed line. */
-  function drawUnit(cv, D, o) {
-    const h = 132, top = 10, bot = 26, left = 34;
-    const { ctx, w } = prep(cv, h);
-    const u = D.unit, x0 = left, x1 = w - 8, y0 = h - bot, y1 = top, yMax = 70;
-    const t0 = u.t0, t1 = u.t0 + u.hz.length * u.bin_s;
-    const X = (t) => x0 + (t - t0) / (t1 - t0) * (x1 - x0), Y = (v) => y0 - Math.min(v, yMax) / yMax * (y0 - y1);
-    ctx.fillStyle = o.ink1; ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
-    if (o.win) { ctx.fillStyle = o.soft; ctx.fillRect(X(o.win[0]), y1, Math.max(2, X(o.win[1]) - X(o.win[0])), y0 - y1); }
-    ctx.fillStyle = o.cellColor;
-    const bw = Math.max(1, (x1 - x0) / u.hz.length);
-    u.hz.forEach((v, i) => { if (v > 0) { const x = X(t0 + i * u.bin_s); ctx.fillRect(x, Y(v), Math.max(1, bw - 0.4), y0 - Y(v)); } });
-    ctx.setLineDash([4, 3]); ctx.strokeStyle = o.ink2; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x0, Y(u.baseline_hz) + 0.5); ctx.lineTo(x1, Y(u.baseline_hz) + 0.5); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = o.ink3; ctx.fillRect(Math.round(X(0)), y1, 1, y0 - y1);
-    ctx.font = '10.5px ' + o.font; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = o.ink3;
-    [0, 30, 60].forEach((v) => ctx.fillText(String(v), x0 - 6, Y(v)));
-    ctx.save(); ctx.translate(10, (y0 + y1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('Hz', 0, 0); ctx.restore();
-    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillStyle = o.ink2;
-    ctx.fillText(u.baseline_hz + ' Hz, the half-minute before', X(40), Y(u.baseline_hz) - 3);
-    axis(ctx, x0, x1, y0 + 2, t0, t1, o);
-    if (o.cursor != null) { ctx.fillStyle = o.accent; ctx.fillRect(Math.round(X(o.cursor)) - 1, y1 - 2, 2, y0 - y1 + 4); }
+
+  /* where everything sits, in CSS pixels, for a canvas w wide */
+  const PL = { lab: 98, right: 44, top: 24, rowH: 4, gapU: 5, unitH: 14, axis: 18, gapO: 8, overH: 26, overAxis: 21 };
+  function probeLayout(w, B) {
+    const rows = B.header.csd.csc.length;
+    const x0 = PL.lab, x1 = Math.max(x0 + 80, w - PL.right);
+    const y0 = PL.top, y1 = y0 + rows * PL.rowH;
+    const u0 = y1 + PL.gapU, u1 = u0 + PL.unitH;
+    const a0 = u1 + 2;
+    const o0 = a0 + PL.axis + PL.gapO, o1 = o0 + PL.overH;
+    return { w, h: o1 + PL.overAxis, x0, x1, y0, y1, u0, u1, a0, o0, o1 };
   }
-  /* The discharges before the onset, one tick each, faster and faster. */
-  function drawRaster(cv, D, o) {
-    const h = 64, left = 8, t0 = -40, t1 = 2;
-    const { ctx, w } = prep(cv, h);
-    const x0 = left, x1 = w - 8, y0 = 8, y1 = 36;
-    const X = (t) => x0 + (t - t0) / (t1 - t0) * (x1 - x0);
-    ctx.fillStyle = o.ink1; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-    if (o.win) { ctx.fillStyle = o.soft; ctx.fillRect(X(o.win[0]), y0, X(o.win[1]) - X(o.win[0]), y1 - y0); }
-    for (const t of D.discharges) {
-      if (t < t0 || t > t1) continue;
-      const seen = o.cursor == null || t <= o.cursor;
-      ctx.fillStyle = t < 0 ? (seen ? o.hot : o.ink3) : o.ink3;
-      ctx.fillRect(Math.round(X(t)), y0 + 3, 1.6, y1 - y0 - 6);
-    }
-    ctx.fillStyle = o.ink2; ctx.fillRect(Math.round(X(0)), y0 - 3, 1.4, y1 - y0 + 6);
-    axis(ctx, x0, x1, y1 + 3, t0, t1, o);
-    if (o.cursor != null && o.cursor >= t0 && o.cursor <= t1) { ctx.fillStyle = o.accent; ctx.fillRect(Math.round(X(o.cursor)) - 1, y0 - 2, 2, y1 - y0 + 4); }
+  /* a zone's rows on the picture (its contacts that have a CSD row) */
+  function zoneSpan(B, L, z) {
+    const csc = B.header.csd.csc, c0 = csc[0], c1 = csc[csc.length - 1];
+    const a = Math.max(c0, z.csc[0]), b = Math.min(c1, z.csc[1]);
+    return b < a ? null : [L.y0 + (a - c0) * PL.rowH, L.y0 + (b - c0 + 1) * PL.rowH];
   }
-  /* When each zone fell quiet: a bar from the onset to its last strong firing. */
-  function drawOffs(cv, D, o) {
-    const rows = D.zones.length, rowH = 15, top = 6, lab = 98, h = top + rows * rowH + 28;
-    const { ctx, w } = prep(cv, h);
-    const x0 = lab, x1 = w - 40, t0 = 0, t1 = 45;
-    const X = (t) => x0 + (t - t0) / (t1 - t0) * (x1 - x0);
-    D.zones.forEach((z, r) => {
-      const y = top + r * rowH;
-      ctx.fillStyle = o.ink2; ctx.font = '10.5px ' + o.font; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(ZONE_WORDS[z.key][1], x0 - 8, y + rowH / 2);
-      ctx.fillStyle = o.ink1; ctx.fillRect(x0, y + 3, x1 - x0, rowH - 6);
-      if (z.off_s != null) {
-        const lit = o.cursor == null || o.cursor < z.off_s;
-        ctx.fillStyle = lit ? rgba(ramp(0.7), 0.9) : o.ink3;
-        ctx.fillRect(x0, y + 3, X(z.off_s) - x0, rowH - 6);
-        ctx.fillStyle = o.ink2; ctx.textAlign = 'left';
-        ctx.fillText(z.off_s.toFixed(1) + ' s', X(z.off_s) + 5, y + rowH / 2);
+  /* the contact under a point of the picture */
+  function cscAt(B, L, y) {
+    const csc = B.header.csd.csc;
+    const r = Math.floor((y - L.y0) / PL.rowH);
+    return r >= 0 && r < csc.length ? csc[r] : null;
+  }
+
+  /* The traces of [t0, t1]: a line through every sample when they fit, the
+     envelope of each pixel column when they do not (a 30 s window). Figure A
+     drew one second across a page; squeezed into a card, seconds of them
+     would hide the CSD under them, so the longer the window the fewer and
+     fainter they are (every eighth contact below 60 px a second). */
+  function drawTraces(ctx, B, L, t0, t1, rgb, dpr) {
+    const H = B.header.lfp, A = B.arrays.lfp, nt = H.csc.length, n = A.length / nt, fs = H.fs, T0 = B.header.t0;
+    const c0 = B.header.csd.csc[0];
+    const k = 4 * PL.rowH / H.gap_uv, lim = 1.3 * H.gap_uv;     // figure A: the gap spans four contacts; clipped at 1.3 gaps
+    const i0 = Math.max(0, Math.floor((t0 - T0) * fs)), i1 = Math.min(n - 1, Math.ceil((t1 - T0) * fs));
+    const pw = L.x1 - L.x0, cols = Math.max(1, Math.round(pw * dpr)), per = (i1 - i0) / cols;
+    const pxs = pw / (t1 - t0), sparse = pxs < 60;
+    const alpha = Math.max(0.2, Math.min(0.45, 0.2 + 0.25 * (pxs - 10) / 100));
+    ctx.save();
+    ctx.beginPath(); ctx.rect(L.x0, L.y0 - 4, pw, L.y1 - L.y0 + 8); ctx.clip();
+    ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',' + alpha.toFixed(2) + ')';
+    ctx.lineWidth = per > 2 ? 0.6 : 0.85; ctx.lineJoin = 'round';
+    for (let j = sparse ? 1 : 0; j < nt; j += sparse ? 2 : 1) {
+      const yb = L.y0 + (H.csc[j] - c0 + 0.5) * PL.rowH, base = j * n;
+      const Y = (v) => yb - (v > lim ? lim : v < -lim ? -lim : v) * k;
+      ctx.beginPath();
+      if (per <= 2) {
+        const sx = pw / ((t1 - t0) * fs), xa = L.x0 + ((T0 + i0 / fs) - t0) / (t1 - t0) * pw;
+        ctx.moveTo(xa, Y(A[base + i0]));
+        for (let i = i0 + 1; i <= i1; i++) ctx.lineTo(xa + (i - i0) * sx, Y(A[base + i]));
+      } else {
+        for (let c = 0; c < cols; c++) {
+          const a = i0 + Math.floor(c * per), b = Math.min(i1, i0 + Math.floor((c + 1) * per));
+          let lo = 32767, hi = -32768;
+          for (let i = a; i <= b; i++) { const v = A[base + i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+          const x = L.x0 + (c + 0.5) / dpr;
+          if (c === 0) ctx.moveTo(x, Y(hi)); else ctx.lineTo(x, Y(hi));
+          ctx.lineTo(x, Y(lo));
+        }
       }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* The whole recording, -12 to +60 s, as one strip: cached per size and theme. */
+  function overviewImage(B, L, lut, dpr, key) {
+    if (B._ov && B._ov.key === key) return B._ov.cv;
+    const cols = Math.max(2, Math.round((L.x1 - L.x0) * dpr));
+    const cv = csdImage(B, B.header.t0, B.header.t1, cols, lut);
+    B._ov = { key, cv };
+    return cv;
+  }
+
+  /* Draw the picture for one stop. o: {win, zones, marks, offs, dark, c: colours, font, zoneColor(key)}.
+     Returns where things are, for the cursor, the veil and the pointer. */
+  function drawProbe(cv, D, B, o) {
+    const w = Math.max(260, Math.round(cv.parentNode.clientWidth || 420));
+    const L = probeLayout(w, B);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(L.h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(L.h * dpr); }
+    cv.style.width = w + 'px'; cv.style.height = L.h + 'px';
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, L.h);
+    const c = o.c, f = o.font, zone = new Set(o.zones || []);
+    const [t0, t1] = o.win, pw = L.x1 - L.x0;
+    const X = (t) => L.x0 + (t - t0) / (t1 - t0) * pw;
+    const T0 = B.header.t0, T1 = B.header.t1, XO = (t) => L.x0 + (t - T0) / (T1 - T0) * pw;
+    const lutKey = (o.dark ? 'd' : 'l') + c.zero.join(',');
+    if (!B._lut || B._lut.key !== lutKey) B._lut = { key: lutKey, lut: csdLut(o.dark, c.zero) };
+    const lut = B._lut.lut;
+
+    // the current source density, smoothed between contacts as figure A was
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(csdImage(B, t0, t1, Math.max(2, Math.round(pw * dpr)), lut), L.x0, L.y0, pw, L.y1 - L.y0);
+    // the zones' borders, faint (figure A's dashed lines)
+    ctx.save();
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = c.line; ctx.lineWidth = 1;
+    D.zones.forEach((z, i) => {
+      if (!i) return;
+      const s = zoneSpan(B, L, z);
+      if (s) { ctx.beginPath(); ctx.moveTo(L.x0, Math.round(s[0]) + 0.5); ctx.lineTo(L.x1, Math.round(s[0]) + 0.5); ctx.stroke(); }
     });
-    axis(ctx, x0, x1, top + rows * rowH + 2, t0, t1, o);
-    if (o.cursor != null && o.cursor >= t0 && o.cursor <= t1) { ctx.fillStyle = o.accent; ctx.fillRect(Math.round(X(o.cursor)) - 1, top - 2, 2, rows * rowH + 4); }
+    ctx.restore();
+    // the onset
+    if (t0 < 0 && t1 > 0) { ctx.fillStyle = c.onset; ctx.fillRect(Math.round(X(0)), L.y0, 1, L.u1 - L.y0); }
+    // the potentials over it
+    drawTraces(ctx, B, L, t0, t1, c.trace, dpr);
+    // where each zone fell quiet (its firing, measured from the multi-unit activity): a tick on
+    // its rows, and the time beside the picture
+    if (o.offs) {
+      const outs = [];
+      D.zones.forEach((z) => {
+        const s = zoneSpan(B, L, z);
+        if (!s || z.off_s == null || z.off_s < t0 || z.off_s > t1) return;
+        const x = Math.round(X(z.off_s));
+        ctx.fillStyle = c.halo; ctx.fillRect(x - 2, s[0], 5, s[1] - s[0]);
+        ctx.fillStyle = o.zoneColor(z.key); ctx.fillRect(x - 1, s[0] + 0.5, 3, s[1] - s[0] - 1);
+        outs.push({ y: (s[0] + s[1]) / 2, text: z.off_s.toFixed(1) + ' s', col: o.zoneColor(z.key) });
+      });
+      for (let i = 1; i < outs.length; i++) outs[i].y = Math.max(outs[i].y, outs[i - 1].y + 10.5);
+      ctx.font = '600 9.5px ' + f; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      outs.forEach((r) => { ctx.fillStyle = r.col; ctx.fillRect(L.x1 + 4, r.y - 3, 3, 6); ctx.fillStyle = c.text2; ctx.fillText(r.text, L.x1 + 10, r.y); });
+    }
+    // the plot's frame
+    ctx.strokeStyle = c.frame; ctx.lineWidth = 1; ctx.strokeRect(L.x0 - 0.5, L.y0 - 0.5, pw + 1, L.y1 - L.y0 + 1);
+
+    // the discharges, a tick each above the picture
+    ctx.fillStyle = c.tick;
+    for (const t of D.discharges) if (t >= t0 && t <= t1) ctx.fillRect(Math.round(X(t)), L.y0 - 5, 1, 3);
+    // figure A's stages, bracketed
+    ctx.font = '600 10px ' + f; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    for (const [a, b, lab] of o.marks || []) {
+      if (b < t0 || a > t1) continue;
+      const xa = Math.max(L.x0, X(a)), xb = Math.min(L.x1, X(b)), y = L.y0 - 9;
+      ctx.strokeStyle = c.text2; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(xa + 0.5, y + 4); ctx.lineTo(xa + 0.5, y); ctx.lineTo(xb - 0.5, y); ctx.lineTo(xb - 0.5, y + 4); ctx.stroke();
+      ctx.fillStyle = c.text2;
+      ctx.fillText((o.marks.length > 1 ? '' : 'stage ') + lab, (xa + xb) / 2, y - 3);
+    }
+
+    // the zones: a colour key and a name each, top to bottom, none overlapping
+    const named = D.zones.map((z) => { const s = zoneSpan(B, L, z); return s ? { z, s, y: (s[0] + s[1]) / 2 } : null; }).filter(Boolean);
+    const ys = named.map((r) => r.y), gap = 11.5;
+    for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + gap);
+    const over = ys.length ? ys[ys.length - 1] - (L.y1 - 3) : 0;
+    if (over > 0) for (let i = ys.length - 1; i >= 0; i--) { ys[i] -= over; if (i && ys[i - 1] > ys[i] - gap) ys[i - 1] = ys[i] - gap; }
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    named.forEach((r, i) => {
+      const lit = zone.has(r.z.key), col = o.zoneColor(r.z.key);
+      ctx.fillStyle = col; ctx.globalAlpha = lit || !zone.size ? 1 : 0.55;
+      ctx.fillRect(L.x0 - 6, r.s[0] + 0.5, 3, r.s[1] - r.s[0] - 1);
+      ctx.globalAlpha = 1;
+      if (Math.abs(ys[i] - r.y) > 1.5) {
+        ctx.strokeStyle = c.line; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(L.x0 - 10, ys[i]); ctx.lineTo(L.x0 - 7, r.y); ctx.stroke();
+      }
+      ctx.font = (lit ? '650 ' : '500 ') + '10.5px ' + f;
+      ctx.fillStyle = lit ? c.text : c.text3;
+      ctx.fillText(ZONE_WORDS[r.z.key][1], L.x0 - 11, ys[i]);
+    });
+    // and the zones this stop is about, barred beside the picture (figure A's bars)
+    named.forEach((r) => {
+      if (!zone.has(r.z.key)) return;
+      ctx.fillStyle = o.zoneColor(r.z.key);
+      ctx.fillRect(L.x1 + 4, r.s[0] + 0.5, 5, r.s[1] - r.s[0] - 1);
+    });
+    // the traces' scale (figure A's 2 mV), under the picture's right end, out of the way of the bars
+    const bar = 2000 * 4 * PL.rowH / B.header.lfp.gap_uv;
+    ctx.fillStyle = c.text2; ctx.fillRect(L.x1 + 16, L.a0 + 1, 2, bar);
+    ctx.font = '500 9.5px ' + f; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('2 mV', L.x1 + 21, L.a0 + 1 + bar / 2);
+
+    // the hilar interneuron, its spikes a tick each
+    ctx.fillStyle = c.band; ctx.fillRect(L.x0, L.u0, pw, L.u1 - L.u0);
+    const ms = B.header.unit.masked;
+    if (ms && ms[1] > t0 && ms[0] < t1) {
+      const xa = Math.max(L.x0, X(ms[0])), xb = Math.min(L.x1, X(ms[1]));
+      ctx.save(); ctx.beginPath(); ctx.rect(xa, L.u0, xb - xa, L.u1 - L.u0); ctx.clip();
+      ctx.strokeStyle = c.hatch; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = xa - 20; x < xb + 20; x += 5) { ctx.moveTo(x, L.u1); ctx.lineTo(x + (L.u1 - L.u0), L.u0); }
+      ctx.stroke();
+      if (xb - xa > 150) {
+        const tx = 'single spikes hidden by the discharges', cx = (xa + xb) / 2, cy = (L.u0 + L.u1) / 2 + 0.5;
+        ctx.font = '500 9.5px ' + f; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(tx).width + 10;
+        ctx.fillStyle = c.label; ctx.fillRect(cx - tw / 2, L.u0 + 1, tw, L.u1 - L.u0 - 2);
+        ctx.fillStyle = c.text3; ctx.fillText(tx, cx, cy);
+      }
+      ctx.restore();
+    }
+    ctx.fillStyle = c.cell;
+    const S = B.arrays.spikes;
+    for (let i = 0; i < S.length; i++) { const t = S[i]; if (t >= t0 && t <= t1) ctx.fillRect(Math.round(X(t)), L.u0 + 2, 1.3, L.u1 - L.u0 - 4); }
+    ctx.font = '500 10px ' + f; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = o.unitLit ? c.text : c.text3;
+    ctx.fillText('Interneuron, ch ' + B.header.unit.csc, L.x0 - 11, (L.u0 + L.u1) / 2);
+    // time
+    axis(ctx, L.x0, L.x1, L.a0, t0, t1, { ink3: c.text3, font: f });
+
+    // the whole recording, this stop's window boxed
+    ctx.drawImage(overviewImage(B, L, lut, dpr, [w, dpr, lutKey].join('|')), L.x0, L.o0, pw, L.o1 - L.o0);
+    const ba = XO(Math.max(T0, t0)), bb = XO(Math.min(T1, t1));
+    ctx.fillStyle = c.dim;
+    ctx.fillRect(L.x0, L.o0, ba - L.x0, L.o1 - L.o0);
+    ctx.fillRect(bb, L.o0, L.x1 - bb, L.o1 - L.o0);
+    ctx.fillStyle = c.onset; ctx.fillRect(Math.round(XO(0)), L.o0, 1, L.o1 - L.o0);
+    ctx.strokeStyle = c.accent; ctx.lineWidth = 1.5;
+    ctx.strokeRect(ba - 0.75, L.o0 - 1.5, Math.max(2, bb - ba) + 1.5, L.o1 - L.o0 + 3);
+    ctx.font = '500 10px ' + f; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = c.text3;
+    ctx.fillText('The whole seizure', L.x0 - 11, (L.o0 + L.o1) / 2);
+    axis(ctx, L.x0, L.x1, L.o1 + 2, T0, T1, { ink3: c.text3, font: f });
+    return Object.assign(L, { t0, t1, T0, T1, dpr });
   }
 
   return { REFS, TAGS, ACTS, ZONE_WORDS, SCALE, stories, at, level, zoneLevels, unitRate, ramp, alphaOf, rgba, rampCss,
-           drawTimeline, drawUnit, drawRaster, drawOffs };
+           picOf, drawProbe, cscAt, zoneSpan, lutCss, csdLut, PL };
 })();

@@ -1,0 +1,787 @@
+{
+ "m1609": {
+  "gid": "se0c7b6ba6d5a",
+  "label": "KCNT1 m1609 s1 2026-07-15",
+  "unc": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
+  "vacc": "/netfiles/bigdata_jbarry/Jeremy3/KCNT1/Summer'26/KCNT1_m1609/KCNT1_m1609_s1_071526/2026-07-15_11-57-58",
+  "dur": 1802.3253333333334,
+  "bad": [
+   59
+  ],
+  "lock_spike": [
+   {
+    "i": 289,
+    "start": 713.719526,
+    "was": 713.718852,
+    "origin": "both",
+    "peak": 223910.766,
+    "call": "keep"
+   },
+   {
+    "i": 429,
+    "start": 972.044002,
+    "was": 972.044467,
+    "origin": "both",
+    "peak": 210672.067,
+    "call": "keep"
+   },
+   {
+    "i": 300,
+    "start": 734.434091,
+    "was": 734.434811,
+    "origin": "both",
+    "peak": 185511.061,
+    "call": "keep"
+   },
+   {
+    "i": 102,
+    "start": 302.75886,
+    "was": 302.758714,
+    "origin": "both",
+    "peak": 184623.892,
+    "call": "keep"
+   },
+   {
+    "i": 449,
+    "start": 1005.261353,
+    "was": 1005.265442,
+    "origin": "both",
+    "peak": 179054.878,
+    "call": "confirm"
+   },
+   {
+    "i": 380,
+    "start": 882.246375,
+    "was": 882.246922,
+    "origin": "both",
+    "peak": 176890.35,
+    "call": "keep"
+   },
+   {
+    "i": 345,
+    "start": 817.067125,
+    "was": 817.067904,
+    "origin": "both",
+    "peak": 169143.25,
+    "call": "keep"
+   },
+   {
+    "i": 798,
+    "start": 1668.136593,
+    "was": 1668.137142,
+    "origin": "both",
+    "peak": 168711.27,
+    "call": "keep"
+   },
+   {
+    "i": 664,
+    "start": 1412.662662,
+    "was": 1412.66307,
+    "origin": "both",
+    "peak": 164860.921,
+    "call": "keep"
+   },
+   {
+    "i": 537,
+    "start": 1193.694204,
+    "was": 1193.695314,
+    "origin": "both",
+    "peak": 163707.634,
+    "call": "keep"
+   },
+   {
+    "i": 572,
+    "start": 1251.787896,
+    "was": 1251.789025,
+    "origin": "both",
+    "peak": 159085.63,
+    "call": "keep"
+   },
+   {
+    "i": 666,
+    "start": 1420.929487,
+    "was": 1420.929527,
+    "origin": "both",
+    "peak": 158182.312,
+    "call": "keep"
+   },
+   {
+    "i": 83,
+    "start": 273.39852,
+    "was": 273.399719,
+    "origin": "both",
+    "peak": 155198.371,
+    "call": "keep"
+   },
+   {
+    "i": 374,
+    "start": 873.198805,
+    "was": 873.197663,
+    "origin": "both",
+    "peak": 145541.289,
+    "call": "keep"
+   },
+   {
+    "i": 700,
+    "start": 1472.415129,
+    "was": 1472.415017,
+    "origin": "both",
+    "peak": 144016.611,
+    "call": "keep"
+   },
+   {
+    "i": 640,
+    "start": 1371.816032,
+    "was": 1371.817059,
+    "origin": "incisor",
+    "peak": 142986.296,
+    "call": "confirm"
+   },
+   {
+    "i": 153,
+    "start": 486.170281,
+    "was": 486.170098,
+    "origin": "incisor",
+    "peak": 141559.057,
+    "call": "keep"
+   },
+   {
+    "i": 97,
+    "start": 296.722439,
+    "was": 296.722725,
+    "origin": "incisor",
+    "peak": 139742.254,
+    "call": "keep"
+   },
+   {
+    "i": 582,
+    "start": 1269.189832,
+    "was": 1269.189508,
+    "origin": "incisor",
+    "peak": 138579.025,
+    "call": "keep"
+   },
+   {
+    "i": 262,
+    "start": 655.763814,
+    "was": 655.763073,
+    "origin": "both",
+    "peak": 137769.371,
+    "call": "confirm"
+   },
+   {
+    "i": 657,
+    "start": 1401.673682,
+    "was": 1401.674067,
+    "origin": "incisor",
+    "peak": 135627.05,
+    "call": "keep"
+   },
+   {
+    "i": 120,
+    "start": 378.88014,
+    "was": 378.880535,
+    "origin": "both",
+    "peak": 134224.129,
+    "call": "keep"
+   },
+   {
+    "i": 619,
+    "start": 1328.069778,
+    "was": 1328.071047,
+    "origin": "incisor",
+    "peak": 130225.999,
+    "call": "keep"
+   },
+   {
+    "i": 104,
+    "start": 308.304148,
+    "was": 308.303728,
+    "origin": "both",
+    "peak": 129004.762,
+    "call": "keep"
+   },
+   {
+    "i": 110,
+    "start": 344.752763,
+    "was": 344.752739,
+    "origin": "both",
+    "peak": 126642.258,
+    "call": "confirm"
+   },
+   {
+    "i": 284,
+    "start": 709.896844,
+    "was": 709.897841,
+    "origin": "both",
+    "peak": 124587.402,
+    "call": "keep"
+   },
+   {
+    "i": 717,
+    "start": 1507.061766,
+    "was": 1507.061245,
+    "origin": "both",
+    "peak": 120856.292,
+    "call": "keep"
+   },
+   {
+    "i": 261,
+    "start": 655.158519,
+    "was": 655.158825,
+    "origin": "incisor",
+    "peak": 112521.368,
+    "call": "confirm"
+   },
+   {
+    "i": 170,
+    "start": 516.491152,
+    "was": 516.490997,
+    "origin": "incisor",
+    "peak": 109014.518,
+    "call": "confirm"
+   },
+   {
+    "i": 377,
+    "start": 875.392169,
+    "was": 875.392089,
+    "origin": "incisor",
+    "peak": 107290.932,
+    "call": "keep"
+   }
+  ],
+  "lock_spike_meta": {
+   "set_id": "br5fa760a32b",
+   "name": "KCNT1 m1609 s1 2026-07-15 \u2014 pooled (Incisor + Doppler, 20 ms)",
+   "entry_id": "aa1d581d5f7e",
+   "committed": {
+    "at": "2026-11-24T19:14:54-0600",
+    "by": "Isabella Piatek",
+    "version": 4,
+    "version_id": "br-3b365ecf8c"
+   },
+   "n_rows": 811,
+   "n_unflagged": 688
+  },
+  "braces_ds": [
+   {
+    "i": 502,
+    "start": 666.674786,
+    "was": 666.675829,
+    "origin": null,
+    "peak": 88345.838,
+    "call": null
+   },
+   {
+    "i": 1307,
+    "start": 1670.371561,
+    "was": 1670.372142,
+    "origin": null,
+    "peak": 88402.536,
+    "call": null
+   },
+   {
+    "i": 605,
+    "start": 808.829669,
+    "was": 808.830902,
+    "origin": null,
+    "peak": 88267.606,
+    "call": null
+   },
+   {
+    "i": 1063,
+    "start": 1394.374485,
+    "was": 1394.374065,
+    "origin": null,
+    "peak": 87992.055,
+    "call": null
+   },
+   {
+    "i": 686,
+    "start": 908.791657,
+    "was": 908.79293,
+    "origin": null,
+    "peak": 87957.764,
+    "call": null
+   },
+   {
+    "i": 652,
+    "start": 876.376636,
+    "was": 876.37792,
+    "origin": null,
+    "peak": 88813.988,
+    "call": null
+   },
+   {
+    "i": 641,
+    "start": 864.698569,
+    "was": 864.700917,
+    "origin": null,
+    "peak": 88897.055,
+    "call": null
+   },
+   {
+    "i": 525,
+    "start": 702.580516,
+    "was": 702.580839,
+    "origin": null,
+    "peak": 88967.557,
+    "call": null
+   },
+   {
+    "i": 830,
+    "start": 1100.308524,
+    "was": 1100.309983,
+    "origin": null,
+    "peak": 87501.332,
+    "call": null
+   },
+   {
+    "i": 61,
+    "start": 169.009899,
+    "was": 169.01069,
+    "origin": null,
+    "peak": 87460.089,
+    "call": null
+   },
+   {
+    "i": 194,
+    "start": 453.117861,
+    "was": 453.118769,
+    "origin": null,
+    "peak": 89317.602,
+    "call": null
+   },
+   {
+    "i": 79,
+    "start": 216.635255,
+    "was": 216.635703,
+    "origin": null,
+    "peak": 89484.246,
+    "call": null
+   },
+   {
+    "i": 1009,
+    "start": 1320.964223,
+    "was": 1320.965045,
+    "origin": null,
+    "peak": 87086.093,
+    "call": null
+   },
+   {
+    "i": 46,
+    "start": 134.389396,
+    "was": 134.39068,
+    "origin": null,
+    "peak": 89611.501,
+    "call": null
+   },
+   {
+    "i": 553,
+    "start": 737.89537,
+    "was": 737.896848,
+    "origin": null,
+    "peak": 89738.143,
+    "call": null
+   },
+   {
+    "i": 795,
+    "start": 1021.741972,
+    "was": 1021.742961,
+    "origin": null,
+    "peak": 86898.155,
+    "call": null
+   },
+   {
+    "i": 1272,
+    "start": 1624.912899,
+    "was": 1624.91413,
+    "origin": null,
+    "peak": 86826.077,
+    "call": null
+   },
+   {
+    "i": 1060,
+    "start": 1392.63959,
+    "was": 1392.640065,
+    "origin": null,
+    "peak": 86822.648,
+    "call": null
+   },
+   {
+    "i": 1201,
+    "start": 1538.417988,
+    "was": 1538.419105,
+    "origin": null,
+    "peak": 89915.338,
+    "call": null
+   },
+   {
+    "i": 829,
+    "start": 1099.069533,
+    "was": 1099.070983,
+    "origin": null,
+    "peak": 89943.613,
+    "call": null
+   },
+   {
+    "i": 800,
+    "start": 1030.795293,
+    "was": 1030.796964,
+    "origin": null,
+    "peak": 90061.829,
+    "call": null
+   },
+   {
+    "i": 583,
+    "start": 772.531701,
+    "was": 772.532891,
+    "origin": null,
+    "peak": 86567.474,
+    "call": null
+   },
+   {
+    "i": 287,
+    "start": 521.253997,
+    "was": 521.254788,
+    "origin": null,
+    "peak": 90141.61,
+    "call": null
+   },
+   {
+    "i": 171,
+    "start": 397.051534,
+    "was": 397.052753,
+    "origin": null,
+    "peak": 86478.321,
+    "call": null
+   },
+   {
+    "i": 76,
+    "start": 209.52492,
+    "was": 209.525701,
+    "origin": null,
+    "peak": 86427.577,
+    "call": null
+   },
+   {
+    "i": 80,
+    "start": 217.041856,
+    "was": 217.042703,
+    "origin": null,
+    "peak": 90291.378,
+    "call": null
+   },
+   {
+    "i": 1035,
+    "start": 1361.337887,
+    "was": 1361.338056,
+    "origin": null,
+    "peak": 90368.13,
+    "call": null
+   },
+   {
+    "i": 911,
+    "start": 1211.41841,
+    "was": 1211.414014,
+    "origin": null,
+    "peak": 90508.709,
+    "call": null
+   },
+   {
+    "i": 1353,
+    "start": 1716.610594,
+    "was": 1716.610155,
+    "origin": null,
+    "peak": 86141.797,
+    "call": null
+   },
+   {
+    "i": 575,
+    "start": 765.299132,
+    "was": 765.299889,
+    "origin": null,
+    "peak": 86118.124,
+    "call": null
+   }
+  ],
+  "braces_ds_meta": {
+   "set_id": "br323decf9e4",
+   "name": "KCNT1 m1609 s1 2026-07-15  \u00b7  Incisor CSC1\u2013CSC64",
+   "entry_id": "4fad818d807e",
+   "committed": {
+    "at": "2026-10-05T17:27:20-0400",
+    "by": "Rain Younger",
+    "version": 2,
+    "version_id": "br-6984264344"
+   },
+   "n_rows": 796,
+   "n_unflagged": 627
+  }
+ },
+ "m1603": {
+  "gid": "s655a06b22296",
+  "label": "KCNT1 m1603 s2 2026-06-24",
+  "unc": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1603\\KCNT1_m1603_s2_06-24-26\\2026-06-24_14-38-31",
+  "vacc": "/netfiles/bigdata_jbarry/Jeremy3/KCNT1/Summer'26/KCNT1_m1603/KCNT1_m1603_s2_06-24-26/2026-06-24_14-38-31",
+  "dur": 960.4096,
+  "bad": [
+   59
+  ],
+  "lock_spike": [
+   {
+    "i": 140,
+    "start": 224.334992,
+    "was": 224.335916,
+    "origin": "incisor",
+    "peak": 116312.786,
+    "call": "keep"
+   },
+   {
+    "i": 113,
+    "start": 181.876612,
+    "was": 181.877742,
+    "origin": "incisor",
+    "peak": 105905.815,
+    "call": "confirm"
+   },
+   {
+    "i": 126,
+    "start": 207.473236,
+    "was": 207.474847,
+    "origin": "both",
+    "peak": 98974.378,
+    "call": "keep"
+   },
+   {
+    "i": 425,
+    "start": 935.497891,
+    "was": 935.498875,
+    "origin": "both",
+    "peak": 231777.691,
+    "call": null
+   },
+   {
+    "i": 165,
+    "start": 266.46884,
+    "was": 266.469088,
+    "origin": null,
+    "peak": 216921.381,
+    "call": null
+   },
+   {
+    "i": 59,
+    "start": 109.380067,
+    "was": 109.382446,
+    "origin": null,
+    "peak": 213435.224,
+    "call": null
+   },
+   {
+    "i": 403,
+    "start": 902.561653,
+    "was": 902.56274,
+    "origin": "both",
+    "peak": 207469.733,
+    "call": null
+   },
+   {
+    "i": 184,
+    "start": 301.781254,
+    "was": 301.781232,
+    "origin": "both",
+    "peak": 200873.489,
+    "call": null
+   },
+   {
+    "i": 237,
+    "start": 470.242352,
+    "was": 470.243919,
+    "origin": "both",
+    "peak": 200228.78,
+    "call": null
+   },
+   {
+    "i": 418,
+    "start": 925.334004,
+    "was": 925.335833,
+    "origin": "both",
+    "peak": 200166.82,
+    "call": null
+   },
+   {
+    "i": 57,
+    "start": 103.088943,
+    "was": 103.089421,
+    "origin": "both",
+    "peak": 185586.087,
+    "call": null
+   },
+   {
+    "i": 426,
+    "start": 935.902184,
+    "was": 935.903876,
+    "origin": "both",
+    "peak": 183645.425,
+    "call": null
+   },
+   {
+    "i": 262,
+    "start": 536.958925,
+    "was": 536.959192,
+    "origin": "both",
+    "peak": 182810.431,
+    "call": null
+   },
+   {
+    "i": 72,
+    "start": 133.101193,
+    "was": 133.101543,
+    "origin": "both",
+    "peak": 173356.767,
+    "call": null
+   },
+   {
+    "i": 206,
+    "start": 339.818381,
+    "was": 339.819387,
+    "origin": "both",
+    "peak": 170759.58,
+    "call": null
+   },
+   {
+    "i": 23,
+    "start": 42.830905,
+    "was": 42.832175,
+    "origin": "both",
+    "peak": 169896.779,
+    "call": null
+   },
+   {
+    "i": 409,
+    "start": 912.704544,
+    "was": 912.706782,
+    "origin": "both",
+    "peak": 158622.532,
+    "call": null
+   },
+   {
+    "i": 284,
+    "start": 586.780199,
+    "was": 586.781395,
+    "origin": "both",
+    "peak": 157427.053,
+    "call": null
+   },
+   {
+    "i": 211,
+    "start": 348.524653,
+    "was": 348.526422,
+    "origin": "both",
+    "peak": 153515.046,
+    "call": null
+   },
+   {
+    "i": 241,
+    "start": 485.860734,
+    "was": 485.860983,
+    "origin": "both",
+    "peak": 148823.19,
+    "call": null
+   },
+   {
+    "i": 257,
+    "start": 523.969829,
+    "was": 523.970139,
+    "origin": "both",
+    "peak": 148242.333,
+    "call": null
+   },
+   {
+    "i": 130,
+    "start": 216.209698,
+    "was": 216.209882,
+    "origin": "incisor",
+    "peak": 147590.621,
+    "call": null
+   },
+   {
+    "i": 31,
+    "start": 59.809487,
+    "was": 59.810244,
+    "origin": "both",
+    "peak": 142922.474,
+    "call": null
+   },
+   {
+    "i": 255,
+    "start": 521.762119,
+    "was": 521.76213,
+    "origin": "both",
+    "peak": 142199.874,
+    "call": null
+   },
+   {
+    "i": 202,
+    "start": 339.363828,
+    "was": 339.364385,
+    "origin": "incisor",
+    "peak": 140099.049,
+    "call": null
+   },
+   {
+    "i": 104,
+    "start": 171.019303,
+    "was": 171.020698,
+    "origin": "both",
+    "peak": 139381.324,
+    "call": null
+   },
+   {
+    "i": 394,
+    "start": 883.111276,
+    "was": 883.111661,
+    "origin": "incisor",
+    "peak": 137991.279,
+    "call": null
+   },
+   {
+    "i": 98,
+    "start": 165.640296,
+    "was": 165.640676,
+    "origin": "both",
+    "peak": 131666.834,
+    "call": null
+   },
+   {
+    "i": 8,
+    "start": 33.466979,
+    "was": 33.467137,
+    "origin": "both",
+    "peak": 130342.422,
+    "call": null
+   },
+   {
+    "i": 227,
+    "start": 437.123524,
+    "was": 437.123784,
+    "origin": null,
+    "peak": 129972.777,
+    "call": null
+   }
+  ],
+  "lock_spike_meta": {
+   "set_id": "breeed991f37",
+   "name": "KCNT1 m1603 s2 2026-06-24 \u2014 pooled (Incisor + Doppler, 20 ms)",
+   "entry_id": "9a12a5c1afaa",
+   "committed": {
+    "at": "2026-11-24T19:23:35-0600",
+    "by": "Isabella Piatek",
+    "version": 3,
+    "version_id": "br-da48bcb00b"
+   },
+   "n_rows": 146,
+   "n_unflagged": 131
+  }
+ }
+}
