@@ -1,0 +1,116 @@
+[
+ {
+  "id": "waveform|sink_amp_cv|v6||all",
+  "contrast": "IEDpos_vs_CTL",
+  "title": "Sink size is more uniform from event to event in IED+ mice",
+  "plain": "In IED+ mice the sink of one dentate spike is more like the next one's (CV 0.33 to 0.42) than in any control (0.42 to 0.61).",
+  "how": "Every event. Per event: the sink at the two main-sink rows (−CSD, ±3 ms). Per recording: the CV (SD over mean) over events, a ratio without units. Contrast: IED+ against control.",
+  "ylabel": "Sink size, event to event\n(CV over events)",
+  "why": "Every IED+ value below every control (P = 0.0025; Strict set P = 0.030). IED+ against IED− P = 0.016.",
+  "against": "IED+ mice have more events, and more events can make a CV steadier (rho with event count −0.35).",
+  "test": "CV from the same number of events per mouse (subsampled); planned in new mice."
+ },
+ {
+  "id": "laminar|blade_balance_mean|v6||all",
+  "contrast": "highKO_vs_CTL",
+  "title": "The lower blade's sink is the larger one in high-knockout mice",
+  "plain": "Comparing the two blades' sinks in each event, the lower blade's is the larger one in high-knockout mice; in controls the two are about equal.",
+  "how": "Every event. Per event: (upper − lower) / (upper + lower) of the sink at the two main-sink rows; negative = lower blade larger. A ratio within the event, so probe placement and gain cancel. Per recording: mean. Contrast: knockout 15% or more against control.",
+  "ylabel": "Blade balance\n(− = lower blade larger, mean)",
+  "why": "P = 0.005 (Strict set the same). IED+ against control P = 0.005; all mice against knockout rho −0.64 (P = 0.008).",
+  "against": "Which blade the probe crosses more squarely changes the balance; the shank angle is not known. Tracks the year of recording (rho +0.52).",
+  "test": "Histology of the track in each mouse; planned test in new mice."
+ },
+ {
+  "id": "waveform|lat_source_minus_sink_sd|v6||all",
+  "contrast": "KO_dose_all",
+  "title": "The timing between source and sink varies more with knockout",
+  "plain": "From event to event, the time between the sink's peak and the source's peak varies more the higher the knockout.",
+  "how": "Every event. Per event: peak time of the source minus peak time of the sink (ms). Per recording: SD over events (ms). Contrast: rank correlation with % knockout, all mice.",
+  "ylabel": "Source-to-sink timing, event to event\n(SD over events, ms)",
+  "why": "All mice rho +0.68 (P = 0.004; Strict set P = 0.008). PTEN against control P = 0.023.",
+  "against": "Tracks the year of recording strongly (rho −0.67). Sampled at 1 kHz, so the times are whole milliseconds.",
+  "test": "Timing at 30 kHz; mice of both groups from the same year."
+ },
+ {
+  "id": "laminar|lfp_profile_u_-0.50|v6||all",
+  "contrast": "trend_CTL_IEDneg_IEDpos",
+  "title": "Above the upper blade, the LFP is less negative in PTEN mice",
+  "plain": "Half a blade-distance above the upper blade's sink, the LFP at the DS peak is clearly negative in controls (−0.29 to −0.71 of its largest absolute value) and close to zero in most PTEN mice.",
+  "how": "Every event. The recording's average LFP at the DS peak (±3 ms) down the probe, on the blade-to-blade scale u (0 = upper blade's sink, 1 = lower blade's sink), divided by its largest absolute value (a shape, not an amplitude), read at u = −0.5 (mean of u −0.6 to −0.4). Contrast: ordered trend control → IED− → IED+.",
+  "ylabel": "LFP above the upper blade\n(share of its largest absolute value)",
+  "why": "Trend P = 0.008; PTEN against control P = 0.012 (Strict set the same). The LFP finding you flagged.",
+  "against": "Part of it is what every contact shares at the moment of the DS. With each event's median over all contacts taken out (that removes whatever the reference adds, and also any field spread over the whole probe), it is weaker: trend P = 0.022 (Strict set 0.072), PTEN against control P = 0.055 (0.14). The LFP also carries activity from farther away (CA1 above), so the track matters. m1 and m3 sit with the controls.",
+  "test": "The same on the CSD (nothing shared or from far away is in it); a reference electrode placed the same way in every mouse; track histology.",
+  "band_u": [
+   -0.6,
+   -0.4
+  ]
+ },
+ {
+  "id": "laminar|source_over_sink_cv|v6||all",
+  "contrast": "KO_dose_all",
+  "title": "The source-to-sink ratio varies more from event to event with knockout",
+  "plain": "How large the source is for a given sink changes more from one dentate spike to the next the higher the knockout.",
+  "how": "Every event. Per event: the source between the blades over the sink at the main-sink rows. Per recording: CV over events. Contrast: rank correlation with % knockout, all mice.",
+  "ylabel": "Source over sink, event to event\n(CV over events)",
+  "why": "All mice rho +0.64 (P = 0.008; Strict set P = 0.002). PTEN against control P = 0.016.",
+  "against": "m22 (control, 8.1) and m3 (IED+, 3.7) are off the scale. A CV of a ratio is touchy when the sink is small. Tracks the year of recording (rho −0.54).",
+  "test": "Spread measured robustly (interquartile range over median); planned."
+ },
+ {
+  "id": "timing|iei_cv2|v6||all",
+  "contrast": "KO_dose_PTEN",
+  "title": "No longer under 0.05 in run 5. Within PTEN, the timing of events gets more irregular with knockout",
+  "plain": "Two intervals in a row differ more from each other the higher the knockout within PTEN mice.",
+  "how": "Every event. Per pair of successive intervals: CV2 = 2 |a − b| / (a + b). Per recording: mean (1 = as irregular as a random process). Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "Irregularity of successive intervals\n(CV2, mean)",
+  "why": "Within PTEN rho +0.65 (P = 0.067; Strict set P = 0.006). Run 4: rho +0.82, P = 0.011.",
+  "against": "Under 0.05 only on the Strict set now. Controls span 0.98 to 1.13; PTEN against control P = 0.92. m7 (1.26) is the highest of all.",
+  "test": "A planned test within PTEN in new mice."
+ },
+ {
+  "id": "structure|overlap_eig2|v6||overlap",
+  "contrast": "KO_dose_PTEN",
+  "title": "Within PTEN, events split less cleanly into two kinds the higher the knockout",
+  "plain": "A score of how cleanly a recording's events fall into two different depth patterns falls with knockout within PTEN.",
+  "how": "Every event. Per pair of events: how much their sinks overlap in depth. The second eigenvalue of that matrix (normalized) is near 1 when the events fall into two clean groups and near 0 when they are one group. No classifier. Contrast: rank correlation with % knockout within PTEN.",
+  "ylabel": "How cleanly events split in two\n(second eigenvalue, 0 to 1)",
+  "why": "Within PTEN rho −0.83 (P = 0.015; Strict set P = 0.011). IED+ against IED− P = 0.036.",
+  "against": "m61 (control, 0.55) is the cleanest of all, other controls are as low as IED+. It depends on how many events a recording has.",
+  "test": "The same score from the same number of events per mouse."
+ },
+ {
+  "id": "waveform|sink_fwhm_cv|v6||all",
+  "contrast": "lowKO_vs_CTL",
+  "title": "No longer under 0.05 in run 5. Sink duration varies more from event to event in low-knockout mice",
+  "plain": "In low-knockout PTEN mice (under 10%), the duration of the sink changes more from one event to the next than in every control.",
+  "how": "Every event. Per event: the sink at the main-sink rows and its full width at half its peak (ms). Per recording: CV over events. Contrast: knockout under 10% against control.",
+  "ylabel": "Sink duration, event to event\n(CV over events)",
+  "why": "Low knockout against control P = 0.12 (Strict set P = 0.27). Run 4: every low-knockout value above every control, P = 0.017.",
+  "against": "Three low-knockout mice. High-knockout mice are like controls, so it was never a dose effect.",
+  "test": "Planned in new low-knockout mice."
+ },
+ {
+  "id": "timing|minute_cv|v6||all",
+  "contrast": "IEDpos_vs_IEDneg",
+  "title": "IED+ mice produce events at a steadier pace than IED− mice",
+  "plain": "The number of events per minute changes less over the recording in IED+ mice than in IED− mice.",
+  "how": "Every event. Per recording: events per minute, minute by minute, and its CV. Contrast: IED+ against IED−.",
+  "ylabel": "Events per minute, minute to minute\n(CV)",
+  "why": "P = 0.032 (Strict set P = 0.016).",
+  "against": "IED+ mice have more events (rho with event count −0.67), which steadies a per-minute count by itself.",
+  "test": "The same from the same number of events (subsampled)."
+ },
+ {
+  "id": "timing|size_vs_iei_next_rho|v6||all",
+  "contrast": "IEDneg_vs_CTL",
+  "title": "In controls a large event is followed by a longer wait; not in IED− mice",
+  "plain": "In controls, the larger a dentate spike's sink, the longer the wait to the next one (a negative rank correlation here means that); in IED− mice there is no such link.",
+  "how": "Every event. Per recording: rank correlation over events of the sink size with the interval to the next event. Contrast: IED− against control.",
+  "ylabel": "Sink size against the next interval\n(rank correlation)",
+  "why": "IED− against control P = 0.024 (Strict set P = 0.16; run 4 P = 0.012). PTEN against control P = 0.055.",
+  "against": "Not on the Strict set. Tracks the year of recording (rho −0.47).",
+  "test": "Planned in new mice."
+ }
+]

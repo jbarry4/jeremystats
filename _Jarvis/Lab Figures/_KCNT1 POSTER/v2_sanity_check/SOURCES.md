@@ -561,3 +561,23 @@ That gives 8 somata per group, for both blades. Then:
 
 1. **The dividers are new.** Say if any should go; each is one line in `build_v10.py` (`divider(...)`), or two in `fig_behavior.py`.
 2. **The spectrogram depths changed with their number.** They are now CSC 7, 17, 27, 37, 47 and 57; v9 used 4, 12 … 60.
+
+
+# v11 (2026-11-27): the notes on v10 (final polish)
+
+v11 answers the seven notes left on `KCNT1_poster_v10.pptx`. Those notes were never saved into the v10 file; they were read from the copy open in PowerPoint, which was left open and unsaved. v10 is untouched.
+
+- Scripts: `code/v11/`. Figures: `v11_assets/`.
+- **Build:** `python code/v11/build_v11.py KCNT1_poster_v4.pptx v11_assets KCNT1_poster_v11.pptx code/v11/data/measure_v11.json`. It reproduces the shipped deck byte for byte, and all 15 figures regenerate pixel-identically.
+
+| Where | Note | What v11 does |
+|---|---|---|
+| Header | "be much more efficient with the real estate" | The two left logos sit side by side instead of stacked. The title is 66 pt (was 54) and fills the width they leave. The authors are one line and the three affiliations one line (16 pt). The band is 3.32 in (was 3.72), so every column starts 0.4 in higher. That room went to a taller events figure (6.96 in), larger acknowledgments (18 pt), and some extra space around the conclusions. |
+| f–I | "the WT Het traces have been enlarged but not the WT Hom" | The Hom row's traces are 1.2× larger and a pixel bolder, with their own scale bar. The caption now says "traces at each row's scale". |
+| Circuit | "the arrow near CA3 ... slightly off" | The mossy fibre's own curve now ends in its arrowhead, running level into CA3. v10 drew a separate straight arrow beside the curve's end. |
+| Methods, laminar recording | "the traces are lame ... make them look cooler" | Each trace is in its layer's colour, as in E: CA1 green, the upper blade red, the hilus amber, the lower blade pink. Each region sits on a faint band of its colour. |
+| E, the two bottom graphs | "feels ... clunky" | <ul><li>The unit's rate is one smooth amber area (spikes smoothed with a 0.08 s Gaussian) instead of 0.25 s blocks.</li><li>The masked stretch is a plain soft band with an italic note: no hatching, no box.</li><li>The stage bands now run unbroken through both graphs and the gap between them.</li><li>The \|CSD\| graph has faint level lines at 10× and 100×.</li></ul> |
+| F | "some sort of distinction between the top and bottom summary" | Each summary sits on its own grey card (the baseline column's grey), with a clear gap between them. The top panel has its own light-axis labels. |
+| Dividers | "these faint borders are awesome" | Kept. |
+
+**Note.** The behavior figure's source tables moved on 11-27 into `KCNT1 POSTER/Poster Resources/Behavior/Archive/`. `fig_behavior.py` (v11) looks there when they are not at the old place. The figure itself is unchanged.

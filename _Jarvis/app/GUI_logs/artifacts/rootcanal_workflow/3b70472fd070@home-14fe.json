@@ -1,0 +1,170 @@
+{
+  "_at": {
+    "added": "2026-11-27T22:15:47.234510+00:00",
+    "deleted": "2026-11-27T22:15:49.424744+00:00",
+    "id": "2026-11-27T22:15:47.234510+00:00",
+    "kind": "2026-11-27T22:15:47.234510+00:00",
+    "name": "2026-11-27T22:15:47.234510+00:00",
+    "nickname": "2026-11-27T22:15:47.234510+00:00",
+    "schema": "2026-11-27T22:15:47.234510+00:00",
+    "subject": "2026-11-27T22:15:47.234510+00:00",
+    "subject_key": "2026-11-27T22:15:47.234510+00:00",
+    "version": "2026-11-27T22:15:49.424744+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "0cfadb875818": [
+        "set",
+        "2026-11-27T22:15:49.424744+00:00"
+      ],
+      "d1249c0b4cb0": [
+        "set",
+        "2026-11-27T22:15:48.612503+00:00"
+      ],
+      "fb6a45362a1c": [
+        "set",
+        "2026-11-27T22:15:47.234510+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-27T22:15:49.424744+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-27T17:15:47-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Homebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "3b70472fd070",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 KCNT1 prelim Ambiguous Halo set (Optimized Parameters/Snap; PTEN P-spike border)",
+  "nickname": "KCNT1 prelim Ambiguous Halo set (Optimized Parameters/Snap; PTEN P-spike border)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 KCNT1 prelim Ambiguous Halo set (Optimized Parameters/Snap; PTEN P-spike border)",
+    "workflow_key": "9f4fc76c8f264a349434a34829e53e89"
+  },
+  "subject_key": "rootcanal_workflow|9f4fc76c8f264a349434a34829e53e89",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:47-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "4dcbbec6f883",
+      "id": "fb6a45362a1c",
+      "inputs": [],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-27T17:15:47-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:48-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "859cb673e41a",
+      "id": "d1249c0b4cb0",
+      "inputs": [
+        {
+          "artifact_id": "39840b662391",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "da17cac45862",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2999,
+        "grace": null,
+        "kept": 404,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:49-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "844c4edd5bc6",
+      "id": "0cfadb875818",
+      "inputs": [
+        {
+          "artifact_id": "39840b662391",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "da17cac45862",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2999,
+        "grace": null,
+        "kept": 108,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "note": "Halo applied (reach 2\u00d7, margin 1.5\u00d7) to the run of v2",
+      "params": {
+        "halo": {
+          "margin": 1.5,
+          "reach": 2.0
+        },
+        "kind": "ambiguous"
+      },
+      "params_hash": "148ab3a4eff1",
+      "v": 3
+    }
+  ]
+}

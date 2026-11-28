@@ -9,7 +9,7 @@ Built 2026-11-25. Files here:
   Poster Resources/          what you supplied (old posters, papers, behavior figure, seizure figure)
   Video/                     "Watching a seizure spread", a standalone video of mouse 459's seizure for the 2026
                              KCNT1 Family & Professional Conference: 1080p MP4, a thumbnail, every word on screen
-                             with its time. _v2 (2026-11-27) is the one to show: 4:42, an original score and sound
+                             with its time. _v2 (2026-11-27) is the one to show: 4:46, an original score and sound
                              effects, this poster's colours, the cells drawn into their layers, the whole seizure at a
                              glance before its steps, the loop as a map, the spread across the brain step by step.
                              _v1 (2026-11-26) is the silent 3:13 first cut. Made from Seahorse by
@@ -106,3 +106,7 @@ Later versions
          granule cells (somata found in the lab's drawing), smoother highlights in E, F's summaries named by small copies of
          their rows instead of arrows, D level with C. Figures in v10_assets/, scripts in code/v10/, notes in
          v2_sanity_check/SOURCES.md (v10 section)
+  v11    v10 with its final notes answered: a slimmer header (logos side by side, larger title), Hom traces enlarged
+         in the f-I matrix, the mossy fibre's arrow on its curve, layer-coloured laminar traces, smoother E rate and
+         zone graphs on unbroken stage bands, F's summaries on separate cards. Figures in v11_assets/, scripts in
+         code/v11/, notes in v2_sanity_check/SOURCES.md (v11 section)

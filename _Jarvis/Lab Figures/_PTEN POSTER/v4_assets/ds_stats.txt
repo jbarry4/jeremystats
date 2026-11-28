@@ -1,0 +1,18 @@
+sink: IED groups [(0, 1, 0.0296), (0, 2, 0.5143), (1, 2, 0.0635)]; KO groups [(0, 1, 0.0541), (0, 2, 0.799), (1, 2, 0.1412)]; PTEN rho +0.27 P 0.493; all rho -0.13 P 0.604
+fast power at standard sink: IED groups [(0, 1, 0.2291), (0, 2, 0.0018), (1, 2, 0.014)]; KO groups [(0, 1, 0.7639), (0, 2, 0.0513), (1, 2, 0.1667)]; PTEN rho +0.63 P 0.0752; all rho +0.54 P 0.0318
+LFP fast gain ('upper', 'MML'): [(0, 1, 0.00111), (0, 2, 0.00206), (1, 2, 0.00048)]
+LFP fast gain ('upper', 'OML'): [(0, 1, 0.02599), (0, 2, 0.001), (1, 2, 0.00062)]
+LFP fast gain ('lower', 'MML'): [(0, 1, 2e-05), (0, 2, 4e-05), (1, 2, 0.0)]
+LFP fast gain ('lower', 'OML'): [(0, 1, 0.00321), (0, 2, 0.00059), (1, 2, 0.00036)]
+rates: highest control 0.075/min; IED+ BT+IED {'m13': 3.65, 'm28': 2.06, 'm3': 0.88, 'm5': 1.18, 'm34': 1.06}
+ROC % knockout: AUC 0.900 (9 PTEN mice)
+ROC DS fast power: AUC 1.000 (9 PTEN mice)
+ROC Held-out models: AUC 0.900 (9 PTEN mice)
+CSD fast gain ('upper', 'MML'): WT DS vs IED+ DS P 0.43; WT vs BT 0.02; WT vs IED 0.0008; DS->BT paired 0.0009; DS->IED paired 0.01
+   centre ('upper', 'MML'): WT DS vs IED+ DS P 0.48 (medians 219 vs 232 Hz)
+CSD fast gain ('upper', 'OML'): WT DS vs IED+ DS P 0.27; WT vs BT 0.05; WT vs IED 0.02; DS->BT paired 0.02; DS->IED paired 0.01
+   centre ('upper', 'OML'): WT DS vs IED+ DS P 0.03 (medians 221 vs 256 Hz)
+CSD fast gain ('lower', 'MML'): WT DS vs IED+ DS P 0.02; WT vs BT 8e-05; WT vs IED 7e-05; DS->BT paired 0.01; DS->IED paired 0.02
+   centre ('lower', 'MML'): WT DS vs IED+ DS P 0.004 (medians 227 vs 280 Hz)
+CSD fast gain ('lower', 'OML'): WT DS vs IED+ DS P 0.12; WT vs BT 0.002; WT vs IED 0.005; DS->BT paired 0.02; DS->IED paired 0.04
+   centre ('lower', 'OML'): WT DS vs IED+ DS P 0.002 (medians 230 vs 285 Hz)

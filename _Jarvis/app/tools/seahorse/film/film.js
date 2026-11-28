@@ -168,31 +168,57 @@ function makeStops() {
    film waits for the stop to be set up before it moves on. */
 function go(i) {
   S.slice.pos = -999;
+  cutNow = '';
   SH._do.storyGo(i);
   F.waitStory = true;
 }
 
 /* ------------------------------------------------------------ section and camera */
-const AX = { N: [1, 0, 0], U: [0, 0, 1], V: [0, 1, 0] };
+/* the section is seen from the front, as the 3D cut face is, so one can become the other: ML runs right to left */
+const AX = { N: [1, 0, 0], U: [0, 0, -1], V: [0, 1, 0] };
 function setSlice(fr) {
-  S.slice.C = fr.C.slice(); S.slice.k = fr.k;
+  S.slice.C = fr.C.slice(); S.slice.k = fr.k; S.slice.custom = { N: AX.N, U: AX.U, V: AX.V };
   S.stage.setSlice({ N: AX.N, U: AX.U, V: AX.V, C: fr.C, k: fr.k });
+}
+const mixFr = (a, b, u) => ({ C: lerp3(a.C, b.C, u), k: Math.exp(lerp(Math.log(a.k), Math.log(b.k), u)) });
+/* the cut through the model: a coronal plane at pos (um), or none; set only when it moves */
+let cutNow = '';
+function cutAt(pos) {
+  const key = pos == null ? 'none' : String(Math.round(pos));
+  if (key === cutNow) return;
+  cutNow = key;
+  S.stage.setCut(pos == null ? { kind: 'none' } : { kind: 'coronal', pos: Math.round(pos) });
 }
 /* the probe line at x = xf * width, depths dv0..dv1 between screen rows y0..y1 */
 function framing(xf, y0, y1, dv0, dv1, ml) {
   const g = P().geo;
   const k = (dv1 - dv0) / (y1 - y0);
-  return { C: [g.ap, (dv0 + dv1) / 2 + (VH / 2 - (y0 + y1) / 2) * k, (ml || g.ml) + (VW / 2 - xf * VW) * k], k };
+  return { C: [g.ap, (dv0 + dv1) / 2 + (VH / 2 - (y0 + y1) / 2) * k, (ml || g.ml) + AX.U[2] * (VW / 2 - xf * VW) * k], k };
 }
 const toPx = (ap, dv, ml) => S.stage.ccfToSlicePx([ap, dv, ml]);
 function camAt(pos, target) { S.stage.setCam({ pos, target }, 0); }
 /* a camera dir turned about the vertical */
 function yaw(dir, deg) { const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return [dir[0] * c + dir[2] * s, dir[1], -dir[0] * s + dir[2] * c]; }
-function look(target, dir, dist, shiftRight, shiftUp) {
+function lookCam(target, dir, dist, shiftRight, shiftUp) {
   const d = norm(dir), fwd = d.map((x) => -x), right = norm(cross(fwd, [0, 1, 0])), up = cross(right, fwd);
   const t = add(add(target, right, -(shiftRight || 0)), up, -(shiftUp || 0));
-  camAt(add(t, d, dist), t);
+  return { pos: add(t, d, dist), target: t };
 }
+function look(target, dir, dist, shiftRight, shiftUp) { const c = lookCam(target, dir, dist, shiftRight, shiftUp); camAt(c.pos, c.target); }
+/* a camera between two others: its target moves straight, but it swings round the target and scales its distance,
+   so a move between two views never cuts in through the model */
+const lerpCam = (a, b, u) => {
+  const tg = lerp3(a.target, b.target, u), da = add(a.pos, a.target, -1), db = add(b.pos, b.target, -1);
+  const la = Math.hypot(...da) || 1e-6, lb = Math.hypot(...db) || 1e-6;
+  return { pos: add(tg, norm(lerp3(norm(da), norm(db), u)), Math.exp(lerp(Math.log(la), Math.log(lb), u))), target: tg };
+};
+/* the 3D camera that sees the cut face exactly as the section view frames it: a plane square to the
+   view looks the same in perspective (35 degrees top to bottom) as in the section's orthographic view */
+const TV = Math.tan(17.5 * Math.PI / 180);
+function camOnSection(fr) { const t = W3(fr.C[0], fr.C[1], fr.C[2]), d = VH * fr.k / 1000 / (2 * TV); return { pos: [t[0], t[1], t[2] - d], target: t }; }
+/* every scene's camera starts where the last one left it, and eases into its own path over bl s */
+let camStart = null;
+function camGo(t, cam, bl) { const c = camStart && t < bl ? lerpCam(camStart, cam, ease(t / bl)) : cam; camAt(c.pos, c.target); }
 const proj = (w) => S.stage.project(w);
 /* a camera that holds each view and glides to the next: keys [[t, target, dir, dist]], each glide g s long, ending at its key */
 function camKeys(t, keys, g) {
@@ -205,7 +231,7 @@ function camKeys(t, keys, g) {
     const u = ease((t - (nx[0] - g)) / g);
     tgt = lerp3(tgt, nx[1], u); dir = norm(lerp3(dir, norm(nx[2]), u)); dist = Math.exp(lerp(Math.log(dist), Math.log(nx[3]), u));
   }
-  look(tgt, dir, dist);
+  return lookCam(tgt, dir, dist);
 }
 
 /* ------------------------------------------------------------ the overlay */
@@ -712,23 +738,29 @@ const scene = (o) => SC.push(o);
 const frProbe = (xf) => { const g = P().geo; return framing(xf, 104, 548, g.top - 40, g.bottom + 40); };
 const frDentate = (xf) => { const g = P().geo, z = g.zones; return framing(xf, 112, 548, z.supd.dv0 - 140, z.infd.dv1 + 90); };
 const brainC = () => [0, 0.25, 0.35];
+/* where the probe sits on screen in the sections (the cells' and the probe's), and in the spread */
+const XS = 0.5, XSP = 0.27;
+const frSec = () => frProbe(XS);
+const hideCells = () => cellsH().forEach((c) => S.stage.setVisible('cells', c.key, false));
 const BRAIN_DIR = [0.46, 0.76, 0.48];
 
 scene({ name: 'title', dur: 6.5, scrim: 0, mood: 'open',
   card: ['Title card', 'A KCNT1 SEIZURE, RECORDED', 'Watching a seizure spread', 'Inside the hippocampus of a mouse with a KCNT1 variant', 'Epilepsy Cognition Development Lab, University of Vermont'],
-  enter() { go(FS.brain); },
+  enter() { go(FS.hpf); F.after = hideCells; },
   update(t) {
+    if (P().stop.key === 'film_hpf') cutAt(null);
     look(brainC(), yaw(BRAIN_DIR, -14 + F.t * 1.1), 22, 4.0, 0.3);
     show(el.black, 1 - smooth(t / 2.2));
     show(el.title, fade(t, 1.0, 6.0, 0.9, 0.7), 12);
   },
   exit() { show(el.title, 0); show(el.black, 0); },
 });
-scene({ name: 'brain', dur: 9, chap: 1, tag: 'atlas', mood: 'open', sfx: [[6.4, 'whoosh', { gain: 0.8, dur: 2.4 }]],
-  enter() { if (P().stop.key !== 'film_brain') go(FS.brain); },
+scene({ name: 'brain', dur: 9, chap: 1, tag: 'atlas', mood: 'open', sfx: [[7.8, 'whoosh', { gain: 0.8, dur: 2.4 }]],
+  enter() { if (P().stop.key !== 'film_hpf') { go(FS.hpf); F.after = hideCells; } },
   cap: [[0.3, 4.3, 'This is a mouse brain, about a centimeter long.', 'A 3D reconstruction from the Allen Mouse Brain Atlas'],
         [4.6, 8.8, 'Inside it, in color: the hippocampus, one on each side.']],
   update(t) {
+    cutAt(null);
     const u = smooth((t - 0.0) / 3.0), z = ease((t - 6.6) / 2.4);
     const dir = yaw(BRAIN_DIR, -14 + F.t * 1.1);
     const hip = hpfW('DG') || [2.4, 1.2, 1.4];
@@ -742,15 +774,16 @@ scene({ name: 'brain', dur: 9, chap: 1, tag: 'atlas', mood: 'open', sfx: [[6.4, 
   },
 });
 const HPF_DIR = [0.62, 0.48, -0.62];
-scene({ name: 'hippo', dur: 11, chap: 2, tag: 'atlas', xin: 0.9, mood: 'open',
+scene({ name: 'hippo', dur: 11, chap: 2, tag: 'atlas', mood: 'open', sfx: [[0.5, 'slide', { gain: 0.5, dur: 3.1 }]],
   cap: [[0.5, 5.4, 'The hippocampus helps us form memories.', 'Its name means “seahorse,” after its curled shape.'],
         [5.7, 10.8, 'It is also one of the brain\'s most seizure-prone circuits.']],
-  enter() { go(FS.hpf); },
   update(t) {
     const hip = hpfW('DG') || [2.4, 1.2, 1.4];
     const cut = W3(P().geo.ap, 2300, P().geo.ml + 300);
     const u = ease(t / 11);
-    look(lerp3(lerp3(brainC(), hip, 0.75), lerp3(hip, cut, 0.55), u), yaw(HPF_DIR, lerp(-6, 12, u)), lerp(12.5, 8.6, u));
+    camGo(t, lookCam(lerp3(lerp3(brainC(), hip, 0.75), lerp3(hip, cut, 0.55), u), yaw(HPF_DIR, lerp(-6, 12, u)), lerp(12.5, 8.6, u)), 2.4);
+    // the brain is sliced away, front to back, down to the plane of the probe
+    cutAt(t < 0.5 ? null : lerp(3400, P().geo.ap, ease((t - 0.5) / 3.0)));
   },
   post(c, t) {
     const a = fade(t, 5.6, 11.2, 0.7, 0.3), g = P().geo;
@@ -787,13 +820,13 @@ function probeAt(depthU, ribbon) {
   if (ribbon) pr.ribbon = Array.from({ length: 64 }, (_, i) => { const l = lamByCode(lamAt(g.ap, tipF - first - i * pitch, g.ml)); return l ? lamColor(l.key) : '#777777'; });
   S.stage.setProbe(pr);
 }
-scene({ name: 'probe3d', dur: 9, chap: 4, tag: 'atlas', xin: 0.8, mood: 'method', sfx: [[0.9, 'slide', { gain: 0.55, dur: 4.4 }]],
+scene({ name: 'probe3d', dur: 9, chap: 4, tag: 'atlas', mood: 'method', sfx: [[1.2, 'whoosh', { gain: 0.6, dur: 2.4 }], [0.9, 'slide', { gain: 0.55, dur: 4.4 }]],
   enter() { if (P().stop.key !== 'film_hpf') go(FS.hpf); },
   cap: [[0.5, 8.8, 'To listen in, we lower a thin probe with 64 recording sites through the hippocampus.', 'A silicon probe, in an awake mouse']],
   update(t) {
     const g = P().geo, mid = W3(g.ap, (g.top + g.bottom) / 2 - 150, g.ml);
-    const u = ease(t / 9);
-    look(add(mid, [0.25 * u, 0, 0]), norm(lerp3(norm(PROBE_DIR0), norm(PROBE_DIR1), u)), lerp(6.6, 4.4, u), 0.0, 0.0);
+    // from an angle onto the face, ending square on it, framed as the section will be: the 3D becomes the section
+    camGo(t, lerpCam(lookCam(mid, PROBE_DIR0, 6.6), camOnSection(frSec()), ease((t - 1.0) / 6.8)), 2.4);
     probeAt(ease((t - 0.6) / 4.4), t > 5.4);
   },
   post(c, t) {
@@ -810,10 +843,10 @@ scene({ name: 'probe3d', dur: 9, chap: 4, tag: 'atlas', xin: 0.8, mood: 'method'
   },
   exit() { probeSet = null; S.stage.setProbe(null); },
 });
-scene({ name: 'probe2d', dur: 8.5, chap: 4, tag: 'probe', xin: 1.0, mood: 'method',
+scene({ name: 'probe2d', dur: 8.5, chap: 4, tag: 'probe', xin: 0.45, quiet: true, mood: 'method',
   cap: [[0.6, 8.3, 'Each site hears its own layer, from CA1 at the top down through the dentate gyrus.']],
   enter() { go(FS.probe); },
-  update() { setSlice(frProbe(0.42)); },
+  update() { setSlice(frSec()); },
   post(c, t) { drawShank(c, { alpha: fade(t, 0.3, 99, 0.8), size: 17, dgNames: true }); },
 });
 /* cells and layers: the same section and the same framing, with real traced neurons drawn into their layers */
@@ -867,7 +900,7 @@ scene({ name: 'cells2d', dur: 21, chap: 5, tag: 'cells', mood: 'method',
   sfx: [[0.5, 'bloom', { gain: 0.5, pitch: 0 }], [5.4, 'bloom', { gain: 0.5, pitch: 4 }], [11.3, 'bloom', { gain: 0.5, pitch: 7 }]],
   enter() { if (P().stop.key !== 'film_probe') go(FS.probe); CELLS2 = null; },
   update(t) {
-    setSlice(frProbe(0.42));
+    setSlice(frSec());
     if (!CELLS2 && P().stop.key === 'film_probe') placeCells();
     const k1 = fade(t, CELL_STEPS.gc, 99, 1.2), k2 = fade(t, CELL_STEPS.hipp, 99, 1.2), k3 = fade(t, CELL_STEPS.ca, 99, 1.2);
     const pulse = new Map(), on = { ca1sp: k3, gcl1: k1, gcl2: k1, hil: k2, ca3sp: k3 };
@@ -891,18 +924,18 @@ scene({ name: 'cells2d', dur: 21, chap: 5, tag: 'cells', mood: 'method',
     // names
     const g = P().geo, at = (x) => toPx(g.ap, x.dv, x.ml);
     const nA = (from, k) => fade(t, from + 0.8, 99, 0.6) * (0.55 + 0.45 * (k - 0.45) / 0.55);
-    if (L.gcUp[0]) { const q = at(L.gcUp[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.up, dx: -64, dy: -40, sub: 'upper blade' }); }
-    if (L.gcLow[0]) { const q = at(L.gcLow[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.low, dx: -70, dy: 40, sub: 'lower blade' }); }
-    if (L.hipp) { const q = at(L.hipp); pin(c, q[0], q[1], 'Hilar brake cell', { alpha: nA(CELL_STEPS.hipp, kHi), color: C.hil, dx: 120, dy: 14, sub: 'an inhibitory interneuron' }); }
-    if (L.ca3) { const q = at(L.ca3); pin(c, q[0], q[1], 'CA3 pyramidal cell', { alpha: nA(CELL_STEPS.ca, kCa), color: C.ca3, dx: 58, dy: -64 }); }
-    if (L.ca1) { const q = at(L.ca1); pin(c, q[0], q[1], 'CA1 pyramidal cell', { alpha: nA(CELL_STEPS.ca + 1.1, kCa), color: C.ca1, dx: -60, dy: -34 }); }
+    if (L.gcUp[0]) { const q = at(L.gcUp[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.up, dx: 64, dy: -40, sub: 'upper blade' }); }
+    if (L.gcLow[0]) { const q = at(L.gcLow[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.low, dx: 70, dy: 40, sub: 'lower blade' }); }
+    if (L.hipp) { const q = at(L.hipp); pin(c, q[0], q[1], 'Hilar brake cell', { alpha: nA(CELL_STEPS.hipp, kHi), color: C.hil, dx: -120, dy: 14, sub: 'an inhibitory interneuron' }); }
+    if (L.ca3) { const q = at(L.ca3); pin(c, q[0], q[1], 'CA3 pyramidal cell', { alpha: nA(CELL_STEPS.ca, kCa), color: C.ca3, dx: -58, dy: -64 }); }
+    if (L.ca1) { const q = at(L.ca1); pin(c, q[0], q[1], 'CA1 pyramidal cell', { alpha: nA(CELL_STEPS.ca + 1.1, kCa), color: C.ca1, dx: 60, dy: -34 }); }
   },
   exit() { S.stage.setHighlights({ lam: new Map(), allen: new Map(), pulse: new Map(), dimRest: false }); },
 });
 scene({ name: 'sztitle', dur: 3.6, chap: 6, tag: 'rec', scrim: 0, mood: 'tense', sfx: [[0.05, 'impact', { gain: 0.8 }]],
   card: ['A card', 'MOUSE 459', 'One seizure, recorded', 'Kcnt1 Y777H, two copies · awake · December 6, 2024'],
   enter() { if (P().stop.view !== 'dentate' && P().stop.view !== 'probe') go(FS.dentate); },
-  update(t) { setSlice(frDentate(0.36)); show(el.card, fade(t, 0.0, 3.6, 0.6, 0.6)); },
+  update(t) { setSlice(frSec()); show(el.card, fade(t, 0.0, 3.6, 0.6, 0.6)); },
   exit() { show(el.card, 0); },
 });
 
@@ -1012,7 +1045,7 @@ scene({ name: 'overview', dur: 16, chap: 6, tag: 'rec', mood: 'tense', xin: 0.6,
         [13.9, 15.8, 'Now let’s take it step by step.']],
   sfx: [[4.0, 'impact', { gain: 1.0 }], [6.25, 'rush', { gain: 0.7, dur: 5.2 }], [11.4, 'release', { gain: 0.7 }]],
   enter() { ensureWall(); },
-  update() { setSlice(frDentate(0.36)); },
+  update() { setSlice(frSec()); },
   post(c, t) {
     OVW = [OV.t0, OV.t1];
     const a = fade(t, 0, 99, 0.5), tt = headAt(t, OVH);
@@ -1051,7 +1084,7 @@ scene({ name: 'preictal', dur: 19.5, chap: 6, tag: 'rec', mood: 'tense',
     add(PRE.onset[0] + 0.1, 'impact', { gain: 0.55 });
   },
   enter() { ensureWall(); },
-  update() { setSlice(frDentate(0.36)); },
+  update() { setSlice(frSec()); },
   post(c, t) {
     const [s0, s1] = PRE.sweep, [b0, b1] = PRE.brake, [o0] = PRE.onset, [z0, z1] = PRE.zoom;
     // the timeline zooms in on its first 18 seconds: the run-up and the seizure's start
@@ -1125,7 +1158,7 @@ scene({ name: 'spread', dur: 32.5, chap: 7, tag: 'rec', xin: 0.9, mood: 'tense',
     go(FS.spread);
     if (!spreadPic) spreadPic = recordingPicture(SPR.t0, SPR.t1, SPR.x1 - SPR.x0, SPR.y1 - SPR.y0, { trace: 'rgba(240,244,248,0.75)', lw: 1.0 });
   },
-  update() { setSlice(frProbe(0.2)); },
+  update(t) { setSlice(mixFr(frSec(), frProbe(XSP), ease(t / 1.8))); },
   post(c, t) {
     const p = P();
     const sk = stageNow(p.t);
@@ -1333,7 +1366,7 @@ scene({ name: 'loopmap', dur: 35, chap: 8, tag: [[0, 28.3, 'map'], [28.3, 35, 'h
     add(LAPS.t0, 'swell', { gain: 0.6, dur: 6.5 });
   },
   enter() { go(FS.hpf); },
-  update() { },
+  update() { if (P().stop.key === 'film_hpf') { cutAt(P().geo.ap); const c = camOnSection(frProbe(XSP)); camAt(c.pos, c.target); } },
   post(c, t) { drawMap(c, t, fade(t, 0, 99, 0.6)); },
 });
 /* the same loop on the hippocampus itself, one hop at a time, then lap after lap */
@@ -1356,8 +1389,6 @@ scene({ name: 'loop3d', dur: 14, chap: 8, tag: 'hyp', xin: 1.0, mood: 'loop',
     if (P().stop.key !== 'film_hpf') return;
     if (!loopFx.setup) {
       loopFx.setup = true;
-      cellsH().forEach((c) => S.stage.setVisible('cells', c.key, false));
-      S.stage.focus({ cells: new Set(), regions: new Set(LOOP_REG), layers: new Set() });
     }
     const st = S.stage, fire = (id, at, fn) => { if (t >= at && !loopFx.fired.has(id)) { loopFx.fired.add(id); fn(); } };
     const hop = ([a, b], col, ms, size) => { const A = loopPt(a), Bp = loopPt(b); if (A && Bp) st.volley(A, Bp, col, ms, { size, lift: 0.55 }); };
@@ -1376,10 +1407,6 @@ scene({ name: 'loop3d', dur: 14, chap: 8, tag: 'hyp', xin: 1.0, mood: 'loop',
   post(c, t) {
     const lab = [['ENTm', 'Entorhinal cortex', C.ec, -36, 36], ['DG', 'Dentate gyrus', C.gc, 34, -36], ['CA3', 'CA3', C.ca3, 34, 32], ['CA1', 'CA1', C.ca1, -28, -34], ['SUB', 'Subiculum', C.sub, -34, -32]];
     lab.forEach(([k, s, col, dx, dy], i) => pin3(c, loopPt(k), s, { alpha: fade(t, (i ? HOP_T[i - 1] + 0.85 : 0.5), 14.2, 0.5, 0.3), color: col, dx, dy }));
-  },
-  exit() {
-    cellsH().forEach((c) => S.stage.setVisible('cells', c.key, true));
-    S.stage.focus(null); S.stage.setHeat(null);
   },
 });
 let camFrom = null;
@@ -1414,21 +1441,24 @@ const gKeys = () => {
   ];
 };
 let GKEYS = null;
-scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', xin: 1.0, mood: 'spread', cap: GCAP,
+scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', mood: 'spread', cap: GCAP,
   sfx: (add) => {
     [GSTEP.neo, GSTEP.other, GSTEP.th, GSTEP.mo, GSTEP.bs].forEach((s, i) => { add(s - 1.0, 'whoosh', { gain: 0.75, dur: 2.0 }); add(s + 0.2, 'bloom', { gain: 0.5, pitch: [3, 10, 8, 5, 7][i], low: true }); });
     for (let k = 0; k < 16; k++) add(GSTEP.mo + 1.2 + k / 2.0, 'thud', { gain: 0.3 + 0.2 * Math.min(1, k / 6) });
     add(GSTEP.bs + 0.6, 'swell', { gain: 0.75, dur: 8.5 });
+    add(1.4, 'whoosh', { gain: 0.7, dur: 2.6 });
   },
-  enter() { gfx = { fired: new Set() }; go(FS.brain); GKEYS = null; },
+  enter() { gfx = { fired: new Set() }; GKEYS = null; if (P().stop.key !== 'film_hpf') go(FS.hpf); },
   update(t) {
-    if (P().stop.key !== 'film_brain') return;
+    if (P().stop.key !== 'film_hpf') return;
     if (!GKEYS) GKEYS = gKeys();
-    camKeys(t, GKEYS, 1.9);
+    camGo(t, camKeys(t, GKEYS, 1.9), 3.0);
+    // the cut sweeps forward, out of the brain: whole again
+    cutAt(t < 3.0 ? lerp(P().geo.ap, 1200, ease(t / 3.0)) : null);
     const st = S.stage, k = (s, d) => smooth((t - s) / (d || 2.5));
     const fire = (id, at, fn) => { if (t >= at && !gfx.fired.has(id)) { gfx.fired.add(id); fn(); } };
     // the hippocampus, seizing all along
-    const hh = 0.35 + 0.15 * Math.sin(t * 5.1) * Math.sin(t * 1.7);
+    const hh = lerp(0.6, 0.35 + 0.15 * Math.sin(t * 5.1) * Math.sin(t * 1.7), smooth(t / 2.5));
     st.setHeat({ DG: hh, CA3: hh, CA2: hh, CA1: hh, SUB: hh * 0.9, ProS: hh * 0.8, ENTm: hh * 0.8 * k(GSTEP.neo - 1), ENTl: hh * 0.8 * k(GSTEP.neo - 1) }, '#ff6a2a');
     const ec = hpfW('ENTl') || hpfW('ENTm');
     // the neocortex: waves out of the entorhinal cortex
@@ -1442,11 +1472,12 @@ scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', xin: 1.0, mood: 'spread
       fire('th' + j, GSTEP.th + 0.8 + d, () => { const th = allenW('TH', 'r'), a = hpfW('SUB') || hpfW('DG'); if (th && a) st.volley(a, th, '#ffb060', 1250, { size: 1.1, lift: 0.3 }); });
       ['SSp', 'MOp', 'ACA', 'VISp'].forEach((n, i) => fire('tc' + n + j, GSTEP.th + 1.9 + d + i * 0.18, () => { const th = allenW('TH', 'r'), b = allenW(n, i % 2 ? 'l' : 'r'); if (th && b) st.volley(th, b, '#ffb060', 1200, { size: 1.0, lift: 0.35 }); }));
     });
-    const cortex = 0.1 + 0.5 * k(GSTEP.neo + 0.8, 4) + 0.15 * k(GSTEP.th + 1.5, 4);
+    const cortex = 0.1 * k(0.5, 2.5) + 0.5 * k(GSTEP.neo + 0.8, 4) + 0.15 * k(GSTEP.th + 1.5, 4);
     const glow = { Isocortex: { color: '#ff7a2f', a: cortex * (t > GSTEP.mo ? 0.75 : 1) } };
     if (t > GSTEP.th) glow.TH = { color: '#ffb35c', a: 0.15 + 0.55 * k(GSTEP.th + 0.6, 3) };
     if (t > GSTEP.bs) { const sb = 0.12 + 0.6 * k(GSTEP.bs + 0.5, 3) * (0.9 + 0.1 * Math.sin(t * 4.4)); glow.MB = { color: '#ffd27a', a: sb }; glow.P = { color: '#ffd27a', a: sb }; glow.MY = { color: '#ffd27a', a: sb }; }
     st.glowBrain(glow);
+    gLast = { glow, heat: hh };
   },
   post(c, t) {
     if (P().stop.key !== 'film_brain') return;
@@ -1472,23 +1503,40 @@ scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', xin: 1.0, mood: 'spread
     pin3(c, allenW('MOp', 'l'), 'Motor cortex', { alpha: a(GSTEP.mo + 1.3, GSTEP.bs + 0.3), color: '#ffd98a', dx: -40, dy: -40 });
     pin3(c, allenW('P', 'r'), 'Brainstem', { alpha: a(GSTEP.bs + 1.0), color: '#ffe3a0', dx: 40, dy: 40 });
   },
+});
+/* back to the hippocampus: the glow dies away, the brain is sliced again, the camera comes square onto the face */
+let gLast = null;
+scene({ name: 'nextpull', dur: 3.6, chap: 10, tag: 'next', mood: 'hope', sfx: [[1.5, 'whoosh', { gain: 0.75, dur: 2.6 }]],
+  enter() { if (P().stop.key !== 'film_hpf') go(FS.hpf); },
+  update(t) {
+    camGo(t, camOnSection(frSec()), 3.4);
+    cutAt(t < 0.3 ? null : lerp(2500, P().geo.ap, ease((t - 0.3) / 2.7)));
+    const k = 1 - smooth(t / 2.6);
+    if (gLast) {
+      const gl = {};
+      Object.entries(gLast.glow).forEach(([n, v]) => { gl[n] = { color: v.color, a: v.a * k }; });
+      S.stage.glowBrain(k > 0.01 ? gl : null);
+      const h = gLast.heat * k;
+      S.stage.setHeat({ DG: h, CA3: h, CA2: h, CA1: h, SUB: h * 0.9, ProS: h * 0.8, ENTm: h * 0.8, ENTl: h * 0.8 }, '#ff6a2a');
+    }
+  },
   exit() { S.stage.glowBrain(null); S.stage.setHeat(null); },
 });
-scene({ name: 'next', dur: 8.6, chap: 10, tag: 'next', xin: 0.9, mood: 'hope',
+scene({ name: 'next', dur: 8.6, chap: 10, tag: 'next', xin: 0.45, quiet: true, mood: 'hope',
   cap: [[0.5, 8.4, 'Our next question: if we pace these brake cells with light, can we keep a stumble from becoming a seizure?']],
   enter() { go(FS.opto); },
-  update() { setSlice(frProbe(0.42)); },
+  update() { setSlice(frSec()); },
   post(c, t) {
     drawShank(c, { alpha: 1, size: 15.5, lit: new Set(['hil']) });
     const g = P().geo, h = g.zones.hil, q = toPx(g.ap, (h.dv0 + h.dv1) / 2 + 10, g.ml + 430);
-    pin(c, q[0], q[1], 'Light on the hilus', { alpha: fade(t, 1.0, 99, 0.6), color: C.next, dx: 120, dy: 92, sub: 'paced at a steady rhythm' });
+    pin(c, q[0], q[1], 'Light on the hilus', { alpha: fade(t, 1.0, 99, 0.6), color: C.next, dx: -130, dy: 92, sub: 'paced at a steady rhythm' });
   },
 });
 scene({ name: 'end', dur: 22, scrim: 0, mood: 'hope',
   card: ['End card', 'SEE YOU IN DENVER', 'Come chat with us', 'at the 2026 KCNT1 Family & Professional Conference', 'December 3–4, 2026 · Grand Hyatt Denver',
     'Scientific Roundtable Dec 3 · Family Conference Dec 4', 'Epilepsy Cognition Development Lab, Larner College of Medicine, University of Vermont',
     '[the conference’s “Rising Higher Together” artwork, from kcnt1epilepsy.org]',
-    'Credits: Recording: Kcnt1 Y777H mouse 459 (two copies), awake, 64-contact silicon probe through CA1 and the dentate gyrus. Beyond the probe: drawn, not recorded (the loop is our hypothesis; the spread across the brain is the textbook). Anatomy: Allen Mouse Brain Common Coordinate Framework (CCFv3). Neuron tracings: Janelia MouseLight and NeuroMorpho.Org. Colors as on our KCNT1 poster. Made with Seahorse.'], sfx: [[-0.1, 'whoosh', { gain: 0.6, dur: 2.0 }], [0.1, 'swell', { gain: 0.5, dur: 6 }]],
+    'Credits: Recording: Kcnt1 Y777H mouse 459 (two copies), awake, 64-contact silicon probe through CA1 and the dentate gyrus. Beyond the probe: drawn, not recorded (the loop is our hypothesis; the spread across the brain is the textbook). Anatomy: Allen Mouse Brain Common Coordinate Framework (CCFv3). Neuron tracings: Janelia MouseLight and NeuroMorpho.Org. Colors as on our KCNT1 poster. Made with Seahorse.'], sfx: [[0.05, 'whoosh', { gain: 0.6, dur: 2.0 }], [0.1, 'swell', { gain: 0.5, dur: 6 }]],
   update(t) {
     show(el.end, fade(t, 0, 99, 1.0));
     show(el.black, smooth((t - 20.2) / 1.7));
@@ -1520,7 +1568,7 @@ F.cues = () => {
   const out = [];
   const addAt = (t, kind, o) => out.push(Object.assign({ t: +t.toFixed(3), kind }, o || {}));
   SC.forEach((s, i) => {
-    if (i && s.xin) addAt(s.t0 - 0.1, 'whoosh', { gain: 0.85, dur: 1.6 + s.xin });
+    if (i && s.xin && !s.quiet) addAt(s.t0 + 0.45 * s.xin, 'whoosh', { gain: 0.85, dur: 1.6 + s.xin });
     const fx = typeof s.sfx === 'function' ? (() => { const l = []; s.sfx((t, k, o) => l.push([t, k, o])); return l; })() : (s.sfx || []);
     fx.forEach(([t, k, o]) => addAt(s.t0 + t, k, o));
   });
@@ -1535,6 +1583,7 @@ F.tick = (t) => {
   F.t = t;
   const sc = sceneAt(t);
   if (F.cur !== sc) {
+    camStart = S.stage.getCam();
     if (F.cur && F.cur.exit) F.cur.exit();
     F.cur = sc;
     if (sc.xin && F.frame > 0) xf = { t0: t, dur: sc.xin };
@@ -1567,6 +1616,8 @@ F.post = (t) => {
 };
 F.init = async (assets) => {
   build(assets);
+  // no traced cells in the 3D: the cells have their own chapter, drawn on the section
+  hideCells();
   // no drawn pathways (the perforant and temporoammonic bundles): the film draws its own arcs. In memory only, not saved.
   S.paths = false;
   makeStops();

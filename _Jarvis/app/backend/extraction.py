@@ -39,7 +39,11 @@ import numpy as np
 
 KIND = "extraction"
 SCHEMA = "extraction.ds/1"
-ROOMS = (("dentate_spike", "Dentate Spike"),)
+# A second room for KCNT1 (2026-11-27, the preliminary run): its sets are kept
+# apart from PTEN's, so a new version of one project's room never mixes in the
+# other's recordings.
+ROOMS = (("dentate_spike", "Dentate Spike"),
+         ("dentate_spike_kcnt1", "Dentate Spike KCNT1"))
 KO_KEY = "extraction_ko"
 
 # The %KO of each PTEN mouse, "JB % hits" on the lab's sheet (sent

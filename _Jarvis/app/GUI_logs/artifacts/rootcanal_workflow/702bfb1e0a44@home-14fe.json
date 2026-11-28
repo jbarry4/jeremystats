@@ -1,0 +1,121 @@
+{
+  "_at": {
+    "added": "2026-11-27T22:15:50.388270+00:00",
+    "deleted": "2026-11-27T22:15:51.802469+00:00",
+    "id": "2026-11-27T22:15:50.388270+00:00",
+    "kind": "2026-11-27T22:15:50.388270+00:00",
+    "name": "2026-11-27T22:15:50.388270+00:00",
+    "nickname": "2026-11-27T22:15:50.388270+00:00",
+    "schema": "2026-11-27T22:15:50.388270+00:00",
+    "subject": "2026-11-27T22:15:50.388270+00:00",
+    "subject_key": "2026-11-27T22:15:50.388270+00:00",
+    "version": "2026-11-27T22:15:51.802469+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "697ddebd43c6": [
+        "set",
+        "2026-11-27T22:15:51.802469+00:00"
+      ],
+      "96c8ca93e5bb": [
+        "set",
+        "2026-11-27T22:15:50.388270+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-27T22:15:51.802469+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-27T17:15:50-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Homebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "702bfb1e0a44",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 KCNT1 prelim Ambiguous Strict set (Optimized Parameters/Snap/10% Grace; PTEN P-spike border)",
+  "nickname": "KCNT1 prelim Ambiguous Strict set (Optimized Parameters/Snap/10% Grace; PTEN P-spike border)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 KCNT1 prelim Ambiguous Strict set (Optimized Parameters/Snap/10% Grace; PTEN P-spike border)",
+    "workflow_key": "d129b752632546439842a273feeaa00e"
+  },
+  "subject_key": "rootcanal_workflow|d129b752632546439842a273feeaa00e",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:50-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "5305fe1ebe26",
+      "id": "96c8ca93e5bb",
+      "inputs": [],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-27T17:15:50-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:15:51-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "471e785d",
+      "digest": "146f26159184",
+      "id": "697ddebd43c6",
+      "inputs": [
+        {
+          "artifact_id": "39840b662391",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "7fe4bbb98833",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        },
+        {
+          "artifact_id": "4e5ce690d4b1",
+          "kind": "rootcanal_workflow",
+          "version": 2
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2999,
+        "grace": null,
+        "kept": 539,
+        "kind": "ambiguous",
+        "ran": true,
+        "target": "KCNT1 prelim WT, Het and Hom Baseline (Optimized parameters)"
+      },
+      "note": "Run",
+      "params": {
+        "grace": null,
+        "kind": "ambiguous"
+      },
+      "params_hash": "d641b95abdb1",
+      "v": 2
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+ "pool_wt": "fdfa5c615419",
+ "pool_all": "39840b662391",
+ "ds5": "da17cac45862",
+ "ds10": "7fe4bbb98833",
+ "halo": "3b70472fd070",
+ "halo_run_v": 3,
+ "strict": "702bfb1e0a44",
+ "strict_run_v": 2,
+ "halo_bank": "116280c65da3",
+ "strict_bank": "c92a2704eea5",
+ "xm_halo": "xm-cea705419b",
+ "xm_strict": "xm-4aec612316",
+ "room": "953d3a5a81a7",
+ "room_v_halo": 1,
+ "room_v_strict": 2
+}

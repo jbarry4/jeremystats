@@ -1,0 +1,115 @@
+{
+  "_at": {
+    "added": "2026-11-27T22:56:56.989024+00:00",
+    "deleted": "2026-11-27T22:58:18.950030+00:00",
+    "id": "2026-11-27T22:56:56.989024+00:00",
+    "kind": "2026-11-27T22:56:56.989024+00:00",
+    "name": "2026-11-27T22:56:56.989024+00:00",
+    "nickname": "2026-11-27T22:58:18.950030+00:00",
+    "schema": "2026-11-27T22:56:56.989024+00:00",
+    "subject": "2026-11-27T22:56:56.989024+00:00",
+    "subject_key": "2026-11-27T22:56:56.989024+00:00",
+    "version": "2026-11-27T22:58:18.950030+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "cd2dc944288f": [
+        "set",
+        "2026-11-27T22:56:56.989024+00:00"
+      ],
+      "d4e481b0bc3d": [
+        "set",
+        "2026-11-27T22:58:18.950030+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-27T22:58:18.950030+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-27T17:56:56-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Homebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "953d3a5a81a7",
+  "kind": "extraction",
+  "name": "The Extraction Room \u00b7 Dentate Spike KCNT1",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s44851809ecd5",
+      "s655a06b22296",
+      "s6d234609d2c2",
+      "s9619387fd35c",
+      "sdcedca6715fb",
+      "se0c7b6ba6d5a"
+    ],
+    "room": "dentate_spike_kcnt1",
+    "room_name": "Dentate Spike KCNT1"
+  },
+  "subject_key": "extraction|dentate_spike_kcnt1",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:56:56-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "63701799",
+      "digest": "57cced6ac0df",
+      "id": "cd2dc944288f",
+      "inputs": [
+        {
+          "artifact_id": "3b70472fd070",
+          "version": 3
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "events": 2888,
+        "folder": "KCNT1 prelim Halo set",
+        "recordings": 6,
+        "room": "dentate_spike_kcnt1"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-cea705419b",
+        "round": "direct"
+      },
+      "params_hash": "8cbe9b528aaa",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.27.1",
+      "at": "2026-11-27T17:58:18-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "63701799",
+      "digest": "3bf13e4e7250",
+      "id": "d4e481b0bc3d",
+      "inputs": [
+        {
+          "artifact_id": "702bfb1e0a44",
+          "version": 2
+        }
+      ],
+      "machine": "Homebarry",
+      "n_summary": {
+        "events": 2456,
+        "folder": "KCNT1 prelim Strict set",
+        "recordings": 6,
+        "room": "dentate_spike_kcnt1"
+      },
+      "note": null,
+      "params": {
+        "folder": "xm-4aec612316",
+        "round": "direct"
+      },
+      "params_hash": "0aabd15543d1",
+      "v": 2
+    }
+  ]
+}

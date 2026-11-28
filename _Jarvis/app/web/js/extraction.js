@@ -26,7 +26,7 @@
 'use strict';
 
 (function () {
-  const TABS = [['dentate_spike', 'Dentate Spike']];
+  const TABS = [['dentate_spike', 'Dentate Spike'], ['dentate_spike_kcnt1', 'Dentate Spike KCNT1']];
   const S = {
     room: 'dentate_spike', rooms: null, folders: [], ko: {},
     art: null, version: null, pay: null,

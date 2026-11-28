@@ -46,6 +46,9 @@ from .nets import SetNet
 
 warnings.filterwarnings("ignore")
 TARGETS = ("pten_vs_ctl", "ko_pct", "low_vs_high", "ied3", "iedpos_vs_iedneg")
+# KCNT1's targets (2026-11-27). Not in TARGETS, which is what a run asks by
+# default: a KCNT1 run names them (`targets` in /api/er2/run).
+KCNT1_TARGETS = ("dose", "wt_vs_hom", "wt_vs_mut", "geno3")
 VIEWS = ("core", "context", "filters", "before_after", "events_all", "mouse", "everything", "nuisance")
 POOLED = ("linear", "lasso", "forest", "boosting", "mlp")
 SETNETS = ("deepsets", "attention")
@@ -73,7 +76,8 @@ class Data(object):
         self.mfam = man["mouse_families"]
         self.group = np.array([m["group"] for m in self.mice])
         self.sub = np.array([m["subgroup"] for m in self.mice])
-        self.ko = np.array([m["ko"] if m["group"] == "PTEN" else 0.0 for m in self.mice], float)
+        # Controls (PTEN) and WT (KCNT1, whose `ko` is the gene dose) are at 0.
+        self.ko = np.array([m["ko"] if m["group"] not in ("CTL", "WT") else 0.0 for m in self.mice], float)
         self._pooled = None
 
     def event_cols(self, view):
@@ -202,6 +206,21 @@ def _target(data, name):
     if name == "iedpos_vs_iedneg":
         m = allm[g == "PTEN"]
         return m, (s[m] == "IED+").astype(float), "binary", "loo", ["IED-", "IED+"]
+    # KCNT1 (2026-11-27, the preliminary run): group is the genotype and `ko`
+    # the gene dose (mutant alleles: WT 0, Het 1, Hom 2), as the KCNT1 battery
+    # writes them. Same testing as PTEN: a two-group target leaves one mouse of
+    # each group out, everything else one mouse.
+    if name == "dose":
+        return allm, ko.astype(float), "regression", "loo", None
+    if name == "wt_vs_hom":
+        m = allm[(g == "WT") | (g == "Hom")]
+        return m, (g[m] == "Hom").astype(float), "binary", "pairs", ["WT", "Hom"]
+    if name == "wt_vs_mut":
+        m = allm[np.isin(g, ["WT", "Het", "Hom"])]
+        return m, (g[m] != "WT").astype(float), "binary", "pairs", ["WT", "Het or Hom"]
+    if name == "geno3":
+        m = allm[np.isin(g, ["WT", "Het", "Hom"])]
+        return m, np.array([{"WT": 0, "Het": 1, "Hom": 2}[x] for x in g[m]], float), "multiclass", "loo", ["WT", "Het", "Hom"]
     raise ValueError("unknown target %s" % name)
 
 

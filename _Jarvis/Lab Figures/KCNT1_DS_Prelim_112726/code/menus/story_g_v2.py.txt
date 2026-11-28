@@ -1,0 +1,126 @@
+def story_g():
+    import pickle
+    from scipy import stats as st_
+    fig, y = F.page("Two entorhinal inputs: DS1 puts its current farther out along the dendrites than DS2, and the split blurs with knockout",
+                    "STORY 7 · DS1 AND DS2", number=9)
+    F.legend_mice(fig, 0.55, y + 0.02)
+    y += 0.4
+    U = pickle.load(open(os.path.join(HERE, "uprof.pkl"), "rb"))
+    V = U["VGRID"]
+    recs = {lab: U["recs"][("v6", lab)] for lab in F.LABS if ("v6", lab) in U["recs"]}
+    typed = [l for l in recs if "c_ds1_upper" in recs[l] and "c_ds2_upper" in recs[l]]
+    # a: mean DS1 and DS2 current along the normalized dendrite, each blade
+    F.letter(fig, 0.4, y + 0.08, "a", "DS1 and DS2 current along the dendrites, proximal (cell layer) to distal, mean over %d recordings" % len(typed))
+    for j, blade in enumerate(("upper", "lower")):
+        a = F.axes_in(fig, 0.85 + j * 2.45, y + 0.55, 2.05, 1.45)
+        for k, col, word in ((2, F.C_DS, "DS2"), (1, "#c2571a", "DS1")):
+            stack = np.array([recs[l]["v_ds%d_%s" % (k, blade)] for l in typed if ("v_ds%d_%s" % (k, blade)) in recs[l]])
+            m = np.nanmean(stack, axis=0)
+            se = np.nanstd(stack, axis=0) / np.sqrt(np.sum(np.isfinite(stack), axis=0))
+            a.fill_between(V, m - se, m + se, color=col, alpha=0.18, lw=0)
+            a.plot(V, m, color=col, lw=1.5, label=word)
+        a.axhline(0, color=F.FAINT, lw=0.5)
+        a.axvline(0, color=F.SOFT, lw=0.5, ls=":")
+        a.axvline(1, color=F.SOFT, lw=0.5, ls=":")
+        a.set_xlim(-0.5, 3.0)
+        a.set_xlabel("Proximal → distal (0 = cell-layer source,\n1 = the recording's average DS sink)")
+        a.set_ylabel("CSD at the DS peak\n(deepest sink = −1)" if j == 0 else "")
+        a.set_title("%s blade" % ("Upper (suprapyramidal)" if blade == "upper" else "Lower (infrapyramidal)"), fontsize=6.6, loc="left")
+        a.legend(frameon=False, fontsize=5.8, loc="lower right")
+    # b: where each type's sink sits on that axis, per recording, with paired tests
+    F.letter(fig, 0.4, y + 2.75, "b", "Where each type's sink sits on that axis: one pair of dots per recording (DS2 left, DS1 right)")
+    ptxt = {}
+    for j, blade in enumerate(("upper", "lower")):
+        a = F.axes_in(fig, 0.85 + j * 2.45, y + 3.25, 2.05, 1.6)
+        groups = ["CTL", "IED-", "IED+"]
+        allp = []
+        for gi, g in enumerate(groups):
+            labs = [l for l in typed if F.subgroup(l) == g]
+            c2 = np.array([recs[l]["c_ds2_%s" % blade] for l in labs])
+            c1 = np.array([recs[l]["c_ds1_%s" % blade] for l in labs])
+            for l, v2, v1 in zip(labs, c2, c1):
+                a.plot([gi - 0.17, gi + 0.17], [v2, v1], color=F.color_of(l), lw=0.7, alpha=0.8, zorder=2)
+                a.scatter([gi - 0.17], [v2], s=14, color=F.C_DS, zorder=3, edgecolor="white", lw=0.3,
+                          marker="D" if l == "m7" else "o")
+                a.scatter([gi + 0.17], [v1], s=14, color="#c2571a", zorder=3, edgecolor="white", lw=0.3,
+                          marker="D" if l == "m7" else "o")
+            ok = np.isfinite(c1) & np.isfinite(c2)
+            if ok.sum() >= 3:
+                ps = [st_.ttest_rel(c1[ok], c2[ok]).pvalue]
+                try:
+                    ps.append(st_.wilcoxon(c1[ok], c2[ok]).pvalue)
+                except ValueError:
+                    pass
+                p = float(np.nanmin(ps))
+                allp.append((gi - 0.17, gi + 0.17, p))
+                ptxt[(blade, g)] = p
+        lo_, hi_ = a.get_ylim()
+        F.brackets(a, allp, max(np.nanmax([recs[l]["c_ds1_%s" % blade] for l in typed]),
+                                np.nanmax([recs[l]["c_ds2_%s" % blade] for l in typed])), hi_ - lo_, show_ns=True)
+        c1a = np.array([recs[l]["c_ds1_%s" % blade] for l in typed])
+        c2a = np.array([recs[l]["c_ds2_%s" % blade] for l in typed])
+        ok = np.isfinite(c1a) & np.isfinite(c2a)
+        p_all = float(np.nanmin([st_.ttest_rel(c1a[ok], c2a[ok]).pvalue, st_.wilcoxon(c1a[ok], c2a[ok]).pvalue]))
+        ptxt[(blade, "all")] = (p_all, int((c1a[ok] > c2a[ok]).sum()), int(ok.sum()))
+        a.set_xticks(range(3))
+        a.set_xticklabels(["Control", "IED−", "IED+"])
+        a.tick_params(axis="x", length=0)
+        a.axhline(1, color=F.SOFT, lw=0.5, ls=":", zorder=0)
+        a.set_ylabel("Sink position\n(proximal 0 → distal)" if j == 0 else "")
+        a.set_title("%s blade: DS1 farther out in %d of %d, %s %s" % ("Upper" if blade == "upper" else "Lower", ptxt[(blade, "all")][1],
+                                                                       ptxt[(blade, "all")][2], F.stars(p_all), F.pstr(p_all)),
+                    fontsize=6.0, loc="left")
+    # c: the split blurs with knockout (overlap eigenvalue), and d: held-out models
+    oe = "structure|overlap_eig2|v6||overlap"
+    F.letter(fig, 0.4, y + 5.6, "c", "How cleanly events split in two")
+    a = F.axes_in(fig, 0.85, y + 6.05, 2.05, 1.25)
+    F.ko_scatter(a, D.values(oe), ylabel="Second eigenvalue\n(1 = clean split)")
+    pe = D.p(oe, "KO_dose_PTEN")
+    a.set_title("PTEN only ρ %+.2f, %s" % (pe[2], F.pstr(pe[0])), fontsize=5.8, color=F.SOFT, loc="left")
+    L = json.load(open(os.path.join(RUNS, "r008", "leaderboard.json")))
+    best = {}
+    for r in L["rows"]:
+        best[r["view"]] = max(best.get(r["view"], 0), r["main"] or 0)
+    views = [("everything", "Everything + raw event", True), ("raw_wave", "Raw CSD and LFP", True), ("shape", "Sink shape", True),
+             ("context", "Size, theta, timing", False), ("no_shape", "No shape at all", False), ("spectrogram", "Spectrogram", False),
+             ("before_after", "Power before and after", False)]
+    F.letter(fig, 3.0, y + 5.6, "d", "Held-out models: DS1 vs DS2")
+    ax = F.axes_in(fig, 4.25, y + 6.05, 1.15, 1.25)
+    for i, (v, word, shape) in enumerate(views):
+        ax.barh(i, best.get(v, np.nan), color=F.C_DS if shape else "#c2571a", height=0.62)
+        ax.text(best.get(v, 0) + 0.005, i, "%.2f" % best.get(v, np.nan), va="center", fontsize=5.2)
+    ax.set_yticks(range(len(views)))
+    ax.set_yticklabels([w for _v, w, _s in views], fontsize=5.4)
+    ax.invert_yaxis()
+    ax.set_xlim(0.5, 0.9)
+    ax.set_xticks([0.5, 0.7, 0.9])
+    ax.set_xlabel("AUC (0.5 = chance)", fontsize=6)
+    pu = ptxt[("upper", "all")]
+    pl = ptxt[("lower", "all")]
+    textcol(fig, 1.55, [
+        ("The claim", "Where a recording splits, the two DS types are the classical ones: DS1 puts its current farther out "
+                      "along the granule cells' dendrites (lateral entorhinal input) and DS2 closer in (medial entorhinal "
+                      "input), in both blades. As knockout rises the two kinds blur together."),
+        ("How to read it", "No layer labels are used here. Each blade's dendritic axis is rescaled per recording from the "
+                           "spike itself: 0 is the current source at the cell layer (where the dendrites start, proximal), "
+                           "1 is where that recording's average DS sink peaks, and larger numbers are farther out (distal). "
+                           "a: mean DS1 and DS2 current along that axis. b: the center of each type's sink, one pair per "
+                           "recording; brackets: paired tests within each group (* < 0.05, ** < 0.01, *** < 0.001, n.s. "
+                           "not significant). c: the split into two kinds against knockout. d: models trained on other "
+                           "mice; blue bars include the sink's shape, orange do not."),
+        ("What it shows", "DS1's sink sits farther out than DS2's in the upper blade in %d of %d recordings (%s) and in the "
+                          "lower blade in %d of %d (%s). The split falls with knockout inside PTEN (ρ %+.2f, %s). "
+                          "Models reach 0.79 with everything and 0.63–0.65 without any shape (DS1 come when theta is "
+                          "lower, with less gamma at the peak)."
+                          % (pu[1], pu[2], F.pstr(pu[0]), pl[1], pl[2], F.pstr(pl[0]), pe[2], F.pstr(pe[0]))),
+        ("Why it matters", "The two inputs map onto the grant's object (lateral EC, outer layer) and place (medial EC, "
+                           "middle layer) streams; blurring of DS1 and DS2 with knockout is one concrete way the mosaic "
+                           "could degrade input separation."),
+        ("Caveats", "The names follow the anatomy by construction (DS1 = the type whose sink is farther out, summed over "
+                    "both blades), so b describes the split; that the two blades agree is the informative part. The axis "
+                    "unit (the average DS sink) is mostly DS2, the larger group. With a low separation index the names are "
+                    "arbitrary. No dendritic-spike or behavior link is claimed."),
+    ])
+    F.save(fig, OUT, "09_story7_DS1_DS2")
+
+

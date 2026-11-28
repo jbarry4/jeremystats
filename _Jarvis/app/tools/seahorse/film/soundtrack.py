@@ -406,7 +406,8 @@ def effects(total, cues):
             d = c.get('dur', 2.0)
             y, pk = whoosh(d, wap='wap' if nwhoosh % 2 == 0 else 'lop')
             nwhoosh += 1
-            place(fx, y, t - pk, g)
+            # its noise crests ~0.22 s before the 'wap' (measured on the film): put the crest on the cue
+            place(fx, y, t - pk + 0.22, g)
         elif k == 'swell':
             d = c.get('dur', 4.0)
             place(fx, swell(d), t - d * 0.6, g, 0.5)

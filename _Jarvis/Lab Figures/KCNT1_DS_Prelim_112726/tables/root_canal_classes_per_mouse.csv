@@ -1,0 +1,13 @@
+workflow,mouse,genotype,sex,minutes,DS,BT,IED,outside
+halo,m1619,WT,F,30.5,167,1,0,0
+halo,m526,WT,F,35.7,786,9,0,7
+halo,m1609,Het,M,30.0,756,50,2,3
+halo,m576,Het,M,31.7,533,4,0,1
+halo,m1603,Hom,F,16.0,140,6,0,0
+halo,m306,Hom,F,34.6,506,25,1,2
+strict,m1619,WT,F,30.5,153,1,0,14
+strict,m526,WT,F,35.7,710,9,0,83
+strict,m1609,Het,M,30.0,624,20,3,164
+strict,m576,Het,M,31.7,469,1,0,68
+strict,m1603,Hom,F,16.0,102,1,0,43
+strict,m306,Hom,F,34.6,398,6,1,129
