@@ -1656,7 +1656,11 @@ export function create(host, opts) {
   const contactMat = new THREE.MeshBasicMaterial({ color: S.colors.contact || '#e5a823', depthTest: false });
   /* pr: {tip: [ap,dv,ml], dir: [dap,ddv,dml] (unit, into the brain), contacts, pitch, first (um), length (um)} */
   function setProbe(pr) {
-    while (G.probe.children.length) { const o = G.probe.children.pop(); o.geometry.dispose(); }
+    while (G.probe.children.length) {
+      const o = G.probe.children.pop();
+      o.geometry.dispose();
+      if (o.material && o.material !== probeMat && o.material !== contactMat) o.material.dispose();
+    }
     if (!pr) { dirty = true; return; }
     const tip = wv(pr.tip);
     const d = dirW(pr.dir);
@@ -1685,14 +1689,14 @@ export function create(host, opts) {
     inst.instanceMatrix.needsUpdate = true;
     inst.renderOrder = 46;              // the contacts read through the shank
     G.probe.add(inst);
-    // the layer ribbon: beside the shank, one tile per contact in its layer's colour
+    // the layer ribbon: beside the shank, one tile per contact in its layer's colour (ribbonAlpha: how much of it shows)
     if (pr.ribbon && pr.ribbon.length) {
       const nrm = S.view === 'slice' && S.slice ? dirW(S.slice.N) : new THREE.Vector3(0, 0, 1);
       const sd = new THREE.Vector3().crossVectors(d, nrm);
       if (sd.lengthSq() < 1e-6) sd.set(1, 0, 0);
       sd.normalize();
       const tile = new THREE.BoxGeometry(0.03, (pr.pitch * 0.96) / 1000, 0.003);
-      const rib = new THREE.InstancedMesh(tile, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true, opacity: 0.92 }), pr.contacts);
+      const rib = new THREE.InstancedMesh(tile, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true, opacity: 0.92 * (pr.ribbonAlpha == null ? 1 : pr.ribbonAlpha) }), pr.contacts);
       const col = new THREE.Color();
       for (let i = 0; i < pr.contacts; i++) {
         const p = tip.clone().addScaledVector(d, -((pr.first || 40) + i * pr.pitch) / 1000).addScaledVector(sd, 0.05);
@@ -1805,7 +1809,9 @@ export function create(host, opts) {
     dirty = true;
   }
   /* The brain's divisions (Isocortex, TH, MB, P, MY, ...) as glowing ghosts:
-     {key: {color, a: 0..1}}; a division left out, or null, goes back as it was. */
+     {key: {color, a: 0..1, from0}}; a division left out, or null, goes back as it was.
+     A ghost shows at a tenth as soon as a > 0; from0: it fades in from nothing as a
+     rises (a ghost that eases in, and out, without popping). */
   function glowBrain(map) {
     for (const [k, m] of Object.entries(byKey.brain)) {
       if (k === 'root' || k === 'HPF' || !m.material.uniforms) continue;
@@ -1814,7 +1820,7 @@ export function create(host, opts) {
       const g = map && map[k];
       if (g && g.a > 0.005) {
         u.color.value.set(g.color || '#ff7a2f');
-        u.opacity.value = 0.1 + 0.62 * Math.min(1, g.a);
+        u.opacity.value = (0.1 + 0.62 * Math.min(1, g.a)) * (g.from0 ? Math.min(1, g.a / 0.16) : 1);
         m.material.blending = S.dark > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
         m.visible = true;
       } else if (m.userData.glowing !== false) {

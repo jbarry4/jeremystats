@@ -186,7 +186,8 @@ def whoosh(dur=2.0, peak=0.62, up=2800.0, wap='wap'):
     pk = peak * dur
     u = np.where(t < pk, t / pk, 1 - (t - pk) / (dur - pk))
     fc = 260 + (up - 260) * np.clip(u, 0, 1) ** 1.6
-    y = band_noise(n, fc, 0.28 * fc + 120)
+    # the rush of air sits well under its 'wap' (the wind was too loud in v2, 11-27)
+    y = band_noise(n, fc, 0.28 * fc + 120) * 0.5
     e = np.where(t < pk, (t / pk) ** 2.6, np.exp(-5.2 * (t - pk) / (dur - pk)))
     y *= e
     k = t >= pk
@@ -390,8 +391,9 @@ def score(total, scenes, cues):
 
 
 SFX = {
-    'whoosh': 0.5, 'swell': 0.34, 'impact': 0.85, 'bloom': 0.42, 'pluck': 0.36, 'knock': 0.35,
-    'rush': 0.42, 'release': 0.42, 'thud': 0.55, 'slide': 0.22,
+    # the whoosh's wind is down ~9 dB from v2 (its 'wap' ~3 dB), the slide's and the rush's ~4 and ~2.5 dB
+    'whoosh': 0.36, 'swell': 0.34, 'impact': 0.85, 'bloom': 0.42, 'pluck': 0.36, 'knock': 0.35,
+    'rush': 0.32, 'release': 0.42, 'thud': 0.55, 'slide': 0.14,
 }
 
 

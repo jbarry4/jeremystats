@@ -5,7 +5,13 @@
    the overlay; FILM.step() moves the film on by one frame; FILM.cues() says
    where the music changes mood and where each sound goes (soundtrack.py
    writes them). Colours are the KCNT1 poster's (v8): CA1 green, the granule
-   cell blades pink, the hilus and its brake cells amber; CSD sinks blue. */
+   cell blades pink, the hilus and its brake cells amber; CSD sinks blue.
+   One model throughout, and nothing pops: views change by moving the camera,
+   sweeping the cut (from just ahead of the olfactory bulbs) and handing the
+   cut face over to the section; glows, outlines, labels and the shade under
+   the words ease in and out. A region named in 3D is outlined (its silhouette
+   from the atlas). The loop's seizure runs at mouse 459's own discharges,
+   slowed five times, every part lit within milliseconds (measure_lag.py). */
 (() => {
 'use strict';
 if (window.FILM) return;
@@ -26,6 +32,8 @@ const add = (a, b, k) => a.map((x, i) => x + b[i] * (k == null ? 1 : k));
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const rgba = (c, a) => 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (+a).toFixed(3) + ')';
+const mixArr = (a, b, u) => [0, 1, 2].map((i) => Math.round(lerp(a[i], b[i], u)));
+const mixRgb = (a, b, u) => 'rgb(' + mixArr(a, b, u).join(',') + ')';
 const W3 = (ap, dv, ml) => S.three.W(ap, dv, ml);
 const P = () => S.play;
 const D = () => S.play.D;
@@ -103,7 +111,6 @@ function layerMid(key, ap, ml, nearDv) {
 /* Allen structures' middles (CCF um) on each side, from the 50 um labels (as seahorse.js does) */
 const ALLEN_IDS = { MS: 564, MOp: 985, SSp: 322, TH: 549, P: 771, MY: 354, MB: 313, AUD: 247, VISp: 385, RSP: 254, ACA: 31 };
 let allenC = null;
-const inStruct = (id) => { const st = S.blobs['brain50.shb.gz'].header.structures; return st.map((s) => (s.id === id || (s.path || []).includes(id) ? 1 : 0)); };
 function allenCentres() {
   if (allenC) return allenC;
   const Bb = S.blobs['brain50.shb.gz'];
@@ -128,16 +135,6 @@ function allenCentres() {
   return allenC;
 }
 const allenW = (n, side) => { const c = (allenCentres()[n] || {})[side || 'r']; return c ? W3(c[0], c[1], c[2]) : null; };
-/* the top surface of an Allen structure, both sides: the highest 50 um voxel of every other column, in world mm */
-const topMemo = {};
-function allenTop(name) {
-  if (topMemo[name]) return topMemo[name];
-  const L = S.blobs['brain50.shb.gz'].arrays.labels, inS = inStruct(ALLEN_IDS[name]), pts = [];
-  for (let i = 0; i < 264; i++) for (let k = 0; k < 228; k++) {
-    for (let j = 0; j < 160; j++) if (inS[L[(i * 160 + j) * 228 + k]]) { pts.push(W3(i * 50 + 25, j * 50 + 25, k * 50 + 25)); break; }
-  }
-  return (topMemo[name] = pts);
-}
 const hpfMemo = {};
 const hpfW = (k, side) => { const c = hpfMemo[k] || (hpfMemo[k] = S.stage.centroid('hpf', k, true)); return c && side === 'l' ? [-c[0], c[1], c[2]] : c; };
 const cellsH = () => S.blobs['cells.shb.gz'].header.cells;
@@ -182,9 +179,10 @@ function setSlice(fr) {
 }
 const mixFr = (a, b, u) => ({ C: lerp3(a.C, b.C, u), k: Math.exp(lerp(Math.log(a.k), Math.log(b.k), u)) });
 /* the cut through the model: a coronal plane at pos (um), or none; set only when it moves */
-let cutNow = '';
+let cutNow = '', cutPos = null;
 function cutAt(pos) {
   const key = pos == null ? 'none' : String(Math.round(pos));
+  cutPos = pos == null ? null : Math.round(pos);
   if (key === cutNow) return;
   cutNow = key;
   S.stage.setCut(pos == null ? { kind: 'none' } : { kind: 'coronal', pos: Math.round(pos) });
@@ -393,8 +391,12 @@ function hud(sc, lt) {
   for (const c of sc.cap || []) if (lt >= c[0] - 0.01 && lt <= c[1] + 0.01) { cap = c; break; }
   if (cap) { setText(el.capMain, cap[2]); setText(el.capSub, cap[3] || ''); }
   show(el.cap, cap ? fade(lt, cap[0], cap[1], 0.45, 0.4) : 0, 10);
-  show(el.scrim, sc.scrim == null ? 1 : sc.scrim);
+  // the shade under the words: eased from the last scene's, never switched
+  const want = sc.scrim == null ? 1 : sc.scrim;
+  scrimNow = scrimFrom == null ? want : lerp(scrimFrom, want, smooth(lt / 0.7));
+  show(el.scrim, scrimNow);
 }
+let scrimNow = null, scrimFrom = null;
 
 /* ------------------------------------------------------------ drawing on the overlay */
 function text(c, s, x, y, o) {
@@ -480,28 +482,31 @@ function drawShank(c, o) {
   c.fillStyle = '#f2c14e';
   for (let i = 0; i < 64; i++) { const y = lerp(y0, y1, i / 63); c.fillRect(x - 1.6, y - 0.8, 3.2, 1.6); }
   // the groups: a bar each in the poster's colour, lit by how far the recording is from its quiet self
-  const bx = x + 9;
+  // (the colour eases into the heat as the level rises, so a level near the line does not blink).
+  // o.dim: how far the groups left out of o.lit step back (0..1, default 1), so a scene can ease them
+  const bx = x + 9, dimK = o.dim == null ? 1 : o.dim;
   GROUPS.forEach((gr) => {
     const [d0, d1] = groupDv(gr), ya = toPx(g.ap, d0, g.ml)[1] + 1, yb = toPx(g.ap, d1, g.ml)[1] - 1;
-    const lv = o.levels ? groupLevel(gr) : 0;
+    const lv = o.levels ? groupLevel(gr) : 0, hk = smooth((lv - 0.02) / 0.08);
     const lit = o.lit ? o.lit.has(gr.key) : true;
-    const col = lv > 0.03 ? 'rgb(' + R.ramp(lv).join(',') + ')' : groupColor(gr);
-    c.globalAlpha = a * (lit ? 1 : 0.35);
-    if (lv > 0.03) { c.shadowColor = col; c.shadowBlur = 6 + 14 * lv; }
+    const col = hk > 0.002 ? mixRgb(hex(groupColor(gr)), R.ramp(lv), hk) : groupColor(gr);
+    c.globalAlpha = a * (lit ? 1 : 1 - 0.65 * dimK);
+    if (hk > 0.002) { c.shadowColor = col; c.shadowBlur = (6 + 14 * lv) * hk; }
     c.fillStyle = col; c.fillRect(bx, ya, 5, Math.max(2, yb - ya));
     c.shadowBlur = 0;
     gr._y = [ya, yb];
   });
   c.globalAlpha = a;
-  // names, never overlapping
-  if (o.names !== false) {
+  // names, never overlapping (o.namesA: how much of them shows)
+  const namesA = o.names === false ? 0 : o.namesA == null ? 1 : o.namesA;
+  if (namesA > 0.002) {
     const ys = GROUPS.map((gr) => (gr._y[0] + gr._y[1]) / 2);
     for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + 24);
     GROUPS.forEach((gr, i) => {
       const lit = o.lit ? o.lit.has(gr.key) : true, lv = o.levels ? groupLevel(gr) : 0;
       const foc = o.focus ? o.focus.has(gr.key) : null;
       const mid = (gr._y[0] + gr._y[1]) / 2, lx = bx + 30;
-      c.globalAlpha = a * (lit ? 1 : 0.45) * (foc === false ? 0.6 : 1);
+      c.globalAlpha = a * namesA * (lit ? 1 : 1 - 0.55 * dimK) * (foc === false ? 0.6 : 1);
       c.strokeStyle = 'rgba(220,228,235,0.45)'; c.lineWidth = 1;
       c.beginPath(); c.moveTo(bx + 8, mid); c.bezierCurveTo(bx + 18, mid, lx - 12, ys[i], lx - 4, ys[i]); c.stroke();
       const nm = (o.dgNames && gr.key !== 'ca1' && gr.key !== 'hil') ? 'Dentate gyrus, ' + gr.name.toLowerCase() : gr.name;
@@ -731,6 +736,124 @@ function drawNeuron(c, sh, dvT, mlT, rot, col, o) {
   return o0;
 }
 
+/* ------------------------------------------------------------ a region, outlined over the 3D */
+/* So a named region is a shape, not a spot in the brain: its silhouette from where the camera is, a soft fill
+   and a line round it. From the atlas's 50 um labels: the region's surface voxels (every other one each way
+   for the big ones), projected each frame, splatted on a 3 px grid, smoothed, and traced at half height
+   (marching squares). Drawn over the 3D whatever is in front: the brain is a ghost, so the region shows through. */
+const REGIONS = {
+  // the hippocampus: Ammon's horn and the dentate gyrus (the atlas's HIP also holds the induseum griseum, a thread along the corpus callosum)
+  hipR: { ids: [375, 726], side: 'r' }, hipL: { ids: [375, 726], side: 'l' },
+  ec: { ids: [918, 926], side: 'r' }, sub: { ids: [502, 484682470], side: 'r' },
+  dg: { ids: [726], side: 'r' }, ca3: { ids: [463], side: 'r' }, ca1: { ids: [382], side: 'r' },
+  neo: { ids: [315], side: 'both', stride: 2 }, th: { ids: [549], side: 'both' }, mo: { ids: [985], side: 'both' },
+  bs: { ids: [313, 771, 354], side: 'both', stride: 2 },
+};
+const regMemo = {};
+function regionPts(key) {
+  if (regMemo[key]) return regMemo[key];
+  const RG = REGIONS[key], Bb = S.blobs['brain50.shb.gz'], L = Bb.arrays.labels, st = Bb.header.structures;
+  const mem = new Uint8Array(st.length);
+  st.forEach((s, i) => { if (RG.ids.some((id) => s.id === id || (s.path || []).includes(id))) mem[i] = 1; });
+  const s = RG.stride || 1, NI = 264, NJ = 160, NK = 228;
+  // a side's own half only: the midline is then an edge of it (k: ML, right where k * 50 + 25 >= 5700)
+  const sideOk = (k) => RG.side === 'both' || ((k * 50 + 25 >= 5700) === (RG.side === 'r'));
+  const inR = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < NI && j < NJ && k < NK && sideOk(k) && mem[L[(i * NJ + j) * NK + k]] === 1;
+  const xs = [], aps = [];
+  for (let i = 0; i < NI; i += s) for (let j = 0; j < NJ; j += s) for (let k = 0; k < NK; k += s) {
+    if (!inR(i, j, k)) continue;
+    if (inR(i - s, j, k) && inR(i + s, j, k) && inR(i, j - s, k) && inR(i, j + s, k) && inR(i, j, k - s) && inR(i, j, k + s)) continue;
+    const w = W3(i * 50 + 25, j * 50 + 25, k * 50 + 25);
+    xs.push(w[0], w[1], w[2]); aps.push(i * 50 + 25);
+  }
+  return (regMemo[key] = { p: new Float32Array(xs), ap: new Float32Array(aps), n: aps.length, size: s * 0.05 });
+}
+const OG = 3, OGW = Math.ceil(VW / OG) + 3, OGH = Math.ceil(VH / OG) + 3;
+const oMask = new Uint8Array(OGW * OGH), oT = new Float32Array(OGW * OGH), oF = new Float32Array(OGW * OGH);
+let oCan = null, oCtx = null, oImg = null;
+/* the camera as the stage has it now: where it is, which way it looks, its right and its up (the stage keeps up +y) */
+function camBasis() {
+  const cm = S.stage.getCam(), f = norm(add(cm.target, cm.pos, -1)), r = norm(cross(f, [0, 1, 0])), u = cross(r, f);
+  return { o: cm.pos, f, r, u, s: (VH / 2) / TV };
+}
+/* the region's silhouette, on the grid: false if none of it is in view. cut: the coronal cut (um), what is in front of it is gone */
+function regionMask(key, cut) {
+  const RG = regionPts(key), B0 = camBasis(), { p, ap, n } = RG;
+  const [ox, oy, oz] = B0.o, [fx, fy, fz] = B0.f, [rx, ry, rz] = B0.r, [ux, uy, uz] = B0.u, sc = B0.s;
+  oMask.fill(0);
+  let any = false;
+  for (let i = 0; i < n; i++) {
+    if (cut != null && ap[i] < cut) continue;
+    const dx = p[3 * i] - ox, dy = p[3 * i + 1] - oy, dz = p[3 * i + 2] - oz, z = dx * fx + dy * fy + dz * fz;
+    if (z < 0.05) continue;
+    const X = VW / 2 + (dx * rx + dy * ry + dz * rz) / z * sc, Y = VH / 2 - (dx * ux + dy * uy + dz * uz) / z * sc;
+    const cx = Math.floor(X / OG) + 1, cy = Math.floor(Y / OG) + 1, rr = Math.ceil(0.55 * RG.size * sc / z / OG);
+    if (cx + rr < 0 || cy + rr < 0 || cx - rr >= OGW || cy - rr >= OGH) continue;
+    for (let yy = Math.max(0, cy - rr); yy <= Math.min(OGH - 1, cy + rr); yy++) {
+      const row = yy * OGW;
+      for (let xx = Math.max(0, cx - rr); xx <= Math.min(OGW - 1, cx + rr); xx++) oMask[row + xx] = 1;
+    }
+    any = true;
+  }
+  if (!any) return false;
+  // smoothed: a [1 2 1] each way, twice
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < OGH; y++) {
+      const r = y * OGW;
+      for (let x = 0; x < OGW; x++) {
+        const m = pass ? oF[r + x] : oMask[r + x], l = x ? (pass ? oF[r + x - 1] : oMask[r + x - 1]) : m, rt = x < OGW - 1 ? (pass ? oF[r + x + 1] : oMask[r + x + 1]) : m;
+        oT[r + x] = (l + 2 * m + rt) / 4;
+      }
+    }
+    for (let y = 0; y < OGH; y++) {
+      const r = y * OGW, up = y ? r - OGW : r, dn = y < OGH - 1 ? r + OGW : r;
+      for (let x = 0; x < OGW; x++) oF[r + x] = (oT[up + x] + 2 * oT[r + x] + oT[dn + x]) / 4;
+    }
+  }
+  return true;
+}
+/* the line at half height through the smoothed silhouette, as one path (marching squares) */
+function regionPath() {
+  const path = new Path2D(), lv = 0.5, P0 = (i) => (i - 0.5) * OG;
+  const seg = (a, b) => { path.moveTo(a[0], a[1]); path.lineTo(b[0], b[1]); };
+  for (let y = 0; y < OGH - 1; y++) for (let x = 0; x < OGW - 1; x++) {
+    const i = y * OGW + x, a = oF[i], b = oF[i + 1], d = oF[i + OGW], e = oF[i + OGW + 1];
+    const code = (a > lv ? 8 : 0) | (b > lv ? 4 : 0) | (e > lv ? 2 : 0) | (d > lv ? 1 : 0);
+    if (code === 0 || code === 15) continue;
+    const X0 = P0(x), Y0 = P0(y);
+    const T = () => [X0 + OG * (lv - a) / (b - a), Y0], Rr = () => [X0 + OG, Y0 + OG * (lv - b) / (e - b)];
+    const Bm = () => [X0 + OG * (lv - d) / (e - d), Y0 + OG], Lf = () => [X0, Y0 + OG * (lv - a) / (d - a)];
+    switch (code) {
+      case 1: case 14: seg(Lf(), Bm()); break;
+      case 2: case 13: seg(Bm(), Rr()); break;
+      case 3: case 12: seg(Lf(), Rr()); break;
+      case 4: case 11: seg(T(), Rr()); break;
+      case 6: case 9: seg(T(), Bm()); break;
+      case 7: case 8: seg(T(), Lf()); break;
+      case 5: seg(T(), Lf()); seg(Bm(), Rr()); break;
+      case 10: seg(T(), Rr()); seg(Lf(), Bm()); break;
+    }
+  }
+  return path;
+}
+/* a region drawn: alpha a; o.fill: how strong its fill is (default 0.13); o.cut: the coronal cut (um), if any */
+function drawRegion(c, key, col, a, o) {
+  o = o || {};
+  if (a <= 0.01 || !regionMask(key, o.cut)) return;
+  if (!oCan) { oCan = document.createElement('canvas'); oCan.width = OGW; oCan.height = OGH; oCtx = oCan.getContext('2d'); oImg = oCtx.createImageData(OGW, OGH); }
+  const rgb = hex(col), d = oImg.data, fa = (o.fill == null ? 0.13 : o.fill) * 255;
+  for (let i = 0, j = 0; i < oF.length; i++, j += 4) { d[j] = rgb[0]; d[j + 1] = rgb[1]; d[j + 2] = rgb[2]; d[j + 3] = Math.round(Math.min(1, oF[i] * 1.25) * fa); }
+  oCtx.putImageData(oImg, 0, 0);
+  c.save();
+  c.globalAlpha = a; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.drawImage(oCan, -OG, -OG, OGW * OG, OGH * OG);
+  const path = regionPath();
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  c.strokeStyle = 'rgba(3,5,8,0.7)'; c.lineWidth = 4.2; c.stroke(path);
+  c.strokeStyle = col; c.lineWidth = 1.9; c.stroke(path);
+  c.restore();
+}
+
 /* ------------------------------------------------------------ the scenes */
 const SC = [];
 const scene = (o) => SC.push(o);
@@ -742,6 +865,9 @@ const brainC = () => [0, 0.25, 0.35];
 const XS = 0.5, XSP = 0.27;
 const frSec = () => frProbe(XS);
 const hideCells = () => cellsH().forEach((c) => S.stage.setVisible('cells', c.key, false));
+/* just ahead of the olfactory bulbs' tips (the atlas's brain starts at 50 um): a cut here cuts nothing, so every
+   sweep of the cut starts or ends here and nothing pops in or out when it switches on or off */
+const FRONT = -200;
 const BRAIN_DIR = [0.46, 0.76, 0.48];
 
 scene({ name: 'title', dur: 6.5, scrim: 0, mood: 'open',
@@ -774,7 +900,7 @@ scene({ name: 'brain', dur: 9, chap: 1, tag: 'atlas', mood: 'open', sfx: [[7.8, 
   },
 });
 const HPF_DIR = [0.62, 0.48, -0.62];
-scene({ name: 'hippo', dur: 11, chap: 2, tag: 'atlas', mood: 'open', sfx: [[0.5, 'slide', { gain: 0.5, dur: 3.1 }]],
+scene({ name: 'hippo', dur: 11, chap: 2, tag: 'atlas', mood: 'open', sfx: [[0.5, 'slide', { gain: 0.5, dur: 3.5 }]],
   cap: [[0.5, 5.4, 'The hippocampus helps us form memories.', 'Its name means “seahorse,” after its curled shape.'],
         [5.7, 10.8, 'It is also one of the brain\'s most seizure-prone circuits.']],
   update(t) {
@@ -782,11 +908,11 @@ scene({ name: 'hippo', dur: 11, chap: 2, tag: 'atlas', mood: 'open', sfx: [[0.5,
     const cut = W3(P().geo.ap, 2300, P().geo.ml + 300);
     const u = ease(t / 11);
     camGo(t, lookCam(lerp3(lerp3(brainC(), hip, 0.75), lerp3(hip, cut, 0.55), u), yaw(HPF_DIR, lerp(-6, 12, u)), lerp(12.5, 8.6, u)), 2.4);
-    // the brain is sliced away, front to back, down to the plane of the probe
-    cutAt(t < 0.5 ? null : lerp(3400, P().geo.ap, ease((t - 0.5) / 3.0)));
+    // the brain is sliced away, front to back, from the tips of the olfactory bulbs down to the plane of the probe
+    cutAt(t < 0.5 ? null : lerp(FRONT, P().geo.ap, ease((t - 0.5) / 3.4)));
   },
   post(c, t) {
-    const a = fade(t, 5.6, 11.2, 0.7, 0.3), g = P().geo;
+    const a = fade(t, 5.6, 10.95, 0.7, 0.5), g = P().geo;
     const dg = planeCentre(['gcl1', 'gcl2', 'hil'], g.ap), ca3 = planeCentre(['ca3sp'], g.ap), ca1 = planeCentre(['ca1sp'], g.ap);
     if (dg) pin3(c, W3(dg[0] - 5, dg[1], dg[2]), 'Dentate gyrus', { alpha: a, color: C.gc, dx: 46, dy: 56 });
     if (ca3) pin3(c, W3(ca3[0] - 5, ca3[1], ca3[2]), 'CA3', { alpha: a, color: C.ca3, dx: -44, dy: 46 });
@@ -802,7 +928,7 @@ scene({ name: 'model', dur: 12.5, chap: 3, tag: 'model', scrim: 0, mood: 'open',
     const hip = hpfW('DG') || [2.4, 1.2, 1.4];
     const cut = W3(P().geo.ap, 2300, P().geo.ml + 300);
     look(lerp3(hip, cut, 0.55), yaw(HPF_DIR, 12 + t * 1.2), 8.6, 2.6 * smooth(t / 1.5), 0);
-    show(el.model, fade(t, 0.2, 12.9, 0.8, 0.5));
+    show(el.model, fade(t, 0.2, 12.45, 0.8, 0.7));
     el.modelItems.forEach((li, i) => show(li, fade(t, 0.9 + i * 2.8, 99, 0.6, 0.1), 10));
   },
   exit() { show(el.model, 0); },
@@ -810,14 +936,19 @@ scene({ name: 'model', dur: 12.5, chap: 3, tag: 'model', scrim: 0, mood: 'open',
 const PROBE_DIR0 = [0.58, 0.42, -1], PROBE_DIR1 = [0.06, 0.03, -1];
 let probeSet = null;
 function probeAt(depthU, ribbon) {
-  // the recorded probe: vertical, AP -1.8, ML +1.4, its 64 sites spanning CA1 to the lower blade
+  // the recorded probe: vertical, AP -1.8, ML +1.4, its 64 sites spanning CA1 to the lower blade;
+  // ribbon (0..1): how much of the layer ribbon beside it shows (it fades in)
   const g = P().geo, pitch = (g.bottom - g.top) / 63, first = 40;
   const tipF = g.bottom + first, tipDv = lerp(-900, tipF, depthU);
-  const key = tipDv.toFixed(1) + (ribbon ? 'r' : '');
+  const rib = Math.round(clamp(ribbon || 0, 0, 1) * 100) / 100;
+  const key = tipDv.toFixed(1) + 'r' + rib;
   if (probeSet === key) return;
   probeSet = key;
   const pr = { tip: [g.ap, tipDv, g.ml], dir: [0, 1, 0], contacts: 64, pitch, first, length: tipDv + 1600 };
-  if (ribbon) pr.ribbon = Array.from({ length: 64 }, (_, i) => { const l = lamByCode(lamAt(g.ap, tipF - first - i * pitch, g.ml)); return l ? lamColor(l.key) : '#777777'; });
+  if (rib > 0) {
+    pr.ribbon = Array.from({ length: 64 }, (_, i) => { const l = lamByCode(lamAt(g.ap, tipF - first - i * pitch, g.ml)); return l ? lamColor(l.key) : '#777777'; });
+    pr.ribbonAlpha = rib;
+  }
   S.stage.setProbe(pr);
 }
 scene({ name: 'probe3d', dur: 9, chap: 4, tag: 'atlas', mood: 'method', sfx: [[1.2, 'whoosh', { gain: 0.6, dur: 2.4 }], [0.9, 'slide', { gain: 0.55, dur: 4.4 }]],
@@ -827,7 +958,7 @@ scene({ name: 'probe3d', dur: 9, chap: 4, tag: 'atlas', mood: 'method', sfx: [[1
     const g = P().geo, mid = W3(g.ap, (g.top + g.bottom) / 2 - 150, g.ml);
     // from an angle onto the face, ending square on it, framed as the section will be: the 3D becomes the section
     camGo(t, lerpCam(lookCam(mid, PROBE_DIR0, 6.6), camOnSection(frSec()), ease((t - 1.0) / 6.8)), 2.4);
-    probeAt(ease((t - 0.6) / 4.4), t > 5.4);
+    probeAt(ease((t - 0.6) / 4.4), smooth((t - 5.4) / 0.6));
   },
   post(c, t) {
     const g = P().geo, pitch = (g.bottom - g.top) / 63, first = 40, tipF = g.bottom + first;
@@ -892,6 +1023,8 @@ function placeCells() {
 }
 const LAYER_GLOW = [['ca1sp', BAR.ca1], ['gcl1', BAR.up], ['gcl2', BAR.low], ['hil', BAR.hil], ['ca3sp', '#45b0a8']];
 const CELL_STEPS = { gc: 0.4, hipp: 5.3, ca: 11.2, all: 16.6 };
+/* the cells, their names and their layers' glow leave over the chapter's last 0.7 s, before the card comes */
+const cellsOut = (t) => 1 - smooth((t - 20.25) / 0.7);
 scene({ name: 'cells2d', dur: 21, chap: 5, tag: 'cells', mood: 'method',
   cap: [[0.5, 5.0, 'Granule cells fill the two blades of the dentate gyrus. Their branches reach out to catch signals from the cortex.', 'Real neurons, traced one by one, placed in their layers'],
         [5.3, 10.9, 'Between the blades, in the hilus, inhibitory cells are the brakes: they reach up to where those signals land and keep granule cells from firing all at once.', 'KCNT1 variants weaken inhibitory cells like these.'],
@@ -902,35 +1035,39 @@ scene({ name: 'cells2d', dur: 21, chap: 5, tag: 'cells', mood: 'method',
   update(t) {
     setSlice(frSec());
     if (!CELLS2 && P().stop.key === 'film_probe') placeCells();
-    const k1 = fade(t, CELL_STEPS.gc, 99, 1.2), k2 = fade(t, CELL_STEPS.hipp, 99, 1.2), k3 = fade(t, CELL_STEPS.ca, 99, 1.2);
+    const k1 = fade(t, CELL_STEPS.gc, 99, 1.2), k2 = fade(t, CELL_STEPS.hipp, 99, 1.2), k3 = fade(t, CELL_STEPS.ca, 99, 1.2), out = cellsOut(t);
     const pulse = new Map(), on = { ca1sp: k3, gcl1: k1, gcl2: k1, hil: k2, ca3sp: k3 };
-    LAYER_GLOW.forEach(([lk, col]) => { const code = (lamOf(lk) || {}).code; if (code && on[lk] > 0.01) pulse.set(code, hex(col).concat(0.5 * on[lk])); });
+    LAYER_GLOW.forEach(([lk, col]) => { const code = (lamOf(lk) || {}).code; if (code && on[lk] * out > 0.01) pulse.set(code, hex(col).concat(0.5 * on[lk] * out)); });
     S.stage.setHighlights({ lam: new Map(), allen: new Map(), pulse, dimRest: t > 0.6 });
   },
   post(c, t) {
-    if (!CELLS2) { drawShank(c, { alpha: 1, size: 17, names: false }); return; }
+    // the probe's names (from the scene before) go, its bars step back while the cells come, and come forward at the end
+    const shank = () => drawShank(c, { alpha: 1, size: 17, dgNames: true, namesA: 1 - smooth(t / 0.7), lit: new Set(), dim: fade(t, 0, CELL_STEPS.all + 0.8, 0.9, 0.8) });
+    if (!CELLS2) { shank(); return; }
     const L = CELLS2, grow = (t0, dur, sh) => sh ? ease((t - t0) / dur) * sh.dMax * 1.02 : 0, growA = (t0, dur, sh) => sh ? ease((t - t0) / dur) * Math.min(sh.aMax, 2400) : 0;
-    const on = (step) => (t < step ? 0 : 1);
+    // a cell (its soma first) fades in as it starts to grow, and all of them fade before the card
+    const out = cellsOut(t), on = (start) => fade(t, start, 99, 0.35) * out;
     // the cells of the moment at full strength, the ones already met a step back, all of them at the end
     const focusA = (from, to) => 0.45 + 0.55 * Math.max(fade(t, from, to, 0.5, 0.5), fade(t, CELL_STEPS.all, 99, 0.6));
     const kGc = focusA(CELL_STEPS.gc, CELL_STEPS.hipp), kHi = focusA(CELL_STEPS.hipp, CELL_STEPS.ca), kCa = focusA(CELL_STEPS.ca, CELL_STEPS.all);
     // the granule cells, two in each blade
-    L.gcUp.concat(L.gcLow).forEach((x, i) => drawNeuron(c, x.sh, x.dv, x.ml, x.rot, x.col, { alpha: on(CELL_STEPS.gc) * kGc, mirror: x.mirror, reveal: grow(CELL_STEPS.gc + (i % 2) * 0.35 + (i > 1 ? 0.2 : 0), 2.4, x.sh), revealA: growA(CELL_STEPS.gc + 1.4, 3.0, x.sh), axonA: 0.55 }));
+    L.gcUp.concat(L.gcLow).forEach((x, i) => { const s0 = CELL_STEPS.gc + (i % 2) * 0.35 + (i > 1 ? 0.2 : 0); drawNeuron(c, x.sh, x.dv, x.ml, x.rot, x.col, { alpha: on(s0) * kGc, mirror: x.mirror, reveal: grow(s0, 2.4, x.sh), revealA: growA(CELL_STEPS.gc + 1.4, 3.0, x.sh), axonA: 0.55 }); });
     // the hilar brake cell, its axon climbing to the molecular layer, where the cortex's input lands
     if (L.hipp) drawNeuron(c, L.hipp.sh, L.hipp.dv, L.hipp.ml, L.hipp.rot, L.hipp.col, { alpha: on(CELL_STEPS.hipp) * kHi, reveal: grow(CELL_STEPS.hipp, 1.6, L.hipp.sh), revealA: growA(CELL_STEPS.hipp + 0.8, 3.6, L.hipp.sh), axonA: 1, keepA: L.hipp.keepA });
     // CA3 and CA1 pyramidal cells
-    [L.ca3, L.ca1].forEach((x, i) => { if (x && x.sh) drawNeuron(c, x.sh, x.dv, x.ml, x.rot, x.col, { alpha: on(CELL_STEPS.ca) * kCa, reveal: grow(CELL_STEPS.ca + i * 1.1, 2.6, x.sh), revealA: 0 }); });
-    drawShank(c, { alpha: 1, size: 17, names: false, lit: t > CELL_STEPS.all ? null : new Set() });
+    [L.ca3, L.ca1].forEach((x, i) => { if (x && x.sh) drawNeuron(c, x.sh, x.dv, x.ml, x.rot, x.col, { alpha: on(CELL_STEPS.ca + i * 1.1) * kCa, reveal: grow(CELL_STEPS.ca + i * 1.1, 2.6, x.sh), revealA: 0 }); });
+    shank();
     // names
     const g = P().geo, at = (x) => toPx(g.ap, x.dv, x.ml);
-    const nA = (from, k) => fade(t, from + 0.8, 99, 0.6) * (0.55 + 0.45 * (k - 0.45) / 0.55);
+    const nA = (from, k) => fade(t, from + 0.8, 99, 0.6) * (0.55 + 0.45 * (k - 0.45) / 0.55) * out;
     if (L.gcUp[0]) { const q = at(L.gcUp[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.up, dx: 64, dy: -40, sub: 'upper blade' }); }
     if (L.gcLow[0]) { const q = at(L.gcLow[0]); pin(c, q[0], q[1], 'Granule cells', { alpha: nA(CELL_STEPS.gc, kGc), color: C.low, dx: 70, dy: 40, sub: 'lower blade' }); }
     if (L.hipp) { const q = at(L.hipp); pin(c, q[0], q[1], 'Hilar brake cell', { alpha: nA(CELL_STEPS.hipp, kHi), color: C.hil, dx: -120, dy: 14, sub: 'an inhibitory interneuron' }); }
     if (L.ca3) { const q = at(L.ca3); pin(c, q[0], q[1], 'CA3 pyramidal cell', { alpha: nA(CELL_STEPS.ca, kCa), color: C.ca3, dx: -58, dy: -64 }); }
     if (L.ca1) { const q = at(L.ca1); pin(c, q[0], q[1], 'CA1 pyramidal cell', { alpha: nA(CELL_STEPS.ca + 1.1, kCa), color: C.ca1, dx: 60, dy: -34 }); }
   },
-  exit() { S.stage.setHighlights({ lam: new Map(), allen: new Map(), pulse: new Map(), dimRest: false }); },
+  // the layers' glow is gone by now; the section stays stepped back under the card (and the recording after it)
+  exit() { S.stage.setHighlights({ lam: new Map(), allen: new Map(), pulse: new Map(), dimRest: true }); },
 });
 scene({ name: 'sztitle', dur: 3.6, chap: 6, tag: 'rec', scrim: 0, mood: 'tense', sfx: [[0.05, 'impact', { gain: 0.8 }]],
   card: ['A card', 'MOUSE 459', 'One seizure, recorded', 'Kcnt1 Y777H, two copies · awake · December 6, 2024'],
@@ -1256,73 +1393,116 @@ const MAP_PULSES = [ // [start, arc, duration]
   [19.6, 'ca1_sub', 1.2],
   [23.4, 'sub_ec', 1.3], [24.9, 'ecd_neo', 1.2], [26.1, 'ecd_ecu', 0.9],
 ];
-const LAPS = { t0: 28.4, durs: [2.9, 2.3, 1.85, 1.5, 1.25] };
-function lapAt(t) {
-  let s = LAPS.t0;
-  for (let i = 0; i < LAPS.durs.length; i++) { const d = LAPS.durs[i]; if (t < s + d) return { i, u: (t - s) / d, s }; s += d; }
-  return null;
+/* The seizure's pace: mouse 459's own discharges, slowed five times. In a discharge the loop's parts fire within
+   thousandths of a second of each other. CA1 hears it 15 ms after the dentate gyrus: measured on the recording,
+   the CA1 radiatum sink (CA3's input) after the dentate's perforant-path sink (the cortex's), median of 99
+   discharges 5-43 s into the seizure (IQR 9-22 ms; cross-correlation 16 ms). The rest of the loop is drawn to
+   match (our hypothesis). LAG: ms after the dentate gyrus's input at which each arrow and box lights. */
+const SLOW = 5;
+const LAG = { ec_dg: 0, dg_ca3: 7.5, ca3_rec: 10, ca3_ca1: 15, ca1_sub: 20, sub_ec: 25, ecd_ecu: 30,
+  ecu: 0, dg: 2, ca3: 9, ca1: 16, sub: 21, ecd: 26, DG: 2, CA3: 9, CA2: 12, CA1: 16, SUB: 21, ProS: 21, ENTm: 26, ENTl: 26 };
+const MAP_DUR = 38.2, SYNC = { t0: 28.4, r0: 20.0 };
+const beatsMemo = {};
+/* the discharges of the recording from r0 s into the seizure, slowed, as scene times from `from` to `to` */
+function beats(r0, from, to) {
+  const id = r0 + ':' + from + ':' + to;
+  if (!beatsMemo[id]) beatsMemo[id] = P().D.discharges.filter((d) => d >= r0 && d < r0 + (to - from) / SLOW).map((d) => from + (d - r0) * SLOW);
+  return beatsMemo[id];
 }
+/* how lit a part is at t: a quick rise (50 ms) and a fall, after each discharge, lagMs (real ms, slowed with the rest) late */
+const flashEnv = (x) => (x < 0 ? 0 : x < 0.05 ? x / 0.05 : Math.exp(-(x - 0.05) / 0.24));
+function flashAt(bs, t, lagMs) {
+  const l = (lagMs || 0) * SLOW / 1000;
+  let v = 0;
+  for (const b of bs) { const x = t - b - l; if (x >= 0 && x < 2) v = Math.max(v, flashEnv(x)); }
+  return v;
+}
+/* the steps cross-fade instead of switching: how much an arrow or a box belongs to the step of the moment */
+const XF = 0.45;
+function stepLevel(t, field, key) {
+  let v = 0;
+  MAP_STEPS.forEach((s, i) => {
+    if (!s[field].includes(key)) return;
+    const end = MAP_STEPS[i + 1] ? MAP_STEPS[i + 1].t : SYNC.t0;
+    v += smooth((t - s.t) / XF) - smooth((t - end) / XF);
+  });
+  return clamp(v, 0, 1);
+}
+const LAP_ARCS = new Set(LOOP_PATH.concat(['ca3_rec'])), LAP_OFF = new Set(['neo', 'brk']);
 function drawMap(c, t, a) {
   c.save(); c.globalAlpha = a;
   c.fillStyle = 'rgb(5,8,12)'; c.fillRect(0, 0, VW, VH);
   const vg = c.createRadialGradient(VW * 0.55, VH * 0.45, 80, VW * 0.55, VH * 0.45, 760); vg.addColorStop(0, 'rgba(40,52,66,0.35)'); vg.addColorStop(1, 'rgba(5,8,12,0)');
   c.fillStyle = vg; c.fillRect(0, 0, VW, VH);
-  const lapNow = t >= LAPS.t0 ? lapAt(t) : null, laps = t >= LAPS.t0;
-  const heat = laps ? clamp((t - LAPS.t0) / 7, 0, 1) : 0;
-  const step = MAP_STEPS.filter((s) => t >= s.t).pop();
-  const litN = new Set(step ? step.nodes : []), litA = new Set(step ? step.arcs : []);
+  // the seizure: everything in the loop on, the brakes off, hotter as it goes; each discharge lights the loop at once
+  const lapK = smooth((t - SYNC.t0) / XF), heat = clamp((t - SYNC.t0) / 7, 0, 1);
+  const bs = t >= SYNC.t0 - 1 ? beats(SYNC.r0, SYNC.t0, MAP_DUR) : [];
+  const heatRgb = R.ramp(0.55 + 0.4 * heat);
   const appear = (i) => fade(t, 0.4 + i * 0.32, 99, 0.5);
   // the hippocampus, as one: a dashed line round its four parts
   c.globalAlpha = a * fade(t, 1.4, 99, 0.8);
   rrect(c, 414, 126, 792, 408, 22); c.setLineDash([6, 6]); c.strokeStyle = 'rgba(200,215,228,0.26)'; c.lineWidth = 1.3; c.stroke(); c.setLineDash([]);
   text(c, 'The hippocampus', 434, 148, { size: 13, w: 650, color: 'rgba(214,226,236,0.62)', halo: false });
   c.globalAlpha = a;
+  const curve = (A) => { c.beginPath(); c.moveTo(A.p[0][0], A.p[0][1]); c.quadraticCurveTo(A.p[1][0], A.p[1][1], A.p[2][0], A.p[2][1]); };
   // the arrows
   Object.entries(ARC).forEach(([k, A], i) => {
-    const on = laps ? (LOOP_PATH.includes(k) || k === 'ca3_rec') : litA.has(k);
     const ap = fade(t, 2.4 + i * 0.12, 99, 0.6);
     if (ap <= 0.001) return;
-    const brkOff = laps && (k === 'brk_dg');
-    c.globalAlpha = a * ap * (brkOff ? 0.25 : on ? 1 : 0.38);
-    const col = on ? (laps ? 'rgb(' + R.ramp(0.55 + 0.4 * heat).join(',') + ')' : '#eef2f5') : 'rgba(200,210,220,0.75)';
-    c.strokeStyle = A.inh ? C.hil : col; c.lineWidth = on ? 2.4 : 1.6;
-    if (k === 'ecd_neo' && !on) c.setLineDash([5, 5]);
-    c.beginPath(); c.moveTo(A.p[0][0], A.p[0][1]); c.quadraticCurveTo(A.p[1][0], A.p[1][1], A.p[2][0], A.p[2][1]); c.stroke();
+    const inLap = LAP_ARCS.has(k), on = clamp(stepLevel(t, 'arcs', k) + (inLap ? lapK : 0), 0, 1);
+    let al = lerp(0.285, 1, on), col;
+    if (A.inh) { al = lerp(lerp(0.38, 1, stepLevel(t, 'arcs', k)), 0.25, lapK); col = C.hil; }
+    else col = mixRgb(mixArr([200, 210, 220], [238, 242, 245], on), heatRgb, inLap ? lapK : 0);
+    c.globalAlpha = a * ap * al;
+    c.strokeStyle = col; c.lineWidth = lerp(1.6, 2.4, on);
+    if (k === 'ecd_neo' && on < 0.5) c.setLineDash([5, 5]);
+    curve(A); c.stroke();
     c.setLineDash([]);
     // the head: an arrow, or a bar for inhibition
     const e = A.p[2], b = qpt(A.p, 0.9), ang = Math.atan2(e[1] - b[1], e[0] - b[0]);
-    c.fillStyle = A.inh ? C.hil : col;
+    c.fillStyle = col;
     c.save(); c.translate(e[0], e[1]); c.rotate(ang);
     if (A.inh) c.fillRect(-2, -9, 4, 18); else { c.beginPath(); c.moveTo(1, 0); c.lineTo(-11, -6); c.lineTo(-11, 6); c.closePath(); c.fill(); }
     c.restore();
-    if (A.name && A.at) { c.globalAlpha = a * ap * (on ? 0.95 : 0.55); text(c, A.name, A.at[0], A.at[1], { size: 12.5, w: 600, align: A.align || 'center', color: C.text2, halo: false }); }
+    if (A.name && A.at) { c.globalAlpha = a * ap * lerp(0.55, 0.95, on); text(c, A.name, A.at[0], A.at[1], { size: 12.5, w: 600, align: A.align || 'center', color: C.text2, halo: false }); }
+    // a discharge: the arrow flares, white-hot, a few ms after the one before it (slowed)
+    const f = inLap ? flashAt(bs, t, LAG[k]) * lapK : 0;
+    if (f > 0.01) {
+      c.save(); c.globalCompositeOperation = 'lighter';
+      c.globalAlpha = a * ap * f;
+      c.strokeStyle = 'rgba(255,214,150,0.55)'; c.lineWidth = 9; curve(A); c.stroke();
+      c.strokeStyle = 'rgba(255,246,228,0.95)'; c.lineWidth = 3; curve(A); c.stroke();
+      c.restore();
+    }
   });
   // the boxes
   const order = ['ecu', 'ecd', 'dg', 'ca3', 'ca1', 'sub', 'neo', 'brk'];
   order.forEach((k, i) => {
     const n = NODE[k], ap = appear(k === 'ecd' ? 0 : i);
     if (ap <= 0.001) return;
-    const brkOff = laps && k === 'brk';
-    const on = laps ? !brkOff && k !== 'neo' : litN.has(k);
-    c.globalAlpha = a * ap * (brkOff ? 0.5 : 1);
-    const hot = laps && on ? 0.25 + 0.6 * heat * (0.75 + 0.25 * Math.sin(t * 6 + i)) : 0;
+    const inLap = !LAP_OFF.has(k), on = clamp(stepLevel(t, 'nodes', k) + (inLap ? lapK : 0), 0, 1);
+    const f = inLap ? flashAt(bs, t, LAG[k]) * lapK : 0;
+    c.globalAlpha = a * ap * (k === 'brk' ? lerp(1, 0.5, lapK) : 1);
     rrect(c, n.x, n.y, n.w, n.h, 10);
-    c.fillStyle = hot > 0 ? 'rgba(' + R.ramp(0.35 + 0.4 * heat).join(',') + ',' + (0.16 + 0.3 * hot).toFixed(3) + ')' : on ? 'rgba(30,40,52,0.96)' : 'rgba(16,22,30,0.92)';
-    c.fill();
-    c.strokeStyle = on ? n.col : 'rgba(255,255,255,0.16)'; c.lineWidth = on ? 2 : 1;
-    if (on) { c.shadowColor = n.col; c.shadowBlur = 14; }
+    c.fillStyle = mixRgb([16, 22, 30], [30, 40, 52], on); c.fill();
+    if (inLap && lapK > 0.001) {
+      const hot = 0.25 + 0.45 * heat + 0.45 * f;
+      c.fillStyle = rgba(R.ramp(0.35 + 0.4 * heat + 0.2 * f), (0.16 + 0.3 * hot) * lapK); c.fill();
+    }
+    c.strokeStyle = rgba(mixArr([255, 255, 255], hex(n.col), on), lerp(0.16, 1, on)); c.lineWidth = lerp(1, 2, on);
+    if (on > 0.01) { c.shadowColor = n.col; c.shadowBlur = 14 * on + 16 * f; }
     c.stroke(); c.shadowBlur = 0;
     // the accent bar in the region's colour
     c.fillStyle = n.bar; c.fillRect(n.x + 1, n.y + 8, 4, n.h - 16);
     if (k === 'ecu' || k === 'ecd') {
       const lab = k === 'ecu' ? ['upper layers (II, III)', 'gather input, send it in'] : ['deep layers (V)', 'take the output back'];
-      text(c, lab[0], n.x + 18, n.y + n.h / 2 - 9, { size: 15, w: 650, color: on ? C.text : C.text2, halo: false });
+      text(c, lab[0], n.x + 18, n.y + n.h / 2 - 9, { size: 15, w: 650, color: mixRgb(hex(C.text2), hex(C.text), on), halo: false });
       text(c, lab[1], n.x + 18, n.y + n.h / 2 + 12, { size: 12.5, w: 500, color: C.text3, halo: false });
     } else if (k === 'brk') {
       text(c, 'hilus: brake cells', n.x + 16, n.y + n.h / 2, { size: 13.5, w: 650, color: C.hil, halo: false });
-      if (brkOff) { c.strokeStyle = '#ff6a4a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(n.x + 8, n.y + 6); c.lineTo(n.x + n.w - 8, n.y + n.h - 6); c.stroke(); }
+      if (lapK > 0.001) { c.globalAlpha = a * ap * 0.5 * lapK; c.strokeStyle = '#ff6a4a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(n.x + 8, n.y + 6); c.lineTo(n.x + n.w - 8, n.y + n.h - 6); c.stroke(); }
     } else {
-      text(c, n.name, n.x + 18, n.y + n.h / 2, { size: 18, w: 700, color: on ? n.col : C.text, halo: false });
+      text(c, n.name, n.x + 18, n.y + n.h / 2, { size: 18, w: 700, color: mixRgb(hex(C.text), hex(n.col), on), halo: false });
     }
   });
   // the entorhinal cortex's name, over its two halves, and the line between them
@@ -1330,46 +1510,44 @@ function drawMap(c, t, a) {
   text(c, 'Entorhinal cortex', NODE.ecu.x + 2, NODE.ecu.y - 16, { size: 18, w: 700, color: C.ec, halo: false });
   c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1; c.beginPath(); c.moveTo(NODE.ecu.x + 10, NODE.ecd.y); c.lineTo(NODE.ecu.x + NODE.ecu.w - 10, NODE.ecd.y); c.stroke();
   c.globalAlpha = a;
-  // the pulses: a bright bead and its trail along an arrow
-  const bead = (A, u, col, sz) => {
+  // the step by step: a bright bead and its trail along an arrow
+  // (it waits at the arrow's head a moment, fading, rather than vanishing)
+  const bead = (A, u, col, sz, k) => {
     for (let j = 0; j < 7; j++) {
       const uu = u - j * 0.035;
       if (uu < 0 || uu > 1) continue;
       const q = qpt(A.p, uu), r = (sz || 1) * (5.5 - j * 0.6);
-      c.globalAlpha = a * (1 - j / 7);
+      c.globalAlpha = a * (1 - j / 7) * k;
       c.drawImage(tinted(col), q[0] - r * 3, q[1] - r * 3, r * 6, r * 6);
     }
     c.globalAlpha = a;
   };
-  if (!laps) {
-    MAP_PULSES.forEach(([s, k, d]) => { const u = (t - s) / d; if (u >= 0 && u <= 1.15) bead(ARC[k], Math.min(1, u), ARC[k].inh ? C.hil : '#fff2d0', ARC[k].inh ? 0.8 : 1); });
-  } else if (lapNow) {
-    const seg = Math.floor(lapNow.u * LOOP_PATH.length), su = lapNow.u * LOOP_PATH.length - seg;
-    bead(ARC[LOOP_PATH[Math.min(seg, LOOP_PATH.length - 1)]], su, 'rgb(' + R.ramp(0.7 + 0.3 * heat).join(',') + ')', 1 + 0.5 * heat);
-  }
+  MAP_PULSES.forEach(([s, k, d]) => { const u = (t - s) / d; if (u >= 0 && u <= 1.3) bead(ARC[k], Math.min(1, u), ARC[k].inh ? C.hil : '#fff2d0', ARC[k].inh ? 0.8 : 1, smooth((1.3 - u) / 0.3)); });
   c.restore();
 }
 const MAP_CAPS = [
   [0.4, 4.6, 'Past the probe, nothing was recorded. To follow the seizure further, here is the circuit it can travel, as a map.'],
   [4.8, 9.7, 'The entorhinal cortex is the hippocampus’s front door: its upper layers gather signals from across the cortex and send them in.'],
   [9.9, 14.8, 'In the dentate gyrus, granule cells receive them while the hilus’s brake cells keep most of them quiet. The dentate gyrus is a gate.'],
-  [15.0, 19.1, 'What gets through goes to CA3, whose cells excite one another, and on to CA1.'],
+  [15.0, 19.1, 'What gets through goes to CA3, whose cells excite one another, and on to CA1.', 'Each step really takes a few thousandths of a second: here they are slowed right down.'],
   [19.3, 23.0, 'CA1 hands it to the subiculum, the hippocampus’s main exit.'],
   [23.2, 28.2, 'The subiculum sends it back to the entorhinal cortex’s deep layers, which pass it out to the cortex and up to the front door again: a loop.'],
-  [28.4, 34.8, 'In a seizure, we think the brakes fail. Nothing stops the activity at the gate, so it goes around again and again, each lap stronger.', 'Our hypothesis'],
+  [28.4, 32.9, 'In a seizure, we think the brakes fail. Nothing holds the activity at the gate, and it races around the loop.', 'Our hypothesis'],
+  [33.1, 38.0, 'Each discharge races round in a few hundredths of a second, so the whole loop fires as one, again and again.',
+    'Measured once the seizure took hold: CA1 hears each discharge about 15 ms after the dentate gyrus. Slowed down five times.'],
 ];
-scene({ name: 'loopmap', dur: 35, chap: 8, tag: [[0, 28.3, 'map'], [28.3, 35, 'hyp']], xin: 0.9, mood: 'loop', cap: MAP_CAPS,
+scene({ name: 'loopmap', dur: MAP_DUR, chap: 8, tag: [[0, 28.3, 'map'], [28.3, MAP_DUR, 'hyp']], xin: 0.9, mood: 'loop', cap: MAP_CAPS,
   sfx: (add) => {
     MAP_PULSES.forEach(([s, k], i) => add(s, 'pluck', { gain: k === 'brk_dg' ? 0.25 : 0.4, pitch: [0, 4, 7, 9, 12][i % 5] }));
-    let s = LAPS.t0;
-    LAPS.durs.forEach((d, i) => { for (let j = 0; j < LOOP_PATH.length; j++) add(s + d * j / LOOP_PATH.length, 'pluck', { gain: 0.3 + 0.06 * i, pitch: [-3, 0, 4, 7, 9, 12][j] }); s += d; });
-    add(LAPS.t0, 'swell', { gain: 0.6, dur: 6.5 });
+    // a soft knock for each discharge, as in the run-up
+    beats(SYNC.r0, SYNC.t0, MAP_DUR).forEach((b) => add(b, 'knock', { gain: 0.4 }));
+    add(SYNC.t0, 'swell', { gain: 0.6, dur: 6.5 });
   },
   enter() { go(FS.hpf); },
   update() { if (P().stop.key === 'film_hpf') { cutAt(P().geo.ap); const c = camOnSection(frProbe(XSP)); camAt(c.pos, c.target); } },
   post(c, t) { drawMap(c, t, fade(t, 0, 99, 0.6)); },
 });
-/* the same loop on the hippocampus itself, one hop at a time, then lap after lap */
+/* the same loop on the hippocampus itself: one hop at a time, then the seizure, every part lit at once by each discharge */
 const LOOP_REG = ['DG', 'CA3', 'CA2', 'CA1', 'SUB', 'ProS', 'ENTm', 'ENTl'];
 const loopPt = (k) => {
   const g = P().geo, lay = { DG: ['hil'], CA3: ['ca3sp'], CA1: ['ca1sp'] }[k];
@@ -1377,56 +1555,79 @@ const loopPt = (k) => {
   return c ? W3(c[0], c[1], c[2]) : hpfW(k);
 };
 const HOPS = [['ENTm', 'DG'], ['DG', 'CA3'], ['CA3', 'CA1'], ['CA1', 'SUB'], ['SUB', 'ENTm']];
-const HOP_T = [0.9, 1.9, 2.9, 3.9, 4.9], LAP3 = [6.6, 8.9, 10.8, 12.4];
-let loopFx = null;
-scene({ name: 'loop3d', dur: 14, chap: 8, tag: 'hyp', xin: 1.0, mood: 'loop',
-  cap: [[0.4, 6.4, 'Here is that loop in the mouse’s hippocampus.', 'Drawn, not recorded: the probe saw only CA1 and the dentate gyrus.'],
-        [6.6, 13.8, 'Lap after lap, more of the hippocampus is drawn in.']],
-  sfx: (add) => { HOP_T.forEach((h, i) => add(h, 'pluck', { gain: 0.38, pitch: [0, 4, 7, 9, 12][i] })); LAP3.forEach((h, i) => add(h, 'bloom', { gain: 0.35 + 0.08 * i, pitch: [-3, 0, 4, 7][i] })); },
+const HOP_T = [1.0, 2.6, 4.2, 5.8, 7.4], L3 = { dur: 16.5, t0: 9.0, r0: 24.0 };
+/* when each region is named (its pin): the entorhinal cortex first, then each as the hop to it lands */
+const L3_PIN = [0.5].concat(HOP_T.slice(0, 4).map((h) => h + 0.85));
+/* each hop leaves as its source fires: ms after the dentate gyrus's input (the entorhinal cortex's own volley at 0) */
+const HOP_LAG = [0, 2, 9, 16, 21];
+const L3_LAB = [['ENTm', 'ec', 'Entorhinal cortex', C.ec, -36, 36], ['DG', 'dg', 'Dentate gyrus', C.gc, 34, -36], ['CA3', 'ca3', 'CA3', C.ca3, 34, 32],
+  ['CA1', 'ca1', 'CA1', C.ca1, -28, -34], ['SUB', 'sub', 'Subiculum', C.sub, -34, -32]];
+let loopFx = null, lLast = null;
+scene({ name: 'loop3d', dur: L3.dur, chap: 8, tag: 'hyp', xin: 1.0, mood: 'loop',
+  cap: [[0.4, 8.8, 'Here is that loop in the mouse’s hippocampus.', 'Drawn, not recorded: the probe saw only CA1 and the dentate gyrus.'],
+        [9.0, 16.3, 'In the seizure, every part of it lights up together, discharge after discharge.', 'Slowed down five times, at the pace of mouse 459’s discharges.']],
+  sfx: (add) => {
+    HOP_T.forEach((h, i) => add(h, 'pluck', { gain: 0.38, pitch: [0, 4, 7, 9, 12][i] }));
+    beats(L3.r0, L3.t0, L3.dur).forEach((b) => add(b, 'knock', { gain: 0.42 }));
+    add(L3.t0 - 0.2, 'bloom', { gain: 0.4, pitch: -3 });
+  },
   enter() { camFrom = null; loopFx = { fired: new Set() }; if (P().stop.key !== 'film_hpf') go(FS.hpf); },
   update(t) {
     hold3d(t, [0.7, 0.5, -0.5], 13.2, [2.4, -0.7, 1.4]);
     if (P().stop.key !== 'film_hpf') return;
-    if (!loopFx.setup) {
-      loopFx.setup = true;
-    }
     const st = S.stage, fire = (id, at, fn) => { if (t >= at && !loopFx.fired.has(id)) { loopFx.fired.add(id); fn(); } };
-    const hop = ([a, b], col, ms, size) => { const A = loopPt(a), Bp = loopPt(b); if (A && Bp) st.volley(A, Bp, col, ms, { size, lift: 0.55 }); };
+    const hop = ([a, b], col, ms, size, land) => { const A = loopPt(a), Bp = loopPt(b); if (A && Bp) st.volley(A, Bp, col, ms, { size, lift: 0.55, land }); };
     // one hop at a time, each named as it lands
     HOPS.forEach((h, i) => fire('h' + i, HOP_T[i], () => hop(h, '#ffd9a0', 1000, 1.1)));
-    // then laps, each quicker and hotter than the last: a hop leaves every fifth of a lap
-    LAP3.forEach((l, li) => {
-      const lap = (LAP3[li + 1] || l + 1.4) - l, gap = lap / HOPS.length;
-      HOPS.forEach((h, i) => fire('l' + li + '_' + i, l + i * gap, () => hop(h, 'rgb(' + R.ramp(0.62 + 0.1 * li).join(',') + ')', gap * 2000, 1.0 + 0.25 * li)));
+    // then the seizure: in each discharge all five hops go within a few frames of each other (the real lags, slowed)
+    const bs = beats(L3.r0, L3.t0, L3.dur);
+    bs.forEach((b, bi) => HOPS.forEach((h, i) => fire('s' + bi + '_' + i, b + HOP_LAG[i] * SLOW / 1000,
+      () => hop(h, 'rgb(' + R.ramp(0.66 + 0.25 * clamp((b - L3.t0) / 6, 0, 1)).join(',') + ')', 220, 1.2, false))));
+    // the heat: a glow that grows through the seizure, and every region flaring with each discharge, at its own lag
+    const base = t < L3.t0 ? 0.12 * smooth(t / 5) : 0.12 + 0.26 * smooth((t - L3.t0) / 6);
+    const h = {};
+    LOOP_REG.forEach((r) => {
+      const f = Math.max(flashAt(bs, t, LAG[r]), r === 'ENTm' || r === 'ENTl' ? flashAt(bs, t, 0) : 0);
+      h[r] = base + 0.48 * f;
     });
-    const k = t < LAP3[0] ? 0.12 * smooth(t / 5) : 0.12 + 0.5 * smooth((t - LAP3[0]) / 7);
-    const flick = 0.85 + 0.15 * Math.sin(t * 7.3) * Math.sin(t * 2.1);
-    const h = {}; LOOP_REG.forEach((r) => { h[r] = k * flick; });
     st.setHeat(h, '#ff6a2a');
+    lLast = h;
   },
   post(c, t) {
-    const lab = [['ENTm', 'Entorhinal cortex', C.ec, -36, 36], ['DG', 'Dentate gyrus', C.gc, 34, -36], ['CA3', 'CA3', C.ca3, 34, 32], ['CA1', 'CA1', C.ca1, -28, -34], ['SUB', 'Subiculum', C.sub, -34, -32]];
-    lab.forEach(([k, s, col, dx, dy], i) => pin3(c, loopPt(k), s, { alpha: fade(t, (i ? HOP_T[i - 1] + 0.85 : 0.5), 14.2, 0.5, 0.3), color: col, dx, dy }));
+    // each region outlined and filled as it is named, until the next is; then a faint line, gone as the seizure takes them all
+    // (the entorhinal cortex comes forward again as the loop comes back to it)
+    const cut = P().geo.ap;
+    L3_LAB.forEach(([k, rk, s, col, dx, dy], i) => {
+      let strong = fade(t, L3_PIN[i], (L3_PIN[i + 1] || L3.t0 - 0.2) + 0.4, 0.5, 0.5);
+      if (i === 0) strong = Math.max(strong, fade(t, HOP_T[4] + 0.85, L3.t0, 0.5, 0.6));
+      const al = Math.max(strong, 0.3 * fade(t, L3_PIN[i], L3.t0 + 0.9, 0.5, 0.9));
+      drawRegion(c, rk, col, al, { cut, fill: 0.16 * strong / Math.max(al, 1e-3) });
+    });
+    L3_LAB.forEach(([k, rk, s, col, dx, dy], i) => pin3(c, loopPt(k), s, { alpha: fade(t, L3_PIN[i], L3.dur - 0.05, 0.5, 0.6), color: col, dx, dy }));
   },
 });
 let camFrom = null;
+/* the camera from wherever the last scene left it, round the target (never through the model), then a slow turn */
 function hold3d(t, dir0, dist, tgt) {
   if (t < 0.05 || !camFrom) camFrom = S.stage.getCam();
-  const u = ease(t / 1.8);
-  const pos = lerp3(camFrom.pos, add(tgt, norm(dir0), dist), u), tg = lerp3(camFrom.target, tgt, u);
-  if (t < 1.8) camAt(pos, tg);
-  else look(tgt, yaw(dir0, (t - 1.8) * 1.3), dist);
+  const to = lookCam(tgt, yaw(dir0, Math.max(0, t - 1.8) * 1.3), dist);
+  const cm = t < 1.8 ? lerpCam(camFrom, to, ease(t / 1.8)) : to;
+  camAt(cm.pos, cm.target);
 }
 
 /* ---- across the brain, a step at a time ---- */
 const GSTEP = { hip: 0, neo: 8.6, other: 17.4, th: 25.6, mo: 34.4, bs: 43.6, end: 53 };
+/* the motor cortex and the brainstem: forebrain seizures make the face and limbs jerk (clonic); the brainstem's own
+   seizure network makes the body stiffen (tonic): with the forebrain cut away, rats still have tonic seizures but no
+   face and forelimb clonus (Browning & Nelson, Exp Neurol 1986). In people's tonic-clonic seizures the stiffening
+   usually comes first. */
 const GCAP = [
   [0.4, 8.2, 'The seizure need not stay in the hippocampus. Here is how a seizure like this one can spread across the brain.', 'What is known about how seizures spread; none of it was recorded in this mouse.'],
   [8.6, 17.0, 'Out through the entorhinal cortex, it reaches the neocortex, the brain’s outer layer.'],
   [17.4, 25.2, 'A bridge of fibers carries it across to the hippocampus on the other side.'],
   [25.6, 34.0, 'Deep in the middle, the thalamus is wired to the whole cortex. Once it joins, both halves of the brain can seize together.'],
-  [34.4, 43.2, 'When it reaches the motor cortex, which moves the body, the body jerks in time with it: a convulsive seizure.', 'No video was recorded with this seizure, so we can’t say what mouse 459’s body did.'],
-  [43.6, 52.8, 'If it reaches the brainstem, which holds the body’s posture, the whole body stiffens: the tonic part of a big seizure.'],
+  [34.4, 43.2, 'When it reaches the motor cortex, which moves the body, the face and limbs jerk in time with it: the clonic part of a seizure.', 'No video was recorded with this seizure, so we can’t say what mouse 459’s body did.'],
+  [43.6, 52.8, 'If it reaches the brainstem, which sets the body’s posture, the whole body stiffens: the tonic part.', 'In a person’s tonic-clonic seizure, the stiffening usually comes first, then the jerking.'],
 ];
 let gfx = null;
 const gKeys = () => {
@@ -1441,10 +1642,13 @@ const gKeys = () => {
   ];
 };
 let GKEYS = null;
+/* the jerks: 16, two a second, from 1.2 s into the motor cortex's step (a thud each, and the motor cortex lit) */
+const JERKS = { t0: GSTEP.mo + 1.2, n: 16, hz: 2 };
+const jerkKick = (t) => { const u = (t - JERKS.t0) * JERKS.hz; return u < 0 || u >= JERKS.n ? 0 : Math.exp(-(u % 1) * 4.5); };
 scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', mood: 'spread', cap: GCAP,
   sfx: (add) => {
     [GSTEP.neo, GSTEP.other, GSTEP.th, GSTEP.mo, GSTEP.bs].forEach((s, i) => { add(s - 1.0, 'whoosh', { gain: 0.75, dur: 2.0 }); add(s + 0.2, 'bloom', { gain: 0.5, pitch: [3, 10, 8, 5, 7][i], low: true }); });
-    for (let k = 0; k < 16; k++) add(GSTEP.mo + 1.2 + k / 2.0, 'thud', { gain: 0.3 + 0.2 * Math.min(1, k / 6) });
+    for (let k = 0; k < JERKS.n; k++) add(JERKS.t0 + k / JERKS.hz, 'thud', { gain: 0.3 + 0.2 * Math.min(1, k / 6) });
     add(GSTEP.bs + 0.6, 'swell', { gain: 0.75, dur: 8.5 });
     add(1.4, 'whoosh', { gain: 0.7, dur: 2.6 });
   },
@@ -1453,46 +1657,46 @@ scene({ name: 'global', dur: 53.4, chap: 9, tag: 'book', mood: 'spread', cap: GC
     if (P().stop.key !== 'film_hpf') return;
     if (!GKEYS) GKEYS = gKeys();
     camGo(t, camKeys(t, GKEYS, 1.9), 3.0);
-    // the cut sweeps forward, out of the brain: whole again
-    cutAt(t < 3.0 ? lerp(P().geo.ap, 1200, ease(t / 3.0)) : null);
+    // the cut sweeps forward, out through the olfactory bulbs: the brain whole again
+    cutAt(t < 3.4 ? lerp(P().geo.ap, FRONT, ease(t / 3.4)) : null);
     const st = S.stage, k = (s, d) => smooth((t - s) / (d || 2.5));
     const fire = (id, at, fn) => { if (t >= at && !gfx.fired.has(id)) { gfx.fired.add(id); fn(); } };
-    // the hippocampus, seizing all along
+    // the hippocampus and the entorhinal cortex, seizing all along (taken over from the loop as it left them)
     const hh = lerp(0.6, 0.35 + 0.15 * Math.sin(t * 5.1) * Math.sin(t * 1.7), smooth(t / 2.5));
-    st.setHeat({ DG: hh, CA3: hh, CA2: hh, CA1: hh, SUB: hh * 0.9, ProS: hh * 0.8, ENTm: hh * 0.8 * k(GSTEP.neo - 1), ENTl: hh * 0.8 * k(GSTEP.neo - 1) }, '#ff6a2a');
+    const own = { DG: hh, CA3: hh, CA2: hh, CA1: hh, SUB: hh * 0.9, ProS: hh * 0.8, ENTm: hh * 0.8, ENTl: hh * 0.8 }, heat = {};
+    Object.keys(own).forEach((r) => { heat[r] = lLast && lLast[r] != null ? lerp(lLast[r], own[r], smooth(t / 2.5)) : own[r]; });
+    st.setHeat(heat, '#ff6a2a');
     const ec = hpfW('ENTl') || hpfW('ENTm');
     // the neocortex: waves out of the entorhinal cortex
     ['SSp', 'MOp', 'AUD', 'VISp', 'RSP', 'ACA'].forEach((n, i) => [0, 3.4].forEach((d, j) => fire('neo' + n + j, GSTEP.neo + 0.5 + d + i * 0.26, () => { const b = allenW(n, 'r'); if (ec && b) st.volley(ec, b, '#ff9a4a', 1350, { size: 1.15, lift: 0.4 }); })));
     // across to the other hippocampus
     [0, 2.6].forEach((d, j) => fire('com' + j, GSTEP.other + 1.0 + d, () => { const a = hpfW('DG'), b = hpfW('DG', 'l'); if (a && b) st.volley(a, b, '#ffc07a', 1500, { size: 1.25, lift: 0.5 }); }));
-    // the motor cortex, flashing with each jerk, both sides
-    for (let k = 0; k < 16; k++) fire('jerk' + k, GSTEP.mo + 1.2 + k / 2.0, () => ['r', 'l'].forEach((s) => { const p = allenW('MOp', s); if (p) st.flareAt(p, '#ffe9b8', 560); }));
     // the thalamus, both ways with the cortex
     [0, 2.8].forEach((d, j) => {
       fire('th' + j, GSTEP.th + 0.8 + d, () => { const th = allenW('TH', 'r'), a = hpfW('SUB') || hpfW('DG'); if (th && a) st.volley(a, th, '#ffb060', 1250, { size: 1.1, lift: 0.3 }); });
       ['SSp', 'MOp', 'ACA', 'VISp'].forEach((n, i) => fire('tc' + n + j, GSTEP.th + 1.9 + d + i * 0.18, () => { const th = allenW('TH', 'r'), b = allenW(n, i % 2 ? 'l' : 'r'); if (th && b) st.volley(th, b, '#ffb060', 1200, { size: 1.0, lift: 0.35 }); }));
     });
+    // the glows, each easing in from nothing (from0), so no part of the brain pops in
     const cortex = 0.1 * k(0.5, 2.5) + 0.5 * k(GSTEP.neo + 0.8, 4) + 0.15 * k(GSTEP.th + 1.5, 4);
-    const glow = { Isocortex: { color: '#ff7a2f', a: cortex * (t > GSTEP.mo ? 0.75 : 1) } };
-    if (t > GSTEP.th) glow.TH = { color: '#ffb35c', a: 0.15 + 0.55 * k(GSTEP.th + 0.6, 3) };
-    if (t > GSTEP.bs) { const sb = 0.12 + 0.6 * k(GSTEP.bs + 0.5, 3) * (0.9 + 0.1 * Math.sin(t * 4.4)); glow.MB = { color: '#ffd27a', a: sb }; glow.P = { color: '#ffd27a', a: sb }; glow.MY = { color: '#ffd27a', a: sb }; }
+    const glow = { Isocortex: { color: '#ff7a2f', a: cortex * lerp(1, 0.75, k(GSTEP.mo, 1.5)), from0: true } };
+    glow.TH = { color: '#ffb35c', a: 0.7 * k(GSTEP.th + 0.6, 3), from0: true };
+    const sb = 0.72 * k(GSTEP.bs + 0.5, 3) * (0.9 + 0.1 * Math.sin(t * 4.4));
+    ['MB', 'P', 'MY'].forEach((n) => { glow[n] = { color: '#ffd27a', a: sb, from0: true }; });
     st.glowBrain(glow);
-    gLast = { glow, heat: hh };
+    gLast = { glow, heat };
   },
   post(c, t) {
-    if (P().stop.key !== 'film_brain') return;
-    // the motor cortex: its surface, lit in time with the jerks
-    const km = fade(t, GSTEP.mo + 0.6, GSTEP.end, 0.8, 0.6);
-    if (km > 0.01) {
-      const ph = ((t - GSTEP.mo - 1.2) * 2.0) % 1, kick = t > GSTEP.mo + 1.2 ? Math.exp(-ph * 4.5) : 0;
-      const pts = allenTop('MOp'), spr = tinted('#fff0c2');
-      c.save(); c.globalCompositeOperation = 'lighter';
-      // ~90 stamps overlap at any point of the patch: each one faint
-      c.globalAlpha = km * (0.005 + 0.014 * kick) * (t > GSTEP.bs ? 0.6 : 1);
-      for (const w of pts) { const p = proj(w); if (p[2] > 1) continue; c.drawImage(spr, p[0] - 15, p[1] - 15, 30, 30); }
-      c.restore();
-    }
+    if (P().stop.key !== 'film_hpf') return;
     const a = (s, e) => fade(t, s, e == null ? GSTEP.end : e, 0.6, 0.5);
+    // each place, outlined as it is named (the motor cortex lit with each jerk), then named
+    const cut = cutPos;
+    drawRegion(c, 'neo', '#ffb36b', a(GSTEP.neo + 1.0, GSTEP.other + 0.2), { fill: 0.06, cut });
+    drawRegion(c, 'hipR', '#ffd27f', a(0.8, GSTEP.th), { cut });
+    drawRegion(c, 'ec', C.ec, a(GSTEP.neo + 0.2, GSTEP.other), { cut });
+    drawRegion(c, 'hipL', '#ffd27f', a(GSTEP.other + 1.8, GSTEP.th), { cut });
+    drawRegion(c, 'th', '#ffc98a', a(GSTEP.th + 1.0, GSTEP.mo), { cut });
+    drawRegion(c, 'mo', '#ffe7b0', a(GSTEP.mo + 1.0, GSTEP.bs + 0.3), { fill: 0.12 + 0.3 * jerkKick(t), cut });
+    drawRegion(c, 'bs', '#ffe3a0', a(GSTEP.bs + 1.0), { fill: 0.1, cut });
     pin3(c, hpfW('DG'), 'Hippocampus', { alpha: a(0.8, GSTEP.other + 0.4), color: '#ffd27f', dx: 30, dy: 44 });
     pin3(c, hpfW('ENTl') || hpfW('ENTm'), 'Entorhinal cortex', { alpha: a(GSTEP.neo + 0.2, GSTEP.other), color: C.ec, dx: 36, dy: 40 });
     pin3(c, allenW('SSp', 'r'), 'Neocortex', { alpha: a(GSTEP.neo + 1.0, GSTEP.other + 0.2), color: '#ffb36b', dx: 34, dy: -38 });
@@ -1510,14 +1714,14 @@ scene({ name: 'nextpull', dur: 3.6, chap: 10, tag: 'next', mood: 'hope', sfx: [[
   enter() { if (P().stop.key !== 'film_hpf') go(FS.hpf); },
   update(t) {
     camGo(t, camOnSection(frSec()), 3.4);
-    cutAt(t < 0.3 ? null : lerp(2500, P().geo.ap, ease((t - 0.3) / 2.7)));
+    cutAt(t < 0.25 ? null : lerp(FRONT, P().geo.ap, ease((t - 0.25) / 3.0)));
     const k = 1 - smooth(t / 2.6);
     if (gLast) {
-      const gl = {};
-      Object.entries(gLast.glow).forEach(([n, v]) => { gl[n] = { color: v.color, a: v.a * k }; });
-      S.stage.glowBrain(k > 0.01 ? gl : null);
-      const h = gLast.heat * k;
-      S.stage.setHeat({ DG: h, CA3: h, CA2: h, CA1: h, SUB: h * 0.9, ProS: h * 0.8, ENTm: h * 0.8, ENTl: h * 0.8 }, '#ff6a2a');
+      const gl = {}, h = {};
+      Object.entries(gLast.glow).forEach(([n, v]) => { gl[n] = { color: v.color, a: v.a * k, from0: true }; });
+      S.stage.glowBrain(k > 0.001 ? gl : null);
+      Object.entries(gLast.heat).forEach(([r, v]) => { h[r] = v * k; });
+      S.stage.setHeat(h, '#ff6a2a');
     }
   },
   exit() { S.stage.glowBrain(null); S.stage.setHeat(null); },
@@ -1584,6 +1788,7 @@ F.tick = (t) => {
   const sc = sceneAt(t);
   if (F.cur !== sc) {
     camStart = S.stage.getCam();
+    scrimFrom = scrimNow;
     if (F.cur && F.cur.exit) F.cur.exit();
     F.cur = sc;
     if (sc.xin && F.frame > 0) xf = { t0: t, dur: sc.xin };
@@ -1620,6 +1825,13 @@ F.init = async (assets) => {
   hideCells();
   // no drawn pathways (the perforant and temporoammonic bundles): the film draws its own arcs. In memory only, not saved.
   S.paths = false;
+  // the story paints a recorded zone once its level passes 0.03, and at a tenth already: in the slowed spread a zone
+  // hovering at that line blinked on and off from one frame to the next. Here it fades in from nothing over 0.03-0.09.
+  // In memory only, like S.paths.
+  if (!R._alphaOf0) {
+    R._alphaOf0 = R.alphaOf;
+    R.alphaOf = (lv) => (lv < 0.03 ? 0 : R._alphaOf0(lv) * Math.min(1, (lv - 0.03) / 0.06));
+  }
   makeStops();
   allenCentres();
   return { total: F.total, frames: F.frames, scenes: F.scenes };
